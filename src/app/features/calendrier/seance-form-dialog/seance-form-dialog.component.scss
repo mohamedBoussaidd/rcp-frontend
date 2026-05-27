@@ -1,0 +1,92 @@
+.seance-subtitle {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 400;
+  color: var(--dm-muted);
+  margin-top: 3px;
+  letter-spacing: 0.02em;
+}
+
+.dark-field-grid {
+  grid-template-columns: 1fr 1fr;
+}
+
+.full-width {
+  grid-column: 1 / -1;
+}
+
+.section-label {
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--dm-label);
+  padding: 4px 0 2px;
+  border-bottom: 1px solid var(--dm-border);
+}
+
+/* ── Erreurs champ ── */
+.field-error {
+  border-color: #f87171 !important;
+}
+
+.msg-erreur {
+  font-size: 0.68rem;
+  color: #f87171;
+  margin-top: 3px;
+}
+
+/* ── Alerte écart durée ── */
+.alerte-ecart {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: rgba(251, 146, 60, 0.12);
+  border: 1px solid rgba(251, 146, 60, 0.35);
+  color: #fb923c;
+  font-size: 0.8rem;
+
+  &.alerte-long {
+    background: rgba(251, 191, 36, 0.12);
+    border-color: rgba(251, 191, 36, 0.35);
+    color: #fbbf24;
+  }
+}
+
+.alerte-icon {
+  font-size: 0.9rem;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+/* ── Suggestions ── */
+.suggestions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.suggestion-chip {
+  padding: 4px 10px;
+  border-radius: 20px;
+  border: 1px solid var(--dm-border);
+  background: var(--dm-field-bg);
+  color: var(--dm-muted);
+  font-size: 0.75rem;
+  cursor: pointer;
+  transition: background .15s, color .15s, border-color .15s;
+
+  &:hover {
+    border-color: var(--dm-accent);
+    color: var(--dm-text);
+  }
+
+  &.active {
+    background: var(--dm-accent);
+    border-color: var(--dm-accent);
+    color: #fff;
+  }
+}

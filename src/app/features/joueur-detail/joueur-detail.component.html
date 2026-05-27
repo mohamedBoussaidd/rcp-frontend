@@ -1,0 +1,363 @@
+@if (joueur) {
+  <div class="detail-content">
+
+    <!-- ── Retour ── -->
+    <button class="btn-retour" (click)="retourDashboard()">← Dashboard</button>
+
+    <!-- ── En-tête ── -->
+    <div class="detail-header">
+      <div class="nav-joueurs">
+        <button class="btn-nav-joueur" [disabled]="!joueurPrecedent"
+                (click)="joueurPrecedent && naviguerVers(joueurPrecedent)"
+                [title]="joueurPrecedent ? joueurPrecedent.prenom + ' ' + joueurPrecedent.nom : ''">
+          ‹
+        </button>
+        <div>
+          <h2>{{ joueur.prenom }} {{ joueur.nom }}</h2>
+          <p class="detail-subtitle">
+            {{ joueur.postePrincipal || 'Poste non défini' }}
+            @if (joueur.taille) { · {{ joueur.taille }} cm }
+            @if (joueur.poidsActuel) { · {{ joueur.poidsActuel }} kg }
+          </p>
+        </div>
+        <button class="btn-nav-joueur" [disabled]="!joueurSuivant"
+                (click)="joueurSuivant && naviguerVers(joueurSuivant)"
+                [title]="joueurSuivant ? joueurSuivant.prenom + ' ' + joueurSuivant.nom : ''">
+          ›
+        </button>
+      </div>
+      <button class="btn-dark-primary" (click)="ouvrirEdition()">
+        Modifier le joueur
+      </button>
+    </div>
+
+    <!-- ── Onglets ── -->
+    <mat-tab-group class="detail-tabs" animationDuration="200ms" (selectedIndexChange)="onTabChange($event)">
+
+      <!-- ══ Onglet Profil ══ -->
+      <mat-tab label="Profil">
+        <div class="tab-content">
+
+          <!-- Poste & Rôle -->
+          <mat-card class="info-card">
+            <mat-card-header class="card-header-collapsible" (click)="posteRoleExpanded = !posteRoleExpanded">
+              <mat-card-title>Poste & Rôle</mat-card-title>
+              <span class="card-toggle">{{ posteRoleExpanded ? '▲' : '▼' }}</span>
+            </mat-card-header>
+            @if (posteRoleExpanded) {
+              <mat-card-content>
+                <div class="info-grid">
+                  <div class="info-item">
+                    <span class="info-label">Poste principal</span>
+                    <span class="info-value">{{ POSTES[joueur!.postePrincipal!] || joueur!.postePrincipal || '—' }}</span>
+                  </div>
+                  <div class="info-item">
+                    <span class="info-label">Poste secondaire</span>
+                    <span class="info-value">{{ POSTES[joueur!.posteSecondaire!] || joueur!.posteSecondaire || '—' }}</span>
+                  </div>
+                  <div class="info-item">
+                    <span class="info-label">Profil athlétique</span>
+                    <span class="info-value">{{ PROFILS[joueur!.profilAthletique!] || joueur!.profilAthletique || '—' }}</span>
+                  </div>
+                  <div class="info-item">
+                    <span class="info-label">Pied fort</span>
+                    <span class="info-value">{{ PIEDS[joueur!.piedFort!] || '—' }}</span>
+                  </div>
+                  <div class="info-item">
+                    <span class="info-label">Statut</span>
+                    <span class="info-value badge-statut statut-{{ joueur!.statut }}">
+                      {{ STATUTS[joueur!.statut] || joueur!.statut }}
+                    </span>
+                  </div>
+                  <div class="info-item">
+                    <span class="info-label">Au club depuis</span>
+                    <span class="info-value">{{ joueur!.dateArriveeClub ? (joueur!.dateArriveeClub | date:'dd/MM/yyyy') : '—' }}</span>
+                  </div>
+                </div>
+              </mat-card-content>
+            }
+          </mat-card>
+
+          <!-- Caractéristiques physiques -->
+          <mat-card class="info-card">
+            <mat-card-header class="card-header-collapsible" (click)="physiquesExpanded = !physiquesExpanded">
+              <mat-card-title>Caractéristiques physiques</mat-card-title>
+              <span class="card-toggle">{{ physiquesExpanded ? '▲' : '▼' }}</span>
+            </mat-card-header>
+            @if (physiquesExpanded) {
+              <mat-card-content>
+                <div class="info-grid">
+                  <div class="info-item">
+                    <span class="info-label">Âge</span>
+                    <span class="info-value">{{ age }}</span>
+                  </div>
+                  <div class="info-item">
+                    <span class="info-label">Taille</span>
+                    <span class="info-value">{{ joueur!.taille ? joueur!.taille + ' cm' : '—' }}</span>
+                  </div>
+                  <div class="info-item">
+                    <span class="info-label">Poids actuel</span>
+                    <span class="info-value accent">{{ joueur!.poidsActuel ? joueur!.poidsActuel + ' kg' : '—' }}</span>
+                  </div>
+                  <div class="info-item">
+                    <span class="info-label">Poids cible</span>
+                    <span class="info-value">{{ joueur!.poidsFormeCible ? joueur!.poidsFormeCible + ' kg' : '—' }}</span>
+                  </div>
+                </div>
+                @if (joueur!.poidsActuel && joueur!.poidsFormeCible) {
+                  <div class="poids-ecart">
+                    @let ecart = joueur!.poidsActuel! - joueur!.poidsFormeCible!;
+                    @if (ecart > 0) {
+                      <span class="ecart-surplus">{{ ecart | number:'1.1-1' }} kg au-dessus du poids cible</span>
+                    } @else if (ecart < 0) {
+                      <span class="ecart-deficit">{{ (-ecart) | number:'1.1-1' }} kg en dessous du poids cible</span>
+                    } @else {
+                      <span class="ecart-ok">Au poids cible ✓</span>
+                    }
+                  </div>
+                }
+              </mat-card-content>
+            }
+          </mat-card>
+
+          <!-- État actuel -->
+          @if (risque || fatigue) {
+            <mat-card class="info-card">
+              <mat-card-header class="card-header-collapsible" (click)="etatExpanded = !etatExpanded">
+                <mat-card-title>État actuel</mat-card-title>
+                <span class="card-toggle">{{ etatExpanded ? '▲' : '▼' }}</span>
+              </mat-card-header>
+              @if (etatExpanded) {
+                <mat-card-content>
+                  <div class="etat-grid">
+                    @if (risque) {
+                      <div class="etat-item">
+                        <span class="info-label">Risque blessure</span>
+                        <app-badge-risque [niveau]="risque.niveau" [score]="risque.score_risque"></app-badge-risque>
+                      </div>
+                    }
+                    @if (fatigue) {
+                      <div class="etat-item">
+                        <span class="info-label">Alerte intensité ({{ fatigue.niveau }})</span>
+                        <mat-progress-bar [value]="fatigue.score_fatigue"
+                          [color]="fatigue.score_fatigue > 65 ? 'warn' : fatigue.score_fatigue > 35 ? 'accent' : 'primary'">
+                        </mat-progress-bar>
+                        <p class="fatigue-raison">{{ fatigue.raison }}</p>
+                      </div>
+                    }
+                  </div>
+                </mat-card-content>
+              }
+            </mat-card>
+          }
+
+        </div>
+      </mat-tab>
+
+      <!-- ══ Onglet GPS & Charge — rendu paresseux via matTabContent ══ -->
+      <mat-tab label="GPS & Charge">
+        <ng-template matTabContent>
+          <div class="tab-content">
+
+            @if (gpsLoading) {
+              <p class="gps-empty">Chargement…</p>
+            }
+
+            @if (!gpsLoading && gpsData.length === 0) {
+              <p class="gps-empty">Aucune donnée GPS disponible pour ce joueur.<br>
+                Importez un fichier Excel via le script Python.</p>
+            }
+
+            @if (!gpsLoading && gpsData.length > 0) {
+
+              <!-- Barre de filtres -->
+              <div class="gps-filters">
+                <div class="filter-chips">
+                  @for (t of TYPES_GPS; track t.code) {
+                    <button class="chip-type"
+                            [class.active]="filtreTypes.includes(t.code)"
+                            [style.--c]="t.couleur"
+                            (click)="toggleFiltreType(t.code)">
+                      {{ t.libelle }}
+                    </button>
+                  }
+                </div>
+                <div class="filter-dates">
+                  <input type="date" [(ngModel)]="filtreDebut" (ngModelChange)="onFiltreChange()" class="date-input" title="Du">
+                  <span class="date-sep">→</span>
+                  <input type="date" [(ngModel)]="filtreFin" (ngModelChange)="onFiltreChange()" class="date-input" title="Au">
+                </div>
+                @if (filtreTypes.length > 0 || filtreDebut || filtreFin) {
+                  <button class="chip-reset" (click)="resetFiltres()">✕ Réinitialiser</button>
+                  <span class="filter-count">{{ gpsDataEnriched.length }} / {{ gpsData.length }} séances</span>
+                }
+              </div>
+
+              <!-- Légende couleurs -->
+              <div class="legende">
+                <span class="legende-item" style="--c:#ef4444">Match</span>
+                <span class="legende-item" style="--c:#f97316">Match amical</span>
+                <span class="legende-item" style="--c:#6366f1">Intensif</span>
+                <span class="legende-item" style="--c:#0ea5a0">Technique</span>
+                <span class="legende-item" style="--c:#22c55e">Reprise</span>
+                <span class="legende-item" style="--c:#eab308">Pré-match</span>
+                <span class="legende-item" style="--c:#8b5cf6">Force</span>
+              </div>
+
+              <!-- Graphique charge -->
+              <mat-card class="chart-card">
+                <mat-card-header class="card-header-collapsible" (click)="chartExpanded = !chartExpanded">
+                  <mat-card-title>Charge par séance — distance totale</mat-card-title>
+                  <span class="card-toggle">{{ chartExpanded ? '▲' : '▼' }}</span>
+                </mat-card-header>
+                @if (chartExpanded) {
+                  <mat-card-content>
+                    <apx-chart
+                      [series]="chartOptions.series"
+                      [chart]="chartOptions.chart"
+                      [xaxis]="chartOptions.xaxis"
+                      [yaxis]="chartOptions.yaxis"
+                      [plotOptions]="chartOptions.plotOptions"
+                      [dataLabels]="chartOptions.dataLabels"
+                      [fill]="chartOptions.fill"
+                      [tooltip]="chartOptions.tooltip">
+                    </apx-chart>
+                  </mat-card-content>
+                }
+              </mat-card>
+
+              <!-- Tableau détail -->
+              <mat-card class="table-card">
+                <mat-card-header class="card-header-collapsible" (click)="tableExpanded = !tableExpanded">
+                  <mat-card-title>Détail des séances</mat-card-title>
+                  <span class="card-toggle">{{ tableExpanded ? '▲' : '▼' }}</span>
+                </mat-card-header>
+                @if (tableExpanded) {
+                  <div class="legende-statut">
+                    <span class="legende-statut-item statut-sous">Sous la norme (&lt; −20% vs sa moyenne toutes séances)</span>
+                    <span class="legende-statut-item statut-dans">Dans la norme (±20%)</span>
+                    <span class="legende-statut-item statut-sur">Sur la norme (&gt; +20%)</span>
+                  </div>
+                  <mat-card-content>
+                    <table mat-table [dataSource]="gpsDataPage" class="gps-table">
+
+                      <ng-container matColumnDef="date">
+                        <th mat-header-cell *matHeaderCellDef>Date</th>
+                        <td mat-cell *matCellDef="let g">{{ g.date | date:'dd/MM/yyyy' }}</td>
+                        <td mat-footer-cell *matFooterCellDef></td>
+                      </ng-container>
+
+                      <ng-container matColumnDef="type">
+                        <th mat-header-cell *matHeaderCellDef>Type</th>
+                        <td mat-cell *matCellDef="let g">
+                          <span class="badge-type" [style.background]="couleurType(g.typeCode) + '28'" [style.color]="couleurType(g.typeCode)">
+                            {{ g.typeLibelle }}
+                          </span>
+                        </td>
+                        <td mat-footer-cell *matFooterCellDef class="footer-cell">{{ gpsDataEnriched.length }} séances</td>
+                      </ng-container>
+
+                      <ng-container matColumnDef="duree">
+                        <th mat-header-cell *matHeaderCellDef>Durée</th>
+                        <td mat-cell *matCellDef="let g">{{ g.dureeMinutes ?? '—' }} min</td>
+                        <td mat-footer-cell *matFooterCellDef class="footer-cell">{{ totalDuree }} min</td>
+                      </ng-container>
+
+                      <ng-container matColumnDef="distance">
+                        <th mat-header-cell *matHeaderCellDef>Distance</th>
+                        <td mat-cell *matCellDef="let g">
+                          @if (g.distanceTotaleM) {
+                            <strong>{{ (g.distanceTotaleM / 1000) | number:'1.2-2' }} km</strong>
+                          } @else { — }
+                        </td>
+                        <td mat-footer-cell *matFooterCellDef class="footer-cell">
+                          <strong>{{ totalDistanceKm | number:'1.1-1' }} km</strong>
+                        </td>
+                      </ng-container>
+
+                      <ng-container matColumnDef="ratioReel">
+                        <th mat-header-cell *matHeaderCellDef>Ratio réel</th>
+                        <td mat-cell *matCellDef="let g" class="muted">
+                          {{ g.ratioReel ? (g.ratioReel | number:'1.0-0') + ' m/min' : '—' }}
+                        </td>
+                        <td mat-footer-cell *matFooterCellDef class="footer-cell muted">
+                          {{ moyenneRatioReel ? 'ø ' + (moyenneRatioReel | number:'1.0-0') + ' m/min' : '—' }}
+                        </td>
+                      </ng-container>
+
+                      <ng-container matColumnDef="distAttendue">
+                        <th mat-header-cell *matHeaderCellDef>Dist. attendue</th>
+                        <td mat-cell *matCellDef="let g" class="muted">
+                          @if (g.distAttendue) {
+                            {{ (g.distAttendue / 1000) | number:'1.2-2' }} km
+                          } @else { — }
+                        </td>
+                        <td mat-footer-cell *matFooterCellDef class="footer-cell muted">
+                          {{ totalDistAttendueKm | number:'1.1-1' }} km
+                        </td>
+                      </ng-container>
+
+                      <ng-container matColumnDef="statut">
+                        <th mat-header-cell *matHeaderCellDef>Charge relative</th>
+                        <td mat-cell *matCellDef="let g">
+                          <span class="badge-statut" [class]="statutClass(g.statut)">
+                            {{ statutLibelle(g.statut) }}
+                          </span>
+                        </td>
+                        <td mat-footer-cell *matFooterCellDef></td>
+                      </ng-container>
+
+                      <ng-container matColumnDef="sprint">
+                        <th mat-header-cell *matHeaderCellDef>Sprint &gt;24 km/h</th>
+                        <td mat-cell *matCellDef="let g">
+                          {{ g.distanceSprint24kmhM ? ((g.distanceSprint24kmhM) | number:'1.0-0') + ' m' : '—' }}
+                          @if (g.nbSprints24kmh) {
+                            <small class="nb-sprints">({{ g.nbSprints24kmh }}x)</small>
+                          }
+                        </td>
+                        <td mat-footer-cell *matFooterCellDef class="footer-cell">{{ totalSprintM | number:'1.0-0' }} m</td>
+                      </ng-container>
+
+                      <ng-container matColumnDef="vitesseMax">
+                        <th mat-header-cell *matHeaderCellDef>Vit. max</th>
+                        <td mat-cell *matCellDef="let g">
+                          {{ g.vitesseMaxKmh ? (g.vitesseMaxKmh | number:'1.1-1') + ' km/h' : '—' }}
+                        </td>
+                        <td mat-footer-cell *matFooterCellDef class="footer-cell muted">
+                          {{ maxVitesse ? 'max ' + (maxVitesse | number:'1.1-1') + ' km/h' : '—' }}
+                        </td>
+                      </ng-container>
+
+                      <ng-container matColumnDef="accelerations">
+                        <th mat-header-cell *matHeaderCellDef>Accél.</th>
+                        <td mat-cell *matCellDef="let g">{{ g.nbAccelerations ?? '—' }}</td>
+                        <td mat-footer-cell *matFooterCellDef class="footer-cell">{{ totalAccelerations }}</td>
+                      </ng-container>
+
+                      <tr mat-header-row *matHeaderRowDef="colonnesGps"></tr>
+                      <tr mat-row *matRowDef="let row; columns: colonnesGps;"></tr>
+                      <tr mat-footer-row *matFooterRowDef="colonnesGps"></tr>
+                    </table>
+                    <mat-paginator
+                      [length]="gpsDataEnriched.length"
+                      [pageSize]="10"
+                      [pageSizeOptions]="[5, 10, 20]"
+                      (page)="onPageChange($event)">
+                    </mat-paginator>
+                  </mat-card-content>
+                }
+              </mat-card>
+
+            }
+          </div>
+        </ng-template>
+      </mat-tab>
+
+    </mat-tab-group>
+
+  </div>
+}
+
+@if (!joueur) {
+  <div style="padding: 24px">Chargement…</div>
+}

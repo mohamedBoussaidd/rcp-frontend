@@ -1,0 +1,251 @@
+.cal-layout {
+  display: flex;
+  height: calc(100vh - 64px);
+  overflow: hidden;
+}
+
+/* ── Palette ── */
+.palette {
+  width: 180px;
+  min-width: 180px;
+  background: #f8f9fa;
+  border-right: 1px solid rgba(0,0,0,.08);
+  padding: 16px 12px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.palette-titre {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  color: #888;
+  margin: 0 0 4px;
+}
+
+.palette-info {
+  font-size: 0.7rem;
+  color: #aaa;
+  margin-bottom: 8px;
+  font-style: italic;
+}
+
+.palette-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  background: #fff;
+  border-radius: 8px;
+  border-left: 4px solid transparent;
+  cursor: grab;
+  font-size: 0.82rem;
+  font-weight: 500;
+  box-shadow: 0 1px 3px rgba(0,0,0,.08);
+  transition: box-shadow .15s;
+
+  &:hover { box-shadow: 0 3px 8px rgba(0,0,0,.14); }
+  &:active { cursor: grabbing; }
+}
+
+.palette-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.palette-label { flex: 1; }
+
+.drag-placeholder {
+  height: 36px;
+  border-radius: 8px;
+  background: rgba(99,102,241,.12);
+  border: 2px dashed #6366f1;
+}
+
+/* ── Zone calendrier ── */
+.cal-zone {
+  flex: 1;
+  overflow: auto;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* ── Navigation semaine ── */
+.nav-semaine {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.btn-nav {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 1px solid rgba(0,0,0,.15);
+  background: #fff;
+  cursor: pointer;
+  font-size: 1.2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background .15s;
+
+  &:hover { background: #f0f0f0; }
+}
+
+.titre-semaine {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #333;
+}
+
+/* ── Bannière lecture seule ── */
+.lecture-seule-banner {
+  background: #fef9c3;
+  color: #854d0e;
+  font-size: 0.8rem;
+  font-weight: 500;
+  padding: 6px 12px;
+  border-radius: 6px;
+  border: 1px solid #fde68a;
+}
+
+/* ── Grille 7 colonnes ── */
+.grille {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 8px;
+  flex: 1;
+}
+
+/* ── Colonne jour ── */
+.jour-col {
+  display: flex;
+  flex-direction: column;
+  min-height: 300px;
+}
+
+.jour-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 6px 4px;
+  border-radius: 8px 8px 0 0;
+  background: #f1f5f9;
+  border-bottom: 2px solid transparent;
+
+  &.today {
+    background: #ede9fe;
+    border-bottom-color: #6366f1;
+
+    .jour-nom, .jour-date { color: #6366f1; }
+  }
+}
+
+.jour-nom {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  color: #666;
+}
+
+.jour-date {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #333;
+}
+
+/* ── Corps du jour (dropzone) ── */
+.jour-body {
+  flex: 1;
+  padding: 6px;
+  background: #fafafa;
+  border: 1px solid rgba(0,0,0,.06);
+  border-top: none;
+  border-radius: 0 0 8px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-height: 120px;
+
+  &.dropzone-active {
+    transition: background .15s;
+    &.cdk-drop-list-dragging { background: rgba(99,102,241,.05); }
+  }
+}
+
+.jour-vide {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ddd;
+  font-size: 1.2rem;
+}
+
+/* ── Bloc séance ── */
+.seance-bloc {
+  position: relative;
+  padding: 6px 8px;
+  border-radius: 6px;
+  border-left: 4px solid transparent;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0,0,0,.08);
+  cursor: default;
+
+  &.realisee { opacity: 0.85; }
+  &.annulee  { opacity: 0.45; text-decoration: line-through; }
+
+  &:hover .seance-actions { opacity: 1; }
+}
+
+.seance-titre {
+  display: block;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #222;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.seance-adversaire {
+  display: block;
+  font-size: 0.7rem;
+  color: #888;
+  margin-top: 2px;
+}
+
+.seance-actions {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  display: flex;
+  gap: 3px;
+  opacity: 0;
+  transition: opacity .15s;
+}
+
+.btn-realise, .btn-suppr {
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+  border: none;
+  cursor: pointer;
+  font-size: 0.65rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-realise { background: #dcfce7; color: #16a34a; }
+.btn-suppr   { background: #fee2e2; color: #dc2626; }

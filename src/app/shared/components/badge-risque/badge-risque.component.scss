@@ -1,0 +1,24 @@
+.badge {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.badge-vert {
+  background-color: #e8f5e9;
+  color: #2e7d32;
+}
+
+.badge-orange {
+  background-color: #fff3e0;
+  color: #e65100;
+}
+
+.badge-rouge {
+  background-color: #ffebee;
+  color: #c62828;
+}

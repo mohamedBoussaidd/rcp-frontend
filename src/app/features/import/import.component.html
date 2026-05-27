@@ -1,0 +1,212 @@
+<mat-toolbar color="primary">
+  <span>RCP — Import GPS</span>
+  <span class="spacer"></span>
+  <button class="btn-dark-primary" (click)="retourDashboard()">← Dashboard</button>
+</mat-toolbar>
+
+<!-- ══════════════════════════════════════════
+     ÉTAPE 1 : Sélection séance + fichier
+     ══════════════════════════════════════════ -->
+@if (etape === 'selection') {
+  <div class="import-layout">
+
+    <!-- Colonne gauche : séances planifiées -->
+    <div class="panel">
+      <h2 class="panel-title">Séances planifiées</h2>
+      <p class="panel-hint">Sélectionne la séance pour laquelle tu importes les données GPS (12 derniers mois et 30 prochains jours).</p>
+
+      @if (chargement) {
+        <div class="vide">Chargement…</div>
+      } @else if (seancesPlanifiees.length === 0) {
+        <div class="vide">Aucune séance planifiée sur les 6 dernières semaines et les 30 prochains jours.</div>
+      } @else {
+        <div class="seances-liste">
+          @for (s of seancesPlanifiees; track s.id) {
+            <div class="seance-card" [class.selected]="seanceSelectionnee?.id === s.id" (click)="selectionner(s)">
+              <span class="seance-dot" [style.background]="couleur(s.typeSeance.code)"></span>
+              <div class="seance-info">
+                <span class="seance-titre">{{ s.titre || s.typeSeance.libelle }}</span>
+                <span class="seance-meta">
+                  {{ s.date | date:'EEEE d MMM' }}
+                  @if (s.heureDebut) { · {{ s.heureDebut }} }
+                </span>
+              </div>
+              @if (seanceSelectionnee?.id === s.id) {
+                <span class="check">✓</span>
+              }
+            </div>
+          }
+        </div>
+      }
+    </div>
+
+    <!-- Colonne droite : fichier -->
+    <div class="panel">
+      <h2 class="panel-title">Fichier GPS Excel</h2>
+
+      @if (seanceSelectionnee) {
+        <div class="seance-choisie">
+          <span class="seance-dot" [style.background]="couleur(seanceSelectionnee.typeSeance.code)"></span>
+          <div>
+            <strong>{{ seanceSelectionnee.titre || seanceSelectionnee.typeSeance.libelle }}</strong>
+            <span class="seance-meta"> — {{ seanceSelectionnee.date | date:'d MMMM yyyy' }}</span>
+          </div>
+        </div>
+      } @else {
+        <div class="attente">← Sélectionne d'abord une séance</div>
+      }
+
+      <label class="file-zone" [class.disabled]="!seanceSelectionnee">
+        <input type="file" accept=".xlsx,.xls" hidden (change)="onFileChange($event)" [disabled]="!seanceSelectionnee">
+        <span class="file-icon">📂</span>
+        @if (fichierSelectionne) {
+          <span class="file-name">{{ fichierSelectionne.name }}</span>
+        } @else {
+          <span class="file-hint">Cliquer pour choisir un fichier Excel</span>
+        }
+      </label>
+
+      <button class="btn-dark-primary btn-import" [disabled]="!peutAnalyser" (click)="analyser()">
+        Analyser le fichier
+      </button>
+    </div>
+
+  </div>
+}
+
+<!-- ══════════════════════════════════════════
+     ÉTAPE analyse en cours
+     ══════════════════════════════════════════ -->
+@if (etape === 'analyse') {
+  <div class="etape-centre">
+    <div class="spinner"></div>
+    <p>Analyse du fichier en cours…</p>
+  </div>
+}
+
+<!-- ══════════════════════════════════════════
+     ÉTAPE 2 : Résolution des joueurs inconnus
+     ══════════════════════════════════════════ -->
+@if (etape === 'resolution') {
+  <div class="resolution-layout">
+    <div class="resolution-header">
+      <h2>Joueurs non reconnus</h2>
+      <p>{{ resolutions.length }} joueur(s) du fichier ne correspondent à aucun profil. Choisis une action pour chacun.</p>
+    </div>
+
+    <div class="resolution-liste">
+      @for (res of resolutions; track res.prenomFichier) {
+        <div class="resolution-card" [class.resolu]="res.action !== null">
+
+          <div class="res-header">
+            <span class="res-prenom">{{ res.prenomFichier }}</span>
+            <span class="res-badge" [class]="'badge-' + (res.action ?? 'none')">
+              {{ res.action === 'CREATE' ? 'Créer' : res.action === 'MERGE' ? 'Fusionner' : res.action === 'IGNORE' ? 'Ignorer' : 'En attente' }}
+            </span>
+          </div>
+
+          <!-- Boutons d'action -->
+          <div class="res-actions">
+            <button class="res-btn" [class.active-create]="res.action === 'CREATE'" (click)="setAction(res, 'CREATE')">
+              ＋ Créer
+            </button>
+            <button class="res-btn" [class.active-merge]="res.action === 'MERGE'" (click)="setAction(res, 'MERGE')">
+              ⇄ Fusionner
+            </button>
+            <button class="res-btn" [class.active-ignore]="res.action === 'IGNORE'" (click)="setAction(res, 'IGNORE')">
+              ✕ Ignorer
+            </button>
+          </div>
+
+          <!-- Formulaire CREATE -->
+          @if (res.action === 'CREATE') {
+            <div class="res-form">
+              <div class="res-field">
+                <label>Prénom</label>
+                <input [(ngModel)]="res.prenom" placeholder="{{ res.prenomFichier }}">
+              </div>
+              <div class="res-field">
+                <label>Nom *</label>
+                <input [(ngModel)]="res.nom" placeholder="Nom de famille">
+              </div>
+              <div class="res-field">
+                <label>Poste</label>
+                <select [(ngModel)]="res.poste">
+                  <option value="">— Non défini</option>
+                  @for (p of postes; track p.value) {
+                    <option [value]="p.value">{{ p.label }}</option>
+                  }
+                </select>
+              </div>
+            </div>
+          }
+
+          <!-- Formulaire MERGE -->
+          @if (res.action === 'MERGE') {
+            <div class="res-form">
+              <div class="res-field">
+                <label>Correspond à quel joueur ?</label>
+                <select [(ngModel)]="res.joueurExistantId">
+                  <option value="">— Sélectionner</option>
+                  @for (j of joueurs; track j.id) {
+                    <option [value]="j.id">{{ j.prenom }} {{ j.nom }}</option>
+                  }
+                </select>
+              </div>
+            </div>
+          }
+
+          <!-- IGNORE -->
+          @if (res.action === 'IGNORE') {
+            <p class="res-ignore-msg">Les données GPS de ce joueur ne seront pas importées.</p>
+          }
+
+        </div>
+      }
+    </div>
+
+    <div class="resolution-footer">
+      <button class="btn-dark-primary btn-import"
+              [disabled]="!toutResolu"
+              (click)="soumettreResolutions()">
+        Confirmer et importer ({{ nbJoueursImportes }} joueurs)
+      </button>
+      <button class="btn-dark-outline" (click)="etape = 'selection'">← Retour</button>
+    </div>
+  </div>
+}
+
+<!-- ══════════════════════════════════════════
+     ÉTAPE import en cours
+     ══════════════════════════════════════════ -->
+@if (etape === 'import') {
+  <div class="etape-centre">
+    <div class="spinner"></div>
+    <p>Import en cours…</p>
+  </div>
+}
+
+<!-- ══════════════════════════════════════════
+     ÉTAPE résultat
+     ══════════════════════════════════════════ -->
+@if (etape === 'resultat' && resultat) {
+  <div class="etape-centre">
+    <div class="resultat-card">
+      <div class="resultat-icon">✓</div>
+      <h2>Import réussi</h2>
+      <div class="result-grid">
+        <div class="result-item">
+          <span class="result-label">Joueurs importés</span>
+          <span class="result-value ok">{{ resultat.inseres }}</span>
+        </div>
+        @if (resultat.ignores > 0) {
+          <div class="result-item">
+            <span class="result-label">Ignorés</span>
+            <span class="result-value warn">{{ resultat.ignores }}</span>
+          </div>
+        }
+      </div>
+      <button class="btn-dark-primary" (click)="nouvelImport()">Nouvel import</button>
+    </div>
+  </div>
+}

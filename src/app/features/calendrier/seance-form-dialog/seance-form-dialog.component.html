@@ -1,0 +1,122 @@
+<div class="dark-modal">
+
+  <div class="dark-modal-title-row">
+    <div>
+      <h2 class="dark-modal-title">Nouvelle séance</h2>
+      <span class="seance-subtitle">{{ dialogData.typeSeance.libelle }} · {{ dialogData.date }}</span>
+    </div>
+    <button class="dark-modal-close" (click)="annuler()">✕</button>
+  </div>
+
+  <form [formGroup]="form">
+    <div class="dark-field-grid">
+
+      <!-- Titre -->
+      <div class="dark-field full-width">
+        <label>Titre</label>
+        <input formControlName="titre" [placeholder]="dialogData.typeSeance.libelle">
+      </div>
+
+      <!-- Heure + Durée -->
+      <div class="dark-field">
+        <label>Heure de début</label>
+        <input type="time" formControlName="heureDebut">
+      </div>
+
+      <div class="dark-field">
+        <label>Durée (min) *</label>
+        <input type="number" formControlName="dureeMinutes" min="1"
+               [class.field-error]="form.get('dureeMinutes')?.invalid && form.get('dureeMinutes')?.touched">
+        @if (form.get('dureeMinutes')?.invalid && form.get('dureeMinutes')?.touched) {
+          <span class="msg-erreur">Durée obligatoire</span>
+        }
+      </div>
+
+      <!-- Alerte écart durée -->
+      @if (alerteEcart) {
+        <div class="alerte-ecart full-width" [class.alerte-long]="alerteEcart === 'long'">
+          <span class="alerte-icon">⚠</span>
+          <span class="alerte-texte">
+            @if (alerteEcart === 'court') {
+              Séance écourtée (théorique : {{ dureeTheorique }} min) — pourquoi ?
+            } @else {
+              Séance prolongée (théorique : {{ dureeTheorique }} min) — pourquoi ?
+            }
+          </span>
+        </div>
+
+        <div class="dark-field full-width">
+          <div class="suggestions">
+            @for (s of (alerteEcart === 'court' ? suggestionsEcourt : suggestionsLong); track s) {
+              <button type="button" class="suggestion-chip"
+                      [class.active]="form.get('raisonEcartDuree')?.value === s"
+                      (click)="appliquerSuggestion(s)">{{ s }}</button>
+            }
+          </div>
+          <input formControlName="raisonEcartDuree" placeholder="Autre raison…">
+        </div>
+      }
+
+      <!-- Terrain -->
+      <div class="dark-field full-width">
+        <label>Terrain</label>
+        <mat-select formControlName="terrain" panelClass="dark-select-panel">
+          <mat-option value="">— Non défini</mat-option>
+          <mat-option value="SYNTHETIQUE">Synthétique</mat-option>
+          <mat-option value="HERBE">Herbe</mat-option>
+          <mat-option value="HERBE_GRASSE">Herbe grasse</mat-option>
+          <mat-option value="PARQUET">Parquet</mat-option>
+          <mat-option value="GOUDRON">Goudron</mat-option>
+          <mat-option value="FORET">Forêt</mat-option>
+        </mat-select>
+      </div>
+
+      <!-- Champs MATCH -->
+      @if (estMatch) {
+        <div class="dark-field full-width">
+          <div class="section-label">Informations match</div>
+        </div>
+
+        <div class="dark-field">
+          <label>Adversaire *</label>
+          <input formControlName="adversaire" placeholder="ex : US Clermont"
+                 [class.field-error]="form.get('adversaire')?.invalid && form.get('adversaire')?.touched">
+          @if (form.get('adversaire')?.invalid && form.get('adversaire')?.touched) {
+            <span class="msg-erreur">Adversaire obligatoire</span>
+          }
+        </div>
+
+        <div class="dark-field">
+          <label>Compétition</label>
+          <input formControlName="competition" placeholder="ex : Championnat N3">
+        </div>
+
+        <div class="dark-field full-width">
+          <label>Domicile / Extérieur *</label>
+          <mat-select formControlName="domicileExterieur" panelClass="dark-select-panel"
+                      [class.field-error]="form.get('domicileExterieur')?.invalid && form.get('domicileExterieur')?.touched">
+            <mat-option value="">— Choisir</mat-option>
+            <mat-option value="DOMICILE">Domicile</mat-option>
+            <mat-option value="EXTERIEUR">Extérieur</mat-option>
+          </mat-select>
+          @if (form.get('domicileExterieur')?.invalid && form.get('domicileExterieur')?.touched) {
+            <span class="msg-erreur">Champ obligatoire</span>
+          }
+        </div>
+      }
+
+      <!-- Notes -->
+      <div class="dark-field full-width">
+        <label>Notes</label>
+        <textarea formControlName="description" rows="2" placeholder="Objectifs, consignes…"></textarea>
+      </div>
+
+    </div>
+  </form>
+
+  <div class="dark-actions">
+    <button class="btn-dark-primary" (click)="valider()">Créer la séance</button>
+    <button class="btn-dark-outline" (click)="annuler()">Annuler</button>
+  </div>
+
+</div>

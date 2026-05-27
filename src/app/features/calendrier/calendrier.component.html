@@ -1,0 +1,92 @@
+<mat-toolbar color="primary">
+  <span>RCP — Calendrier</span>
+  <span style="flex:1"></span>
+  <button class="btn-dark-primary" (click)="retourDashboard()">← Dashboard</button>
+</mat-toolbar>
+
+<div class="cal-layout">
+
+  <!-- ── Palette gauche ── -->
+  <aside class="palette" cdkDropList id="palette" [cdkDropListData]="typeSeances"
+         [cdkDropListConnectedTo]="joursIds">
+    <h3 class="palette-titre">Types de séance</h3>
+    <div class="palette-info">Glissez un type sur un jour</div>
+
+    @for (type of typeSeances; track type.id) {
+      <div class="palette-item"
+           cdkDrag [cdkDragData]="type"
+           [style.border-left-color]="couleur(type.code)">
+        <span class="palette-dot" [style.background]="couleur(type.code)"></span>
+        <span class="palette-label">{{ type.libelle }}</span>
+        <div *cdkDragPlaceholder class="drag-placeholder"></div>
+      </div>
+    }
+  </aside>
+
+  <!-- ── Zone calendrier ── -->
+  <div class="cal-zone">
+
+    <!-- Navigation semaine -->
+    <div class="nav-semaine">
+      <button class="btn-nav" (click)="semainePrecedente()">‹</button>
+      <span class="titre-semaine">{{ titreSemaine }}</span>
+      <button class="btn-nav" (click)="semaineSuivante()">›</button>
+    </div>
+
+    <!-- Grille 7 jours -->
+    <div class="grille">
+      @for (jour of joursGrid; track jour.dateStr) {
+        <div class="jour-col">
+
+          <!-- En-tête du jour -->
+          <div class="jour-header" [class.today]="jour.dateStr === today">
+            <span class="jour-nom">{{ jour.label }}</span>
+            <span class="jour-date">{{ jour.date | date:'d MMM' }}</span>
+          </div>
+
+          <!-- Zone de drop -->
+          <div class="jour-body"
+               cdkDropList
+               [id]="jour.dateStr"
+               [cdkDropListData]="seancesDuJour(jour.dateStr)"
+               [cdkDropListConnectedTo]="['palette']"
+               (cdkDropListDropped)="onDrop($event, jour.dateStr)"
+               [class.dropzone-active]="true">
+
+            @for (seance of seancesDuJour(jour.dateStr); track seance.id) {
+              <div class="seance-bloc"
+                   [style.border-left-color]="couleur(seance.typeSeance.code)"
+                   [class.realisee]="seance.statut === 'REALISEE'"
+                   [class.annulee]="seance.statut === 'ANNULEE'"
+                   [matTooltip]="(seance.dureeMinutes ? seance.dureeMinutes + ' min · ' : '') + seance.statut"
+                   matTooltipPosition="above">
+
+                <span class="seance-titre">
+                  {{ seance.titre || seance.typeSeance.libelle }}
+                </span>
+
+                @if (seance.adversaire) {
+                  <span class="seance-adversaire">vs {{ seance.adversaire }}</span>
+                }
+
+                <div class="seance-actions">
+                  @if (seance.statut === 'PLANIFIEE') {
+                    <button class="btn-realise" (click)="marquerRealisee(seance, $event)"
+                            matTooltip="Marquer comme réalisée">✓</button>
+                  }
+                  <button class="btn-suppr" (click)="supprimerSeance(seance, $event)"
+                          matTooltip="Supprimer">✕</button>
+                </div>
+              </div>
+            }
+
+            @if (seancesDuJour(jour.dateStr).length === 0) {
+              <div class="jour-vide">—</div>
+            }
+          </div>
+
+        </div>
+      }
+    </div>
+  </div>
+</div>

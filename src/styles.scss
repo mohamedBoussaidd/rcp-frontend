@@ -1,0 +1,245 @@
+html, body { height: 100%; }
+body { margin: 0; font-family: Roboto, "Helvetica Neue", sans-serif; }
+
+/* ================================================================
+   SYSTÈME DE MODAL SOMBRE — utilisation :
+   1. dialog.open(MonComponent, { panelClass: 'dark-dialog' })
+   2. Dans le template : <div class="dark-modal"> ... </div>
+   3. Champs : <div class="dark-field"><label>...</label><input></div>
+   4. Grille : <div class="dark-field-grid"> (2 colonnes auto)
+   5. Boutons : <div class="dark-actions"><button class="btn-dark-primary"> ...
+   ================================================================ */
+
+/* ── Variables ── */
+:root {
+  --dm-bg:          #1a2035;
+  --dm-field-bg:    #252d45;
+  --dm-label:       #818cf8;
+  --dm-text:        #e0e6ff;
+  --dm-muted:       #8892b0;
+  --dm-accent:      #6366f1;
+  --dm-border:      rgba(255,255,255,.08);
+  --dm-teal:        #0ea5a0;
+  --dm-radius:      18px;
+  --dm-field-radius:10px;
+}
+
+/* ── Panel Material (fond du dialog) ── */
+.dark-dialog .mat-mdc-dialog-container .mdc-dialog__surface {
+  background-color: var(--dm-bg) !important;
+  border-radius: var(--dm-radius) !important;
+  box-shadow: 0 24px 60px rgba(0,0,0,.55) !important;
+  padding: 0 !important;
+}
+
+/* ── Wrapper principal ── */
+.dark-modal {
+  background: var(--dm-bg);
+  color: var(--dm-text);
+  padding: 28px 28px 24px;
+  border-radius: var(--dm-radius);
+  box-sizing: border-box;
+}
+
+/* ── Ligne titre ── */
+.dark-modal-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 24px;
+}
+
+.dark-modal-title {
+  margin: 0;
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: #fff;
+}
+
+.dark-modal-close {
+  background: none;
+  border: none;
+  color: var(--dm-muted);
+  font-size: 1rem;
+  line-height: 1;
+  padding: 4px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: color .2s, background .2s;
+
+  &:hover {
+    color: #fff;
+    background: rgba(255,255,255,.08);
+  }
+}
+
+/* ── Grille 2 colonnes ── */
+.dark-field-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+
+/* ── Champ individuel ── */
+.dark-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+
+  label {
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--dm-label);
+  }
+
+  input,
+  textarea {
+    background: var(--dm-field-bg);
+    border: 1px solid transparent;
+    border-radius: var(--dm-field-radius);
+    color: var(--dm-text);
+    font-size: 0.9rem;
+    font-family: inherit;
+    padding: 10px 14px;
+    outline: none;
+    width: 100%;
+    box-sizing: border-box;
+    transition: border-color .2s;
+
+    &::placeholder { color: var(--dm-muted); }
+    &:focus { border-color: var(--dm-accent); }
+    &::-webkit-calendar-picker-indicator { filter: invert(0.6); }
+    &[type=number]::-webkit-outer-spin-button,
+    &[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; }
+  }
+
+  /* mat-select dans le même style */
+  mat-select {
+    background: var(--dm-field-bg);
+    border: 1px solid transparent;
+    border-radius: var(--dm-field-radius);
+    padding: 10px 14px;
+    display: block;
+    transition: border-color .2s;
+
+    &.mat-mdc-select-focused { border-color: var(--dm-accent); }
+
+    .mat-mdc-select-value-text { color: var(--dm-text); }
+    .mat-mdc-select-placeholder { color: var(--dm-muted); }
+    .mat-mdc-select-arrow { color: var(--dm-muted); }
+  }
+
+  .mat-mdc-select{
+    width: auto;
+  }
+  select {
+    background: var(--dm-field-bg);
+    border: 1px solid transparent;
+    border-radius: var(--dm-field-radius);
+    color: var(--dm-text);
+    font-size: 0.9rem;
+    font-family: inherit;
+    padding: 10px 14px;
+    outline: none;
+    width: 100%;
+    box-sizing: border-box;
+    cursor: pointer;
+    appearance: none;
+
+    &:focus { border-color: var(--dm-accent); }
+
+    option { background: var(--dm-field-bg); }
+  }
+}
+
+/* ── Boutons pill ── */
+.btn-dark-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 22px;
+  border-radius: 50px;
+  border: none;
+  background: var(--dm-teal);
+  color: #fff;
+  font-size: 0.875rem;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: opacity .2s, transform .1s;
+
+  &:hover:not(:disabled) { opacity: .88; transform: translateY(-1px); }
+  &:disabled { opacity: .35; cursor: not-allowed; }
+}
+
+.btn-dark-danger {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 22px;
+  border-radius: 50px;
+  border: none;
+  background: #dc2626;
+  color: #fff;
+  font-size: 0.875rem;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: opacity .2s, transform .1s;
+
+  &:hover:not(:disabled) { opacity: .88; transform: translateY(-1px); }
+  &:disabled { opacity: .35; cursor: not-allowed; }
+}
+
+.btn-dark-outline {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 22px;
+  border-radius: 50px;
+  border: 1px solid rgba(255,255,255,.18);
+  background: transparent;
+  color: var(--dm-text);
+  font-size: 0.875rem;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background .2s;
+
+  &:hover { background: rgba(255,255,255,.06); }
+}
+
+/* ── Actions (les boutons s'étirent dans ce conteneur) ── */
+.dark-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 24px;
+
+  .btn-dark-primary,
+  .btn-dark-outline { flex: 1; justify-content: center; }
+}
+
+/* ── Dropdown panel (mat-select overlay) ── */
+.dark-select-panel .mat-mdc-select-panel,
+.dark-select-panel.mat-mdc-select-panel {
+  background: var(--dm-field-bg) !important;
+  border-radius: 10px !important;
+
+  .mat-mdc-option {
+    color: var(--dm-text);
+
+    &:hover:not(.mdc-list-item--disabled) {
+      background: rgba(99,102,241,.15) !important;
+    }
+
+    &.mdc-list-item--selected:not(.mdc-list-item--disabled) {
+      background: rgba(99,102,241,.25) !important;
+      color: var(--dm-label);
+    }
+  }
+}

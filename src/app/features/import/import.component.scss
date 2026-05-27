@@ -1,0 +1,281 @@
+.spacer { flex: 1; }
+
+/* ── Layout 2 colonnes ── */
+.import-layout {
+  display: flex;
+  gap: 24px;
+  padding: 24px;
+  height: calc(100vh - 64px);
+  box-sizing: border-box;
+}
+
+.panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  background: #fff;
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: 0 1px 4px rgba(0,0,0,.08);
+  overflow-y: auto;
+}
+
+.panel-title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #222;
+  margin: 0;
+}
+
+.panel-hint { font-size: 0.82rem; color: #888; margin: 0; }
+
+/* ── Liste séances ── */
+.seances-liste { display: flex; flex-direction: column; gap: 8px; }
+
+.seance-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: 8px;
+  border: 2px solid transparent;
+  background: #f8f9fa;
+  cursor: pointer;
+  transition: border-color .15s, background .15s;
+
+  &:hover { background: #f1f5f9; }
+  &.selected { border-color: #6366f1; background: #ede9fe; }
+}
+
+.seance-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+.seance-info { flex: 1; display: flex; flex-direction: column; gap: 2px; }
+.seance-titre { font-size: 0.875rem; font-weight: 600; color: #222; }
+.seance-meta { font-size: 0.75rem; color: #888; }
+.check { font-size: 0.85rem; font-weight: 700; color: #6366f1; }
+.vide { font-size: 0.85rem; color: #aaa; font-style: italic; }
+
+/* ── Colonne droite ── */
+.seance-choisie {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  background: #ede9fe;
+  border-radius: 8px;
+  border-left: 4px solid #6366f1;
+  font-size: 0.875rem;
+  color: #333;
+}
+
+.attente { font-size: 0.82rem; color: #aaa; font-style: italic; padding: 10px 0; }
+
+.file-zone {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 18px 20px;
+  border: 2px dashed #d1d5db;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: border-color .15s, background .15s;
+
+  &:hover:not(.disabled) { border-color: #6366f1; background: #fafafe; }
+  &.disabled { opacity: 0.4; cursor: not-allowed; }
+}
+
+.file-icon { font-size: 1.4rem; }
+.file-name { font-size: 0.875rem; font-weight: 500; color: #333; }
+.file-hint { font-size: 0.875rem; color: #aaa; }
+
+.btn-import {
+  width: 100%;
+  justify-content: center;
+  padding: 12px;
+  font-size: 0.95rem;
+  &:disabled { opacity: 0.35; cursor: not-allowed; }
+}
+
+/* ── Étapes centrées ── */
+.etape-centre {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: calc(100vh - 64px);
+  gap: 16px;
+  color: #888;
+  font-size: 0.95rem;
+}
+
+.spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid #e5e7eb;
+  border-top-color: #6366f1;
+  border-radius: 50%;
+  animation: spin .8s linear infinite;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── Résultat ── */
+.resultat-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  background: #fff;
+  border-radius: 16px;
+  padding: 40px 48px;
+  box-shadow: 0 4px 20px rgba(0,0,0,.08);
+  text-align: center;
+
+  h2 { margin: 0; color: #222; }
+}
+
+.resultat-icon {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: #dcfce7;
+  color: #16a34a;
+  font-size: 1.6rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.result-grid { display: flex; gap: 32px; }
+
+.result-item { display: flex; flex-direction: column; gap: 4px; align-items: center; }
+
+.result-label { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: #888; }
+
+.result-value {
+  font-size: 1.4rem;
+  font-weight: 700;
+  &.ok   { color: #16a34a; }
+  &.warn { color: #ea580c; }
+}
+
+/* ── Résolution ── */
+.resolution-layout {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  padding: 24px;
+  max-width: 760px;
+  margin: 0 auto;
+}
+
+.resolution-header {
+  h2 { margin: 0 0 4px; font-size: 1.1rem; color: #222; }
+  p  { margin: 0; font-size: 0.85rem; color: #888; }
+}
+
+.resolution-liste { display: flex; flex-direction: column; gap: 12px; }
+
+.resolution-card {
+  background: #fff;
+  border-radius: 12px;
+  padding: 16px 20px;
+  box-shadow: 0 1px 4px rgba(0,0,0,.08);
+  border: 2px solid transparent;
+  transition: border-color .15s;
+
+  &.resolu { border-color: #e0e7ff; }
+}
+
+.res-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.res-prenom { font-size: 1rem; font-weight: 700; color: #222; }
+
+.res-badge {
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 20px;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+
+  &.badge-none   { background: #f1f5f9; color: #94a3b8; }
+  &.badge-CREATE { background: #dcfce7; color: #16a34a; }
+  &.badge-MERGE  { background: #dbeafe; color: #2563eb; }
+  &.badge-IGNORE { background: #fee2e2; color: #dc2626; }
+}
+
+.res-actions {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.res-btn {
+  flex: 1;
+  padding: 8px;
+  border-radius: 8px;
+  border: 2px solid #e5e7eb;
+  background: #f8fafc;
+  color: #64748b;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all .15s;
+
+  &:hover { border-color: #94a3b8; color: #334155; }
+
+  &.active-create { border-color: #16a34a; background: #dcfce7; color: #16a34a; }
+  &.active-merge  { border-color: #2563eb; background: #dbeafe; color: #2563eb; }
+  &.active-ignore { border-color: #dc2626; background: #fee2e2; color: #dc2626; }
+}
+
+.res-form {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  padding-top: 4px;
+}
+
+.res-field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+
+  label {
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .05em;
+    color: #888;
+  }
+
+  input, select {
+    padding: 8px 10px;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    font-size: 0.875rem;
+    font-family: inherit;
+    outline: none;
+    color: #222;
+    background: #fff;
+    transition: border-color .15s;
+
+    &:focus { border-color: #6366f1; }
+  }
+}
+
+.res-ignore-msg { font-size: 0.8rem; color: #dc2626; font-style: italic; margin: 4px 0 0; }
+
+.resolution-footer {
+  display: flex;
+  gap: 12px;
+
+  .btn-dark-primary { flex: 1; justify-content: center; padding: 12px; }
+  .btn-dark-outline { padding: 12px 24px; }
+}

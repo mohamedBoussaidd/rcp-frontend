@@ -1,0 +1,105 @@
+<div class="dark-modal">
+
+  <div class="dark-modal-title-row">
+    <h2 class="dark-modal-title">{{ titre }}</h2>
+    <button class="dark-modal-close" (click)="cancel()">✕</button>
+  </div>
+
+  <form [formGroup]="form">
+    <div class="dark-field-grid">
+
+      <div class="dark-field">
+        <label>Prénom *</label>
+        <input formControlName="prenom" placeholder="ex : Thomas">
+      </div>
+
+      <div class="dark-field">
+        <label>Nom *</label>
+        <input formControlName="nom" placeholder="ex : Dupont">
+      </div>
+
+      <div class="dark-field">
+        <label>Date de naissance</label>
+        <input type="date" formControlName="dateNaissance">
+      </div>
+
+      <div class="dark-field">
+        <label>Arrivée au club</label>
+        <input type="date" formControlName="dateArriveeClub">
+      </div>
+
+      <div class="dark-field">
+        <label>Poste principal</label>
+        <mat-select formControlName="postePrincipal" panelClass="dark-select-panel">
+          <mat-option [value]="null">— Non défini</mat-option>
+          @for (p of postes; track p.value) {
+            <mat-option [value]="p.value">{{ p.label }}</mat-option>
+          }
+        </mat-select>
+      </div>
+
+      <div class="dark-field">
+        <label>Poste secondaire</label>
+        <mat-select formControlName="posteSecondaire" panelClass="dark-select-panel">
+          <mat-option [value]="null">— Non défini</mat-option>
+          @for (p of postes; track p.value) {
+            <mat-option [value]="p.value">{{ p.label }}</mat-option>
+          }
+        </mat-select>
+      </div>
+
+      <div class="dark-field">
+        <label>Profil athlétique</label>
+        <mat-select formControlName="profilAthletique" panelClass="dark-select-panel">
+          <mat-option [value]="null">— Non défini</mat-option>
+          @for (p of profils; track p.value) {
+            <mat-option [value]="p.value">{{ p.label }}</mat-option>
+          }
+        </mat-select>
+      </div>
+
+      <div class="dark-field">
+        <label>Pied fort</label>
+        <mat-select formControlName="piedFort" panelClass="dark-select-panel">
+          <mat-option [value]="null">— Non défini</mat-option>
+          @for (p of piedsForts; track p.value) {
+            <mat-option [value]="p.value">{{ p.label }}</mat-option>
+          }
+        </mat-select>
+      </div>
+
+      <div class="dark-field">
+        <label>Taille (cm)</label>
+        <input type="number" formControlName="taille" placeholder="178">
+      </div>
+
+      <div class="dark-field">
+        <label>Poids actuel (kg)</label>
+        <input type="number" step="0.1" formControlName="poidsActuel" placeholder="75.5">
+      </div>
+
+      <div class="dark-field">
+        <label>Poids cible (kg)</label>
+        <input type="number" step="0.1" formControlName="poidsFormeCible" placeholder="73.0">
+      </div>
+
+      <div class="dark-field">
+        <label>Statut *</label>
+        <mat-select formControlName="statut" panelClass="dark-select-panel">
+          @for (s of statuts; track s.value) {
+            <mat-option [value]="s.value">{{ s.label }}</mat-option>
+          }
+        </mat-select>
+      </div>
+
+    </div>
+  </form>
+
+  <div class="dark-actions">
+    <button class="btn-dark-primary" (click)="save()" [disabled]="form.invalid || saving">
+      {{ saving ? 'Enregistrement…' : (editMode ? 'Enregistrer les modifications' : 'Créer le joueur') }}
+    </button>
+    <button class="btn-dark-outline" (click)="cancel()">Annuler</button>
+  </div>
+
+</div>

@@ -1,0 +1,357 @@
+.detail-content {
+  padding: 24px;
+}
+
+.btn-retour {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 16px;
+  padding: 0;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: #666;
+  text-decoration: none;
+  background: none;
+  border: none;
+  cursor: pointer;
+  transition: color .15s;
+
+  &:hover { color: #333; }
+}
+
+.detail-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 20px;
+
+  h2 {
+    margin: 0 0 4px;
+    font-size: 1.5rem;
+    font-weight: 700;
+  }
+}
+
+.nav-joueurs {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.btn-nav-joueur {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 1px solid #ddd;
+  background: #fff;
+  font-size: 1.3rem;
+  line-height: 1;
+  cursor: pointer;
+  color: #444;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background .15s, border-color .15s;
+  flex-shrink: 0;
+
+  &:hover:not(:disabled) { background: #f0f0ff; border-color: #6366f1; color: #6366f1; }
+  &:disabled { opacity: .3; cursor: default; }
+}
+
+.detail-subtitle {
+  margin: 0;
+  color: #666;
+  font-size: 0.9rem;
+}
+
+/* ── Onglets ── */
+.detail-tabs {
+  ::ng-deep .mat-mdc-tab-header {
+    border-bottom: 1px solid rgba(0,0,0,.08);
+  }
+}
+
+.tab-content {
+  padding-top: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* ── Cards ── */
+.info-card,
+.chart-card,
+.table-card {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* ── Info grid (profil) ── */
+.info-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px 24px;
+}
+
+.info-item {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.info-label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  color: #888;
+}
+
+.info-value {
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: #222;
+
+  &.accent { color: #6366f1; font-weight: 600; }
+}
+
+/* Statut badge */
+.badge-statut {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 50px;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.statut-actif     { background: #dcfce7; color: #16a34a; }
+.statut-blesse    { background: #fee2e2; color: #dc2626; }
+.statut-suspendu  { background: #ffedd5; color: #ea580c; }
+.statut-prete     { background: #dbeafe; color: #2563eb; }
+.statut-inactif   { background: #f1f5f9; color: #64748b; }
+
+/* Statut séance GPS */
+.statut-sous { background: #fee2e2; color: #dc2626; }
+.statut-dans { background: #dcfce7; color: #16a34a; }
+.statut-sur  { background: #dbeafe; color: #2563eb; }
+.statut-sans { background: #f1f5f9; color: #64748b; }
+
+.legende-statut {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 10px 16px 0;
+}
+
+.legende-statut-item {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 50px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.muted { color: #888; font-size: 0.82rem; }
+
+/* ── Footer tableau ── */
+.footer-cell {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #333;
+}
+
+tr.mat-mdc-footer-row {
+  background: rgba(99, 102, 241, .06);
+  border-top: 2px solid rgba(99, 102, 241, .25);
+}
+
+/* Écart poids */
+.poids-ecart {
+  margin-top: 12px;
+  font-size: 0.82rem;
+  font-weight: 500;
+}
+
+.ecart-surplus { color: #dc2626; }
+.ecart-deficit { color: #2563eb; }
+.ecart-ok      { color: #16a34a; }
+
+/* État actuel (risque + fatigue) */
+.etat-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.etat-item {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.fatigue-label {
+  margin: 8px 0 0;
+  font-size: 0.85rem;
+  color: #666;
+  text-transform: capitalize;
+}
+
+.fatigue-raison {
+  margin: 6px 0 0;
+  font-size: 0.78rem;
+  color: #888;
+  font-style: italic;
+  line-height: 1.4;
+}
+
+/* ── Légende ── */
+.legende {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.legende-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.75rem;
+  color: #555;
+
+  &::before {
+    content: '';
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    border-radius: 3px;
+    background: var(--c);
+  }
+}
+
+/* ── Cards rétractables ── */
+.card-header-collapsible {
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  user-select: none;
+  padding-right: 16px;
+
+  &:hover { opacity: .8; }
+}
+
+.card-toggle {
+  font-size: 0.75rem;
+  color: #888;
+  margin-left: auto;
+  padding-left: 12px;
+}
+
+/* ── Tableau GPS ── */
+.gps-table {
+  width: 100%;
+
+  th { font-weight: 600; font-size: 0.8rem; color: #555; }
+  td { font-size: 0.85rem; }
+
+  tr.mat-mdc-row:hover { background: rgba(99,102,241,.04); }
+}
+
+.badge-type {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 50px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.nb-sprints {
+  color: #888;
+  margin-left: 4px;
+  font-size: 0.75rem;
+}
+
+/* ── Filtres GPS ── */
+.gps-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 0 8px;
+}
+
+.filter-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.chip-type {
+  padding: 4px 12px;
+  border-radius: 20px;
+  border: 1.5px solid var(--c, #ccc);
+  background: transparent;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--c, #555);
+  cursor: pointer;
+  transition: background .15s, color .15s;
+
+  &.active {
+    background: var(--c, #6366f1);
+    color: #fff;
+  }
+  &:hover:not(.active) { background: color-mix(in srgb, var(--c) 12%, transparent); }
+}
+
+.filter-dates {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.date-input {
+  padding: 4px 8px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  color: #333;
+  background: #fff;
+  cursor: pointer;
+
+  &:focus { outline: none; border-color: #6366f1; }
+}
+
+.date-sep { color: #888; font-size: 0.85rem; }
+
+.chip-reset {
+  padding: 4px 12px;
+  border-radius: 20px;
+  border: 1px solid #f87171;
+  background: transparent;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #dc2626;
+  cursor: pointer;
+  transition: background .15s;
+
+  &:hover { background: #fee2e2; }
+}
+
+.filter-count {
+  font-size: 0.78rem;
+  color: #888;
+  font-style: italic;
+}
+
+/* ── État vide ── */
+.gps-empty {
+  text-align: center;
+  color: #888;
+  padding: 40px 0;
+  line-height: 1.8;
+  margin: 0;
+}

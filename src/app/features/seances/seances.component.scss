@@ -1,0 +1,32 @@
+.seances-content {
+  padding: 24px;
+}
+
+.seances-table {
+  width: 100%;
+
+  th { font-weight: 600; font-size: 0.8rem; color: #555; }
+  td { font-size: 0.875rem; }
+
+  tr.clickable-row {
+    cursor: pointer;
+    &:hover { background: rgba(99, 102, 241, 0.06); }
+  }
+}
+
+.badge-type {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 50px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.empty-state {
+  text-align: center;
+  color: #888;
+  padding: 40px 0;
+  line-height: 1.8;
+  margin: 0;
+}
