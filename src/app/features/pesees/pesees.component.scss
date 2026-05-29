@@ -1,0 +1,35 @@
+:host { display: block; min-height: 100vh; background: var(--bg); }
+
+.pesees-content { padding: 24px; }
+
+.date-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+  padding-top: 8px;
+}
+
+.date-hint { font-size: 0.8rem; color: var(--muted); font-style: italic; }
+
+.pesees-table { width: 100%; }
+
+.row-warning td { background: rgba(251,146,60,.05); }
+.row-danger  td { background: rgba(248,113,113,.06); }
+
+.btn-save {
+  padding: 5px 14px;
+  border-radius: 6px;
+  border: 1.5px solid var(--copper-border);
+  background: transparent;
+  color: var(--copper);
+  font-size: 0.8rem;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background .15s, color .15s;
+  &:hover:not(:disabled) { background: var(--copper-soft); }
+  &:disabled { opacity: .4; cursor: default; }
+}

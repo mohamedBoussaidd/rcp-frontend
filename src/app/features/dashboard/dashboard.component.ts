@@ -1,5 +1,8 @@
 import { Component, OnInit } from '@angular/core';
 import { PredictionService, ResumeJoueur } from '../../core/services/prediction.service';
+import { PeseesService, PoidsFicheJoueur } from '../../core/services/pesees.service';
+import { JoueurService } from '../../core/services/joueur.service';
+import { DecimalPipe } from '@angular/common';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatDialog } from '@angular/material/dialog';
 import { JoueurFormDialogComponent } from '../joueur-form-dialog/joueur-form-dialog.component';
@@ -8,8 +11,6 @@ import { ApexChart, ApexAxisChartSeries, ApexXAxis, ApexStroke, ApexDataLabels, 
 import { MatToolbar } from '@angular/material/toolbar';
 import { MatIcon } from '@angular/material/icon';
 import { MatCard, MatCardHeader, MatCardTitle, MatCardContent } from '@angular/material/card';
-import { MatFormField, MatLabel } from '@angular/material/form-field';
-import { MatInput } from '@angular/material/input';
 import { FormsModule } from '@angular/forms';
 
 import { MatTable, MatColumnDef, MatHeaderCellDef, MatHeaderCell, MatCellDef, MatCell, MatHeaderRowDef, MatHeaderRow, MatRowDef, MatRow } from '@angular/material/table';
@@ -23,13 +24,15 @@ import { MatProgressBar } from '@angular/material/progress-bar';
     templateUrl: './dashboard.component.html',
     standalone: true,
     styleUrl: './dashboard.component.scss',
-    imports: [MatToolbar, MatIcon, MatCard, ChartComponent, MatCardHeader, MatCardTitle, MatCardContent, MatTable, MatColumnDef, MatHeaderCellDef, MatHeaderCell, MatCellDef, MatCell, RouterLink, BadgeRisqueComponent, MatProgressBar, MatHeaderRowDef, MatHeaderRow, MatRowDef, MatRow, MatPaginator, MatFormField, MatLabel, MatInput, FormsModule]
+    imports: [MatToolbar, MatIcon, MatCard, ChartComponent, MatCardHeader, MatCardTitle, MatCardContent, MatTable, MatColumnDef, MatHeaderCellDef, MatHeaderCell, MatCellDef, MatCell, RouterLink, BadgeRisqueComponent, MatProgressBar, MatHeaderRowDef, MatHeaderRow, MatRowDef, MatRow, MatPaginator, FormsModule, DecimalPipe]
 })
 export class DashboardComponent implements OnInit {
 
   joueurs: ResumeJoueur[] = [];
+  poidsMap   = new Map<string, PoidsFicheJoueur>();
+  statutMap  = new Map<string, string>();
   loading = true;
-  displayedColumns = ['joueur', 'poste', 'risque', 'fatigue'];
+  displayedColumns = ['joueur', 'poste', 'statut', 'risque', 'fatigue', 'poids'];
 
   chargeExpanded   = false;
   effectifExpanded = true;
@@ -102,6 +105,8 @@ export class DashboardComponent implements OnInit {
 
   constructor(
     private predictionService: PredictionService,
+    private peseesService: PeseesService,
+    private joueurService: JoueurService,
     private snackBar: MatSnackBar,
     private dialog: MatDialog
   ) {}
@@ -109,6 +114,24 @@ export class DashboardComponent implements OnInit {
   ngOnInit(): void {
     this.loadEquipe();
     this.loadChargeGraph();
+    this.loadPoids();
+    this.loadStatuts();
+  }
+
+  loadStatuts(): void {
+    this.joueurService.getAll().subscribe({
+      next: data => { this.statutMap = new Map(data.map(j => [j.id, j.statut])); },
+      error: () => {}
+    });
+  }
+
+  loadPoids(): void {
+    this.peseesService.getEquipe().subscribe({
+      next: data => {
+        this.poidsMap = new Map(data.map(d => [d.joueurId, d]));
+      },
+      error: () => {}
+    });
   }
 
   loadEquipe(): void {

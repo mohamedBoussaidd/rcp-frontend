@@ -1,24 +1,6 @@
-.detail-content {
-  padding: 24px;
-}
+:host { display: block; min-height: 100vh; background: var(--bg); }
 
-.btn-retour {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  margin-bottom: 16px;
-  padding: 0;
-  font-size: 0.85rem;
-  font-weight: 500;
-  color: #666;
-  text-decoration: none;
-  background: none;
-  border: none;
-  cursor: pointer;
-  transition: color .15s;
-
-  &:hover { color: #333; }
-}
+.detail-content { padding: 24px; }
 
 .detail-header {
   display: flex;
@@ -26,255 +8,81 @@
   justify-content: space-between;
   gap: 16px;
   margin-bottom: 20px;
-
-  h2 {
-    margin: 0 0 4px;
-    font-size: 1.5rem;
-    font-weight: 700;
-  }
+  h2 { margin: 0 0 4px; font-size: 1.5rem; font-weight: 700; color: var(--text); }
 }
 
-.nav-joueurs {
-  display: flex;
-  align-items: center;
-  gap: 10px;
+.nav-joueurs    { display: flex; align-items: center; gap: 10px; }
+.detail-subtitle { margin: 0; color: var(--muted); font-size: 0.9rem; }
+
+.tab-content { padding-top: 20px; display: flex; flex-direction: column; gap: 16px; }
+.info-card, .chart-card, .table-card { width: 100%; box-sizing: border-box; }
+
+.info-grid { display: grid; grid-template-columns: repeat(2,1fr); gap: 16px 24px; }
+.info-item { display: flex; flex-direction: column; gap: 3px; }
+
+/* Poids */
+.poids-ecart   { margin-top: 12px; font-size: 0.82rem; font-weight: 500; }
+.ecart-surplus { color: var(--danger); }
+.ecart-deficit { color: var(--info); }
+.ecart-ok      { color: var(--success); }
+
+.alerte-surpoids {
+  margin-top: 12px;
+  padding: 10px 14px;
+  border-radius: 8px;
+  background: var(--warning-bg);
+  border: 1px solid var(--warning-border);
 }
 
-.btn-nav-joueur {
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  border: 1px solid #ddd;
-  background: #fff;
-  font-size: 1.3rem;
-  line-height: 1;
-  cursor: pointer;
-  color: #444;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: background .15s, border-color .15s;
-  flex-shrink: 0;
-
-  &:hover:not(:disabled) { background: #f0f0ff; border-color: #6366f1; color: #6366f1; }
-  &:disabled { opacity: .3; cursor: default; }
-}
-
-.detail-subtitle {
-  margin: 0;
-  color: #666;
-  font-size: 0.9rem;
-}
-
-/* ── Onglets ── */
-.detail-tabs {
-  ::ng-deep .mat-mdc-tab-header {
-    border-bottom: 1px solid rgba(0,0,0,.08);
-  }
-}
-
-.tab-content {
-  padding-top: 20px;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-/* ── Cards ── */
-.info-card,
-.chart-card,
-.table-card {
-  width: 100%;
-  box-sizing: border-box;
-}
-
-/* ── Info grid (profil) ── */
-.info-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 16px 24px;
-}
-
-.info-item {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-}
-
-.info-label {
-  font-size: 0.72rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: .05em;
-  color: #888;
-}
-
-.info-value {
-  font-size: 0.95rem;
-  font-weight: 500;
-  color: #222;
-
-  &.accent { color: #6366f1; font-weight: 600; }
-}
-
-/* Statut badge */
-.badge-statut {
-  display: inline-block;
-  padding: 2px 10px;
-  border-radius: 50px;
-  font-size: 0.8rem;
-  font-weight: 600;
-}
-
-.statut-actif     { background: #dcfce7; color: #16a34a; }
-.statut-blesse    { background: #fee2e2; color: #dc2626; }
-.statut-suspendu  { background: #ffedd5; color: #ea580c; }
-.statut-prete     { background: #dbeafe; color: #2563eb; }
-.statut-inactif   { background: #f1f5f9; color: #64748b; }
-
-/* Statut séance GPS */
-.statut-sous { background: #fee2e2; color: #dc2626; }
-.statut-dans { background: #dcfce7; color: #16a34a; }
-.statut-sur  { background: #dbeafe; color: #2563eb; }
-.statut-sans { background: #f1f5f9; color: #64748b; }
-
-.legende-statut {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  padding: 10px 16px 0;
-}
-
-.legende-statut-item {
-  display: inline-block;
-  padding: 2px 10px;
-  border-radius: 50px;
-  font-size: 0.75rem;
-  font-weight: 600;
-}
-
-.muted { color: #888; font-size: 0.82rem; }
-
-/* ── Footer tableau ── */
-.footer-cell {
+.alerte-surpoids-titre {
   font-size: 0.82rem;
   font-weight: 700;
-  color: #333;
+  color: var(--warning);
+  margin-bottom: 6px;
 }
 
-tr.mat-mdc-footer-row {
-  background: rgba(99, 102, 241, .06);
-  border-top: 2px solid rgba(99, 102, 241, .25);
-}
-
-/* Écart poids */
-.poids-ecart {
-  margin-top: 12px;
-  font-size: 0.82rem;
-  font-weight: 500;
-}
-
-.ecart-surplus { color: #dc2626; }
-.ecart-deficit { color: #2563eb; }
-.ecart-ok      { color: #16a34a; }
-
-/* État actuel (risque + fatigue) */
-.etat-grid {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.etat-item {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.fatigue-label {
-  margin: 8px 0 0;
-  font-size: 0.85rem;
-  color: #666;
-  text-transform: capitalize;
-}
-
-.fatigue-raison {
-  margin: 6px 0 0;
+.alerte-surpoids-detail {
+  margin: 0;
+  padding-left: 18px;
   font-size: 0.78rem;
-  color: #888;
-  font-style: italic;
-  line-height: 1.4;
+  color: var(--text-2);
+  line-height: 1.7;
+  li { margin-bottom: 2px; }
+  strong { color: var(--text); }
+  em { color: var(--muted); font-weight: 400; }
 }
 
-/* ── Légende ── */
-.legende {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-}
+/* État actuel */
+.etat-grid     { display: flex; flex-direction: column; gap: 16px; }
+.etat-item     { display: flex; flex-direction: column; gap: 6px; }
+.fatigue-label { margin: 8px 0 0; font-size: 0.85rem; color: var(--text-2); text-transform: capitalize; }
+.fatigue-raison{ margin: 6px 0 0; font-size: 0.78rem; color: var(--muted); font-style: italic; line-height: 1.4; }
+
+/* Légende */
+.legende { display: flex; flex-wrap: wrap; gap: 10px; }
 
 .legende-item {
   display: inline-flex;
   align-items: center;
   gap: 6px;
   font-size: 0.75rem;
-  color: #555;
-
-  &::before {
-    content: '';
-    display: inline-block;
-    width: 10px;
-    height: 10px;
-    border-radius: 3px;
-    background: var(--c);
-  }
+  color: var(--text-2);
+  &::before { content: ''; display: inline-block; width: 10px; height: 10px; border-radius: 3px; background: var(--c); }
 }
 
-/* ── Cards rétractables ── */
-.card-header-collapsible {
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  user-select: none;
-  padding-right: 16px;
+.legende-statut { display: flex; flex-wrap: wrap; gap: 8px; padding: 10px 16px 0; }
 
-  &:hover { opacity: .8; }
-}
+.footer-cell { font-size: 0.82rem; font-weight: 700; color: var(--text); }
 
-.card-toggle {
-  font-size: 0.75rem;
-  color: #888;
-  margin-left: auto;
-  padding-left: 12px;
-}
-
-/* ── Tableau GPS ── */
+/* GPS */
 .gps-table {
   width: 100%;
-
-  th { font-weight: 600; font-size: 0.8rem; color: #555; }
+  th { font-weight: 600; font-size: 0.8rem; }
   td { font-size: 0.85rem; }
-
-  tr.mat-mdc-row:hover { background: rgba(99,102,241,.04); }
 }
 
-.badge-type {
-  display: inline-block;
-  padding: 3px 10px;
-  border-radius: 50px;
-  font-size: 0.75rem;
-  font-weight: 600;
-  white-space: nowrap;
-}
+.nb-sprints { color: var(--muted); margin-left: 4px; font-size: 0.75rem; }
 
-.nb-sprints {
-  color: #888;
-  margin-left: 4px;
-  font-size: 0.75rem;
-}
-
-/* ── Filtres GPS ── */
 .gps-filters {
   display: flex;
   flex-wrap: wrap;
@@ -283,75 +91,52 @@ tr.mat-mdc-footer-row {
   padding: 4px 0 8px;
 }
 
-.filter-chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
+.filter-chips { display: flex; flex-wrap: wrap; gap: 6px; }
 
 .chip-type {
   padding: 4px 12px;
   border-radius: 20px;
-  border: 1.5px solid var(--c, #ccc);
+  border: 1.5px solid var(--c, var(--border));
   background: transparent;
   font-size: 0.78rem;
   font-weight: 600;
-  color: var(--c, #555);
+  color: var(--c, var(--muted));
   cursor: pointer;
+  font-family: inherit;
   transition: background .15s, color .15s;
-
-  &.active {
-    background: var(--c, #6366f1);
-    color: #fff;
-  }
+  &.active { background: var(--c, var(--copper)); color: #fff; }
   &:hover:not(.active) { background: color-mix(in srgb, var(--c) 12%, transparent); }
 }
 
-.filter-dates {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.date-input {
-  padding: 4px 8px;
-  border: 1px solid #ddd;
-  border-radius: 6px;
-  font-size: 0.8rem;
-  color: #333;
-  background: #fff;
-  cursor: pointer;
-
-  &:focus { outline: none; border-color: #6366f1; }
-}
-
-.date-sep { color: #888; font-size: 0.85rem; }
+.filter-dates { display: flex; align-items: center; gap: 6px; }
+.date-sep     { color: var(--muted); font-size: 0.85rem; }
 
 .chip-reset {
   padding: 4px 12px;
   border-radius: 20px;
-  border: 1px solid #f87171;
+  border: 1px solid var(--danger-border);
   background: transparent;
   font-size: 0.78rem;
   font-weight: 600;
-  color: #dc2626;
+  color: var(--danger);
   cursor: pointer;
+  font-family: inherit;
   transition: background .15s;
-
-  &:hover { background: #fee2e2; }
+  &:hover { background: var(--danger-bg); }
 }
 
-.filter-count {
-  font-size: 0.78rem;
-  color: #888;
-  font-style: italic;
+.filter-count { font-size: 0.78rem; color: var(--muted); font-style: italic; }
+.gps-empty    { text-align: center; color: var(--muted); padding: 40px 0; line-height: 1.8; margin: 0; }
+
+/* Objectif correction */
+.objectif-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-weight: 600;
+  font-size: 0.82rem;
+  small { font-weight: 400; color: var(--muted); }
 }
 
-/* ── État vide ── */
-.gps-empty {
-  text-align: center;
-  color: #888;
-  padding: 40px 0;
-  line-height: 1.8;
-  margin: 0;
-}
+.objectif-correction { font-size: 0.72rem; font-weight: 500; color: var(--warning); font-style: italic; }
+.objectif-cible      { font-size: 0.72rem; font-weight: 500; color: var(--muted); font-style: italic; }

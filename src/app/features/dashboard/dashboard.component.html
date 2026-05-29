@@ -1,21 +1,12 @@
-<mat-toolbar color="primary">
+<mat-toolbar class="dashboard-toolbar">
   <mat-icon>sports_soccer</mat-icon>
-  <span style="margin-left:8px">RCP — Dashboard</span>
-  <span style="flex:1"></span>
-  <button class="btn-dark-primary" style="margin-right:8px" (click)="ouvrirDialogJoueur()">
+  <span class="spanTitre">RCP — Dashboard</span>
+  <span class="spanSeparator"></span>
+  <button class="btn-dark-primary"  (click)="ouvrirDialogJoueur()">
     Ajouter un joueur
   </button>
-  <button class="btn-dark-danger" style="margin-right:8px" (click)="ouvrirDialogSuppression()">
+  <button class="btn-dark-danger" (click)="ouvrirDialogSuppression()">
     Supprimer un joueur
-  </button>
-  <button class="btn-dark-primary" style="margin-right:8px" routerLink="/calendrier">
-    Calendrier
-  </button>
-  <button class="btn-dark-primary" style="margin-right:8px" routerLink="/seances">
-    Séances
-  </button>
-  <button class="btn-dark-primary" routerLink="/import">
-    Importer Excel
   </button>
 </mat-toolbar>
 
@@ -48,10 +39,10 @@
     @if (effectifExpanded) {
       <mat-card-content>
         <div class="table-toolbar">
-          <mat-form-field appearance="outline" class="search-field">
-            <mat-label>Rechercher un joueur</mat-label>
-            <input matInput [(ngModel)]="recherche" (ngModelChange)="onRecherche()" placeholder="Nom ou prénom…">
-          </mat-form-field>
+          <div class="search-field-wrap">
+            <mat-icon class="search-icon">search</mat-icon>
+            <input class="search-input" [(ngModel)]="recherche" (ngModelChange)="onRecherche()" placeholder="Rechercher un joueur…">
+          </div>
           <div class="sort-buttons">
             <button class="btn-sort" [class.active]="triFatigue !== null" (click)="toggleTriFatigue()">
               Alerte intensité {{ triFatigue === 'asc' ? '↑' : triFatigue === 'desc' ? '↓' : '↕' }}
@@ -76,6 +67,17 @@
               <th mat-header-cell *matHeaderCellDef>Poste</th>
               <td mat-cell *matCellDef="let j">{{ j.poste || '—' }}</td>
             </ng-container>
+            <ng-container matColumnDef="statut">
+              <th mat-header-cell *matHeaderCellDef>Statut</th>
+              <td mat-cell *matCellDef="let j">
+                @let s = statutMap.get(j.joueur_id);
+                @if (s) {
+                  <span class="badge-statut-joueur statut-{{ s }}">
+                    {{ s === 'actif' ? 'Actif' : s === 'blesse' ? 'Blessé' : s === 'suspendu' ? 'Suspendu' : s === 'prete' ? 'Prêté' : s }}
+                  </span>
+                }
+              </td>
+            </ng-container>
             <ng-container matColumnDef="risque">
               <th mat-header-cell *matHeaderCellDef>Risque blessure</th>
               <td mat-cell *matCellDef="let j">
@@ -90,6 +92,21 @@
                   [color]="j.score_fatigue > 65 ? 'warn' : j.score_fatigue > 35 ? 'accent' : 'primary'">
                 </mat-progress-bar>
                 <small>{{ j.niveau_fatigue }}</small>
+              </td>
+            </ng-container>
+            <ng-container matColumnDef="poids">
+              <th mat-header-cell *matHeaderCellDef>Poids</th>
+              <td mat-cell *matCellDef="let j">
+                @let fiche = poidsMap.get(j.joueur_id);
+                @if (fiche && fiche.ecartKg != null && fiche.ecartKg > 1) {
+                  <span class="badge-poids"
+                        [class.poids-warning]="fiche.ecartKg <= 3"
+                        [class.poids-danger]="fiche.ecartKg > 3">
+                    ⚖ +{{ fiche.ecartKg | number:'1.1-1' }} kg
+                  </span>
+                } @else if (fiche && fiche.dernierPoids != null) {
+                  <span class="badge-poids poids-ok">✓</span>
+                }
               </td>
             </ng-container>
             <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>

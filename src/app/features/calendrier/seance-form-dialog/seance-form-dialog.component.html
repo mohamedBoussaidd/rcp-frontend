@@ -71,6 +71,27 @@
         </mat-select>
       </div>
 
+      <!-- Météo + Température -->
+      <div class="dark-field">
+        <label>Météo</label>
+        <mat-select formControlName="conditionsMeteo" panelClass="dark-select-panel">
+          <mat-option value="">— Non défini</mat-option>
+          <mat-option value="SOLEIL">☀️ Soleil — aucune correction</mat-option>
+          <mat-option value="NUAGEUX">⛅ Nuageux — aucune correction</mat-option>
+          <mat-option value="COUVERT">🌥️ Couvert — aucune correction</mat-option>
+          <mat-option value="PLUIE">🌧️ Pluie — −3% sur la distance attendue</mat-option>
+          <mat-option value="VENT">💨 Vent fort — −3% sur la distance attendue</mat-option>
+          <mat-option value="NEIGE">❄️ Neige — −12% sur la distance attendue</mat-option>
+          <mat-option value="ARRET_INTEMPERIE">🛑 Arrêt cause intempérie — séance exclue de la baseline</mat-option>
+        </mat-select>
+      </div>
+
+      <div class="dark-field">
+        <label>Température (°C)</label>
+        <input type="number" formControlName="temperature" min="-20" max="50" placeholder="ex : 22">
+        <span class="field-hint">&gt; 28°C : −5%&nbsp;&nbsp;·&nbsp;&nbsp;&gt; 32°C : −10% sur la distance attendue</span>
+      </div>
+
       <!-- Champs MATCH -->
       @if (estMatch) {
         <div class="dark-field full-width">

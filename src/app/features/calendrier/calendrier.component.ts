@@ -8,7 +8,7 @@ import { SeanceFormDialogComponent } from './seance-form-dialog/seance-form-dial
 import { MatToolbar } from '@angular/material/toolbar';
 import { MatTooltip } from '@angular/material/tooltip';
 import { DragDropModule } from '@angular/cdk/drag-drop';
-import { DatePipe } from '@angular/common';
+import { DatePipe, LowerCasePipe } from '@angular/common';
 
 export const COULEURS_TYPE: Record<string, string> = {
   MATCH:        '#ef4444',
@@ -20,6 +20,16 @@ export const COULEURS_TYPE: Record<string, string> = {
   FORCE:        '#8b5cf6',
 };
 
+export const INFOS_TYPE: Record<string, { intensite: number; duree: string; description: string; objectifs: string[] }> = {
+  REPRISE:      { intensite: 70, duree: '40–50 min', description: 'Réactivation neuromusculaire légère après repos.',       objectifs: ['< 3 500 m total', 'Aucun sprint', 'Pas de HI'] },
+  INTENSIF:     { intensite: 95, duree: '70–80 min', description: 'Haute intensité — puissance et endurance.',               objectifs: ['> 7 000 m total', '> 1 000 m à +19 km/h', 'ACWR 1.0–1.3'] },
+  TECHNIQUE:    { intensite: 80, duree: '55–65 min', description: 'Travail technico-tactique à intensité modérée.',          objectifs: ['5 000–6 500 m total', 'Accélérations prioritaires', 'Peu de sprints'] },
+  PRE_MATCH:    { intensite: 55, duree: '25–35 min', description: 'Activation pré-match — conserver la fraîcheur.',          objectifs: ['< 2 500 m total', 'Quelques accélérations', 'Zéro fatigue'] },
+  MATCH:        { intensite: 100, duree: '90 min',   description: 'Match officiel — référence d\'intensité maximale.',       objectifs: ['8 000–12 000 m total', '> 1 500 m à +19 km/h', '10–20 sprints'] },
+  MATCH_AMICAL: { intensite: 85, duree: '90 min',    description: 'Match amical — intensité proche match sans enjeu.',       objectifs: ['7 000–10 000 m total', 'Rotation effectif', 'Test tactique'] },
+  FORCE:        { intensite: 60, duree: '50–60 min', description: 'Renforcement musculaire — faible distance parcourue.',    objectifs: ['< 3 000 m total', 'Charge musculaire élevée', 'Faible volume GPS'] },
+};
+
 const JOURS = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'];
 
 @Component({
@@ -27,7 +37,7 @@ const JOURS = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dim
   standalone: true,
   templateUrl: './calendrier.component.html',
   styleUrl: './calendrier.component.scss',
-  imports: [MatToolbar, MatTooltip, DragDropModule, DatePipe]
+  imports: [MatToolbar, MatTooltip, DragDropModule, DatePipe, LowerCasePipe]
 })
 export class CalendrierComponent implements OnInit {
 
@@ -38,6 +48,7 @@ export class CalendrierComponent implements OnInit {
   readonly today = this.toDateStr(new Date());
   readonly jours = JOURS;
   readonly couleursType = COULEURS_TYPE;
+  readonly infosType = INFOS_TYPE;
 
   get joursIds(): string[] {
     return this.joursGrid.map(j => j.dateStr);

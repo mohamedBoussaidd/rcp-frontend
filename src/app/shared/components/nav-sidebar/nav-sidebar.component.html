@@ -1,0 +1,35 @@
+<nav class="sidebar">
+
+  <!-- ── Marque ── -->
+  <div class="sidebar-brand">
+    <mat-icon class="brand-icon">sports_soccer</mat-icon>
+    <div class="brand-text">
+      <span class="brand-title">RCP</span>
+      <span class="brand-sub">Préparateur physique</span>
+    </div>
+  </div>
+
+  <!-- ── Navigation ── -->
+  <ul class="sidebar-nav">
+    @for (item of navItems; track item.route) {
+      <li>
+        <a class="nav-item"
+           [routerLink]="item.route"
+           routerLinkActive="active"
+           [routerLinkActiveOptions]="{ exact: item.route === '/dashboard' }">
+          <mat-icon class="nav-icon">{{ item.icon }}</mat-icon>
+          <span class="nav-label">{{ item.label }}</span>
+        </a>
+      </li>
+    }
+  </ul>
+
+  <!-- ── Pied de sidebar ── -->
+  <div class="sidebar-footer">
+    <button class="btn-theme" (click)="themeService.toggle()">
+      <mat-icon>{{ themeService.isDark() ? 'light_mode' : 'dark_mode' }}</mat-icon>
+      <span>{{ themeService.isDark() ? 'Thème clair' : 'Thème sombre' }}</span>
+    </button>
+  </div>
+
+</nav>

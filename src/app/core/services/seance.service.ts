@@ -21,6 +21,7 @@ export interface Seance {
   dureeMinutes?: number;
   terrain?: string;
   conditionsMeteo?: string;
+  temperature?: number;
   adversaire?: string;
   competition?: string;
   domicileExterieur?: 'DOMICILE' | 'EXTERIEUR';
@@ -36,6 +37,8 @@ export interface SeanceCreate {
   heureDebut?: string;
   dureeMinutes: number;
   terrain?: string;
+  conditionsMeteo?: string;
+  temperature?: number;
   adversaire?: string;
   competition?: string;
   domicileExterieur?: string;

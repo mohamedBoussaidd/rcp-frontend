@@ -103,6 +103,14 @@
                     <span class="info-label">Poids cible</span>
                     <span class="info-value">{{ joueur!.poidsFormeCible ? joueur!.poidsFormeCible + ' kg' : '—' }}</span>
                   </div>
+                  @if (imc) {
+                    <div class="info-item">
+                      <span class="info-label">IMC</span>
+                      <span class="info-value badge-statut" [class]="imc.classe">
+                        {{ imc.valeur }} — {{ imc.categorie }}
+                      </span>
+                    </div>
+                  }
                 </div>
                 @if (joueur!.poidsActuel && joueur!.poidsFormeCible) {
                   <div class="poids-ecart">
@@ -116,9 +124,49 @@
                     }
                   </div>
                 }
+                @if (alerteSurpoids) {
+                  <div class="alerte-surpoids">
+                    <div class="alerte-surpoids-titre">
+                      ⚠️ Surpoids de {{ alerteSurpoids.ecart }} kg — impact sur le risque de blessure
+                    </div>
+                    <ul class="alerte-surpoids-detail">
+                      <li>
+                        <strong>+{{ alerteSurpoids.pointsRisque }} points</strong> ajoutés au score de risque blessure
+                        @if (alerteSurpoids.plafonne) { <em>(plafonné à +20 pts)</em> }
+                      </li>
+                      <li>Risques associés : contraintes articulaires (genoux, chevilles, hanches), fatigue musculaire accrue, risque de claquage et de tendinopathie</li>
+                      <li>Les objectifs de match sont ajustés de <strong>−{{ alerteSurpoids.ecart * 2 | number:'1.0-1' }}%</strong> pour tenir compte du surpoids — l'objectif réel à poids de forme reste plus élevé</li>
+                    </ul>
+                  </div>
+                }
               </mat-card-content>
             }
           </mat-card>
+
+          <!-- Historique poids -->
+          @if (pesees.length > 0) {
+            <mat-card class="chart-card">
+              <mat-card-header class="card-header-collapsible" (click)="poidsExpanded = !poidsExpanded">
+                <mat-card-title>Historique des pesées</mat-card-title>
+                <span class="card-toggle">{{ poidsExpanded ? '▲' : '▼' }}</span>
+              </mat-card-header>
+              @if (poidsExpanded) {
+                <mat-card-content>
+                  <apx-chart
+                    [series]="poidsChartOptions.series"
+                    [chart]="poidsChartOptions.chart"
+                    [xaxis]="poidsChartOptions.xaxis"
+                    [stroke]="poidsChartOptions.stroke"
+                    [markers]="poidsChartOptions.markers"
+                    [yaxis]="poidsChartOptions.yaxis"
+                    [dataLabels]="poidsChartOptions.dataLabels"
+                    [colors]="poidsChartOptions.colors"
+                    [tooltip]="poidsChartOptions.tooltip">
+                  </apx-chart>
+                </mat-card-content>
+              }
+            </mat-card>
+          }
 
           <!-- État actuel -->
           @if (risque || fatigue) {
@@ -234,9 +282,10 @@
                 </mat-card-header>
                 @if (tableExpanded) {
                   <div class="legende-statut">
-                    <span class="legende-statut-item statut-sous">Sous la norme (&lt; −20% vs sa moyenne toutes séances)</span>
+                    <span class="legende-statut-item statut-sous">Sous la norme (&lt; −20%)</span>
                     <span class="legende-statut-item statut-dans">Dans la norme (±20%)</span>
                     <span class="legende-statut-item statut-sur">Sur la norme (&gt; +20%)</span>
+                    <span class="legende-statut-item statut-nc">Non comparable (arrêt intempérie)</span>
                   </div>
                   <mat-card-content>
                     <table mat-table [dataSource]="gpsDataPage" class="gps-table">
@@ -307,6 +356,26 @@
                         <td mat-footer-cell *matFooterCellDef></td>
                       </ng-container>
 
+                      <ng-container matColumnDef="dist19">
+                        <th mat-header-cell *matHeaderCellDef>Dist. &gt;19 km/h</th>
+                        <td mat-cell *matCellDef="let g" class="muted">
+                          {{ g.distance19kmhM ? ((g.distance19kmhM / 1000) | number:'1.2-2') + ' km' : '—' }}
+                        </td>
+                        <td mat-footer-cell *matFooterCellDef class="footer-cell muted">
+                          {{ totalDist19Km | number:'1.1-1' }} km
+                        </td>
+                      </ng-container>
+
+                      <ng-container matColumnDef="dist28">
+                        <th mat-header-cell *matHeaderCellDef>Dist. &gt;28 km/h</th>
+                        <td mat-cell *matCellDef="let g" class="muted">
+                          {{ g.distanceSprint28kmhM ? ((g.distanceSprint28kmhM / 1000) | number:'1.2-2') + ' km' : '—' }}
+                        </td>
+                        <td mat-footer-cell *matFooterCellDef class="footer-cell muted">
+                          {{ totalDist28Km | number:'1.1-1' }} km
+                        </td>
+                      </ng-container>
+
                       <ng-container matColumnDef="sprint">
                         <th mat-header-cell *matHeaderCellDef>Sprint &gt;24 km/h</th>
                         <td mat-cell *matCellDef="let g">
@@ -332,6 +401,12 @@
                         <th mat-header-cell *matHeaderCellDef>Accél.</th>
                         <td mat-cell *matCellDef="let g">{{ g.nbAccelerations ?? '—' }}</td>
                         <td mat-footer-cell *matFooterCellDef class="footer-cell">{{ totalAccelerations }}</td>
+                      </ng-container>
+
+                      <ng-container matColumnDef="freinages">
+                        <th mat-header-cell *matHeaderCellDef>Freinages</th>
+                        <td mat-cell *matCellDef="let g">{{ g.nbFreinages ?? '—' }}</td>
+                        <td mat-footer-cell *matFooterCellDef class="footer-cell">{{ totalFreinages }}</td>
                       </ng-container>
 
                       <tr mat-header-row *matHeaderRowDef="colonnesGps"></tr>

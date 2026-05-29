@@ -18,6 +18,8 @@ export interface GpsPoint {
   nbAccelerations: number | null;
   nbFreinages: number | null;
   ratioDistanceMin: number | null;
+  conditionsMeteo: string | null;
+  temperature: number | null;
 }
 
 export interface Joueur {

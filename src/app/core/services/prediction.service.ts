@@ -51,6 +51,9 @@ export interface LigneRapport {
   nb_sprints: number | null;
   objectif_m: number | null;
   ratio_objectif: number | null;
+  ratio_objectif_original: number | null;
+  correction_poids_pct: number | null;
+  ecart_poids_kg: number | null;
   atteint_objectif: boolean | null;
 }
 

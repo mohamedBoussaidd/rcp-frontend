@@ -1,7 +1,5 @@
 <mat-toolbar color="primary">
   <span>RCP — Analyse séance</span>
-  <span style="flex:1"></span>
-  <button class="btn-dark-primary" (click)="retourSeances()">← Séances</button>
 </mat-toolbar>
 
 <div class="detail-content">
@@ -127,11 +125,21 @@
             <th mat-header-cell *matHeaderCellDef>Obj. poste</th>
             <td mat-cell *matCellDef="let l">
               @if (l.objectif_m !== null && l.ratio_objectif !== null) {
-                <span class="objectif-cell" [class.objectif-ok]="l.atteint_objectif" [class.objectif-ko]="!l.atteint_objectif">
-                  {{ l.atteint_objectif ? '✓' : '✗' }}
-                  {{ (l.objectif_m / 1000) | number:'1.2-2' }} km
-                  <small>({{ l.ratio_objectif }} m/min)</small>
-                </span>
+                <div class="objectif-cell" [class.objectif-ok]="l.atteint_objectif" [class.objectif-ko]="!l.atteint_objectif">
+                  <span>
+                    {{ l.atteint_objectif ? '✓' : '✗' }}
+                    {{ (l.objectif_m / 1000) | number:'1.2-2' }} km
+                    <small>({{ l.ratio_objectif }} m/min)</small>
+                  </span>
+                  @if (l.correction_poids_pct) {
+                    <span class="objectif-correction">
+                      ⚖️ Corrigé −{{ l.correction_poids_pct }}% (surpoids +{{ l.ecart_poids_kg }} kg)
+                    </span>
+                    <span class="objectif-cible">
+                      Objectif à poids de forme : {{ ((l.ratio_objectif_original * l.duree_minutes) / 1000) | number:'1.2-2' }} km ({{ l.ratio_objectif_original }} m/min)
+                    </span>
+                  }
+                </div>
               } @else {
                 <span class="muted">—</span>
               }

@@ -1,0 +1,75 @@
+<mat-toolbar color="primary">
+  <span>RCP — Paramètres</span>
+  <span style="flex:1"></span>
+  <button class="btn-reset-all" (click)="reinitialiserTout()">Réinitialiser tout</button>
+</mat-toolbar>
+
+@if (loading) {
+  <div class="params-loading">Chargement des paramètres…</div>
+}
+
+@if (!loading) {
+  <div class="params-content">
+
+    <div class="params-intro">
+      <strong>Niveau 1 — Profil équipe</strong> : pondération de charge et objectifs GPS par poste.
+      À configurer une fois en début de saison selon votre niveau de championnat et votre style de jeu.
+    </div>
+
+    @for (groupe of groupes; track groupe.id) {
+      <mat-card class="groupe-card" [class.collapsed]="!groupe.expanded">
+
+        <mat-card-header class="groupe-header" (click)="groupe.expanded = !groupe.expanded">
+          <mat-card-title>{{ groupe.titre }}</mat-card-title>
+          <span class="groupe-toggle">{{ groupe.expanded ? '▲' : '▼' }}</span>
+        </mat-card-header>
+
+        @if (groupe.expanded) {
+          <mat-card-content>
+            <p class="groupe-desc">{{ groupe.description }}</p>
+
+            <div class="params-table">
+              @for (cle of groupe.cles; track cle) {
+                <div class="param-row">
+                  <div class="param-label-zone">
+                    <span class="param-label">{{ meta[cle].label }}</span>
+                    <button class="btn-help"
+                            [matTooltip]="meta[cle].description"
+                            matTooltipPosition="right"
+                            matTooltipClass="help-tooltip">?</button>
+                  </div>
+                  <div class="param-input-zone">
+                    <input
+                      type="number"
+                      class="param-input"
+                      [min]="meta[cle].min"
+                      [max]="meta[cle].max"
+                      [step]="meta[cle].step"
+                      [(ngModel)]="valeurs[cle]" />
+                    @if (meta[cle].unite) {
+                      <span class="param-unite">{{ meta[cle].unite }}</span>
+                    }
+                  </div>
+                </div>
+              }
+            </div>
+          </mat-card-content>
+
+          <mat-card-actions>
+            <button class="btn-save" (click)="sauvegarderGroupe(groupe)" [disabled]="saving">
+              {{ saving ? 'Enregistrement…' : 'Enregistrer ce groupe' }}
+            </button>
+          </mat-card-actions>
+        }
+      </mat-card>
+
+      @if (groupe.id === 'objectifs_gps') {
+        <div class="params-intro niveau2">
+          <strong>Niveau 2 — Sensibilité des alertes</strong> : seuils de déclenchement des signaux de fatigue et de risque.
+          À ajuster si les alertes sont trop fréquentes ou trop rares par rapport à votre réalité terrain.
+        </div>
+      }
+    }
+
+  </div>
+}

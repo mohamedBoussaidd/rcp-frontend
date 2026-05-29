@@ -1,0 +1,348 @@
+<mat-toolbar color="primary">
+  <span>RCP — Méthodologie scientifique</span>
+</mat-toolbar>
+
+<div class="methodo-content">
+
+  <div class="methodo-intro">
+    <p>
+      Ce document décrit les méthodes scientifiques qui alimentent les scores de fatigue et de risque blessure
+      affichés dans l'application. Chaque signal est paramétrable depuis la page <strong>Paramètres</strong>
+      pour être ajusté à votre groupe de joueurs et à votre niveau de championnat.
+    </p>
+  </div>
+
+  <!-- ─── Signal 1 ─── -->
+  <mat-card class="methodo-card signal-1">
+    <mat-card-header>
+      <div class="signal-badge s1">S1</div>
+      <mat-card-title>Surcharge aiguë — Ratio ACWR</mat-card-title>
+    </mat-card-header>
+    <mat-card-content>
+      <div class="methodo-grid">
+        <div>
+          <h4>Ce que ça mesure</h4>
+          <p>
+            L'ACWR (Acute:Chronic Workload Ratio) compare la charge de la semaine en cours
+            à la charge hebdomadaire habituelle du joueur sur les 3 semaines précédentes.
+            Un ratio élevé indique que le joueur travaille bien au-delà de sa norme — signal
+            d'une surcharge aiguë susceptible d'augmenter le risque de blessure.
+          </p>
+          <h4>Zone optimale</h4>
+          <p>
+            La littérature identifie une <strong>zone sûre entre 0,8 et 1,3</strong>.
+            Au-delà de 1,5, le risque de blessure est multiplié par 2 à 3 selon les études
+            sur le football professionnel européen.
+          </p>
+        </div>
+        <div>
+          <h4>Formule</h4>
+          <div class="formula-block">
+            <span class="formula-line">Charge semaine = Σ (distance GPS × poids séance)</span>
+            <span class="formula-line">Charge aiguë = charge semaine en cours</span>
+            <span class="formula-line">Charge chronique = moyenne des 3 semaines précédentes</span>
+            <span class="formula-line formula-result">ACWR = Charge aiguë / Charge chronique</span>
+          </div>
+          <div class="reference">
+            Gabbett T.J. (2016) — <em>The training-injury prevention paradox.</em>
+            British Journal of Sports Medicine, 50(5), 273–280.
+          </div>
+        </div>
+      </div>
+      <div class="param-link">
+        Paramètres associés : <em>Pondération de charge par type de séance</em> · <em>Seuils de charge hebdomadaire</em>
+      </div>
+    </mat-card-content>
+  </mat-card>
+
+  <!-- ─── Signal 2 ─── -->
+  <mat-card class="methodo-card signal-2">
+    <mat-card-header>
+      <div class="signal-badge s2">S2</div>
+      <mat-card-title>Dégradation de performance GPS</mat-card-title>
+    </mat-card-header>
+    <mat-card-content>
+      <div class="methodo-grid">
+        <div>
+          <h4>Ce que ça mesure</h4>
+          <p>
+            Ce signal détecte une baisse de performance sur les 2 dernières séances
+            par rapport à la baseline historique du joueur sur ce type de séance.
+            Il analyse 3 métriques GPS complémentaires pour distinguer les types de fatigue.
+          </p>
+          <div class="sub-signals">
+            <div class="sub-signal">
+              <span class="sub-badge">m/min</span>
+              <span>Distance par minute — <strong>fatigue générale aérobie.</strong> Le joueur se déplace moins globalement.</span>
+            </div>
+            <div class="sub-signal">
+              <span class="sub-badge">Vmax</span>
+              <span>Vitesse maximale atteinte — <strong>fatigue neuromusculaire explosive.</strong> Le premier indicateur à chuter en cas de fatigue des fibres rapides.</span>
+            </div>
+            <div class="sub-signal">
+              <span class="sub-badge">>19 km/h</span>
+              <span>Part de la distance à haute intensité — <strong>fatigue neuromusculaire intensive.</strong> Perte de capacité à répéter les efforts explosifs.</span>
+            </div>
+          </div>
+        </div>
+        <div>
+          <h4>Formule</h4>
+          <div class="formula-block">
+            <span class="formula-line">Baseline = moyenne historique sur ce type de séance</span>
+            <span class="formula-line">Récent = moyenne des 2 dernières séances du même type</span>
+            <span class="formula-line formula-result">Ratio = Récent / Baseline</span>
+            <span class="formula-line">Alerte si Ratio &lt; seuil configuré</span>
+          </div>
+          <div class="reference">
+            Mohr M. et al. (2003) — <em>Match performance of high-standard soccer players.</em>
+            Journal of Sports Sciences, 21(7), 519–528.
+          </div>
+        </div>
+      </div>
+      <div class="param-link">
+        Paramètres associés : <em>Seuils de dégradation de performance (Signal 2)</em>
+      </div>
+    </mat-card-content>
+  </mat-card>
+
+  <!-- ─── Signal 3 ─── -->
+  <mat-card class="methodo-card signal-3">
+    <mat-card-header>
+      <div class="signal-badge s3">S3</div>
+      <mat-card-title>Monotonie de Foster — Surmenage chronique</mat-card-title>
+    </mat-card-header>
+    <mat-card-content>
+      <div class="methodo-grid">
+        <div>
+          <h4>Ce que ça mesure</h4>
+          <p>
+            L'indice de monotonie mesure l'uniformité des charges d'entraînement sur les 8 dernières semaines.
+            Un indice élevé signifie que le joueur s'entraîne toujours avec la même intensité semaine après semaine,
+            sans variation — ce qui génère un surmenage chronique même sans surcharge aiguë détectable.
+          </p>
+          <p>
+            Ce signal est complémentaire au Signal 1 : un joueur peut avoir un ACWR normal mais accumuler
+            de la fatigue chronique si son planning ne varie jamais.
+          </p>
+          <h4>Interprétation</h4>
+          <p>
+            Un indice <strong>inférieur à 1,5</strong> indique une bonne variation des charges.
+            Entre 1,5 et 2,0 : vigilance. <strong>Au-delà de 2,0</strong> : signal de monotonie dangereux.
+          </p>
+        </div>
+        <div>
+          <h4>Formule</h4>
+          <div class="formula-block">
+            <span class="formula-line">Charges_hebdo = [C1, C2, C3, C4, C5, C6, C7, C8]</span>
+            <span class="formula-line">(8 semaines glissantes, pondérées par ancienneté)</span>
+            <span class="formula-line">&nbsp;</span>
+            <span class="formula-line">Moyenne = moy(Charges_hebdo)</span>
+            <span class="formula-line">Écart-type = σ(Charges_hebdo)</span>
+            <span class="formula-line formula-result">Monotonie = Moyenne / Écart-type</span>
+          </div>
+          <div class="reference">
+            Foster C. (1998) — <em>Monitoring training in athletes with reference to overtraining syndrome.</em>
+            Medicine &amp; Science in Sports &amp; Exercise, 30(7), 1164–1168.
+          </div>
+        </div>
+      </div>
+      <div class="param-link">
+        Paramètres associés : <em>Indice de monotonie (Signal 3)</em>
+      </div>
+    </mat-card-content>
+  </mat-card>
+
+  <!-- ─── Signal 4 ─── -->
+  <mat-card class="methodo-card signal-4">
+    <mat-card-header>
+      <div class="signal-badge s4">S4</div>
+      <mat-card-title>Espacement insuffisant entre séances</mat-card-title>
+    </mat-card-header>
+    <mat-card-content>
+      <div class="methodo-grid">
+        <div>
+          <h4>Ce que ça mesure</h4>
+          <p>
+            Ce signal détecte une récupération insuffisante entre deux séances de même nature haute intensité.
+            Contrairement aux signaux 1 et 3 qui analysent des volumes, ce signal analyse le <strong>rythme</strong>
+            du calendrier : deux matchs trop rapprochés ou deux séances intensives consécutives
+            ne laissent pas le temps aux fibres musculaires de se régénérer.
+          </p>
+          <h4>Trois règles vérifiées</h4>
+          <div class="sub-signals">
+            <div class="sub-signal">
+              <span class="sub-badge">Match → Match</span>
+              <span>Délai minimum entre deux matchs officiels ou amicaux.</span>
+            </div>
+            <div class="sub-signal">
+              <span class="sub-badge">Int → Int</span>
+              <span>Délai minimum entre deux séances de type INTENSIF. Lié à la cinétique de récupération des fibres rapides (48h).</span>
+            </div>
+            <div class="sub-signal">
+              <span class="sub-badge">Repos</span>
+              <span>Nombre minimum de jours sans entraînement GPS sur une fenêtre de 14 jours.</span>
+            </div>
+          </div>
+        </div>
+        <div>
+          <h4>Principe</h4>
+          <div class="formula-block">
+            <span class="formula-line">Pour chaque paire de séances haute intensité :</span>
+            <span class="formula-line">Délai = Date_séance2 − Date_séance1 (jours)</span>
+            <span class="formula-line formula-result">Si Délai &lt; délai_min → alerte récupération</span>
+            <span class="formula-line">&nbsp;</span>
+            <span class="formula-line">Repos 14j = jours sans séance GPS sur J−14 → J</span>
+            <span class="formula-line formula-result">Si Repos &lt; repos_min → alerte structurelle</span>
+          </div>
+          <div class="reference">
+            Dupont G. et al. (2010) — <em>Effect of 2 soccer matches in a week on physical performance.</em>
+            British Journal of Sports Medicine, 44(3), 193–197.
+          </div>
+        </div>
+      </div>
+      <div class="param-link">
+        Paramètres associés : <em>Espacement entre séances (Signal 4)</em>
+      </div>
+    </mat-card-content>
+  </mat-card>
+
+  <!-- ─── Bonus blessure ─── -->
+  <mat-card class="methodo-card signal-blessure">
+    <mat-card-header>
+      <div class="signal-badge sb">B</div>
+      <mat-card-title>Bonus blessure — Risque de rechute</mat-card-title>
+    </mat-card-header>
+    <mat-card-content>
+      <div class="methodo-grid">
+        <div>
+          <h4>Ce que ça mesure</h4>
+          <p>
+            Lorsqu'un joueur revient de blessure, son risque de rechute est significativement plus élevé
+            pendant la phase de cicatrisation tissulaire. Ce bonus amplifie le score de fatigue
+            de tout joueur ayant subi une blessure dans la fenêtre temporelle configurée.
+          </p>
+          <p>
+            La littérature indique qu'une blessure musculaire non totalement cicatrisée présente
+            <strong>un risque de récidive 2 à 5 fois plus élevé</strong> que chez un joueur sain,
+            en particulier sur les 6 à 8 premières semaines post-reprise.
+          </p>
+        </div>
+        <div>
+          <h4>Principe</h4>
+          <div class="formula-block">
+            <span class="formula-line">Fenêtre = aujourd'hui − fenetre_blessure_jours</span>
+            <span class="formula-line">N = nombre de blessures dans cette fenêtre</span>
+            <span class="formula-line formula-result">Bonus = N × bonus_blessure_pts</span>
+          </div>
+          <div class="reference">
+            Hägglund M. et al. (2006) — <em>Previous injury as a risk factor for injury in elite football.</em>
+            British Journal of Sports Medicine, 40(9), 767–772.
+          </div>
+        </div>
+      </div>
+      <div class="param-link">
+        Paramètres associés : <em>Blessures récentes (bonus de fatigue)</em>
+      </div>
+    </mat-card-content>
+  </mat-card>
+
+  <!-- ─── Risque blessure ─── -->
+  <mat-card class="methodo-card signal-risque">
+    <mat-card-header>
+      <div class="signal-badge sr">R</div>
+      <mat-card-title>Score de risque blessure — Modèle composite</mat-card-title>
+    </mat-card-header>
+    <mat-card-content>
+      <div class="methodo-grid">
+        <div>
+          <h4>Ce que ça mesure</h4>
+          <p>
+            Le score de risque blessure est un indicateur composite qui agrège plusieurs facteurs de risque
+            indépendants. Contrairement au score de fatigue (état actuel du joueur), le score de risque
+            vise à <strong>prédire la probabilité de blessure</strong> dans les jours à venir.
+          </p>
+          <h4>Facteurs intégrés</h4>
+          <div class="sub-signals">
+            <div class="sub-signal"><span class="sub-badge">ACWR</span><span>Surcharge aiguë de la semaine</span></div>
+            <div class="sub-signal"><span class="sub-badge">Perf.</span><span>Dégradation de performance GPS récente</span></div>
+            <div class="sub-signal"><span class="sub-badge">Mono.</span><span>Monotonie des charges sur 8 semaines</span></div>
+            <div class="sub-signal"><span class="sub-badge">Cong.</span><span>Congestion du calendrier de matchs</span></div>
+            <div class="sub-signal"><span class="sub-badge">Bless.</span><span>Historique de blessures récentes</span></div>
+            <div class="sub-signal"><span class="sub-badge">Poids</span><span>Surpoids par rapport au poids de forme</span></div>
+          </div>
+        </div>
+        <div>
+          <h4>Échelle de risque</h4>
+          <div class="risk-scale">
+            <div class="risk-level risk-faible">Faible — 0 à 30 pts</div>
+            <div class="risk-level risk-modere">Modéré — 31 à 55 pts</div>
+            <div class="risk-level risk-eleve">Élevé — 56 à 75 pts</div>
+            <div class="risk-level risk-critique">Critique — &gt; 75 pts</div>
+          </div>
+          <div class="reference" style="margin-top:16px">
+            Meeuwisse W.H. (1994) — <em>Assessing causation in sport injury.</em>
+            Clinical Journal of Sport Medicine, 4(3), 166–170.<br>
+            Bahr R. &amp; Krosshaug T. (2005) — <em>Understanding injury mechanisms.</em>
+            British Journal of Sports Medicine, 39(6), 324–329.
+          </div>
+        </div>
+      </div>
+      <div class="param-link">
+        Paramètres associés : <em>Congestion de matchs</em> · <em>Correction surpoids</em>
+      </div>
+    </mat-card-content>
+  </mat-card>
+
+  <!-- ─── Objectifs GPS ─── -->
+  <mat-card class="methodo-card signal-gps">
+    <mat-card-header>
+      <div class="signal-badge sg">GPS</div>
+      <mat-card-title>Objectifs GPS par poste — Normes de référence</mat-card-title>
+    </mat-card-header>
+    <mat-card-content>
+      <div class="methodo-grid">
+        <div>
+          <h4>Ce que ça mesure</h4>
+          <p>
+            Chaque joueur est évalué en match par rapport à une distance par minute de jeu attendue
+            selon son poste (m/min). Cette norme permet de comparer des joueurs de temps de jeu différents
+            sur une base équitable.
+          </p>
+          <p>
+            Les valeurs par défaut sont issues de la littérature sur le football professionnel européen
+            et constituent une base de départ à calibrer selon votre niveau de championnat.
+            <strong>Un joueur évoluant en National 3 n'a pas les mêmes normes qu'un joueur de Ligue 1.</strong>
+          </p>
+          <h4>Corrections automatiques</h4>
+          <p>
+            L'objectif d'un joueur est automatiquement corrigé à la baisse en cas de :
+            conditions météo difficiles (chaleur, neige, pluie) ou de surpoids par rapport
+            au poids de forme — pour ne pas pénaliser injustement sa performance.
+          </p>
+        </div>
+        <div>
+          <h4>Valeurs de référence initiales</h4>
+          <div class="formula-block">
+            <span class="formula-line">Gardien           55 m/min</span>
+            <span class="formula-line">Défenseur central 95 m/min</span>
+            <span class="formula-line">Latéral          105 m/min</span>
+            <span class="formula-line">Milieu défensif  108 m/min</span>
+            <span class="formula-line">Milieu central   110 m/min</span>
+            <span class="formula-line">Ailier           105 m/min</span>
+            <span class="formula-line">Attaquant        100 m/min</span>
+          </div>
+          <div class="reference">
+            Bangsbo J. et al. (2006) — <em>Activity profile of competition soccer.</em>
+            Canadian Journal of Sport Sciences, 31(2), 223–232.<br>
+            Mohr M. et al. (2003) — <em>Match performance of high-standard soccer players.</em>
+            Journal of Sports Sciences, 21(7), 519–528.
+          </div>
+        </div>
+      </div>
+      <div class="param-link">
+        Paramètres associés : <em>Objectifs GPS par poste</em> · <em>Correcteurs météo et température</em> · <em>Correction surpoids</em>
+      </div>
+    </mat-card-content>
+  </mat-card>
+
+</div>

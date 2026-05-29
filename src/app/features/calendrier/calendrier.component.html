@@ -1,7 +1,5 @@
 <mat-toolbar color="primary">
   <span>RCP — Calendrier</span>
-  <span style="flex:1"></span>
-  <button class="btn-dark-primary" (click)="retourDashboard()">← Dashboard</button>
 </mat-toolbar>
 
 <div class="cal-layout">
@@ -13,11 +11,33 @@
     <div class="palette-info">Glissez un type sur un jour</div>
 
     @for (type of typeSeances; track type.id) {
+      @let info = infosType[type.code];
       <div class="palette-item"
            cdkDrag [cdkDragData]="type"
            [style.border-left-color]="couleur(type.code)">
-        <span class="palette-dot" [style.background]="couleur(type.code)"></span>
-        <span class="palette-label">{{ type.libelle }}</span>
+        <div class="palette-item-header">
+          <span class="palette-dot" [style.background]="couleur(type.code)"></span>
+          <span class="palette-label">{{ type.libelle }}</span>
+          @if (info) {
+            <span class="palette-duree">{{ info.duree }}</span>
+          }
+        </div>
+        @if (info) {
+          <p class="palette-desc">{{ info.description }}</p>
+          <div class="palette-intensite-wrap">
+            <span class="palette-intensite-label">Intensité {{ info.intensite }}%</span>
+            <div class="palette-intensite-bar">
+              <div class="palette-intensite-fill"
+                   [style.width.%]="info.intensite"
+                   [style.background]="couleur(type.code)"></div>
+            </div>
+          </div>
+          <ul class="palette-objectifs">
+            @for (obj of info.objectifs; track obj) {
+              <li>{{ obj }}</li>
+            }
+          </ul>
+        }
         <div *cdkDragPlaceholder class="drag-placeholder"></div>
       </div>
     }
@@ -54,20 +74,11 @@
                [class.dropzone-active]="true">
 
             @for (seance of seancesDuJour(jour.dateStr); track seance.id) {
+              @let info = infosType[seance.typeSeance.code];
               <div class="seance-bloc"
                    [style.border-left-color]="couleur(seance.typeSeance.code)"
                    [class.realisee]="seance.statut === 'REALISEE'"
-                   [class.annulee]="seance.statut === 'ANNULEE'"
-                   [matTooltip]="(seance.dureeMinutes ? seance.dureeMinutes + ' min · ' : '') + seance.statut"
-                   matTooltipPosition="above">
-
-                <span class="seance-titre">
-                  {{ seance.titre || seance.typeSeance.libelle }}
-                </span>
-
-                @if (seance.adversaire) {
-                  <span class="seance-adversaire">vs {{ seance.adversaire }}</span>
-                }
+                   [class.annulee]="seance.statut === 'ANNULEE'">
 
                 <div class="seance-actions">
                   @if (seance.statut === 'PLANIFIEE') {
@@ -77,6 +88,32 @@
                   <button class="btn-suppr" (click)="supprimerSeance(seance, $event)"
                           matTooltip="Supprimer">✕</button>
                 </div>
+
+                <span class="seance-titre">{{ seance.titre || seance.typeSeance.libelle }}</span>
+
+                <div class="seance-meta">
+                  @if (seance.dureeMinutes) {
+                    <span class="seance-duree">{{ seance.dureeMinutes }} min</span>
+                  }
+                  <span class="seance-statut-badge statut-{{ seance.statut | lowercase }}">
+                    {{ seance.statut === 'REALISEE' ? 'Réalisée' : seance.statut === 'ANNULEE' ? 'Annulée' : 'Planifiée' }}
+                  </span>
+                </div>
+
+                @if (seance.adversaire) {
+                  <span class="seance-adversaire">vs {{ seance.adversaire }}</span>
+                }
+
+                @if (info) {
+                  <div class="seance-intensite-wrap">
+                    <span class="seance-intensite-label">{{ info.intensite }}%</span>
+                    <div class="seance-intensite-bar">
+                      <div class="seance-intensite-fill"
+                           [style.width.%]="info.intensite"
+                           [style.background]="couleur(seance.typeSeance.code)"></div>
+                    </div>
+                  </div>
+                }
               </div>
             }
 
