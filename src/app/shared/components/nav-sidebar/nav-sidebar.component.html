@@ -10,7 +10,7 @@
   </div>
 
   <!-- ── Navigation ── -->
-  <ul class="sidebar-nav">
+  <ul class="sidebar-nav" (click)="sidebarService.close()">
     @for (item of navItems; track item.route) {
       <li>
         <a class="nav-item"

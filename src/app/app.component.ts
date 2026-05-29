@@ -1,19 +1,21 @@
 import { Component } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
+import { MatIcon } from '@angular/material/icon';
 import { ThemeService } from './core/services/theme.service';
 import { NavSidebarComponent } from './shared/components/nav-sidebar/nav-sidebar.component';
+import { SidebarService } from './core/services/sidebar.service';
 
 @Component({
     selector: 'app-root',
     standalone: true,
     templateUrl: './app.component.html',
     styleUrl: './app.component.scss',
-    imports: [RouterOutlet, NavSidebarComponent]
+    imports: [RouterOutlet, NavSidebarComponent, MatIcon]
 })
 export class AppComponent {
   title = 'RCP - Préparateur physique';
 
-  constructor(themeService: ThemeService) {
+  constructor(themeService: ThemeService, public sidebar: SidebarService) {
     themeService.init();
   }
 }

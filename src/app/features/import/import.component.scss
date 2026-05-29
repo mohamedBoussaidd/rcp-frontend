@@ -1,4 +1,4 @@
-:host { display: block; min-height: 100vh; background: var(--bg); }
+:host { display: block; }
 
 /* Layout 2 colonnes */
 .import-layout {
@@ -7,6 +7,17 @@
   padding: 24px;
   height: calc(100vh - 56px);
   box-sizing: border-box;
+
+  @media (max-width: 1024px) {
+    flex-direction: column;
+    height: auto;
+    overflow-y: auto;
+  }
+
+  @media (max-width: 768px) {
+    padding: 12px 8px;
+    gap: 16px;
+  }
 }
 
 .panel {

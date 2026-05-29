@@ -1,7 +1,26 @@
-:host { display: block; min-height: 100vh; background: var(--bg); }
+:host { display: block; }
 
 .spanTitre { margin-left: 8px; }
 button { margin-right: 0 !important; }
+
+.toolbar-actions {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+@media (max-width: 768px) {
+  .toolbar-actions {
+    flex: 1 0 100%;
+    gap: 8px;
+
+    button { flex: 1; justify-content: center; }
+  }
+}
+
+@media (max-width: 400px) {
+  .toolbar-actions button { padding: 8px 10px; font-size: 0.8rem; }
+}
 
 .dashboard-content {
   padding: 28px 24px;
@@ -20,3 +39,80 @@ button { margin-right: 0 !important; }
 .sort-buttons  { display: flex; gap: 8px; }
 
 ::ng-deep mat-progress-bar { margin-bottom: 4px; }
+
+/* ── Bascule table / cards ── */
+.view-table { display: block; }
+.view-cards { display: none; }
+
+/* ── Card joueur (mobile) ── */
+.joueur-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px;
+  border-radius: 12px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  text-decoration: none;
+  color: var(--text);
+  transition: border-color .15s, background .15s;
+  cursor: pointer;
+
+  &:hover { border-color: var(--copper-border); background: var(--copper-soft); }
+}
+
+.joueur-card-nom {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.joueur-card-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+
+  .badge-statut-joueur { width: auto; flex-shrink: 0; }
+}
+
+.joueur-card-poste { font-size: 0.75rem; color: var(--muted); flex: 1; }
+
+.joueur-card-badges {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+
+  .badge-poids { width: auto; }
+}
+
+.joueur-card-fatigue {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+
+  small { font-size: 0.68rem; color: var(--muted); }
+}
+
+@media (max-width: 1024px) {
+  .dashboard-content { padding: 16px 12px; }
+}
+
+@media (max-width: 768px) {
+  .dashboard-content { padding: 12px 8px; }
+  .view-table { display: none; }
+  .view-cards {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    padding: 4px 0 8px;
+  }
+}
+
+@media (max-width: 480px) {
+  .view-cards { grid-template-columns: 1fr; }
+}

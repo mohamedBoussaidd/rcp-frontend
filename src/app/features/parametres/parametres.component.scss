@@ -1,4 +1,4 @@
-:host { display: block; min-height: 100vh; background: var(--bg); }
+:host { display: block; }
 
 .params-loading { padding: 32px; text-align: center; color: var(--muted); }
 
@@ -88,7 +88,12 @@
 .param-input-zone { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
 .param-unite      { font-size: 0.75rem; color: var(--muted); white-space: nowrap; min-width: 50px; }
 
-mat-card-actions { padding: 8px 16px 12px; display: flex; gap: 8px; }
+mat-card-actions { padding: 8px 16px 12px; display: flex; gap: 8px; flex-wrap: wrap; }
+
+@media (max-width: 768px) {
+  .params-content { padding: 12px 8px; }
+  .param-row { flex-wrap: wrap; }
+}
 
 .btn-save {
   padding: 7px 18px;

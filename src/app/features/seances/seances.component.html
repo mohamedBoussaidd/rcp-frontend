@@ -18,38 +18,71 @@
       }
 
       @if (!loading && seances.length > 0) {
-        <table mat-table [dataSource]="seances" class="seances-table">
 
-          <ng-container matColumnDef="date">
-            <th mat-header-cell *matHeaderCellDef>Date</th>
-            <td mat-cell *matCellDef="let s">{{ s.date | date:'dd/MM/yyyy' }}</td>
-          </ng-container>
+        <!-- ── Vue table (desktop / tablette) ── -->
+        <div class="view-table">
+          <table mat-table [dataSource]="seancesPaginees" class="seances-table">
 
-          <ng-container matColumnDef="type">
-            <th mat-header-cell *matHeaderCellDef>Type</th>
-            <td mat-cell *matCellDef="let s">
-              <span class="badge-type"
-                [style.background]="couleurType(s.typeSeance?.code) + '28'"
-                [style.color]="couleurType(s.typeSeance?.code)">
-                {{ s.typeSeance?.libelle || s.typeSeance?.code || '—' }}
-              </span>
-            </td>
-          </ng-container>
+            <ng-container matColumnDef="date">
+              <th mat-header-cell *matHeaderCellDef>Date</th>
+              <td mat-cell *matCellDef="let s">{{ s.date | date:'dd/MM/yyyy' }}</td>
+            </ng-container>
 
-          <ng-container matColumnDef="terrain">
-            <th mat-header-cell *matHeaderCellDef>Terrain</th>
-            <td mat-cell *matCellDef="let s">{{ s.terrain || '—' }}</td>
-          </ng-container>
+            <ng-container matColumnDef="type">
+              <th mat-header-cell *matHeaderCellDef>Type</th>
+              <td mat-cell *matCellDef="let s">
+                <span class="badge-type"
+                  [style.background]="couleurType(s.typeSeance?.code) + '28'"
+                  [style.color]="couleurType(s.typeSeance?.code)">
+                  {{ s.typeSeance?.libelle || s.typeSeance?.code || '—' }}
+                </span>
+              </td>
+            </ng-container>
 
-          <ng-container matColumnDef="description">
-            <th mat-header-cell *matHeaderCellDef>Description</th>
-            <td mat-cell *matCellDef="let s">{{ s.description || '—' }}</td>
-          </ng-container>
+            <ng-container matColumnDef="terrain">
+              <th mat-header-cell *matHeaderCellDef>Terrain</th>
+              <td mat-cell *matCellDef="let s">{{ s.terrain || '—' }}</td>
+            </ng-container>
 
-          <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
-          <tr mat-row *matRowDef="let row; columns: displayedColumns;"
-              class="clickable-row" (click)="allerDetail(row)"></tr>
-        </table>
+            <ng-container matColumnDef="description">
+              <th mat-header-cell *matHeaderCellDef>Description</th>
+              <td mat-cell *matCellDef="let s">{{ s.description || '—' }}</td>
+            </ng-container>
+
+            <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+            <tr mat-row *matRowDef="let row; columns: displayedColumns;"
+                class="clickable-row" (click)="allerDetail(row)"></tr>
+          </table>
+        </div>
+
+        <!-- ── Vue cards (mobile) ── -->
+        <div class="view-cards">
+          @for (s of seancesPaginees; track s.id) {
+            <div class="seance-card" (click)="allerDetail(s)">
+              <div class="seance-card-header">
+                <span class="seance-card-date">{{ s.date | date:'dd/MM/yyyy' }}</span>
+                <span class="badge-type"
+                  [style.background]="couleurType(s.typeSeance?.code ?? '') + '28'"
+                  [style.color]="couleurType(s.typeSeance?.code ?? '')">
+                  {{ s.typeSeance?.libelle || s.typeSeance?.code || '—' }}
+                </span>
+              </div>
+              @if (s.terrain) {
+                <div class="seance-card-terrain">{{ s.terrain }}</div>
+              }
+              @if (s.description) {
+                <div class="seance-card-desc">{{ s.description }}</div>
+              }
+            </div>
+          }
+        </div>
+
+        <mat-paginator
+          [length]="seances.length"
+          [pageSize]="pageSize"
+          [pageSizeOptions]="[5, 10, 20]"
+          (page)="onPageChange($event)">
+        </mat-paginator>
       }
 
     </mat-card-content>

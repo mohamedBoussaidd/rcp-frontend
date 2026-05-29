@@ -1,4 +1,4 @@
-:host { display: block; min-height: 100vh; background: var(--bg); }
+:host { display: block; }
 
 .detail-content { padding: 24px; }
 
@@ -17,7 +17,9 @@
 .tab-content { padding-top: 20px; display: flex; flex-direction: column; gap: 16px; }
 .info-card, .chart-card, .table-card { width: 100%; box-sizing: border-box; }
 
-.info-grid { display: grid; grid-template-columns: repeat(2,1fr); gap: 16px 24px; }
+.info-grid { display: grid; grid-template-columns: repeat(2,1fr); gap: 16px 24px;
+  @media (max-width: 768px) { grid-template-columns: 1fr; }
+}
 .info-item { display: flex; flex-direction: column; gap: 3px; }
 
 /* Poids */
@@ -129,14 +131,5 @@
 .gps-empty    { text-align: center; color: var(--muted); padding: 40px 0; line-height: 1.8; margin: 0; }
 
 /* Objectif correction */
-.objectif-cell {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-  font-weight: 600;
-  font-size: 0.82rem;
-  small { font-weight: 400; color: var(--muted); }
-}
 
-.objectif-correction { font-size: 0.72rem; font-weight: 500; color: var(--warning); font-style: italic; }
-.objectif-cible      { font-size: 0.72rem; font-weight: 500; color: var(--muted); font-style: italic; }
+/* objectif-cell, objectif-correction, objectif-cible → mutualisés dans styles.scss */

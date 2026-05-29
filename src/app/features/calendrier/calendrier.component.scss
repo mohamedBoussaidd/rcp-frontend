@@ -1,4 +1,4 @@
-:host { display: block; min-height: 100vh; background: var(--bg); }
+:host { display: block; }
 
 .cal-layout {
   display: flex;
@@ -213,3 +213,16 @@
 
 .btn-realise { background: var(--success-bg); color: var(--success); }
 .btn-suppr   { background: var(--danger-bg);  color: var(--danger); }
+
+@media (max-width: 1024px) {
+  .grille { grid-template-columns: repeat(5, 1fr); }
+  .palette { width: 200px; min-width: 200px; }
+}
+
+@media (max-width: 768px) {
+  .cal-layout { flex-direction: column; height: auto; overflow: auto; }
+  .palette { display: none; }
+  .cal-zone { padding: 10px; }
+  .grille { grid-template-columns: repeat(3, 1fr); gap: 4px; }
+  .jour-body { min-height: 80px; }
+}

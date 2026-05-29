@@ -709,6 +709,55 @@ mat-progress-bar {
   padding: 10px 14px !important;
 }
 
+/* ════════════════════════════════════════
+   PARTAGÉS — Cellules objectif
+   (seance-detail + joueur-detail)
+   ════════════════════════════════════════ */
+.objectif-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-weight: 600;
+  font-size: 0.82rem;
+  small { font-weight: 400; color: var(--muted); }
+}
+.objectif-correction { font-size: 0.72rem; font-weight: 500; color: var(--warning); font-style: italic; }
+.objectif-cible      { font-size: 0.72rem; font-weight: 500; color: var(--muted);   font-style: italic; }
+
+/* ════════════════════════════════════════
+   RESPONSIVE GLOBAL — TABLETTE (≤ 1024px)
+   ════════════════════════════════════════ */
+@media (max-width: 1024px) {
+  mat-toolbar, .mat-toolbar { padding: 6px 12px !important; gap: 4px; }
+
+  .mat-mdc-card { border-radius: 12px !important; }
+  .mat-mdc-card-content { padding: 12px 16px !important; }
+
+  .table-toolbar { flex-wrap: wrap; gap: 10px; }
+}
+
+/* ════════════════════════════════════════
+   RESPONSIVE GLOBAL — MOBILE (≤ 768px)
+   ════════════════════════════════════════ */
+@media (max-width: 768px) {
+  /* Espace pour le bouton hamburger */
+  mat-toolbar, .mat-toolbar { padding-left: 58px !important; }
+
+  /* Badges libres dans les cards joueur */
+  .joueur-card .badge { width: auto !important; min-width: 0 !important; }
+
+  /* Tables scrollables horizontalement */
+  mat-card-content, .mat-mdc-card-content { overflow-x: auto; }
+
+  /* Toolbar de recherche/filtres en colonne */
+  .table-toolbar { flex-direction: column; align-items: stretch; }
+  .search-field-wrap { max-width: 100%; min-width: 0; }
+  .sort-buttons { flex-wrap: wrap; }
+
+  /* Paginator compact */
+  .mat-mdc-paginator-range-label { display: none; }
+}
+
 .dark-select-panel .mat-mdc-select-panel,
 .dark-select-panel.mat-mdc-select-panel {
   background: var(--dm-field-bg) !important;

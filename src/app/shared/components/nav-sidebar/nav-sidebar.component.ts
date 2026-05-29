@@ -1,7 +1,8 @@
-import { Component } from '@angular/core';
+import { Component, HostBinding } from '@angular/core';
 import { RouterLink, RouterLinkActive } from '@angular/router';
 import { MatIcon } from '@angular/material/icon';
 import { ThemeService } from '../../../core/services/theme.service';
+import { SidebarService } from '../../../core/services/sidebar.service';
 
 interface NavItem {
   label: string;
@@ -17,6 +18,8 @@ interface NavItem {
   imports: [RouterLink, RouterLinkActive, MatIcon]
 })
 export class NavSidebarComponent {
+  @HostBinding('class.open') get isOpen() { return this.sidebarService.isOpen(); }
+
   readonly navItems: NavItem[] = [
     { label: 'Dashboard',    icon: 'dashboard',       route: '/dashboard' },
     { label: 'Calendrier',   icon: 'calendar_month',  route: '/calendrier' },
@@ -27,5 +30,5 @@ export class NavSidebarComponent {
     { label: 'Paramètres',   icon: 'settings',        route: '/parametres' },
   ];
 
-  constructor(public themeService: ThemeService) {}
+  constructor(public themeService: ThemeService, public sidebarService: SidebarService) {}
 }

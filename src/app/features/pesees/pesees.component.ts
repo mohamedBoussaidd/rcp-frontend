@@ -8,6 +8,7 @@ import {
   MatTable, MatColumnDef, MatHeaderCellDef, MatHeaderCell,
   MatCellDef, MatCell, MatHeaderRowDef, MatHeaderRow, MatRowDef, MatRow
 } from '@angular/material/table';
+import { MatPaginator, PageEvent } from '@angular/material/paginator';
 import { FormsModule } from '@angular/forms';
 import { DecimalPipe, DatePipe } from '@angular/common';
 
@@ -26,7 +27,7 @@ interface LignePesee extends PoidsFicheJoueur {
     MatToolbar, MatCard, MatCardContent, MatCardHeader, MatCardTitle,
     MatTable, MatColumnDef, MatHeaderCellDef, MatHeaderCell,
     MatCellDef, MatCell, MatHeaderRowDef, MatHeaderRow, MatRowDef, MatRow,
-    FormsModule, DecimalPipe, DatePipe
+    MatPaginator, FormsModule, DecimalPipe, DatePipe
   ]
 })
 export class PeseesComponent implements OnInit {
@@ -36,6 +37,18 @@ export class PeseesComponent implements OnInit {
   datePesee = new Date().toISOString().slice(0, 10);
 
   displayedColumns = ['joueur', 'poste', 'poidsCible', 'dernierePesee', 'poidsInput', 'ecart', 'action'];
+
+  pageIndex = 0;
+  pageSize  = 15;
+
+  get lignesPaginees(): LignePesee[] {
+    return this.lignes.slice(this.pageIndex * this.pageSize, (this.pageIndex + 1) * this.pageSize);
+  }
+
+  onPageChange(event: PageEvent): void {
+    this.pageIndex = event.pageIndex;
+    this.pageSize  = event.pageSize;
+  }
 
   constructor(
     private peseesService: PeseesService,

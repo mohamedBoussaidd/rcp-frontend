@@ -17,68 +17,114 @@
       @if (loading) {
         <p class="empty-state">Chargement…</p>
       } @else {
-        <table mat-table [dataSource]="lignes" class="pesees-table">
 
-          <ng-container matColumnDef="joueur">
-            <th mat-header-cell *matHeaderCellDef>Joueur</th>
-            <td mat-cell *matCellDef="let l"><strong>{{ l.prenom }} {{ l.nom }}</strong></td>
-          </ng-container>
+        <!-- ── Vue table (desktop / tablette) ── -->
+        <div class="view-table">
+          <table mat-table [dataSource]="lignesPaginees" class="pesees-table">
 
-          <ng-container matColumnDef="poste">
-            <th mat-header-cell *matHeaderCellDef>Poste</th>
-            <td mat-cell *matCellDef="let l" class="muted">{{ l.postePrincipal || '—' }}</td>
-          </ng-container>
+            <ng-container matColumnDef="joueur">
+              <th mat-header-cell *matHeaderCellDef>Joueur</th>
+              <td mat-cell *matCellDef="let l"><strong>{{ l.prenom }} {{ l.nom }}</strong></td>
+            </ng-container>
 
-          <ng-container matColumnDef="poidsCible">
-            <th mat-header-cell *matHeaderCellDef>Poids cible</th>
-            <td mat-cell *matCellDef="let l">
-              {{ l.poidsFormeCible != null ? (l.poidsFormeCible | number:'1.1-1') + ' kg' : '—' }}
-            </td>
-          </ng-container>
+            <ng-container matColumnDef="poste">
+              <th mat-header-cell *matHeaderCellDef>Poste</th>
+              <td mat-cell *matCellDef="let l" class="muted">{{ l.postePrincipal || '—' }}</td>
+            </ng-container>
 
-          <ng-container matColumnDef="dernierePesee">
-            <th mat-header-cell *matHeaderCellDef>Dernière pesée</th>
-            <td mat-cell *matCellDef="let l" class="muted">
-              @if (l.dernierePeseeDate) {
-                {{ l.dernierePeseeDate | date:'dd/MM/yyyy' }}
-              } @else { — }
-            </td>
-          </ng-container>
+            <ng-container matColumnDef="poidsCible">
+              <th mat-header-cell *matHeaderCellDef>Poids cible</th>
+              <td mat-cell *matCellDef="let l">
+                {{ l.poidsFormeCible != null ? (l.poidsFormeCible | number:'1.1-1') + ' kg' : '—' }}
+              </td>
+            </ng-container>
 
-          <ng-container matColumnDef="poidsInput">
-            <th mat-header-cell *matHeaderCellDef>Poids (kg)</th>
-            <td mat-cell *matCellDef="let l">
-              <input type="number" class="poids-input" [(ngModel)]="l.poidsInput"
-                     min="40" max="150" step="0.1" placeholder="—">
-            </td>
-          </ng-container>
+            <ng-container matColumnDef="dernierePesee">
+              <th mat-header-cell *matHeaderCellDef>Dernière pesée</th>
+              <td mat-cell *matCellDef="let l" class="muted">
+                @if (l.dernierePeseeDate) {
+                  {{ l.dernierePeseeDate | date:'dd/MM/yyyy' }}
+                } @else { — }
+              </td>
+            </ng-container>
 
-          <ng-container matColumnDef="ecart">
-            <th mat-header-cell *matHeaderCellDef>Écart / cible</th>
-            <td mat-cell *matCellDef="let l">
-              @if (l.ecartKg != null) {
-                <span class="ecart-badge" [class]="ecartClass(l.ecartKg)">
-                  {{ l.ecartKg > 0 ? '+' : '' }}{{ l.ecartKg | number:'1.1-1' }} kg
-                </span>
-              } @else { <span class="muted">—</span> }
-            </td>
-          </ng-container>
+            <ng-container matColumnDef="poidsInput">
+              <th mat-header-cell *matHeaderCellDef>Poids (kg)</th>
+              <td mat-cell *matCellDef="let l">
+                <input type="number" class="poids-input" [(ngModel)]="l.poidsInput"
+                       min="40" max="150" step="0.1" placeholder="—">
+              </td>
+            </ng-container>
 
-          <ng-container matColumnDef="action">
-            <th mat-header-cell *matHeaderCellDef></th>
-            <td mat-cell *matCellDef="let l">
-              <button class="btn-save" (click)="sauvegarder(l)"
-                      [disabled]="!l.poidsInput || l.saving">
-                {{ l.saving ? '…' : l.saved ? '✓ Sauvegardé' : 'Sauvegarder' }}
-              </button>
-            </td>
-          </ng-container>
+            <ng-container matColumnDef="ecart">
+              <th mat-header-cell *matHeaderCellDef>Écart / cible</th>
+              <td mat-cell *matCellDef="let l">
+                @if (l.ecartKg != null) {
+                  <span class="ecart-badge" [class]="ecartClass(l.ecartKg)">
+                    {{ l.ecartKg > 0 ? '+' : '' }}{{ l.ecartKg | number:'1.1-1' }} kg
+                  </span>
+                } @else { <span class="muted">—</span> }
+              </td>
+            </ng-container>
 
-          <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
-          <tr mat-row *matRowDef="let row; columns: displayedColumns;"
-              [class.row-warning]="row.ecartKg > 0 && row.ecartKg <= 3"
-              [class.row-danger]="row.ecartKg > 3"></tr>
-        </table>
+            <ng-container matColumnDef="action">
+              <th mat-header-cell *matHeaderCellDef></th>
+              <td mat-cell *matCellDef="let l">
+                <button class="btn-save" (click)="sauvegarder(l)"
+                        [disabled]="!l.poidsInput || l.saving">
+                  {{ l.saving ? '…' : l.saved ? '✓ Sauvegardé' : 'Sauvegarder' }}
+                </button>
+              </td>
+            </ng-container>
+
+            <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+            <tr mat-row *matRowDef="let row; columns: displayedColumns;"
+                [class.row-warning]="row.ecartKg > 0 && row.ecartKg <= 3"
+                [class.row-danger]="row.ecartKg > 3"></tr>
+          </table>
+        </div>
+
+        <!-- ── Vue cards (mobile) ── -->
+        <div class="view-cards">
+          @for (l of lignesPaginees; track l.joueurId) {
+            <div class="pesee-card"
+                 [class.row-warning]="l.ecartKg != null && l.ecartKg > 0 && l.ecartKg <= 3"
+                 [class.row-danger]="l.ecartKg != null && l.ecartKg > 3">
+              <div class="pesee-card-header">
+                <div>
+                  <div class="pesee-nom">{{ l.prenom }} {{ l.nom }}</div>
+                  <div class="pesee-poste">{{ l.postePrincipal || '—' }}</div>
+                </div>
+                @if (l.ecartKg != null) {
+                  <span class="ecart-badge" [class]="ecartClass(l.ecartKg)">
+                    {{ l.ecartKg > 0 ? '+' : '' }}{{ l.ecartKg | number:'1.1-1' }} kg
+                  </span>
+                }
+              </div>
+              <div class="pesee-card-info">
+                <span class="info-label">Cible</span>
+                <span>{{ l.poidsFormeCible != null ? (l.poidsFormeCible | number:'1.1-1') + ' kg' : '—' }}</span>
+                <span class="info-label">Dernière</span>
+                <span>{{ l.dernierePeseeDate ? (l.dernierePeseeDate | date:'dd/MM') : '—' }}</span>
+              </div>
+              <div class="pesee-card-input">
+                <input type="number" class="poids-input" [(ngModel)]="l.poidsInput"
+                       min="40" max="150" step="0.1" placeholder="kg">
+                <button class="btn-save" (click)="sauvegarder(l)"
+                        [disabled]="!l.poidsInput || l.saving">
+                  {{ l.saving ? '…' : l.saved ? '✓' : 'Sauvegarder' }}
+                </button>
+              </div>
+            </div>
+          }
+        </div>
+
+        <mat-paginator
+          [length]="lignes.length"
+          [pageSize]="pageSize"
+          [pageSizeOptions]="[10, 20, 50]"
+          (page)="onPageChange($event)">
+        </mat-paginator>
       }
 
     </mat-card-content>

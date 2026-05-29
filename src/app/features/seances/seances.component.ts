@@ -4,6 +4,7 @@ import { SeanceService, Seance } from '../../core/services/seance.service';
 import { MatToolbar } from '@angular/material/toolbar';
 import { MatCard, MatCardHeader, MatCardTitle, MatCardContent } from '@angular/material/card';
 import { MatTable, MatColumnDef, MatHeaderCellDef, MatHeaderCell, MatCellDef, MatCell, MatHeaderRowDef, MatHeaderRow, MatRowDef, MatRow } from '@angular/material/table';
+import { MatPaginator, PageEvent } from '@angular/material/paginator';
 import { DatePipe } from '@angular/common';
 
 const COULEURS_TYPE: Record<string, string> = {
@@ -25,7 +26,7 @@ const COULEURS_TYPE: Record<string, string> = {
     MatToolbar, MatCard, MatCardHeader, MatCardTitle, MatCardContent,
     MatTable, MatColumnDef, MatHeaderCellDef, MatHeaderCell,
     MatCellDef, MatCell, MatHeaderRowDef, MatHeaderRow, MatRowDef, MatRow,
-    DatePipe,
+    MatPaginator, DatePipe,
   ]
 })
 export class SeancesComponent implements OnInit {
@@ -33,6 +34,18 @@ export class SeancesComponent implements OnInit {
   seances: Seance[] = [];
   loading = true;
   displayedColumns = ['date', 'type', 'terrain', 'description'];
+
+  pageIndex = 0;
+  pageSize  = 10;
+
+  get seancesPaginees(): Seance[] {
+    return this.seances.slice(this.pageIndex * this.pageSize, (this.pageIndex + 1) * this.pageSize);
+  }
+
+  onPageChange(event: PageEvent): void {
+    this.pageIndex = event.pageIndex;
+    this.pageSize  = event.pageSize;
+  }
 
   constructor(private seanceService: SeanceService, private router: Router) {}
 
