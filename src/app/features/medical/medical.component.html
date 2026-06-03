@@ -1,0 +1,107 @@
+<mat-toolbar color="primary">
+  <span>RCP — Suivi médical</span>
+</mat-toolbar>
+
+<div class="medical-content">
+  <mat-card>
+    <mat-card-header class="card-head">
+      <mat-card-title>Blessures</mat-card-title>
+      @if (auth.canEcrireBlessures()) {
+        <button class="btn-dark-primary" (click)="showForm() ? annuler() : nouveau()">
+          {{ showForm() ? 'Annuler' : '+ Déclarer une blessure' }}
+        </button>
+      }
+    </mat-card-header>
+
+    <mat-card-content>
+
+      @if (showForm() && auth.canEcrireBlessures()) {
+        <form class="blessure-form" (ngSubmit)="enregistrer()">
+          <div class="form-grid">
+            <label class="f"><span>Joueur *</span>
+              <select class="param-input wide" [(ngModel)]="form.joueurId" name="joueur">
+                <option value="" disabled>Choisir…</option>
+                @for (j of joueurs(); track j.id) {
+                  <option [value]="j.id">{{ j.prenom }} {{ j.nom }}</option>
+                }
+              </select></label>
+            <label class="f"><span>Date de blessure *</span>
+              <input class="param-input wide" type="date" [(ngModel)]="form.dateBlessure" name="date"></label>
+            <label class="f"><span>Retour effectif</span>
+              <input class="param-input wide" type="date" [(ngModel)]="form.dateRetourEffectif" name="retour"></label>
+            <label class="f"><span>Type</span>
+              <select class="param-input wide" [(ngModel)]="form.typeBlessure" name="type">
+                <option value="">—</option>
+                @for (t of types; track t) { <option [value]="t">{{ joliLabel(t) }}</option> }
+              </select></label>
+            <label class="f"><span>Zone</span>
+              <select class="param-input wide" [(ngModel)]="form.zoneCorporelle" name="zone">
+                <option value="">—</option>
+                @for (z of zones; track z) { <option [value]="z">{{ joliLabel(z) }}</option> }
+              </select></label>
+            <label class="f"><span>Côté</span>
+              <select class="param-input wide" [(ngModel)]="form.cote" name="cote">
+                <option value="">—</option>
+                @for (c of cotes; track c) { <option [value]="c">{{ joliLabel(c) }}</option> }
+              </select></label>
+            <label class="f"><span>Gravité</span>
+              <select class="param-input wide" [(ngModel)]="form.gravite" name="gravite">
+                <option value="">—</option>
+                @for (g of gravites; track g) { <option [value]="g">{{ joliLabel(g) }}</option> }
+              </select></label>
+            <label class="f"><span>Cause probable</span>
+              <select class="param-input wide" [(ngModel)]="form.causeProbable" name="cause">
+                <option value="">—</option>
+                @for (c of causes; track c) { <option [value]="c">{{ joliLabel(c) }}</option> }
+              </select></label>
+            <label class="f check"><input type="checkbox" [(ngModel)]="form.recidive" name="recidive"> <span>Récidive</span></label>
+          </div>
+          <label class="f"><span>Commentaire</span>
+            <input class="param-input wide" [(ngModel)]="form.commentaire" name="commentaire" placeholder="Observations…"></label>
+          <div class="form-actions">
+            <button type="submit" class="btn-dark-primary" [disabled]="saving() || !form.joueurId || !form.dateBlessure">
+              {{ saving() ? 'Enregistrement…' : (editingId() ? 'Enregistrer' : 'Déclarer') }}
+            </button>
+          </div>
+        </form>
+      }
+
+      @if (loading()) {
+        <p class="empty-state">Chargement…</p>
+      } @else if (blessures().length === 0) {
+        <p class="empty-state">Aucune blessure enregistrée.</p>
+      } @else {
+        <div class="blessures-grid">
+          @for (b of blessures(); track b.id) {
+            <div class="blessure-card" [class.retabli]="!b.enCours">
+              <div class="blessure-head">
+                <span class="blessure-joueur">{{ b.joueurPrenom }} {{ b.joueurNom }}</span>
+                <span class="statut-pill" [class.en-cours]="b.enCours">{{ b.enCours ? 'En cours' : 'Rétabli' }}</span>
+              </div>
+              <div class="blessure-tags">
+                @if (b.gravite) { <span class="g-badge" [class]="graviteClass(b.gravite)">{{ joliLabel(b.gravite) }}</span> }
+                @if (b.zoneCorporelle) { <span class="tag">{{ joliLabel(b.zoneCorporelle) }}</span> }
+                @if (b.typeBlessure) { <span class="tag">{{ joliLabel(b.typeBlessure) }}</span> }
+                @if (b.cote) { <span class="tag">{{ joliLabel(b.cote) }}</span> }
+                @if (b.recidive) { <span class="tag tag-recidive">récidive</span> }
+              </div>
+              <div class="blessure-info">
+                <span class="info-label">Blessé le</span><span>{{ b.dateBlessure | date:'dd/MM/yyyy' }}</span>
+                <span class="info-label">Retour</span><span>{{ b.dateRetourEffectif ? (b.dateRetourEffectif | date:'dd/MM/yyyy') : '—' }}</span>
+                @if (b.causeProbable) { <span class="info-label">Cause</span><span>{{ joliLabel(b.causeProbable) }}</span> }
+              </div>
+              @if (b.commentaire) { <p class="blessure-comm">{{ b.commentaire }}</p> }
+              @if (auth.canEcrireBlessures()) {
+                <div class="blessure-actions">
+                  <button class="btn-mini" (click)="editer(b)">Modifier</button>
+                  <button class="btn-mini danger" (click)="supprimer(b)">Supprimer</button>
+                </div>
+              }
+            </div>
+          }
+        </div>
+      }
+
+    </mat-card-content>
+  </mat-card>
+</div>
