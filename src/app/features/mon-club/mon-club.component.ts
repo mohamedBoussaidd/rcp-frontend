@@ -6,6 +6,7 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import {
   Equipe, Membre, MembreCreateRequest, MonClub, MonClubService,
 } from '../../core/services/mon-club.service';
+import { Joueur, JoueurService } from '../../core/services/joueur.service';
 
 const MAX_EQUIPES = 3;
 
@@ -40,13 +41,22 @@ export class MonClubComponent implements OnInit {
   membreForm: MembreCreateRequest = this.membreVide();
   savingMembre = signal(false);
 
+  joueurs = signal<Joueur[]>([]);
+
   readonly equipes = computed(() => this.data()?.equipes ?? []);
   readonly membres = computed(() => this.data()?.membres ?? []);
   readonly equipesPleines = computed(() => this.equipes().length >= MAX_EQUIPES);
 
-  constructor(private service: MonClubService, private snack: MatSnackBar) {}
+  constructor(
+    private service: MonClubService,
+    private snack: MatSnackBar,
+    private joueurService: JoueurService,
+  ) {}
 
-  ngOnInit(): void { this.charger(); }
+  ngOnInit(): void {
+    this.charger();
+    this.joueurService.getAll().subscribe({ next: j => this.joueurs.set(j), error: () => {} });
+  }
 
   charger(): void {
     this.loading.set(true);
@@ -87,7 +97,7 @@ export class MonClubComponent implements OnInit {
     const f = this.membreForm;
     if (!f.email || !f.nom || !f.prenom || !f.motDePasse || !f.role) return;
     this.savingMembre.set(true);
-    this.service.creerMembre({ ...f, equipeId: f.equipeId || undefined, specialite: f.specialite || undefined }).subscribe({
+    this.service.creerMembre({ ...f, equipeId: f.equipeId || undefined, specialite: f.specialite || undefined, joueurId: f.joueurId || undefined }).subscribe({
       next: () => {
         this.savingMembre.set(false);
         this.membreForm = this.membreVide();

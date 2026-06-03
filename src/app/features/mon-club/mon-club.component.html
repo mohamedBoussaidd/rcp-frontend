@@ -90,6 +90,15 @@
                     <option [value]="e.id">{{ e.nom }}</option>
                   }
                 </select></label>
+              @if (membreForm.role === 'JOUEUR') {
+                <label class="f"><span>Fiche joueur à lier</span>
+                  <select class="param-input wide" [(ngModel)]="membreForm.joueurId" name="mfiche">
+                    <option value="">— Aucune —</option>
+                    @for (j of joueurs(); track j.id) {
+                      <option [value]="j.id">{{ j.prenom }} {{ j.nom }}</option>
+                    }
+                  </select></label>
+              }
             </div>
             <div class="form-actions">
               <button type="submit" class="btn-dark-primary" [disabled]="savingMembre()">

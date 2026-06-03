@@ -73,6 +73,7 @@ export class AuthService {
     switch (this.currentUser()?.role) {
       case 'SUPER_ADMIN': return '/admin/clubs';
       case 'PRESIDENT':   return '/mon-club';
+      case 'JOUEUR':      return '/mon-espace';
       default:            return '/dashboard';
     }
   }

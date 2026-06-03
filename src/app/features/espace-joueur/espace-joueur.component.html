@@ -1,0 +1,99 @@
+<mat-toolbar color="primary">
+  <span>RCP — Mon espace</span>
+</mat-toolbar>
+
+<div class="joueur-content">
+
+  @if (loading()) {
+    <p class="empty-state">Chargement…</p>
+  } @else if (nonLie()) {
+    <mat-card>
+      <mat-card-content>
+        <p class="empty-state">Votre compte n'est pas encore rattaché à une fiche joueur.<br>Contactez votre club.</p>
+      </mat-card-content>
+    </mat-card>
+  } @else {
+
+    <!-- ── Profil + poids ── -->
+    <mat-card>
+      <mat-card-header><mat-card-title>{{ profil()?.prenom }} {{ profil()?.nom }}</mat-card-title></mat-card-header>
+      <mat-card-content>
+        <div class="profil-grid">
+          <div class="stat"><span class="stat-label">Poste</span><span class="stat-val">{{ profil()?.postePrincipal || '—' }}</span></div>
+          <div class="stat"><span class="stat-label">Poids actuel</span>
+            <span class="stat-val">{{ dernierPoids() != null ? (dernierPoids() | number:'1.1-1') + ' kg' : '—' }}</span></div>
+          <div class="stat"><span class="stat-label">Poids cible</span>
+            <span class="stat-val">{{ profil()?.poidsFormeCible != null ? (profil()?.poidsFormeCible | number:'1.1-1') + ' kg' : '—' }}</span></div>
+          <div class="stat"><span class="stat-label">Écart</span>
+            <span class="stat-val" [class.ok]="ecartCible() != null && ecartCible()! <= 1" [class.ko]="ecartCible() != null && ecartCible()! > 1">
+              {{ ecartCible() != null ? (ecartCible()! > 0 ? '+' : '') + (ecartCible() | number:'1.1-1') + ' kg' : '—' }}
+            </span></div>
+        </div>
+      </mat-card-content>
+    </mat-card>
+
+    <!-- ── Mes blessures ── -->
+    <mat-card>
+      <mat-card-header><mat-card-title>Mon suivi médical</mat-card-title></mat-card-header>
+      <mat-card-content>
+        @if (blessures().length === 0) {
+          <p class="empty-state">Aucune blessure enregistrée. 💪</p>
+        } @else {
+          <div class="liste">
+            @for (b of blessures(); track b.id) {
+              <div class="ligne">
+                <span class="pill" [class.en-cours]="b.enCours">{{ b.enCours ? 'En cours' : 'Rétabli' }}</span>
+                <span class="ligne-titre">{{ joli(b.zoneCorporelle) }} <small>{{ joli(b.typeBlessure) }}</small></span>
+                <span class="ligne-date">{{ b.dateBlessure | date:'dd/MM/yyyy' }}</span>
+              </div>
+            }
+          </div>
+        }
+      </mat-card-content>
+    </mat-card>
+
+    <!-- ── Mon historique de poids ── -->
+    <mat-card>
+      <mat-card-header><mat-card-title>Mon poids</mat-card-title></mat-card-header>
+      <mat-card-content>
+        @if (pesees().length === 0) {
+          <p class="empty-state">Aucune pesée enregistrée.</p>
+        } @else {
+          <div class="liste">
+            @for (p of pesees(); track p.date) {
+              <div class="ligne">
+                <span class="ligne-date">{{ p.date | date:'dd/MM/yyyy' }}</span>
+                <span class="ligne-titre">{{ p.poids | number:'1.1-1' }} kg</span>
+                @if (p.commentaire) { <small class="ligne-comm">{{ p.commentaire }}</small> }
+              </div>
+            }
+          </div>
+        }
+      </mat-card-content>
+    </mat-card>
+
+    <!-- ── Mes séances (GPS) ── -->
+    <mat-card>
+      <mat-card-header><mat-card-title>Mes dernières séances</mat-card-title></mat-card-header>
+      <mat-card-content>
+        @if (gps().length === 0) {
+          <p class="empty-state">Aucune donnée de séance.</p>
+        } @else {
+          <div class="liste">
+            @for (g of gps(); track g.seanceId) {
+              <div class="ligne">
+                <span class="ligne-date">{{ g.date | date:'dd/MM/yyyy' }}</span>
+                <span class="ligne-titre">{{ g.typeLibelle }}</span>
+                <span class="ligne-meta">
+                  {{ g.distanceTotaleM != null ? (g.distanceTotaleM | number:'1.0-0') + ' m' : '—' }}
+                  @if (g.vitesseMaxKmh != null) { · {{ g.vitesseMaxKmh | number:'1.1-1' }} km/h }
+                </span>
+              </div>
+            }
+          </div>
+        }
+      </mat-card-content>
+    </mat-card>
+
+  }
+</div>

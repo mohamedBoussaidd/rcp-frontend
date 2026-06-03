@@ -35,6 +35,7 @@ export class NavSidebarComponent {
   private readonly allItems: NavItem[] = [
     { label: 'Administration', icon: 'admin_panel_settings', route: '/admin/clubs', roles: ['SUPER_ADMIN'] },
     { label: 'Mon club',     icon: 'groups',         route: '/mon-club',    roles: ['PRESIDENT'] },
+    { label: 'Mon espace',   icon: 'person',         route: '/mon-espace',  roles: ['JOUEUR'] },
     { label: 'Dashboard',    icon: 'dashboard',      route: '/dashboard',   roles: ['SUPER_ADMIN', 'PRESIDENT', 'ENTRAINEUR', 'PREPARATEUR', 'MEDICAL'] },
     { label: 'Calendrier',   icon: 'calendar_month', route: '/calendrier',  roles: ['SUPER_ADMIN', 'PRESIDENT', 'ENTRAINEUR', 'PREPARATEUR', 'MEDICAL'] },
     { label: 'Séances',      icon: 'fitness_center', route: '/seances',     roles: ['SUPER_ADMIN', 'PRESIDENT', 'ENTRAINEUR', 'PREPARATEUR', 'MEDICAL', 'JOUEUR'] },

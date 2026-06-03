@@ -1,0 +1,70 @@
+:host { display: block; }
+
+.joueur-content {
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.profil-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+}
+
+.stat {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px;
+  border-radius: 10px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+}
+
+.stat-label { font-size: 0.7rem; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
+.stat-val { font-size: 1.05rem; font-weight: 700; color: var(--text); }
+.stat-val.ok { color: var(--success); }
+.stat-val.ko { color: var(--danger); }
+
+.liste {
+  display: flex;
+  flex-direction: column;
+}
+
+.ligne {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 9px 4px;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.85rem;
+
+  &:last-child { border-bottom: none; }
+}
+
+.ligne-date { color: var(--muted); font-size: 0.78rem; min-width: 84px; }
+.ligne-titre { font-weight: 600; color: var(--text); }
+.ligne-titre small { font-weight: 400; color: var(--muted); }
+.ligne-meta { margin-left: auto; color: var(--text-2); font-size: 0.8rem; }
+.ligne-comm { color: var(--muted); font-style: italic; margin-left: auto; }
+
+.pill {
+  font-size: 0.66rem;
+  font-weight: 700;
+  padding: 2px 9px;
+  border-radius: 50px;
+  background: var(--success-bg);
+  color: var(--success);
+  border: 1px solid var(--success-border);
+
+  &.en-cours { background: var(--danger-bg); color: var(--danger); border-color: var(--danger-border); }
+}
+
+@media (max-width: 700px) {
+  .joueur-content { padding: 12px 8px; }
+  .profil-grid { grid-template-columns: 1fr 1fr; }
+}
