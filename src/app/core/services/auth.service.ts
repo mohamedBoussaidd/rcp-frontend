@@ -62,6 +62,11 @@ export class AuthService {
     return !!u && roles.includes(u.role);
   }
 
+  /** Droits d'écriture par module (miroir du cloisonnement backend). */
+  canEcrireJoueurs(): boolean { return this.hasRole('ENTRAINEUR', 'PREPARATEUR', 'SUPER_ADMIN'); }
+  canEcrireSeances(): boolean { return this.hasRole('ENTRAINEUR', 'PREPARATEUR', 'SUPER_ADMIN'); }
+  canEcrirePesees(): boolean { return this.hasRole('PREPARATEUR', 'SUPER_ADMIN'); }
+
   /** Page d'accueil selon le rôle (après login / accès racine). */
   homeRoute(): string {
     switch (this.currentUser()?.role) {

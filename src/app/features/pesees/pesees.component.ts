@@ -11,6 +11,7 @@ import {
 import { MatPaginator, PageEvent } from '@angular/material/paginator';
 import { FormsModule } from '@angular/forms';
 import { DecimalPipe, DatePipe } from '@angular/common';
+import { AuthService } from '../../core/services/auth.service';
 
 interface LignePesee extends PoidsFicheJoueur {
   poidsInput: number | null;
@@ -53,7 +54,8 @@ export class PeseesComponent implements OnInit {
   constructor(
     private peseesService: PeseesService,
     private router: Router,
-    private snackBar: MatSnackBar
+    private snackBar: MatSnackBar,
+    public auth: AuthService
   ) {}
 
   ngOnInit(): void {

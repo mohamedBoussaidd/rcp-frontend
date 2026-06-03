@@ -2,10 +2,12 @@
   <mat-icon>sports_soccer</mat-icon>
   <span class="spanTitre">RCP — Dashboard</span>
   <span class="spanSeparator"></span>
-  <div class="toolbar-actions">
-    <button class="btn-dark-primary" (click)="ouvrirDialogJoueur()">Ajouter un joueur</button>
-    <button class="btn-dark-danger"  (click)="ouvrirDialogSuppression()">Supprimer un joueur</button>
-  </div>
+  @if (auth.canEcrireJoueurs()) {
+    <div class="toolbar-actions">
+      <button class="btn-dark-primary" (click)="ouvrirDialogJoueur()">Ajouter un joueur</button>
+      <button class="btn-dark-danger"  (click)="ouvrirDialogSuppression()">Supprimer un joueur</button>
+    </div>
+  }
 </mat-toolbar>
 
 <div class="dashboard-content">

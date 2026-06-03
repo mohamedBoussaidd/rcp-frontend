@@ -18,6 +18,7 @@ import { MatPaginator, PageEvent } from '@angular/material/paginator';
 import { RouterLink } from '@angular/router';
 import { BadgeRisqueComponent } from '../../shared/components/badge-risque/badge-risque.component';
 import { MatProgressBar } from '@angular/material/progress-bar';
+import { AuthService } from '../../core/services/auth.service';
 
 @Component({
     selector: 'app-dashboard',
@@ -108,7 +109,8 @@ export class DashboardComponent implements OnInit {
     private peseesService: PeseesService,
     private joueurService: JoueurService,
     private snackBar: MatSnackBar,
-    private dialog: MatDialog
+    private dialog: MatDialog,
+    public auth: AuthService
   ) {}
 
   ngOnInit(): void {
