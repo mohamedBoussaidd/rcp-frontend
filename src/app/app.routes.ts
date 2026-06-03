@@ -9,12 +9,17 @@ import { PeseesComponent } from './features/pesees/pesees.component';
 import { ParametresComponent } from './features/parametres/parametres.component';
 import { MethodologieComponent } from './features/methodologie/methodologie.component';
 import { LoginComponent } from './features/login/login.component';
+import { AdminClubsComponent } from './features/admin-clubs/admin-clubs.component';
+import { MonClubComponent } from './features/mon-club/mon-club.component';
 import { authGuard } from './core/guards/auth.guard';
+import { roleGuard } from './core/guards/role.guard';
 
 export const routes: Routes = [
   { path: 'login',        component: LoginComponent },
 
   { path: '',             redirectTo: 'dashboard', pathMatch: 'full' },
+  { path: 'admin/clubs',  component: AdminClubsComponent,   canActivate: [authGuard, roleGuard], data: { roles: ['SUPER_ADMIN'] } },
+  { path: 'mon-club',     component: MonClubComponent,      canActivate: [authGuard, roleGuard], data: { roles: ['PRESIDENT'] } },
   { path: 'dashboard',    component: DashboardComponent,    canActivate: [authGuard] },
   { path: 'joueurs/:id',  component: JoueurDetailComponent, canActivate: [authGuard] },
   { path: 'import',       component: ImportComponent,       canActivate: [authGuard] },

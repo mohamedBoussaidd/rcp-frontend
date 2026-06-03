@@ -1,0 +1,75 @@
+<mat-toolbar color="primary">
+  <span>RCP — Administration des clubs</span>
+</mat-toolbar>
+
+<div class="admin-content">
+  <mat-card>
+    <mat-card-header class="card-head">
+      <mat-card-title>Clubs</mat-card-title>
+      <button class="btn-dark-primary" (click)="toggleForm()">
+        {{ showForm() ? 'Annuler' : '+ Créer un club' }}
+      </button>
+    </mat-card-header>
+
+    <mat-card-content>
+
+      @if (showForm()) {
+        <form class="club-form" (ngSubmit)="creer()">
+          <div class="form-section">Club</div>
+          <div class="form-grid">
+            <label class="f"><span>Nom du club *</span>
+              <input class="param-input wide" [(ngModel)]="form.nom" name="nom" placeholder="FC Exemple"></label>
+            <label class="f"><span>Logo (URL)</span>
+              <input class="param-input wide" [(ngModel)]="form.logo" name="logo" placeholder="https://…"></label>
+          </div>
+
+          <div class="form-section">Président (compte créé)</div>
+          <div class="form-grid">
+            <label class="f"><span>Prénom *</span>
+              <input class="param-input wide" [(ngModel)]="form.president.prenom" name="pprenom"></label>
+            <label class="f"><span>Nom *</span>
+              <input class="param-input wide" [(ngModel)]="form.president.nom" name="pnom"></label>
+            <label class="f"><span>Email *</span>
+              <input class="param-input wide" type="email" [(ngModel)]="form.president.email" name="pemail" placeholder="president@club.fr"></label>
+            <label class="f"><span>Mot de passe *</span>
+              <input class="param-input wide" type="text" [(ngModel)]="form.president.motDePasse" name="pmdp" placeholder="à communiquer au président"></label>
+          </div>
+
+          <div class="form-actions">
+            <button type="submit" class="btn-dark-primary" [disabled]="saving()">
+              {{ saving() ? 'Création…' : 'Créer le club' }}
+            </button>
+          </div>
+        </form>
+      }
+
+      @if (loading()) {
+        <p class="empty-state">Chargement…</p>
+      } @else if (clubs().length === 0) {
+        <p class="empty-state">Aucun club. Créez le premier.</p>
+      } @else {
+        <div class="clubs-grid">
+          @for (c of clubs(); track c.id) {
+            <div class="club-card">
+              <div class="club-card-head">
+                <span class="club-nom">{{ c.nom }}</span>
+                <button class="btn-icon-danger" (click)="supprimer(c)" title="Supprimer">✕</button>
+              </div>
+              <div class="club-info">
+                <span class="info-label">Président</span>
+                <span>{{ c.presidentPrenom }} {{ c.presidentNom }}</span>
+                <span class="info-label">Email</span>
+                <span>{{ c.presidentEmail || '—' }}</span>
+                <span class="info-label">Équipes</span>
+                <span>{{ c.nbEquipes }} / 3</span>
+                <span class="info-label">Créé le</span>
+                <span>{{ c.dateCreation | date:'dd/MM/yyyy' }}</span>
+              </div>
+            </div>
+          }
+        </div>
+      }
+
+    </mat-card-content>
+  </mat-card>
+</div>

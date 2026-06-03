@@ -1,0 +1,124 @@
+import { Component, OnInit, computed, signal } from '@angular/core';
+import { FormsModule } from '@angular/forms';
+import { MatToolbar } from '@angular/material/toolbar';
+import { MatCard, MatCardContent, MatCardHeader, MatCardTitle } from '@angular/material/card';
+import { MatSnackBar } from '@angular/material/snack-bar';
+import {
+  Equipe, Membre, MembreCreateRequest, MonClub, MonClubService,
+} from '../../core/services/mon-club.service';
+
+const MAX_EQUIPES = 3;
+
+const ROLES_MEMBRES = [
+  { value: 'ENTRAINEUR',    label: 'Entraîneur' },
+  { value: 'PREPARATEUR',   label: 'Préparateur physique' },
+  { value: 'MEDICAL',       label: 'Staff médical' },
+  { value: 'ADMINISTRATIF', label: 'Administratif' },
+  { value: 'JOUEUR',        label: 'Joueur' },
+];
+
+@Component({
+  selector: 'app-mon-club',
+  standalone: true,
+  templateUrl: './mon-club.component.html',
+  styleUrl: './mon-club.component.scss',
+  imports: [FormsModule, MatToolbar, MatCard, MatCardContent, MatCardHeader, MatCardTitle],
+})
+export class MonClubComponent implements OnInit {
+
+  readonly rolesMembres = ROLES_MEMBRES;
+  readonly maxEquipes = MAX_EQUIPES;
+
+  data = signal<MonClub | null>(null);
+  loading = signal(true);
+
+  showEquipeForm = signal(false);
+  equipeForm = { nom: '', categorie: '' };
+  savingEquipe = signal(false);
+
+  showMembreForm = signal(false);
+  membreForm: MembreCreateRequest = this.membreVide();
+  savingMembre = signal(false);
+
+  readonly equipes = computed(() => this.data()?.equipes ?? []);
+  readonly membres = computed(() => this.data()?.membres ?? []);
+  readonly equipesPleines = computed(() => this.equipes().length >= MAX_EQUIPES);
+
+  constructor(private service: MonClubService, private snack: MatSnackBar) {}
+
+  ngOnInit(): void { this.charger(); }
+
+  charger(): void {
+    this.loading.set(true);
+    this.service.getMonClub().subscribe({
+      next: d => { this.data.set(d); this.loading.set(false); },
+      error: () => { this.loading.set(false); this.snack.open('Erreur de chargement', 'Fermer', { duration: 3000 }); },
+    });
+  }
+
+  // ── Equipes ──
+  creerEquipe(): void {
+    if (!this.equipeForm.nom || this.equipesPleines()) return;
+    this.savingEquipe.set(true);
+    this.service.creerEquipe({ nom: this.equipeForm.nom, categorie: this.equipeForm.categorie || undefined }).subscribe({
+      next: () => {
+        this.savingEquipe.set(false);
+        this.equipeForm = { nom: '', categorie: '' };
+        this.showEquipeForm.set(false);
+        this.charger();
+      },
+      error: (err) => {
+        this.savingEquipe.set(false);
+        this.snack.open(err.status === 400 ? 'Maximum 3 équipes par club' : 'Erreur', 'Fermer', { duration: 3000 });
+      },
+    });
+  }
+
+  supprimerEquipe(e: Equipe): void {
+    if (!confirm(`Supprimer l'équipe « ${e.nom} » ?`)) return;
+    this.service.supprimerEquipe(e.id).subscribe({
+      next: () => this.charger(),
+      error: () => this.snack.open('Suppression impossible', 'Fermer', { duration: 3000 }),
+    });
+  }
+
+  // ── Membres ──
+  creerMembre(): void {
+    const f = this.membreForm;
+    if (!f.email || !f.nom || !f.prenom || !f.motDePasse || !f.role) return;
+    this.savingMembre.set(true);
+    this.service.creerMembre({ ...f, equipeId: f.equipeId || undefined, specialite: f.specialite || undefined }).subscribe({
+      next: () => {
+        this.savingMembre.set(false);
+        this.membreForm = this.membreVide();
+        this.showMembreForm.set(false);
+        this.charger();
+      },
+      error: (err) => {
+        this.savingMembre.set(false);
+        this.snack.open(err.status === 409 ? 'Cet email est déjà utilisé' : 'Erreur lors de la création', 'Fermer', { duration: 3500 });
+      },
+    });
+  }
+
+  supprimerMembre(m: Membre): void {
+    if (!confirm(`Retirer ${m.prenom} ${m.nom} du club ?`)) return;
+    this.service.supprimerMembre(m.id).subscribe({
+      next: () => this.charger(),
+      error: () => this.snack.open('Suppression impossible', 'Fermer', { duration: 3000 }),
+    });
+  }
+
+  nomEquipe(id?: string): string {
+    if (!id) return '—';
+    return this.equipes().find(e => e.id === id)?.nom ?? '—';
+  }
+
+  labelRole(role: string): string {
+    return ROLES_MEMBRES.find(r => r.value === role)?.label ?? role;
+  }
+
+  private membreVide(): MembreCreateRequest {
+    return { email: '', nom: '', prenom: '', motDePasse: '', role: '', specialite: '', equipeId: '' };
+  }
+}

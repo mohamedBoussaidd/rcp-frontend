@@ -19,9 +19,9 @@ export class LoginComponent {
   erreur = signal<string | null>(null);
 
   constructor(private auth: AuthService, private router: Router) {
-    // Déjà connecté : on saute directement au dashboard
+    // Déjà connecté : on saute directement à l'accueil du rôle
     if (this.auth.isAuthenticated()) {
-      this.router.navigate(['/dashboard']);
+      this.router.navigateByUrl(this.auth.homeRoute());
     }
   }
 
@@ -33,7 +33,7 @@ export class LoginComponent {
     this.auth.login(this.email.trim(), this.motDePasse).subscribe({
       next: () => {
         this.loading.set(false);
-        this.router.navigate(['/dashboard']);
+        this.router.navigateByUrl(this.auth.homeRoute());
       },
       error: (err) => {
         this.loading.set(false);

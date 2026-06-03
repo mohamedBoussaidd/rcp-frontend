@@ -62,6 +62,15 @@ export class AuthService {
     return !!u && roles.includes(u.role);
   }
 
+  /** Page d'accueil selon le rôle (après login / accès racine). */
+  homeRoute(): string {
+    switch (this.currentUser()?.role) {
+      case 'SUPER_ADMIN': return '/admin/clubs';
+      case 'PRESIDENT':   return '/mon-club';
+      default:            return '/dashboard';
+    }
+  }
+
   private store(res: LoginResponse): void {
     localStorage.setItem(AuthService.TOKEN_KEY, res.token);
     const { token, type, ...user } = res;
