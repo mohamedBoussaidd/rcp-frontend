@@ -9,6 +9,7 @@ import { MatToolbar } from '@angular/material/toolbar';
 import { MatTooltip } from '@angular/material/tooltip';
 import { DragDropModule } from '@angular/cdk/drag-drop';
 import { DatePipe, LowerCasePipe } from '@angular/common';
+import { AuthService } from '../../core/services/auth.service';
 
 export const COULEURS_TYPE: Record<string, string> = {
   MATCH:        '#ef4444',
@@ -70,7 +71,8 @@ export class CalendrierComponent implements OnInit {
     private seanceService: SeanceService,
     private dialog: MatDialog,
     private snackBar: MatSnackBar,
-    private router: Router
+    private router: Router,
+    public auth: AuthService
   ) {}
 
   ngOnInit(): void {

@@ -4,7 +4,8 @@
 
 <div class="cal-layout">
 
-  <!-- ── Palette gauche ── -->
+  <!-- ── Palette gauche (édition séances) ── -->
+  @if (auth.canEcrireSeances()) {
   <aside class="palette" cdkDropList id="palette" [cdkDropListData]="typeSeances"
          [cdkDropListConnectedTo]="joursIds">
     <h3 class="palette-titre">Types de séance</h3>
@@ -42,6 +43,7 @@
       </div>
     }
   </aside>
+  }
 
   <!-- ── Zone calendrier ── -->
   <div class="cal-zone">
@@ -80,14 +82,16 @@
                    [class.realisee]="seance.statut === 'REALISEE'"
                    [class.annulee]="seance.statut === 'ANNULEE'">
 
-                <div class="seance-actions">
-                  @if (seance.statut === 'PLANIFIEE') {
-                    <button class="btn-realise" (click)="marquerRealisee(seance, $event)"
-                            matTooltip="Marquer comme réalisée">✓</button>
-                  }
-                  <button class="btn-suppr" (click)="supprimerSeance(seance, $event)"
-                          matTooltip="Supprimer">✕</button>
-                </div>
+                @if (auth.canEcrireSeances()) {
+                  <div class="seance-actions">
+                    @if (seance.statut === 'PLANIFIEE') {
+                      <button class="btn-realise" (click)="marquerRealisee(seance, $event)"
+                              matTooltip="Marquer comme réalisée">✓</button>
+                    }
+                    <button class="btn-suppr" (click)="supprimerSeance(seance, $event)"
+                            matTooltip="Supprimer">✕</button>
+                  </div>
+                }
 
                 <span class="seance-titre">{{ seance.titre || seance.typeSeance.libelle }}</span>
 
