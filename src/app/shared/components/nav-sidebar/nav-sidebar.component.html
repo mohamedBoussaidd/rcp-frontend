@@ -11,7 +11,7 @@
 
   <!-- ── Navigation ── -->
   <ul class="sidebar-nav" (click)="sidebarService.close()">
-    @for (item of navItems; track item.route) {
+    @for (item of navItems(); track item.route) {
       <li>
         <a class="nav-item"
            [routerLink]="item.route"
@@ -26,10 +26,27 @@
 
   <!-- ── Pied de sidebar ── -->
   <div class="sidebar-footer">
+
+    @if (user(); as u) {
+      <div class="sidebar-user">
+        <div class="user-avatar">{{ (u.prenom || u.email).charAt(0).toUpperCase() }}</div>
+        <div class="user-meta">
+          <span class="user-name">{{ u.prenom }} {{ u.nom }}</span>
+          <span class="user-role">{{ roleLabel(u.role) }}</span>
+        </div>
+      </div>
+    }
+
     <button class="btn-theme" (click)="themeService.toggle()">
       <mat-icon>{{ themeService.isDark() ? 'light_mode' : 'dark_mode' }}</mat-icon>
       <span>{{ themeService.isDark() ? 'Thème clair' : 'Thème sombre' }}</span>
     </button>
+
+    <button class="btn-logout" (click)="deconnexion()">
+      <mat-icon>logout</mat-icon>
+      <span>Déconnexion</span>
+    </button>
+
   </div>
 
 </nav>

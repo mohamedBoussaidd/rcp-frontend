@@ -1,10 +1,14 @@
-<div class="app-shell" [class.sidebar-open]="sidebar.isOpen()">
-  <div class="sidebar-overlay" (click)="sidebar.close()"></div>
-  <app-nav-sidebar></app-nav-sidebar>
-  <main class="app-main">
-    <button class="hamburger-btn" (click)="sidebar.toggle()">
-      <mat-icon>menu</mat-icon>
-    </button>
-    <router-outlet></router-outlet>
-  </main>
-</div>
+@if (auth.currentUser()) {
+  <div class="app-shell" [class.sidebar-open]="sidebar.isOpen()">
+    <div class="sidebar-overlay" (click)="sidebar.close()"></div>
+    <app-nav-sidebar></app-nav-sidebar>
+    <main class="app-main">
+      <button class="hamburger-btn" (click)="sidebar.toggle()">
+        <mat-icon>menu</mat-icon>
+      </button>
+      <router-outlet></router-outlet>
+    </main>
+  </div>
+} @else {
+  <router-outlet></router-outlet>
+}

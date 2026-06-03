@@ -1,0 +1,36 @@
+<div class="login-page">
+  <form class="login-card" (ngSubmit)="soumettre()">
+
+    <div class="login-brand">
+      <mat-icon class="login-logo">sports_soccer</mat-icon>
+      <div>
+        <div class="login-title">RCP</div>
+        <div class="login-sub">Préparateur physique</div>
+      </div>
+    </div>
+
+    <h1 class="login-heading">Connexion</h1>
+
+    <label class="login-field">
+      <span>Email</span>
+      <input type="email" name="email" [(ngModel)]="email"
+             autocomplete="username" placeholder="vous@club.fr" required>
+    </label>
+
+    <label class="login-field">
+      <span>Mot de passe</span>
+      <input type="password" name="motDePasse" [(ngModel)]="motDePasse"
+             autocomplete="current-password" placeholder="••••••••" required>
+    </label>
+
+    @if (erreur()) {
+      <div class="login-error">{{ erreur() }}</div>
+    }
+
+    <button type="submit" class="btn-dark-primary login-submit"
+            [disabled]="loading() || !email || !motDePasse">
+      {{ loading() ? 'Connexion…' : 'Se connecter' }}
+    </button>
+
+  </form>
+</div>

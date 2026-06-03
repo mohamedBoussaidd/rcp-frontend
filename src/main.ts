@@ -1,8 +1,9 @@
 import { bootstrapApplication } from '@angular/platform-browser';
 import { provideAnimations } from '@angular/platform-browser/animations';
-import { provideHttpClient } from '@angular/common/http';
+import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { provideRouter } from '@angular/router';
 import { importProvidersFrom, LOCALE_ID } from '@angular/core';
+import { jwtInterceptor } from './app/core/interceptors/jwt.interceptor';
 
 import { NgApexchartsModule } from 'ng-apexcharts';
 import { registerLocaleData } from '@angular/common';
@@ -16,7 +17,7 @@ registerLocaleData(localeFr);
 bootstrapApplication(AppComponent, {
   providers: [
     provideRouter(routes),
-    provideHttpClient(),
+    provideHttpClient(withInterceptors([jwtInterceptor])),
     provideAnimations(),
     importProvidersFrom(NgApexchartsModule),
     { provide: LOCALE_ID, useValue: 'fr' },
