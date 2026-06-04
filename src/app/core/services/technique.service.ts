@@ -43,6 +43,7 @@ export interface SeanceTechnique {
   heureDebut?: string;
   titre?: string;
   objectif?: string;
+  description?: string;
   statut: string;
   creeParNom?: string;
   dureeTotaleMinutes: number;
@@ -55,6 +56,7 @@ export interface SeanceTechniqueRequest {
   heureDebut?: string | null;
   titre?: string;
   objectif?: string;
+  description?: string;
   exerciceIds: string[];
 }
 

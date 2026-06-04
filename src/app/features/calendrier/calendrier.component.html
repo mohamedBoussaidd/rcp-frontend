@@ -128,10 +128,18 @@
               <div class="seance-tech" [class.realisee]="st.statut === 'REALISEE'">
                 <div class="tech-head">
                   <span class="tech-badge">Technique</span>
-                  @if (st.dureeTotaleMinutes) { <span class="tech-duree">{{ st.dureeTotaleMinutes }} min</span> }
+                  <span class="tech-duree">{{ st.dureeTotaleMinutes }} min · int. {{ st.intensiteMoyenne ?? '—' }}</span>
                 </div>
                 <span class="tech-titre">{{ st.titre || 'Séance technique' }}</span>
-                <span class="tech-meta">int. {{ st.intensiteMoyenne ?? '—' }} · {{ st.exercices.length }} exo.</span>
+                @if (st.objectif) { <span class="tech-obj">🎯 {{ st.objectif }}</span> }
+                @if (st.description) { <span class="tech-desc">{{ st.description }}</span> }
+                @if (st.exercices.length) {
+                  <ul class="tech-exos">
+                    @for (ex of st.exercices; track ex.exerciceId) {
+                      <li><span class="tech-exo-nom">{{ ex.nom }}</span><span class="tech-exo-duree">{{ ex.dureeMinutes || 0 }}'</span></li>
+                    }
+                  </ul>
+                }
               </div>
             }
 

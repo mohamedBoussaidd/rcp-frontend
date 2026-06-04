@@ -53,7 +53,7 @@ export class PlanningTechniqueComponent implements OnInit {
   // Composition seance
   showSeanceForm = signal(false);
   editingSeanceId = signal<string | null>(null);
-  seanceForm = { date: new Date().toISOString().slice(0, 10), titre: '', objectif: '' };
+  seanceForm = { date: new Date().toISOString().slice(0, 10), titre: '', objectif: '', description: '' };
   selection = signal<Exercice[]>([]);
   savingSeance = signal(false);
 
@@ -117,7 +117,7 @@ export class PlanningTechniqueComponent implements OnInit {
   nouvelleSeance(): void {
     this.editingSeanceId.set(null);
     this.selection.set([]);
-    this.seanceForm = { date: new Date().toISOString().slice(0, 10), titre: '', objectif: '' };
+    this.seanceForm = { date: new Date().toISOString().slice(0, 10), titre: '', objectif: '', description: '' };
     this.showSeanceForm.set(true);
   }
 
@@ -129,7 +129,7 @@ export class PlanningTechniqueComponent implements OnInit {
 
   editerSeance(s: SeanceTechnique): void {
     this.editingSeanceId.set(s.id);
-    this.seanceForm = { date: s.date, titre: s.titre ?? '', objectif: s.objectif ?? '' };
+    this.seanceForm = { date: s.date, titre: s.titre ?? '', objectif: s.objectif ?? '', description: s.description ?? '' };
     const lib = this.exercices();
     this.selection.set(s.exercices.map(l => lib.find(e => e.id === l.exerciceId) ?? ({
       id: l.exerciceId, nom: l.nom, categorie: l.categorie, dureeMinutes: l.dureeMinutes,
@@ -145,6 +145,7 @@ export class PlanningTechniqueComponent implements OnInit {
       date: this.seanceForm.date,
       titre: this.seanceForm.titre || undefined,
       objectif: this.seanceForm.objectif || undefined,
+      description: this.seanceForm.description || undefined,
       exerciceIds: this.selection().map(e => e.id),
     };
     const id = this.editingSeanceId();

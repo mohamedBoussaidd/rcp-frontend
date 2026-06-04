@@ -215,22 +215,22 @@
 .btn-suppr   { background: var(--danger-bg);  color: var(--danger); }
 .btn-edit    { background: var(--copper-soft); color: var(--copper); }
 
-/* ── Séances techniques (bloc distinct, teal) ── */
+/* ── Séances techniques (bloc distinct, teal, enrichi) ── */
 .seance-tech {
-  border-left: 3px solid #14b8a6;
+  border-left: 4px solid #14b8a6;
   background: rgba(20, 184, 166, .08);
-  border-radius: 6px;
-  padding: 6px 8px;
-  margin-bottom: 6px;
+  border-radius: 8px;
+  padding: 9px 10px;
+  margin-bottom: 8px;
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 5px;
 
   &.realisee { opacity: .6; }
 }
-.tech-head { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
+.tech-head { display: flex; align-items: center; justify-content: space-between; gap: 6px; flex-wrap: wrap; }
 .tech-badge {
-  font-size: 0.58rem;
+  font-size: 0.62rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: .04em;
@@ -238,11 +238,32 @@
   background: rgba(20, 184, 166, .14);
   border: 1px solid rgba(20, 184, 166, .3);
   border-radius: 20px;
-  padding: 1px 7px;
+  padding: 2px 9px;
 }
-.tech-duree { font-size: 0.62rem; color: var(--muted); }
-.tech-titre { font-size: 0.74rem; font-weight: 600; color: var(--text); }
-.tech-meta { font-size: 0.64rem; color: var(--muted); }
+.tech-duree { font-size: 0.72rem; font-weight: 600; color: #14b8a6; }
+.tech-titre { font-size: 0.86rem; font-weight: 700; color: var(--text); }
+.tech-obj { font-size: 0.76rem; color: var(--text-2); }
+.tech-desc { font-size: 0.74rem; color: var(--muted); line-height: 1.35; }
+
+.tech-exos {
+  list-style: none;
+  margin: 2px 0 0;
+  padding: 6px 0 0;
+  border-top: 1px dashed rgba(20, 184, 166, .25);
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+
+  li {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    font-size: 0.74rem;
+  }
+}
+.tech-exo-nom { color: var(--text-2); }
+.tech-exo-duree { color: var(--muted); font-size: 0.68rem; flex-shrink: 0; }
 
 @media (max-width: 1024px) {
   .grille { grid-template-columns: repeat(5, 1fr); }
