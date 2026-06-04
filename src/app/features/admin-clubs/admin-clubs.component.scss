@@ -90,6 +90,20 @@
   &:hover { opacity: .8; }
 }
 
+.card-actions { display: flex; gap: 6px; flex-shrink: 0; }
+
+.btn-mini {
+  border: 1px solid var(--copper-border);
+  background: var(--copper-soft);
+  color: var(--copper);
+  border-radius: 8px;
+  width: 28px;
+  height: 28px;
+  cursor: pointer;
+  font-size: 0.8rem;
+  &:hover { opacity: .8; }
+}
+
 @media (max-width: 600px) {
   .admin-content { padding: 12px 8px; }
   .form-grid { grid-template-columns: 1fr; }

@@ -58,6 +58,10 @@ export class MonClubService {
     return this.http.post<Equipe>(`${this.base}/mon-club/equipes`, req);
   }
 
+  modifierEquipe(id: string, req: EquipeRequest): Observable<Equipe> {
+    return this.http.put<Equipe>(`${this.base}/equipes/${id}`, req);
+  }
+
   supprimerEquipe(id: string): Observable<void> {
     return this.http.delete<void>(`${this.base}/equipes/${id}`);
   }

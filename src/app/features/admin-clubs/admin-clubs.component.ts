@@ -22,7 +22,25 @@ export class AdminClubsComponent implements OnInit {
 
   form: ClubCreateRequest = this.formVide();
 
+  editingId = signal<string | null>(null);
+  editForm = { nom: '', logo: '' };
+
   constructor(private clubService: ClubService, private snack: MatSnackBar) {}
+
+  editer(c: Club): void {
+    this.editingId.set(c.id);
+    this.editForm = { nom: c.nom, logo: c.logo ?? '' };
+  }
+
+  annulerEdit(): void { this.editingId.set(null); }
+
+  enregistrerEdit(c: Club): void {
+    if (!this.editForm.nom) return;
+    this.clubService.modifier(c.id, { nom: this.editForm.nom, logo: this.editForm.logo || null }).subscribe({
+      next: () => { this.editingId.set(null); this.snack.open('Club modifié', 'Fermer', { duration: 2500 }); this.charger(); },
+      error: () => this.snack.open('Modification impossible', 'Fermer', { duration: 3000 }),
+    });
+  }
 
   ngOnInit(): void { this.charger(); }
 

@@ -34,6 +34,10 @@ export class ClubService {
     return this.http.post<Club>(this.base, req);
   }
 
+  modifier(id: string, req: { nom: string; logo?: string | null }): Observable<Club> {
+    return this.http.put<Club>(`${this.base}/${id}`, req);
+  }
+
   supprimer(id: string): Observable<void> {
     return this.http.delete<void>(`${this.base}/${id}`);
   }

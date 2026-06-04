@@ -92,6 +92,43 @@ export class MonClubComponent implements OnInit {
     });
   }
 
+  editingEquipeId = signal<string | null>(null);
+  editEquipeForm = { nom: '', categorie: '' };
+
+  editerEquipe(e: Equipe): void {
+    this.editingEquipeId.set(e.id);
+    this.editEquipeForm = { nom: e.nom, categorie: e.categorie ?? '' };
+  }
+  annulerEditEquipe(): void { this.editingEquipeId.set(null); }
+  enregistrerEquipe(e: Equipe): void {
+    if (!this.editEquipeForm.nom) return;
+    this.service.modifierEquipe(e.id, { nom: this.editEquipeForm.nom, categorie: this.editEquipeForm.categorie || undefined }).subscribe({
+      next: () => { this.editingEquipeId.set(null); this.charger(); },
+      error: () => this.snack.open('Modification impossible', 'Fermer', { duration: 3000 }),
+    });
+  }
+
+  editingMembreId = signal<string | null>(null);
+  editMembreForm: { role: string; specialite: string; equipeId: string; actif: boolean } =
+    { role: '', specialite: '', equipeId: '', actif: true };
+
+  editerMembre(m: Membre): void {
+    this.editingMembreId.set(m.id);
+    this.editMembreForm = { role: m.role, specialite: m.specialite ?? '', equipeId: m.equipeId ?? '', actif: m.actif };
+  }
+  annulerEditMembre(): void { this.editingMembreId.set(null); }
+  enregistrerMembre(m: Membre): void {
+    this.service.modifierMembre(m.id, {
+      role: this.editMembreForm.role,
+      specialite: this.editMembreForm.specialite || undefined,
+      equipeId: this.editMembreForm.equipeId || undefined,
+      actif: this.editMembreForm.actif,
+    }).subscribe({
+      next: () => { this.editingMembreId.set(null); this.charger(); },
+      error: () => this.snack.open('Modification impossible', 'Fermer', { duration: 3000 }),
+    });
+  }
+
   // ── Membres ──
   creerMembre(): void {
     const f = this.membreForm;

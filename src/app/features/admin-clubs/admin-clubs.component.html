@@ -52,9 +52,24 @@
           @for (c of clubs(); track c.id) {
             <div class="club-card">
               <div class="club-card-head">
-                <span class="club-nom">{{ c.nom }}</span>
-                <button class="btn-icon-danger" (click)="supprimer(c)" title="Supprimer">✕</button>
+                @if (editingId() === c.id) {
+                  <input class="param-input wide" [(ngModel)]="editForm.nom" name="editnom-{{c.id}}">
+                } @else {
+                  <span class="club-nom">{{ c.nom }}</span>
+                }
+                <div class="card-actions">
+                  @if (editingId() === c.id) {
+                    <button class="btn-mini" (click)="enregistrerEdit(c)">✓</button>
+                    <button class="btn-mini" (click)="annulerEdit()">✕</button>
+                  } @else {
+                    <button class="btn-mini" (click)="editer(c)" title="Modifier">✎</button>
+                    <button class="btn-icon-danger" (click)="supprimer(c)" title="Supprimer">✕</button>
+                  }
+                </div>
               </div>
+              @if (editingId() === c.id) {
+                <input class="param-input wide" [(ngModel)]="editForm.logo" name="editlogo-{{c.id}}" placeholder="Logo (URL)">
+              }
               <div class="club-info">
                 <span class="info-label">Président</span>
                 <span>{{ c.presidentPrenom }} {{ c.presidentNom }}</span>
