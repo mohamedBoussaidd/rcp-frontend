@@ -1,5 +1,20 @@
 :host { display: block; }
+// 3. CSS pour le plein écran (optionnel)
+:host {
+  display: block;
+  height: 100%;
+}
 
+#terrainContainer:-webkit-full-screen,
+#terrainContainer:-moz-full-screen,
+#terrainContainer:-ms-fullscreen,
+#terrainContainer:fullscreen {
+  width: 100vw !important;
+  height: 100vh !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  background: var(--surface) !important;
+}
 .editor {
   display: flex;
   flex-direction: column;
@@ -105,6 +120,17 @@
   &:hover { border-color: var(--copper-border); color: var(--text); }
 }
 .pal-pastille { width: 14px; height: 14px; border-radius: 50%; border: 1px solid #00000033; flex-shrink: 0; }
+.pal-nom { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pal-poste {
+  flex-shrink: 0;
+  font-size: 0.62rem;
+  text-transform: uppercase;
+  letter-spacing: .03em;
+  color: var(--muted);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  padding: 1px 5px;
+}
 
 .pal-aide { font-size: 0.7rem; color: var(--muted); padding: 10px 6px; line-height: 1.5; }
 

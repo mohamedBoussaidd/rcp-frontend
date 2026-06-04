@@ -3,12 +3,14 @@ import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import Konva from 'konva';
 import { Exercice, FormationCustom, TechniqueService } from '../../../core/services/technique.service';
+import { Joueur, JoueurService } from '../../../core/services/joueur.service';
+import { MatIcon } from "@angular/material/icon";
 
 type Terrain = 'complet' | 'demi';
 type Outil = 'select' | 'deplacement' | 'conduite' | 'passe' | 'tir' | 'supprimer';
 type TraceType = 'deplacement' | 'conduite' | 'passe' | 'tir';
 
-interface SchemaElement { id: string; type: string; couleur?: string; numero?: number; x: number; y: number; }
+interface SchemaElement { id: string; type: string; couleur?: string; numero?: number; label?: string; joueurId?: string; x: number; y: number; }
 interface SchemaTrace { id: string; type: TraceType; points: number[]; }
 interface Keyframe { t: number; positions: Record<string, { x: number; y: number }>; }
 
@@ -20,6 +22,7 @@ const BLEU = '#2563eb';
   standalone: true,
   templateUrl: './schema-editor.component.html',
   styleUrl: './schema-editor.component.scss',
+  imports: [MatIcon],
 })
 export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
 
@@ -59,26 +62,41 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
   equipeFormation = signal<string>(VIOLET);
   // Positions normalisées (x = profondeur 0=notre but → 1=but adverse ; y = largeur 0→1)
   readonly formations: { nom: string; positions: { x: number; y: number }[] }[] = [
-    { nom: '4-3-3', positions: [
-      { x: .06, y: .5 }, { x: .20, y: .16 }, { x: .20, y: .39 }, { x: .20, y: .61 }, { x: .20, y: .84 },
-      { x: .35, y: .27 }, { x: .35, y: .5 }, { x: .35, y: .73 }, { x: .47, y: .22 }, { x: .47, y: .5 }, { x: .47, y: .78 } ] },
-    { nom: '4-4-2', positions: [
-      { x: .06, y: .5 }, { x: .20, y: .16 }, { x: .20, y: .39 }, { x: .20, y: .61 }, { x: .20, y: .84 },
-      { x: .35, y: .16 }, { x: .35, y: .39 }, { x: .35, y: .61 }, { x: .35, y: .84 }, { x: .47, y: .4 }, { x: .47, y: .6 } ] },
-    { nom: '4-2-3-1', positions: [
-      { x: .06, y: .5 }, { x: .20, y: .16 }, { x: .20, y: .39 }, { x: .20, y: .61 }, { x: .20, y: .84 },
-      { x: .30, y: .38 }, { x: .30, y: .62 }, { x: .42, y: .22 }, { x: .42, y: .5 }, { x: .42, y: .78 }, { x: .5, y: .5 } ] },
-    { nom: '3-5-2', positions: [
-      { x: .06, y: .5 }, { x: .20, y: .27 }, { x: .20, y: .5 }, { x: .20, y: .73 },
-      { x: .34, y: .1 }, { x: .34, y: .32 }, { x: .34, y: .5 }, { x: .34, y: .68 }, { x: .34, y: .9 }, { x: .47, y: .4 }, { x: .47, y: .6 } ] },
-    { nom: '3-4-3', positions: [
-      { x: .06, y: .5 }, { x: .20, y: .27 }, { x: .20, y: .5 }, { x: .20, y: .73 },
-      { x: .35, y: .16 }, { x: .35, y: .39 }, { x: .35, y: .61 }, { x: .35, y: .84 }, { x: .47, y: .22 }, { x: .47, y: .5 }, { x: .47, y: .78 } ] },
-    { nom: '5-3-2', positions: [
-      { x: .06, y: .5 }, { x: .20, y: .1 }, { x: .20, y: .3 }, { x: .20, y: .5 }, { x: .20, y: .7 }, { x: .20, y: .9 },
-      { x: .35, y: .27 }, { x: .35, y: .5 }, { x: .35, y: .73 }, { x: .47, y: .4 }, { x: .47, y: .6 } ] },
+    {
+      nom: '4-3-3', positions: [
+        { x: .06, y: .5 }, { x: .20, y: .16 }, { x: .20, y: .39 }, { x: .20, y: .61 }, { x: .20, y: .84 },
+        { x: .35, y: .27 }, { x: .35, y: .5 }, { x: .35, y: .73 }, { x: .47, y: .22 }, { x: .47, y: .5 }, { x: .47, y: .78 }]
+    },
+    {
+      nom: '4-4-2', positions: [
+        { x: .06, y: .5 }, { x: .20, y: .16 }, { x: .20, y: .39 }, { x: .20, y: .61 }, { x: .20, y: .84 },
+        { x: .35, y: .16 }, { x: .35, y: .39 }, { x: .35, y: .61 }, { x: .35, y: .84 }, { x: .47, y: .4 }, { x: .47, y: .6 }]
+    },
+    {
+      nom: '4-2-3-1', positions: [
+        { x: .06, y: .5 }, { x: .20, y: .16 }, { x: .20, y: .39 }, { x: .20, y: .61 }, { x: .20, y: .84 },
+        { x: .30, y: .38 }, { x: .30, y: .62 }, { x: .42, y: .22 }, { x: .42, y: .5 }, { x: .42, y: .78 }, { x: .5, y: .5 }]
+    },
+    {
+      nom: '3-5-2', positions: [
+        { x: .06, y: .5 }, { x: .20, y: .27 }, { x: .20, y: .5 }, { x: .20, y: .73 },
+        { x: .34, y: .1 }, { x: .34, y: .32 }, { x: .34, y: .5 }, { x: .34, y: .68 }, { x: .34, y: .9 }, { x: .47, y: .4 }, { x: .47, y: .6 }]
+    },
+    {
+      nom: '3-4-3', positions: [
+        { x: .06, y: .5 }, { x: .20, y: .27 }, { x: .20, y: .5 }, { x: .20, y: .73 },
+        { x: .35, y: .16 }, { x: .35, y: .39 }, { x: .35, y: .61 }, { x: .35, y: .84 }, { x: .47, y: .22 }, { x: .47, y: .5 }, { x: .47, y: .78 }]
+    },
+    {
+      nom: '5-3-2', positions: [
+        { x: .06, y: .5 }, { x: .20, y: .1 }, { x: .20, y: .3 }, { x: .20, y: .5 }, { x: .20, y: .7 }, { x: .20, y: .9 },
+        { x: .35, y: .27 }, { x: .35, y: .5 }, { x: .35, y: .73 }, { x: .47, y: .4 }, { x: .47, y: .6 }]
+    },
   ];
   formationsCustom = signal<FormationCustom[]>([]);
+
+  // ── Effectif réel (Brique 1) : joueurs de l'équipe de l'utilisateur connecté ──
+  effectif = signal<Joueur[]>([]);
 
   // ── Coups de pied arrêtés ──
   modeArret = signal<'offensif' | 'defensif'>('offensif');
@@ -90,30 +108,30 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
     defenseurs: { x: number; y: number }[];
     mur?: { x: number; y: number }[];
   }> = {
-    corner: {
-      ball: { x: .992, y: .965 },              // dans l'angle
-      attaquants: [
-        { x: .96, y: .92 },                    // tireur du corner
-        { x: .93, y: .85 }, { x: .9, y: .7 }, { x: .92, y: .5 }, { x: .9, y: .3 },
-        { x: .84, y: .5 }, { x: .77, y: .4 }, { x: .77, y: .6 }, { x: .55, y: .45 }, { x: .55, y: .6 }, { x: .07, y: .5 } ],
-      defenseurs: [
-        { x: .965, y: .5 },                    // gardien adverse
-        { x: .93, y: .44 }, { x: .93, y: .56 }, { x: .88, y: .38 }, { x: .88, y: .5 }, { x: .88, y: .62 },
-        { x: .85, y: .46 }, { x: .85, y: .58 }, { x: .78, y: .5 }, { x: .9, y: .82 }, { x: .6, y: .5 } ],
-    },
-    cf: {
-      ball: { x: .72, y: .6 },                 // entrée de la surface, côté droit
-      attaquants: [
-        { x: .71, y: .57 }, { x: .69, y: .66 },           // tireurs
-        { x: .86, y: .4 }, { x: .86, y: .5 }, { x: .86, y: .6 }, { x: .82, y: .32 }, { x: .82, y: .68 },
-        { x: .6, y: .45 }, { x: .6, y: .6 }, { x: .42, y: .5 }, { x: .07, y: .5 } ],
-      defenseurs: [
-        { x: .965, y: .5 },                    // gardien adverse
-        { x: .9, y: .4 }, { x: .9, y: .6 }, { x: .87, y: .45 }, { x: .87, y: .5 }, { x: .87, y: .55 },
-        { x: .7, y: .42 }, { x: .7, y: .58 }, { x: .55, y: .5 }, { x: .5, y: .4 }, { x: .5, y: .6 } ],
-      mur: [{ x: .8, y: .47 }, { x: .8, y: .51 }, { x: .8, y: .55 }, { x: .8, y: .59 }],  // mannequins
-    },
-  };
+      corner: {
+        ball: { x: .992, y: .965 },              // dans l'angle
+        attaquants: [
+          { x: .96, y: .92 },                    // tireur du corner
+          { x: .93, y: .85 }, { x: .9, y: .7 }, { x: .92, y: .5 }, { x: .9, y: .3 },
+          { x: .84, y: .5 }, { x: .77, y: .4 }, { x: .77, y: .6 }, { x: .55, y: .45 }, { x: .55, y: .6 }, { x: .07, y: .5 }],
+        defenseurs: [
+          { x: .965, y: .5 },                    // gardien adverse
+          { x: .93, y: .44 }, { x: .93, y: .56 }, { x: .88, y: .38 }, { x: .88, y: .5 }, { x: .88, y: .62 },
+          { x: .85, y: .46 }, { x: .85, y: .58 }, { x: .78, y: .5 }, { x: .9, y: .82 }, { x: .6, y: .5 }],
+      },
+      cf: {
+        ball: { x: .72, y: .6 },                 // entrée de la surface, côté droit
+        attaquants: [
+          { x: .71, y: .57 }, { x: .69, y: .66 },           // tireurs
+          { x: .86, y: .4 }, { x: .86, y: .5 }, { x: .86, y: .6 }, { x: .82, y: .32 }, { x: .82, y: .68 },
+          { x: .6, y: .45 }, { x: .6, y: .6 }, { x: .42, y: .5 }, { x: .07, y: .5 }],
+        defenseurs: [
+          { x: .965, y: .5 },                    // gardien adverse
+          { x: .9, y: .4 }, { x: .9, y: .6 }, { x: .87, y: .45 }, { x: .87, y: .5 }, { x: .87, y: .55 },
+          { x: .7, y: .42 }, { x: .7, y: .58 }, { x: .55, y: .5 }, { x: .5, y: .4 }, { x: .5, y: .6 }],
+        mur: [{ x: .8, y: .47 }, { x: .8, y: .51 }, { x: .8, y: .55 }, { x: .8, y: .59 }],  // mannequins
+      },
+    };
 
   private stage!: Konva.Stage;
   private fieldLayer!: Konva.Layer;
@@ -132,11 +150,12 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
     public dialogRef: MatDialogRef<SchemaEditorComponent>,
     @Inject(MAT_DIALOG_DATA) data: { exercice: Exercice },
     private service: TechniqueService,
+    private joueurService: JoueurService,
     private snack: MatSnackBar,
   ) {
     this.exercice = data.exercice;
     if (this.exercice.schemaJson) {
-      try { const d = JSON.parse(this.exercice.schemaJson); if (d.terrain) this.terrain.set(d.terrain); } catch {}
+      try { const d = JSON.parse(this.exercice.schemaJson); if (d.terrain) this.terrain.set(d.terrain); } catch { }
     }
   }
 
@@ -150,11 +169,37 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
     this.chargerSchema();
     this.brancherDessin();
     this.chargerFormations();
+    this.chargerEffectif();
     if (this.keyframes().length === 0) this.resetKeyframes();
   }
 
   private chargerFormations(): void {
-    this.service.listerFormations().subscribe({ next: f => this.formationsCustom.set(f), error: () => {} });
+    this.service.listerFormations().subscribe({ next: f => this.formationsCustom.set(f), error: () => { } });
+  }
+
+  private chargerEffectif(): void {
+    this.joueurService.getAll().subscribe({
+      next: js => this.effectif.set(
+        js.slice().sort((a, b) => (a.nom || '').localeCompare(b.nom || ''))),
+      error: () => { },
+    });
+  }
+
+  /** Étiquette portée par le jeton : nom de famille, ou initiales si trop long. */
+  private labelJoueur(j: Joueur): string {
+    const nom = (j.nom || '').trim();
+    if (nom && nom.length <= 6) return nom.toUpperCase();
+    const ini = ((j.prenom?.[0] ?? '') + (nom[0] ?? '')).toUpperCase();
+    return ini || nom.slice(0, 3).toUpperCase() || '?';
+  }
+
+  /** Ajoute un jeton lié à un vrai joueur (équipe "Nous" = violet). */
+  ajouterJoueurReel(j: Joueur): void {
+    this.ajouterElement({
+      id: this.uid(), type: 'joueur', couleur: VIOLET,
+      label: this.labelJoueur(j), joueurId: j.id,
+      x: this.W / 2, y: this.H / 2,
+    });
   }
 
   ngOnDestroy(): void { this.pause(); this.stage?.destroy(); }
@@ -210,7 +255,7 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
   }
 
   appliquerFormationCustom(f: FormationCustom): void {
-    try { this.appliquerFormation({ nom: f.nom, positions: JSON.parse(f.positionsJson) }); } catch {}
+    try { this.appliquerFormation({ nom: f.nom, positions: JSON.parse(f.positionsJson) }); } catch { }
   }
 
   /** Place un coup de pied arrêté : ballon + notre équipe + l'adversaire (rôle inverse) + mur (CF). */
@@ -227,10 +272,10 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
     const NOUS = this.equipeViolet.couleur, EUX = this.equipeJaune.couleur, MANN = '#64748b';
     // on remplace : nos joueurs + adverses + ballons + mannequins
     this.elements.filter(e => e.type === 'ballon' || e.type === 'mannequin'
-        || (e.type === 'joueur' && (e.couleur === NOUS || e.couleur === EUX)))
+      || (e.type === 'joueur' && (e.couleur === NOUS || e.couleur === EUX)))
       .forEach(e => this.nodesById.get(e.id)?.destroy());
     this.elements = this.elements.filter(e => !(e.type === 'ballon' || e.type === 'mannequin'
-        || (e.type === 'joueur' && (e.couleur === NOUS || e.couleur === EUX))));
+      || (e.type === 'joueur' && (e.couleur === NOUS || e.couleur === EUX))));
 
     const ajout = (el: SchemaElement) => { this.elements.push(el); this.dessinerElement(el); };
 
@@ -274,7 +319,7 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
   supprimerFormation(f: FormationCustom, ev: Event): void {
     ev.stopPropagation();
     if (!confirm(`Supprimer la formation « ${f.nom} » ?`)) return;
-    this.service.supprimerFormation(f.id).subscribe({ next: () => this.chargerFormations(), error: () => {} });
+    this.service.supprimerFormation(f.id).subscribe({ next: () => this.chargerFormations(), error: () => { } });
   }
 
   // ── Zoom ──
@@ -337,7 +382,7 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
         this.resetKeyframes();
       }
       this.layer.draw();
-    } catch {}
+    } catch { }
   }
 
   private dessinerTerrain(): void {
@@ -379,8 +424,10 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
   private dessinerElement(el: SchemaElement): void {
     const g = new Konva.Group({ x: el.x, y: el.y, draggable: true });
     if (el.type === 'joueur') {
+      const texte = el.label ?? String(el.numero);
+      const fontSize = texte.length <= 2 ? 14 : texte.length <= 4 ? 11 : texte.length <= 5 ? 9 : 8;
       g.add(new Konva.Circle({ radius: 16, fill: el.couleur, stroke: '#fff', strokeWidth: 2 }));
-      g.add(new Konva.Text({ text: String(el.numero), fontSize: 15, fontStyle: 'bold', fill: '#fff', width: 32, height: 32, offsetX: 16, offsetY: 16, align: 'center', verticalAlign: 'middle' }));
+      g.add(new Konva.Text({ text: texte, fontSize, fontStyle: 'bold', fill: '#fff', width: 32, height: 32, offsetX: 16, offsetY: 16, align: 'center', verticalAlign: 'middle' }));
     } else if (el.type === 'ballon') {
       g.add(new Konva.Circle({ radius: 9, fill: '#fff', stroke: '#111', strokeWidth: 2 }));
     } else if (el.type === 'plot') {
@@ -588,15 +635,16 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
   private uid(): string { return Math.random().toString(36).slice(2, 10); }
   private simplifierPoints(points: number[]): number[] {
 
-  if (points.length <= 6) return points;
+    if (points.length <= 6) return points;
 
-  const resultat: number[] = [];
+    const resultat: number[] = [];
 
-  for (let i = 0; i < points.length; i += 4) {
-    resultat.push(points[i], points[i + 1]);
+    for (let i = 0; i < points.length; i += 4) {
+      resultat.push(points[i], points[i + 1]);
+    }
+
+    return resultat;
   }
 
-  return resultat;
-}
 }
 

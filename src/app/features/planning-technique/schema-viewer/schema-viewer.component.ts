@@ -1,7 +1,7 @@
 import { AfterViewInit, Component, ElementRef, Input, OnChanges, OnDestroy, ViewChild } from '@angular/core';
 import Konva from 'konva';
 
-interface SchemaElement { id: string; type: string; couleur?: string; numero?: number; x: number; y: number; }
+interface SchemaElement { id: string; type: string; couleur?: string; numero?: number; label?: string; x: number; y: number; }
 interface SchemaTrace { id: string; type: string; points: number[]; }
 interface Keyframe { t: number; positions: Record<string, { x: number; y: number }>; }
 
@@ -158,8 +158,10 @@ export class SchemaViewerComponent implements AfterViewInit, OnChanges, OnDestro
   private dessinerElement(layer: Konva.Layer, el: SchemaElement): void {
     const g = new Konva.Group({ x: el.x, y: el.y });
     if (el.type === 'joueur') {
+      const texte = el.label ?? String(el.numero);
+      const fontSize = texte.length <= 2 ? 14 : texte.length <= 4 ? 11 : texte.length <= 5 ? 9 : 8;
       g.add(new Konva.Circle({ radius: 16, fill: el.couleur, stroke: '#fff', strokeWidth: 2 }));
-      g.add(new Konva.Text({ text: String(el.numero), fontSize: 15, fontStyle: 'bold', fill: '#fff', width: 32, height: 32, offsetX: 16, offsetY: 16, align: 'center', verticalAlign: 'middle' }));
+      g.add(new Konva.Text({ text: texte, fontSize, fontStyle: 'bold', fill: '#fff', width: 32, height: 32, offsetX: 16, offsetY: 16, align: 'center', verticalAlign: 'middle' }));
     } else if (el.type === 'ballon') {
       g.add(new Konva.Circle({ radius: 9, fill: '#fff', stroke: '#111', strokeWidth: 2 }));
     } else if (el.type === 'plot') {
