@@ -185,12 +185,32 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
     });
   }
 
-  /** Étiquette portée par le jeton : nom de famille, ou initiales si trop long. */
+  /** Étiquette portée par le jeton : nom de famille (initiales seulement si vraiment trop long). */
   private labelJoueur(j: Joueur): string {
     const nom = (j.nom || '').trim();
-    if (nom && nom.length <= 6) return nom.toUpperCase();
+    if (nom && nom.length <= 14) return nom.toUpperCase();
     const ini = ((j.prenom?.[0] ?? '') + (nom[0] ?? '')).toUpperCase();
     return ini || nom.slice(0, 3).toUpperCase() || '?';
+  }
+
+  /** Rang de ligne d'un poste : gardien(0) → défense(1) → milieu(2-3) → attaque(4-5). */
+  private rangPoste(poste?: string): number {
+    switch (poste) {
+      case 'gardien': return 0;
+      case 'defenseur_central': case 'lateral_droit': case 'lateral_gauche': return 1;
+      case 'milieu_defensif': case 'milieu_central': return 2;
+      case 'milieu_offensif': return 3;
+      case 'ailier_droit': case 'ailier_gauche': return 4;
+      case 'attaquant': case 'avant_centre': return 5;
+      default: return 6; // poste non défini → en fin de liste
+    }
+  }
+
+  /** Effectif trié par ligne (gardien → attaque) puis par nom, pour remplir une formation. */
+  private effectifTriParLigne(): Joueur[] {
+    return this.effectif().slice().sort((a, b) =>
+      this.rangPoste(a.postePrincipal) - this.rangPoste(b.postePrincipal)
+      || (a.nom || '').localeCompare(b.nom || ''));
   }
 
   /** Ajoute un jeton lié à un vrai joueur (équipe "Nous" = violet). */
@@ -240,11 +260,15 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
     // retirer les joueurs existants de cette couleur (re-cliquer = remplacer)
     this.elements.filter(e => e.type === 'joueur' && e.couleur === couleur).forEach(e => this.nodesById.get(e.id)?.destroy());
     this.elements = this.elements.filter(e => !(e.type === 'joueur' && e.couleur === couleur));
+    // « Nous » (violet) = vrais joueurs triés par ligne ; adverse (jaune) = numéros génériques
+    const tries = adverse ? [] : this.effectifTriParLigne();
     const m = 24;
     f.positions.forEach((pos, i) => {
       const nx = adverse ? 1 - pos.x : pos.x;
+      const j = tries[i];
       const el: SchemaElement = {
-        id: this.uid(), type: 'joueur', couleur, numero: i + 1,
+        id: this.uid(), type: 'joueur', couleur,
+        ...(j ? { label: this.labelJoueur(j), joueurId: j.id } : { numero: i + 1 }),
         x: m + nx * (this.W - 2 * m), y: m + pos.y * (this.H - 2 * m),
       };
       this.elements.push(el);
@@ -425,9 +449,12 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
     const g = new Konva.Group({ x: el.x, y: el.y, draggable: true });
     if (el.type === 'joueur') {
       const texte = el.label ?? String(el.numero);
-      const fontSize = texte.length <= 2 ? 14 : texte.length <= 4 ? 11 : texte.length <= 5 ? 9 : 8;
-      g.add(new Konva.Circle({ radius: 16, fill: el.couleur, stroke: '#fff', strokeWidth: 2 }));
-      g.add(new Konva.Text({ text: texte, fontSize, fontStyle: 'bold', fill: '#fff', width: 32, height: 32, offsetX: 16, offsetY: 16, align: 'center', verticalAlign: 'middle' }));
+      const h = 22;
+      const txt = new Konva.Text({ text: texte, fontSize: 11, fontStyle: 'bold', fill: '#fff', wrap: 'none' });
+      const w = Math.max(34, Math.ceil(txt.width()) + 14);   // rectangle ajusté au nom
+      txt.width(w); txt.height(h); txt.offsetX(w / 2); txt.offsetY(h / 2); txt.align('center'); txt.verticalAlign('middle');
+      g.add(new Konva.Rect({ x: -w / 2, y: -h / 2, width: w, height: h, cornerRadius: 5, fill: el.couleur, stroke: '#fff', strokeWidth: 2 }));
+      g.add(txt);
     } else if (el.type === 'ballon') {
       g.add(new Konva.Circle({ radius: 9, fill: '#fff', stroke: '#111', strokeWidth: 2 }));
     } else if (el.type === 'plot') {

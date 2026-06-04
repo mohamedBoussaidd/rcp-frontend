@@ -159,9 +159,12 @@ export class SchemaViewerComponent implements AfterViewInit, OnChanges, OnDestro
     const g = new Konva.Group({ x: el.x, y: el.y });
     if (el.type === 'joueur') {
       const texte = el.label ?? String(el.numero);
-      const fontSize = texte.length <= 2 ? 14 : texte.length <= 4 ? 11 : texte.length <= 5 ? 9 : 8;
-      g.add(new Konva.Circle({ radius: 16, fill: el.couleur, stroke: '#fff', strokeWidth: 2 }));
-      g.add(new Konva.Text({ text: texte, fontSize, fontStyle: 'bold', fill: '#fff', width: 32, height: 32, offsetX: 16, offsetY: 16, align: 'center', verticalAlign: 'middle' }));
+      const h = 22;
+      const txt = new Konva.Text({ text: texte, fontSize: 11, fontStyle: 'bold', fill: '#fff', wrap: 'none' });
+      const w = Math.max(34, Math.ceil(txt.width()) + 14);
+      txt.width(w); txt.height(h); txt.offsetX(w / 2); txt.offsetY(h / 2); txt.align('center'); txt.verticalAlign('middle');
+      g.add(new Konva.Rect({ x: -w / 2, y: -h / 2, width: w, height: h, cornerRadius: 5, fill: el.couleur, stroke: '#fff', strokeWidth: 2 }));
+      g.add(txt);
     } else if (el.type === 'ballon') {
       g.add(new Konva.Circle({ radius: 9, fill: '#fff', stroke: '#111', strokeWidth: 2 }));
     } else if (el.type === 'plot') {
