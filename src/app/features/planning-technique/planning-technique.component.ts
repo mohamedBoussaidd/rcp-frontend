@@ -4,10 +4,12 @@ import { DatePipe } from '@angular/common';
 import { MatToolbar } from '@angular/material/toolbar';
 import { MatCard, MatCardContent, MatCardHeader, MatCardTitle } from '@angular/material/card';
 import { MatSnackBar } from '@angular/material/snack-bar';
+import { MatDialog } from '@angular/material/dialog';
 import {
   CATEGORIES_EXERCICE, Exercice, ExerciceRequest,
   SeanceTechnique, SeanceTechniqueRequest, TechniqueService,
 } from '../../core/services/technique.service';
+import { SchemaEditorComponent } from './schema-editor/schema-editor.component';
 
 @Component({
   selector: 'app-planning-technique',
@@ -66,7 +68,15 @@ export class PlanningTechniqueComponent implements OnInit {
     return Math.round((pond / d) * 10) / 10;
   });
 
-  constructor(private service: TechniqueService, private snack: MatSnackBar) {}
+  constructor(private service: TechniqueService, private snack: MatSnackBar, private dialog: MatDialog) {}
+
+  ouvrirSchema(e: Exercice): void {
+    const ref = this.dialog.open(SchemaEditorComponent, {
+      width: '95vw', maxWidth: '95vw', panelClass: 'dark-dialog',
+      data: { exercice: e },
+    });
+    ref.afterClosed().subscribe(saved => { if (saved) this.charger(); });
+  }
 
   ngOnInit(): void { this.charger(); }
 

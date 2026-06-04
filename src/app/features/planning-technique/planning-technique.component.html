@@ -80,13 +80,14 @@
               </div>
               @if (e.objectif) { <span class="exo-obj">🎯 {{ e.objectif }}</span> }
               <div class="exo-foot">
-                <span class="exo-auteur">{{ e.creeParNom || '—' }}@if (e.equipeOrigineNom) { · {{ e.equipeOrigineNom }} }</span>
-                @if (e.modifiable) {
-                  <span class="row-actions">
+                <span class="exo-auteur">{{ e.creeParNom || '—' }}@if (e.equipeOrigineNom) { · {{ e.equipeOrigineNom }} }@if (e.schemaJson) { · <span class="schema-tag">schéma</span> }</span>
+                <span class="row-actions">
+                  @if (e.modifiable) {
+                    <button class="btn-mini" (click)="ouvrirSchema(e)" title="Éditer le schéma tactique">⬡ Schéma</button>
                     <button class="btn-mini" (click)="editerExo(e)" title="Modifier">✎</button>
                     <button class="btn-mini danger" (click)="supprimerExo(e)" title="Supprimer">✕</button>
-                  </span>
-                }
+                  }
+                </span>
               </div>
             </div>
           }

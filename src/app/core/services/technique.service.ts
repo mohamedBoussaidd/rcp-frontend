@@ -10,6 +10,7 @@ export interface Exercice {
   objectif?: string;
   intensite?: number;
   description?: string;
+  schemaJson?: string;
   creeParId?: string;
   creeParNom?: string;
   equipeOrigineId?: string;
@@ -82,6 +83,10 @@ export class TechniqueService {
   }
   supprimerExercice(id: string): Observable<void> {
     return this.http.delete<void>(`/api/exercices/${id}`);
+  }
+
+  sauverSchema(exerciceId: string, schemaJson: string): Observable<Exercice> {
+    return this.http.put<Exercice>(`/api/exercices/${exerciceId}/schema`, { schemaJson });
   }
 
   // ── Seances techniques ──
