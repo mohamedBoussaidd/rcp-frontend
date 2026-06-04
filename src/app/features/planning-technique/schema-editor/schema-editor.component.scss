@@ -190,3 +190,103 @@
   background: var(--bg);
 }
 .stage-container { box-shadow: 0 8px 30px rgba(0,0,0,.35); border-radius: 6px; overflow: hidden; }
+
+/* ── Timeline (animation) ── */
+.timeline {
+  flex-shrink: 0;
+  padding: 10px 16px 14px;
+  background: var(--toolbar-bg);
+  border-top: 1px solid var(--copper-border);
+}
+.tl-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 9px;
+}
+.tl-btn {
+  min-width: 34px;
+  height: 32px;
+  padding: 0 9px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--text);
+  font-size: 0.9rem;
+  font-family: inherit;
+  cursor: pointer;
+  transition: border-color .12s, background .12s;
+  &:hover { border-color: var(--copper-border); }
+  &.on { background: var(--copper-soft); color: var(--copper); border-color: var(--copper-border); }
+  &.play { font-size: 1rem; }
+  &.sm { min-width: 0; height: 28px; font-size: 0.74rem; padding: 0 7px; }
+  &.danger { color: var(--danger); border-color: var(--danger-border); background: var(--danger-bg); }
+}
+.tl-kf-add {
+  height: 32px;
+  padding: 0 12px;
+  border-radius: 8px;
+  border: 1px solid var(--copper-border);
+  background: var(--copper-soft);
+  color: var(--copper);
+  font-size: 0.8rem;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  &:hover { opacity: .85; }
+}
+.tl-vit {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.72rem;
+  color: var(--muted);
+  margin-left: 6px;
+  input { width: 90px; accent-color: var(--copper); }
+  b { color: var(--text); min-width: 24px; }
+}
+.tl-duree { display: flex; gap: 5px; }
+.tl-temps {
+  margin-left: auto;
+  font-size: 0.8rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-2);
+}
+.tl-bar {
+  position: relative;
+  height: 18px;
+  border-radius: 9px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  cursor: pointer;
+}
+.tl-fill {
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  border-radius: 9px 0 0 9px;
+  background: var(--copper-soft);
+  pointer-events: none;
+}
+.tl-kf {
+  position: absolute;
+  top: 50%;
+  width: 13px;
+  height: 13px;
+  transform: translate(-50%, -50%) rotate(45deg);
+  background: var(--copper);
+  border: 1px solid #fff;
+  border-radius: 2px;
+  cursor: pointer;
+  z-index: 2;
+  &:hover { transform: translate(-50%, -50%) rotate(45deg) scale(1.25); }
+}
+.tl-playhead {
+  position: absolute;
+  top: -3px; bottom: -3px;
+  width: 2px;
+  background: var(--danger);
+  transform: translateX(-50%);
+  pointer-events: none;
+  z-index: 3;
+}

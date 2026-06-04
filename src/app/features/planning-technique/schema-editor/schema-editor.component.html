@@ -145,4 +145,38 @@
       <div #stageContainer class="stage-container"></div>
     </div>
   </div>
+
+  <!-- ── Timeline (animation) ── -->
+  <div class="timeline">
+    <div class="tl-controls">
+      <button class="tl-btn" (click)="scrub(0)" title="Début">⏮</button>
+      <button class="tl-btn play" (click)="basculerLecture()" title="Lecture / Pause">{{ enLecture() ? '⏸' : '▶' }}</button>
+      <button class="tl-btn" (click)="keyframeSuivante()" title="Keyframe suivante">⏭</button>
+      <button class="tl-btn" [class.on]="boucle()" (click)="boucle.set(!boucle())" title="Lecture en boucle">🔁</button>
+
+      <button class="tl-kf-add" (click)="ajouterKeyframe()" title="Ajouter une keyframe au temps courant">+ Keyframe</button>
+      @if (estSurKeyframe() && tempsCourant() > 0) {
+        <button class="tl-btn danger" (click)="supprimerKeyframeCourante()" title="Supprimer cette keyframe">🗑</button>
+      }
+
+      <label class="tl-vit">Vitesse
+        <input type="range" min="0.5" max="3" step="0.5" [value]="vitesse()" (input)="vitesse.set(+$any($event.target).value)">
+        <b>{{ vitesse() }}×</b>
+      </label>
+
+      <span class="tl-duree">
+        <button class="tl-btn sm" (click)="etendreDuree(-5)">−5s</button>
+        <button class="tl-btn sm" (click)="etendreDuree(5)">+5s</button>
+      </span>
+      <span class="tl-temps">{{ tempsCourant().toFixed(1) }}s / {{ dureeSecondes() }}s</span>
+    </div>
+
+    <div class="tl-bar" (click)="scrubBarre($event)">
+      <div class="tl-fill" [style.width.%]="pct(tempsCourant())"></div>
+      @for (kf of keyframes(); track kf.t) {
+        <div class="tl-kf" [style.left.%]="pct(kf.t)" (click)="allerKeyframe(kf, $event)" [title]="kf.t.toFixed(1) + 's'"></div>
+      }
+      <div class="tl-playhead" [style.left.%]="pct(tempsCourant())"></div>
+    </div>
+  </div>
 </div>

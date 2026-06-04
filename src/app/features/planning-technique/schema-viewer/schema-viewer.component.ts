@@ -3,13 +3,34 @@ import Konva from 'konva';
 
 interface SchemaElement { id: string; type: string; couleur?: string; numero?: number; x: number; y: number; }
 interface SchemaTrace { id: string; type: string; points: number[]; }
+interface Keyframe { t: number; positions: Record<string, { x: number; y: number }>; }
 
-/** Rendu en lecture seule d'un schéma tactique (terrain + éléments + tracés). */
+/** Rendu en lecture seule d'un schéma tactique (terrain + éléments + tracés) + lecture animée. */
 @Component({
   selector: 'app-schema-viewer',
   standalone: true,
-  template: `<div #c class="sv-container"></div>`,
-  styles: [`.sv-container { display:inline-block; border-radius:6px; overflow:hidden; box-shadow:0 4px 16px rgba(0,0,0,.25); }`],
+  template: `
+    <div class="sv-wrap">
+      <div #c class="sv-container"></div>
+      @if (animable) {
+        <button type="button" class="sv-play" (click)="basculerLecture()" [title]="enLecture ? 'Pause' : 'Lire l\\'animation'">
+          {{ enLecture ? '⏸' : '▶' }}
+        </button>
+      }
+    </div>
+  `,
+  styles: [`
+    .sv-wrap { display:inline-block; position:relative; }
+    .sv-container { display:block; border-radius:6px; overflow:hidden; box-shadow:0 4px 16px rgba(0,0,0,.25); }
+    .sv-play {
+      position:absolute; left:8px; bottom:8px;
+      width:34px; height:34px; border-radius:50%;
+      border:1px solid #ffffff66; background:rgba(20,24,40,.78); color:#fff;
+      font-size:1rem; cursor:pointer; display:flex; align-items:center; justify-content:center;
+      transition:background .12s;
+    }
+    .sv-play:hover { background:rgba(20,24,40,.95); }
+  `],
 })
 export class SchemaViewerComponent implements AfterViewInit, OnChanges, OnDestroy {
 
@@ -21,9 +42,18 @@ export class SchemaViewerComponent implements AfterViewInit, OnChanges, OnDestro
   private stage?: Konva.Stage;
   private pret = false;
 
+  private nodesById = new Map<string, Konva.Group>();
+  private elements: SchemaElement[] = [];
+  private keyframes: Keyframe[] = [];
+  private dureeSecondes = 10;
+  private anim?: Konva.Animation;
+
+  animable = false;
+  enLecture = false;
+
   ngAfterViewInit(): void { this.pret = true; this.rendre(); }
   ngOnChanges(): void { if (this.pret) this.rendre(); }
-  ngOnDestroy(): void { this.stage?.destroy(); }
+  ngOnDestroy(): void { this.anim?.stop(); this.stage?.destroy(); }
 
   /** PNG du schéma (pour l'impression). */
   toDataURL(): string | null {
@@ -31,9 +61,12 @@ export class SchemaViewerComponent implements AfterViewInit, OnChanges, OnDestro
   }
 
   private rendre(): void {
+    this.anim?.stop(); this.anim = undefined; this.enLecture = false;
     this.stage?.destroy();
+    this.nodesById.clear();
+    this.elements = []; this.keyframes = []; this.animable = false;
     if (!this.schemaJson) return;
-    let data: { terrain: string; elements: SchemaElement[]; traces: SchemaTrace[] };
+    let data: { terrain: string; elements: SchemaElement[]; traces: SchemaTrace[]; keyframes?: Keyframe[]; dureeSecondes?: number };
     try { data = JSON.parse(this.schemaJson); } catch { return; }
 
     const W = data.terrain === 'demi' ? 600 : 1040;
@@ -45,9 +78,56 @@ export class SchemaViewerComponent implements AfterViewInit, OnChanges, OnDestro
     const couche = new Konva.Layer();
     this.stage.add(fond); this.stage.add(couche);
     this.dessinerTerrain(fond, data.terrain, W, H);
-    (data.elements ?? []).forEach(el => this.dessinerElement(couche, el));
+    this.elements = data.elements ?? [];
+    this.elements.forEach(el => this.dessinerElement(couche, el));
     (data.traces ?? []).forEach(t => this.dessinerTrace(couche, t));
     fond.draw(); couche.draw();
+
+    // Animation disponible seulement si plusieurs keyframes décrivent un mouvement.
+    this.keyframes = (data.keyframes ?? []).slice().sort((a, b) => a.t - b.t);
+    this.dureeSecondes = data.dureeSecondes ?? 10;
+    this.animable = this.keyframes.length > 1;
+  }
+
+  // ── Lecture animée ──
+  basculerLecture(): void { this.enLecture ? this.pause() : this.play(); }
+
+  private play(): void {
+    if (!this.animable || !this.stage) return;
+    const couche = this.stage.getLayers()[1];
+    const debut = Date.now();
+    this.enLecture = true;
+    this.anim = new Konva.Animation(() => {
+      const t = (Date.now() - debut) / 1000;
+      if (t >= this.dureeSecondes) { this.appliquerPositions(this.dureeSecondes); this.pause(); return false; }
+      this.appliquerPositions(t);
+      return undefined;
+    }, couche);
+    this.anim.start();
+  }
+
+  private pause(): void { this.anim?.stop(); this.anim = undefined; this.enLecture = false; }
+
+  private appliquerPositions(t: number): void {
+    this.elements.forEach(el => {
+      const p = this.posElement(el, t);
+      this.nodesById.get(el.id)?.position(p);
+    });
+  }
+
+  private posElement(el: SchemaElement, t: number): { x: number; y: number } {
+    const kfs = this.keyframes.filter(k => k.positions[el.id]);
+    if (kfs.length === 0) return { x: el.x, y: el.y };
+    if (t <= kfs[0].t) return kfs[0].positions[el.id];
+    for (let i = 0; i < kfs.length - 1; i++) {
+      const a = kfs[i], b = kfs[i + 1];
+      if (t >= a.t && t <= b.t) {
+        const r = b.t === a.t ? 0 : (t - a.t) / (b.t - a.t);
+        const pa = a.positions[el.id], pb = b.positions[el.id];
+        return { x: pa.x + (pb.x - pa.x) * r, y: pa.y + (pb.y - pa.y) * r };
+      }
+    }
+    return kfs[kfs.length - 1].positions[el.id];
   }
 
   private dessinerTerrain(layer: Konva.Layer, terrain: string, W: number, H: number): void {
@@ -91,6 +171,7 @@ export class SchemaViewerComponent implements AfterViewInit, OnChanges, OnDestro
     } else if (el.type === 'mannequin') {
       g.add(new Konva.Rect({ x: -7, y: -16, width: 14, height: 32, cornerRadius: 4, fill: el.couleur, stroke: '#fff', strokeWidth: 1.5 }));
     }
+    this.nodesById.set(el.id, g);
     layer.add(g);
   }
 

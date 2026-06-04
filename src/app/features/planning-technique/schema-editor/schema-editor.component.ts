@@ -10,6 +10,7 @@ type TraceType = 'deplacement' | 'conduite' | 'passe' | 'tir';
 
 interface SchemaElement { id: string; type: string; couleur?: string; numero?: number; x: number; y: number; }
 interface SchemaTrace { id: string; type: TraceType; points: number[]; }
+interface Keyframe { t: number; positions: Record<string, { x: number; y: number }>; }
 
 const VIOLET = '#7c3aed', JAUNE = '#eab308', ROUGE = '#ef4444';
 const BLEU = '#2563eb';
@@ -29,6 +30,15 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
   terrain = signal<Terrain>('complet');
   outil = signal<Outil>('select');
   echelle = signal(1);
+
+  // ── Animation (Phase B) ──
+  tempsCourant = signal(0);
+  dureeSecondes = signal(10);
+  enLecture = signal(false);
+  boucle = signal(false);
+  vitesse = signal(1);
+  keyframes = signal<Keyframe[]>([]);
+  private anim?: Konva.Animation;
   // Palette dépliable
   ouvert = signal<string | null>('formations');
 
@@ -140,13 +150,14 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
     this.chargerSchema();
     this.brancherDessin();
     this.chargerFormations();
+    if (this.keyframes().length === 0) this.resetKeyframes();
   }
 
   private chargerFormations(): void {
     this.service.listerFormations().subscribe({ next: f => this.formationsCustom.set(f), error: () => {} });
   }
 
-  ngOnDestroy(): void { this.stage?.destroy(); }
+  ngOnDestroy(): void { this.pause(); this.stage?.destroy(); }
 
   // ── Palette ──
   basculer(section: string): void { this.ouvert.update(o => o === section ? null : section); }
@@ -170,6 +181,9 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
   private ajouterElement(el: SchemaElement): void {
     this.elements.push(el);
     this.dessinerElement(el);
+    // présent dans toutes les keyframes (à la même position au départ)
+    if (this.keyframes().length === 0) this.keyframes.set([{ t: 0, positions: {} }]);
+    this.keyframes.update(ks => { ks.forEach(k => k.positions[el.id] = { x: el.x, y: el.y }); return [...ks]; });
     this.layer.draw();
   }
 
@@ -191,6 +205,7 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
       this.elements.push(el);
       this.dessinerElement(el);
     });
+    this.resetKeyframes();
     this.layer.draw();
   }
 
@@ -232,6 +247,7 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
     // mur de mannequins (coups francs)
     (base.mur ?? []).forEach(p => { const q = px(p); ajout({ id: this.uid(), type: 'mannequin', couleur: MANN, x: q.x, y: q.y }); });
 
+    this.resetKeyframes();
     this.layer.draw();
   }
 
@@ -273,11 +289,13 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
 
   // ── Sauvegarde ──
   enregistrer(): void {
+    this.pause();
     const data = {
       terrain: this.terrain(),
       elements: this.elements,
       traces: this.traces,
-      keyframes: [{ t: 0, positions: Object.fromEntries(this.elements.map(e => [e.id, { x: e.x, y: e.y }])) }],
+      dureeSecondes: this.dureeSecondes(),
+      keyframes: this.keyframes(),
     };
     this.service.sauverSchema(this.exercice.id, JSON.stringify(data)).subscribe({
       next: () => { this.snack.open('Schéma enregistré', 'Fermer', { duration: 2000 }); this.dialogRef.close(true); },
@@ -295,6 +313,7 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
     this.elements = [];
     this.traces = [];
     this.nodesById.clear();
+    this.resetKeyframes();
     this.layer.draw();
   }
 
@@ -311,6 +330,12 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
       const d = JSON.parse(this.exercice.schemaJson);
       (d.elements ?? []).forEach((el: SchemaElement) => { this.elements.push(el); this.dessinerElement(el); });
       (d.traces ?? []).forEach((t: SchemaTrace) => { this.traces.push(t); this.dessinerTrace(t); });
+      if (Array.isArray(d.keyframes) && d.keyframes.length) {
+        this.keyframes.set([...d.keyframes].sort((a: Keyframe, b: Keyframe) => a.t - b.t));
+        if (d.dureeSecondes) this.dureeSecondes.set(d.dureeSecondes);
+      } else {
+        this.resetKeyframes();
+      }
       this.layer.draw();
     } catch {}
   }
@@ -368,11 +393,16 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
       g.add(new Konva.Rect({ x: -7, y: -16, width: 14, height: 32, cornerRadius: 4, fill: el.couleur, stroke: '#fff', strokeWidth: 1.5 }));
     }
 
-    g.on('dragend', () => { el.x = g.x(); el.y = g.y(); });
+    g.on('dragend', () => {
+      el.x = g.x(); el.y = g.y();
+      const kf = this.keyframeAt(this.tempsCourant(), true)!;   // crée une keyframe si on est entre deux
+      kf.positions[el.id] = { x: el.x, y: el.y };
+    });
     g.on('click tap', () => {
       if (this.outil() === 'supprimer') {
         this.elements = this.elements.filter(e => e.id !== el.id);
         this.nodesById.delete(el.id);
+        this.keyframes.update(ks => { ks.forEach(k => delete k.positions[el.id]); return [...ks]; });
         g.destroy(); this.layer.draw();
       }
     });
@@ -458,6 +488,102 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
       this.layer.draw();
     });
   }
+
+  // ══════════ Animation / keyframes (Phase B) ══════════
+  private resetKeyframes(): void {
+    this.keyframes.set([{ t: 0, positions: Object.fromEntries(this.elements.map(e => [e.id, { x: e.x, y: e.y }])) }]);
+    this.tempsCourant.set(0);
+  }
+
+  private posElement(el: SchemaElement, t: number, kfs: Keyframe[]): { x: number; y: number } {
+    const avec = kfs.filter(k => k.positions[el.id]);
+    if (avec.length === 0) return { x: el.x, y: el.y };
+    if (t <= avec[0].t) return avec[0].positions[el.id];
+    if (t >= avec[avec.length - 1].t) return avec[avec.length - 1].positions[el.id];
+    for (let i = 0; i < avec.length - 1; i++) {
+      const a = avec[i], b = avec[i + 1];
+      if (t >= a.t && t <= b.t) {
+        const r = (b.t - a.t) ? (t - a.t) / (b.t - a.t) : 0;
+        const pa = a.positions[el.id], pb = b.positions[el.id];
+        return { x: pa.x + (pb.x - pa.x) * r, y: pa.y + (pb.y - pa.y) * r };
+      }
+    }
+    return avec[avec.length - 1].positions[el.id];
+  }
+
+  private appliquerPositions(t: number): void {
+    const kfs = this.keyframes();
+    for (const el of this.elements) {
+      const p = this.posElement(el, t, kfs);
+      el.x = p.x; el.y = p.y;
+      this.nodesById.get(el.id)?.position({ x: p.x, y: p.y });
+    }
+    this.layer.batchDraw();
+  }
+
+  /** Keyframe au temps t (création = capture des positions actuelles). */
+  private keyframeAt(t: number, create = false): Keyframe | undefined {
+    let kf = this.keyframes().find(k => Math.abs(k.t - t) < 0.05);
+    if (!kf && create) {
+      kf = { t, positions: Object.fromEntries(this.elements.map(e => [e.id, { x: e.x, y: e.y }])) };
+      this.keyframes.update(ks => [...ks, kf!].sort((a, b) => a.t - b.t));
+    }
+    return kf;
+  }
+
+  ajouterKeyframe(): void {
+    const t = this.tempsCourant();
+    const positions = Object.fromEntries(this.elements.map(e => [e.id, { x: e.x, y: e.y }]));
+    this.keyframes.update(ks => [...ks.filter(k => Math.abs(k.t - t) >= 0.05), { t, positions }].sort((a, b) => a.t - b.t));
+    if (t > this.dureeSecondes()) this.dureeSecondes.set(Math.ceil(t));
+  }
+
+  supprimerKeyframeCourante(): void {
+    const t = this.tempsCourant();
+    if (t === 0) return; // on garde toujours la keyframe de départ
+    this.keyframes.update(ks => ks.filter(k => Math.abs(k.t - t) >= 0.05));
+  }
+
+  estSurKeyframe(): boolean { return !!this.keyframes().find(k => Math.abs(k.t - this.tempsCourant()) < 0.05); }
+
+  scrub(t: number): void {
+    const tt = Math.max(0, Math.min(this.dureeSecondes(), t));
+    this.tempsCourant.set(tt);
+    this.appliquerPositions(tt);
+  }
+  scrubBarre(ev: MouseEvent): void {
+    const r = (ev.currentTarget as HTMLElement).getBoundingClientRect();
+    this.scrub(((ev.clientX - r.left) / r.width) * this.dureeSecondes());
+  }
+  allerKeyframe(kf: Keyframe, ev?: Event): void { ev?.stopPropagation(); this.scrub(kf.t); }
+  keyframeSuivante(): void {
+    const suiv = this.keyframes().find(k => k.t > this.tempsCourant() + 0.01);
+    this.scrub(suiv ? suiv.t : this.dureeSecondes());
+  }
+  etendreDuree(d: number): void { this.dureeSecondes.set(Math.max(5, this.dureeSecondes() + d)); }
+  pct(t: number): number { return this.dureeSecondes() ? (t / this.dureeSecondes()) * 100 : 0; }
+
+  // ── Lecture ──
+  basculerLecture(): void { this.enLecture() ? this.pause() : this.play(); }
+  private play(): void {
+    if (this.keyframes().length < 2) { this.snack.open('Ajoutez au moins 2 keyframes', 'Fermer', { duration: 2500 }); return; }
+    if (this.tempsCourant() >= this.dureeSecondes()) this.tempsCourant.set(0);
+    this.enLecture.set(true);
+    let last = performance.now();
+    this.anim = new Konva.Animation(() => {
+      const now = performance.now();
+      let t = this.tempsCourant() + (now - last) / 1000 * this.vitesse();
+      last = now;
+      if (t >= this.dureeSecondes()) {
+        if (this.boucle()) { t = 0; }
+        else { this.tempsCourant.set(this.dureeSecondes()); this.appliquerPositions(this.dureeSecondes()); this.pause(); return; }
+      }
+      this.tempsCourant.set(t);
+      this.appliquerPositions(t);
+    }, this.layer);
+    this.anim.start();
+  }
+  private pause(): void { this.anim?.stop(); this.anim = undefined; this.enLecture.set(false); }
 
   private uid(): string { return Math.random().toString(36).slice(2, 10); }
   private simplifierPoints(points: number[]): number[] {
