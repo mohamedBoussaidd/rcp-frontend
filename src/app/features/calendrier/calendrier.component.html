@@ -6,41 +6,37 @@
 
   <!-- ── Palette gauche (édition séances) ── -->
   @if (auth.canEcrireSeances()) {
-  <aside class="palette" cdkDropList id="palette" [cdkDropListData]="typeSeances"
-         [cdkDropListConnectedTo]="joursIds">
+  <aside class="palette" cdkDropList id="palette" [cdkDropListData]="typeSeances" [cdkDropListConnectedTo]="joursIds">
     <h3 class="palette-titre">Types de séance</h3>
     <div class="palette-info">Glissez un type sur un jour</div>
 
     @for (type of typeSeances; track type.id) {
-      @let info = infosType[type.code];
-      <div class="palette-item"
-           cdkDrag [cdkDragData]="type"
-           [style.border-left-color]="couleur(type.code)">
-        <div class="palette-item-header">
-          <span class="palette-dot" [style.background]="couleur(type.code)"></span>
-          <span class="palette-label">{{ type.libelle }}</span>
-          @if (info) {
-            <span class="palette-duree">{{ info.duree }}</span>
-          }
-        </div>
+    @let info = infosType[type.code];
+    <div class="palette-item" cdkDrag [cdkDragData]="type" [style.border-left-color]="couleur(type.code)">
+      <div class="palette-item-header">
+        <span class="palette-dot" [style.background]="couleur(type.code)"></span>
+        <span class="palette-label">{{ type.libelle }}</span>
         @if (info) {
-          <p class="palette-desc">{{ info.description }}</p>
-          <div class="palette-intensite-wrap">
-            <span class="palette-intensite-label">Intensité {{ info.intensite }}%</span>
-            <div class="palette-intensite-bar">
-              <div class="palette-intensite-fill"
-                   [style.width.%]="info.intensite"
-                   [style.background]="couleur(type.code)"></div>
-            </div>
-          </div>
-          <ul class="palette-objectifs">
-            @for (obj of info.objectifs; track obj) {
-              <li>{{ obj }}</li>
-            }
-          </ul>
+        <span class="palette-duree">{{ info.duree }}</span>
         }
-        <div *cdkDragPlaceholder class="drag-placeholder"></div>
       </div>
+      @if (info) {
+      <p class="palette-desc">{{ info.description }}</p>
+      <div class="palette-intensite-wrap">
+        <span class="palette-intensite-label">Intensité {{ info.intensite }}%</span>
+        <div class="palette-intensite-bar">
+          <div class="palette-intensite-fill" [style.width.%]="info.intensite" [style.background]="couleur(type.code)">
+          </div>
+        </div>
+      </div>
+      <ul class="palette-objectifs">
+        @for (obj of info.objectifs; track obj) {
+        <li>{{ obj }}</li>
+        }
+      </ul>
+      }
+      <div *cdkDragPlaceholder class="drag-placeholder"></div>
+    </div>
     }
   </aside>
   }
@@ -58,97 +54,98 @@
     <!-- Grille 7 jours -->
     <div class="grille">
       @for (jour of joursGrid; track jour.dateStr) {
-        <div class="jour-col">
+      <div class="jour-col">
 
-          <!-- En-tête du jour -->
-          <div class="jour-header" [class.today]="jour.dateStr === today">
-            <span class="jour-nom">{{ jour.label }}</span>
-            <span class="jour-date">{{ jour.date | date:'d MMM' }}</span>
-          </div>
-
-          <!-- Zone de drop -->
-          <div class="jour-body"
-               cdkDropList
-               [id]="jour.dateStr"
-               [cdkDropListData]="seancesDuJour(jour.dateStr)"
-               [cdkDropListConnectedTo]="['palette']"
-               (cdkDropListDropped)="onDrop($event, jour.dateStr)"
-               [class.dropzone-active]="true">
-
-            @for (seance of seancesDuJour(jour.dateStr); track seance.id) {
-              @let info = infosType[seance.typeSeance.code];
-              <div class="seance-bloc"
-                   [style.border-left-color]="couleur(seance.typeSeance.code)"
-                   [class.realisee]="seance.statut === 'REALISEE'"
-                   [class.annulee]="seance.statut === 'ANNULEE'">
-
-                @if (auth.canEcrireSeances()) {
-                  <div class="seance-actions">
-                    @if (seance.statut === 'PLANIFIEE') {
-                      <button class="btn-edit" (click)="editerSeance(seance, $event)"
-                              matTooltip="Modifier">✎</button>
-                      <button class="btn-realise" (click)="marquerRealisee(seance, $event)"
-                              matTooltip="Marquer comme réalisée">✓</button>
-                    }
-                    <button class="btn-suppr" (click)="supprimerSeance(seance, $event)"
-                            matTooltip="Supprimer">✕</button>
-                  </div>
-                }
-
-                <span class="seance-titre">{{ seance.titre || seance.typeSeance.libelle }}</span>
-
-                <div class="seance-meta">
-                  @if (seance.dureeMinutes) {
-                    <span class="seance-duree">{{ seance.dureeMinutes }} min</span>
-                  }
-                  <span class="seance-statut-badge statut-{{ seance.statut | lowercase }}">
-                    {{ seance.statut === 'REALISEE' ? 'Réalisée' : seance.statut === 'ANNULEE' ? 'Annulée' : 'Planifiée' }}
-                  </span>
-                </div>
-
-                @if (seance.adversaire) {
-                  <span class="seance-adversaire">vs {{ seance.adversaire }}</span>
-                }
-
-                @if (info) {
-                  <div class="seance-intensite-wrap">
-                    <span class="seance-intensite-label">{{ info.intensite }}%</span>
-                    <div class="seance-intensite-bar">
-                      <div class="seance-intensite-fill"
-                           [style.width.%]="info.intensite"
-                           [style.background]="couleur(seance.typeSeance.code)"></div>
-                    </div>
-                  </div>
-                }
-              </div>
-            }
-
-            <!-- ── Séances techniques (lecture, gérées dans Planning technique) ── -->
-            @for (st of seancesTechDuJour(jour.dateStr); track st.id) {
-              <div class="seance-tech" [class.realisee]="st.statut === 'REALISEE'">
-                <div class="tech-head">
-                  <span class="tech-badge">Technique</span>
-                  <span class="tech-duree">{{ st.dureeTotaleMinutes }} min · int. {{ st.intensiteMoyenne ?? '—' }}</span>
-                </div>
-                <span class="tech-titre">{{ st.titre || 'Séance technique' }}</span>
-                @if (st.objectif) { <span class="tech-obj">🎯 {{ st.objectif }}</span> }
-                @if (st.description) { <span class="tech-desc">{{ st.description }}</span> }
-                @if (st.exercices.length) {
-                  <ul class="tech-exos">
-                    @for (ex of st.exercices; track ex.exerciceId) {
-                      <li><span class="tech-exo-nom">{{ ex.nom }}</span><span class="tech-exo-duree">{{ ex.dureeMinutes || 0 }}'</span></li>
-                    }
-                  </ul>
-                }
-              </div>
-            }
-
-            @if (seancesDuJour(jour.dateStr).length === 0 && seancesTechDuJour(jour.dateStr).length === 0) {
-              <div class="jour-vide">—</div>
-            }
-          </div>
-
+        <!-- En-tête du jour -->
+        <div class="jour-header" [class.today]="jour.dateStr === today">
+          <span class="jour-nom">{{ jour.label }}</span>
+          <span class="jour-date">{{ jour.date | date:'d MMM' }}</span>
         </div>
+
+        <!-- Zone de drop -->
+        <div class="jour-body" cdkDropList [id]="jour.dateStr" [cdkDropListData]="seancesDuJour(jour.dateStr)"
+          [cdkDropListConnectedTo]="['palette']" (cdkDropListDropped)="onDrop($event, jour.dateStr)"
+          [class.dropzone-active]="true">
+
+          @for (seance of seancesDuJour(jour.dateStr); track seance.id) {
+          @let info = infosType[seance.typeSeance.code];
+          <div class="seance-bloc" [style.border-left-color]="couleur(seance.typeSeance.code)"
+            [class.realisee]="seance.statut === 'REALISEE'" [class.annulee]="seance.statut === 'ANNULEE'">
+
+            @if (auth.canEcrireSeances()) {
+            <div class="seance-actions">
+              @if (seance.statut === 'PLANIFIEE') {
+              <button class="btn-edit" (click)="editerSeance(seance, $event)" matTooltip="Modifier">✎</button>
+              <button class="btn-realise" (click)="marquerRealisee(seance, $event)"
+                matTooltip="Marquer comme réalisée">✓</button>
+              }
+              <button class="btn-suppr" (click)="supprimerSeance(seance, $event)" matTooltip="Supprimer">✕</button>
+            </div>
+            }
+
+            <span class="seance-titre">{{ seance.titre || seance.typeSeance.libelle }}</span>
+
+            <div class="seance-meta">
+              @if (seance.dureeMinutes) {
+              <span class="seance-duree">{{ seance.dureeMinutes }} min</span>
+              }
+              <span class="seance-statut-badge statut-{{ seance.statut | lowercase }}">
+                {{ seance.statut === 'REALISEE' ? 'Réalisée' : seance.statut === 'ANNULEE' ? 'Annulée' : 'Planifiée' }}
+              </span>
+            </div>
+
+            @if (seance.adversaire) {
+            <span class="seance-adversaire">vs {{ seance.adversaire }}</span>
+            }
+            @if (info) {
+            <div class="seance-intensite-wrap">
+              <span class="seance-intensite-label">{{ info.intensite }}%</span>
+              <div class="seance-intensite-bar">
+                <div class="seance-intensite-fill" [style.width.%]="info.intensite"
+                  [style.background]="couleur(seance.typeSeance.code)"></div>
+              </div>
+            </div>
+            @if (info.description) {
+            <span class="seance-desc">{{ info.description }}</span>
+            }
+            @if (info.objectifs && info.objectifs.length > 0) {
+            <ul class="seance-objectifs">
+              @for (obj of info.objectifs; track obj) {
+              <li>{{ obj }}</li>
+              }
+            </ul>
+            }
+            }
+          </div>
+          }
+
+          <!-- ── Séances techniques (lecture, gérées dans Planning technique) ── -->
+          @for (st of seancesTechDuJour(jour.dateStr); track st.id) {
+          <div class="seance-tech" [class.realisee]="st.statut === 'REALISEE'">
+            <div class="tech-head">
+              <span class="tech-badge">Technique</span>
+              <span class="tech-duree">{{ st.dureeTotaleMinutes }} min · int. {{ st.intensiteMoyenne ?? '—' }}</span>
+            </div>
+            <span class="tech-titre">{{ st.titre || 'Séance technique' }}</span>
+            @if (st.objectif) { <span class="tech-obj">🎯 {{ st.objectif }}</span> }
+            @if (st.description) { <span class="tech-desc">{{ st.description }}</span> }
+            @if (st.exercices.length) {
+            <ul class="tech-exos">
+              @for (ex of st.exercices; track ex.exerciceId) {
+              <li><span class="tech-exo-nom">{{ ex.nom }}</span><span class="tech-exo-duree">{{ ex.dureeMinutes || 0
+                  }}'</span></li>
+              }
+            </ul>
+            }
+          </div>
+          }
+
+          @if (seancesDuJour(jour.dateStr).length === 0 && seancesTechDuJour(jour.dateStr).length === 0) {
+          <div class="jour-vide">—</div>
+          }
+        </div>
+
+      </div>
       }
     </div>
   </div>

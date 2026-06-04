@@ -13,8 +13,8 @@ export interface DialogData {
 }
 
 const SUGGESTIONS_COURT = ['Météo', 'Blessure', 'Fatigue collective', 'Décision staff'];
-const SUGGESTIONS_LONG  = ['Prolongations', 'Exercice supplémentaire', 'Décision staff'];
-const SEUIL_ECART       = 0.20;
+const SUGGESTIONS_LONG = ['Prolongations', 'Exercice supplémentaire', 'Décision staff'];
+const SEUIL_ECART = 0.20;
 
 @Component({
   selector: 'app-seance-form-dialog',
@@ -29,7 +29,7 @@ export class SeanceFormDialogComponent implements OnInit, OnDestroy {
   readonly estMatch: boolean;
   readonly dureeTheorique: number | null;
   readonly suggestionsEcourt = SUGGESTIONS_COURT;
-  readonly suggestionsLong   = SUGGESTIONS_LONG;
+  readonly suggestionsLong = SUGGESTIONS_LONG;
 
   alerteEcart: 'court' | 'long' | null = null;
   get editMode(): boolean { return !!this.dialogData.seance; }
@@ -41,22 +41,22 @@ export class SeanceFormDialogComponent implements OnInit, OnDestroy {
     public dialogRef: MatDialogRef<SeanceFormDialogComponent>,
     @Inject(MAT_DIALOG_DATA) public dialogData: DialogData
   ) {
-    this.estMatch      = ['MATCH', 'MATCH_AMICAL'].includes(dialogData.typeSeance.code);
+    this.estMatch = ['MATCH', 'MATCH_AMICAL'].includes(dialogData.typeSeance.code);
     this.dureeTheorique = dialogData.typeSeance.dureeTheoriqueMin ?? null;
   }
 
   ngOnInit(): void {
     this.form = this.fb.group({
-      titre:             [''],
-      heureDebut:        [''],
-      dureeMinutes:      [this.dureeTheorique, [Validators.required, Validators.min(1)]],
-      terrain:           [''],
-      conditionsMeteo:   [''],
-      temperature:       [null],
-      description:       [''],
-      raisonEcartDuree:  [''],
-      adversaire:        ['' , this.estMatch ? Validators.required : null],
-      competition:       [''],
+      titre: [''],
+      heureDebut: [''],
+      dureeMinutes: [this.dureeTheorique, [Validators.required, Validators.min(1)]],
+      terrain: [''],
+      conditionsMeteo: [''],
+      temperature: [null],
+      description: [''],
+      raisonEcartDuree: [''],
+      adversaire: ['', this.estMatch ? Validators.required : null],
+      competition: [''],
       domicileExterieur: ['', this.estMatch ? Validators.required : null],
     });
 
@@ -87,9 +87,9 @@ export class SeanceFormDialogComponent implements OnInit, OnDestroy {
       return;
     }
     const ratio = (duree - this.dureeTheorique) / this.dureeTheorique;
-    if (ratio < -SEUIL_ECART)      this.alerteEcart = 'court';
-    else if (ratio > SEUIL_ECART)  this.alerteEcart = 'long';
-    else                           this.alerteEcart = null;
+    if (ratio < -SEUIL_ECART) this.alerteEcart = 'court';
+    else if (ratio > SEUIL_ECART) this.alerteEcart = 'long';
+    else this.alerteEcart = null;
 
     if (!this.alerteEcart) {
       this.form.get('raisonEcartDuree')!.setValue('', { emitEvent: false });
@@ -111,19 +111,21 @@ export class SeanceFormDialogComponent implements OnInit, OnDestroy {
     }
     const v = this.form.value;
     const seance: SeanceCreate = {
-      date:             this.dialogData.date,
-      typeSeance:       { id: this.dialogData.typeSeance.id },
-      dureeMinutes:     v.dureeMinutes,
-      titre:            v.titre             || undefined,
-      heureDebut:       v.heureDebut        || undefined,
-      terrain:          v.terrain           || undefined,
-      conditionsMeteo:  v.conditionsMeteo   || undefined,
-      temperature:      v.temperature != null ? Number(v.temperature) : undefined,
-      description:      v.description       || undefined,
-      raisonEcartDuree: v.raisonEcartDuree  || undefined,
+      date: this.dialogData.date,
+      typeSeance: { id: this.dialogData.typeSeance.id },
+      dureeMinutes: v.dureeMinutes,
+      titre: v.titre || undefined,
+      heureDebut: v.heureDebut || undefined,
+      terrain: v.terrain || undefined,
+      conditionsMeteo: v.conditionsMeteo
+        ? v.conditionsMeteo.toLowerCase()
+        : undefined,
+      temperature: v.temperature != null ? Number(v.temperature) : undefined,
+      description: v.description || undefined,
+      raisonEcartDuree: v.raisonEcartDuree || undefined,
       ...(this.estMatch && {
-        adversaire:        v.adversaire,
-        competition:       v.competition       || undefined,
+        adversaire: v.adversaire,
+        competition: v.competition || undefined,
         domicileExterieur: v.domicileExterieur,
       })
     };

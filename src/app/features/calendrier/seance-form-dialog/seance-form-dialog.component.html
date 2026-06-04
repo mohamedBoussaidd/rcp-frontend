@@ -57,8 +57,22 @@
         </div>
       }
 
-      <!-- Terrain -->
+      <!-- Météo + Température -->
       <div class="dark-field full-width">
+        <label>Météo</label>
+        <mat-select formControlName="conditionsMeteo" panelClass="dark-select-panel">
+          <mat-option value="">— Non défini</mat-option>
+          <mat-option value="beau">☀️ Soleil — aucune correction</mat-option>
+          <mat-option value="nuageux">⛅ Nuageux — aucune correction</mat-option>
+          <mat-option value="pluie">🌧️ Pluie — −3% sur la distance attendue</mat-option>
+          <mat-option value="vent_fort">💨 Vent fort — −3% sur la distance attendue</mat-option>
+          <mat-option value="neige">❄️ Neige — −12% sur la distance attendue</mat-option>
+          <mat-option value="ARRET_INTEMPERIE">🛑 Arrêt cause intempérie — séance exclue de la baseline</mat-option>
+        </mat-select>
+      </div>
+
+      <!-- Terrain -->
+      <div class="dark-field">
         <label>Terrain</label>
         <mat-select formControlName="terrain" panelClass="dark-select-panel">
           <mat-option value="">— Non défini</mat-option>
@@ -71,20 +85,7 @@
         </mat-select>
       </div>
 
-      <!-- Météo + Température -->
-      <div class="dark-field">
-        <label>Météo</label>
-        <mat-select formControlName="conditionsMeteo" panelClass="dark-select-panel">
-          <mat-option value="">— Non défini</mat-option>
-          <mat-option value="SOLEIL">☀️ Soleil — aucune correction</mat-option>
-          <mat-option value="NUAGEUX">⛅ Nuageux — aucune correction</mat-option>
-          <mat-option value="COUVERT">🌥️ Couvert — aucune correction</mat-option>
-          <mat-option value="PLUIE">🌧️ Pluie — −3% sur la distance attendue</mat-option>
-          <mat-option value="VENT">💨 Vent fort — −3% sur la distance attendue</mat-option>
-          <mat-option value="NEIGE">❄️ Neige — −12% sur la distance attendue</mat-option>
-          <mat-option value="ARRET_INTEMPERIE">🛑 Arrêt cause intempérie — séance exclue de la baseline</mat-option>
-        </mat-select>
-      </div>
+
 
       <div class="dark-field">
         <label>Température (°C)</label>
