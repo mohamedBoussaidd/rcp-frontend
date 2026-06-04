@@ -37,6 +37,26 @@
     <!-- ── Palette ── -->
     <aside class="palette">
       <div class="pal-section">
+        <button class="pal-head" (click)="basculer('formations')">Formations <span>{{ ouvert() === 'formations' ? '▾' : '▸' }}</span></button>
+        @if (ouvert() === 'formations') {
+          <div class="form-bloc">
+            <div class="form-equipe">
+              <button class="form-eq" [class.on]="equipeFormation() === equipeViolet.couleur"
+                      [style.--c]="equipeViolet.couleur" (click)="equipeFormation.set(equipeViolet.couleur)">Nous (violette)</button>
+              <button class="form-eq" [class.on]="equipeFormation() === equipeJaune.couleur"
+                      [style.--c]="equipeJaune.couleur" (click)="equipeFormation.set(equipeJaune.couleur)">Adverse (jaune)</button>
+            </div>
+            <div class="form-grid">
+              @for (f of formations; track f.nom) {
+                <button class="form-btn" (click)="appliquerFormation(f)">{{ f.nom }}</button>
+              }
+            </div>
+            <p class="pal-aide">Place 11 joueurs d'un clic. L'adverse est posé en miroir. (Terrain complet)</p>
+          </div>
+        }
+      </div>
+
+      <div class="pal-section">
         <button class="pal-head" (click)="basculer('violet')">Équipe violette <span>{{ ouvert() === 'violet' ? '▾' : '▸' }}</span></button>
         @if (ouvert() === 'violet') {
           <div class="pal-grid">

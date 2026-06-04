@@ -108,6 +108,36 @@
 
 .pal-aide { font-size: 0.7rem; color: var(--muted); padding: 10px 6px; line-height: 1.5; }
 
+/* ── Formations ── */
+.form-bloc { padding: 8px 2px; }
+.form-equipe { display: flex; gap: 6px; margin-bottom: 8px; }
+.form-eq {
+  flex: 1;
+  padding: 6px 4px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--text-2);
+  font-size: 0.7rem;
+  font-family: inherit;
+  cursor: pointer;
+  &:hover { border-color: var(--copper-border); }
+  &.on { border-color: var(--c); color: #fff; background: color-mix(in srgb, var(--c) 30%, transparent); font-weight: 700; }
+}
+.form-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; }
+.form-btn {
+  padding: 9px 4px;
+  border-radius: 8px;
+  border: 1px solid var(--copper-border);
+  background: var(--copper-soft);
+  color: var(--copper);
+  font-size: 0.82rem;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  &:hover { opacity: .85; }
+}
+
 /* ── Stage ── */
 .stage-wrap {
   flex: 1;

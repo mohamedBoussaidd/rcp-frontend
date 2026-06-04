@@ -30,7 +30,7 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
   outil = signal<Outil>('select');
   echelle = signal(1);
   // Palette dépliable
-  ouvert = signal<string | null>('violet');
+  ouvert = signal<string | null>('formations');
 
   // équipes / jokers
   readonly equipeViolet = { couleur: VIOLET, nums: Array.from({ length: 11 }, (_, i) => i + 1) };
@@ -43,6 +43,30 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
     { type: 'cerceau', couleur: '#f97316', label: 'Cerceau' },
     { type: 'mannequin', couleur: '#64748b', label: 'Mannequin' },
     { type: 'ballon', couleur: '#ffffff', label: 'Ballon' },
+  ];
+
+  // Quelle équipe on place : violet = nous (gauche), jaune = adverse (droite, en miroir)
+  equipeFormation = signal<string>(VIOLET);
+  // Positions normalisées (x = profondeur 0=notre but → 1=but adverse ; y = largeur 0→1)
+  readonly formations: { nom: string; positions: { x: number; y: number }[] }[] = [
+    { nom: '4-3-3', positions: [
+      { x: .06, y: .5 }, { x: .20, y: .16 }, { x: .20, y: .39 }, { x: .20, y: .61 }, { x: .20, y: .84 },
+      { x: .35, y: .27 }, { x: .35, y: .5 }, { x: .35, y: .73 }, { x: .47, y: .22 }, { x: .47, y: .5 }, { x: .47, y: .78 } ] },
+    { nom: '4-4-2', positions: [
+      { x: .06, y: .5 }, { x: .20, y: .16 }, { x: .20, y: .39 }, { x: .20, y: .61 }, { x: .20, y: .84 },
+      { x: .35, y: .16 }, { x: .35, y: .39 }, { x: .35, y: .61 }, { x: .35, y: .84 }, { x: .47, y: .4 }, { x: .47, y: .6 } ] },
+    { nom: '4-2-3-1', positions: [
+      { x: .06, y: .5 }, { x: .20, y: .16 }, { x: .20, y: .39 }, { x: .20, y: .61 }, { x: .20, y: .84 },
+      { x: .30, y: .38 }, { x: .30, y: .62 }, { x: .42, y: .22 }, { x: .42, y: .5 }, { x: .42, y: .78 }, { x: .5, y: .5 } ] },
+    { nom: '3-5-2', positions: [
+      { x: .06, y: .5 }, { x: .20, y: .27 }, { x: .20, y: .5 }, { x: .20, y: .73 },
+      { x: .34, y: .1 }, { x: .34, y: .32 }, { x: .34, y: .5 }, { x: .34, y: .68 }, { x: .34, y: .9 }, { x: .47, y: .4 }, { x: .47, y: .6 } ] },
+    { nom: '3-4-3', positions: [
+      { x: .06, y: .5 }, { x: .20, y: .27 }, { x: .20, y: .5 }, { x: .20, y: .73 },
+      { x: .35, y: .16 }, { x: .35, y: .39 }, { x: .35, y: .61 }, { x: .35, y: .84 }, { x: .47, y: .22 }, { x: .47, y: .5 }, { x: .47, y: .78 } ] },
+    { nom: '5-3-2', positions: [
+      { x: .06, y: .5 }, { x: .20, y: .1 }, { x: .20, y: .3 }, { x: .20, y: .5 }, { x: .20, y: .7 }, { x: .20, y: .9 },
+      { x: .35, y: .27 }, { x: .35, y: .5 }, { x: .35, y: .73 }, { x: .47, y: .4 }, { x: .47, y: .6 } ] },
   ];
 
   private stage!: Konva.Stage;
@@ -105,6 +129,27 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
   private ajouterElement(el: SchemaElement): void {
     this.elements.push(el);
     this.dessinerElement(el);
+    this.layer.draw();
+  }
+
+  /** Place une formation (11 joueurs) pour l'équipe choisie. Adverse = côté droit en miroir. */
+  appliquerFormation(f: { nom: string; positions: { x: number; y: number }[] }): void {
+    if (this.terrain() !== 'complet') this.changerTerrain('complet'); // formations pensées pour le terrain complet
+    const couleur = this.equipeFormation();
+    const adverse = couleur === JAUNE;
+    // retirer les joueurs existants de cette couleur (re-cliquer = remplacer)
+    this.elements.filter(e => e.type === 'joueur' && e.couleur === couleur).forEach(e => this.nodesById.get(e.id)?.destroy());
+    this.elements = this.elements.filter(e => !(e.type === 'joueur' && e.couleur === couleur));
+    const m = 24;
+    f.positions.forEach((pos, i) => {
+      const nx = adverse ? 1 - pos.x : pos.x;
+      const el: SchemaElement = {
+        id: this.uid(), type: 'joueur', couleur, numero: i + 1,
+        x: m + nx * (this.W - 2 * m), y: m + pos.y * (this.H - 2 * m),
+      };
+      this.elements.push(el);
+      this.dessinerElement(el);
+    });
     this.layer.draw();
   }
 
