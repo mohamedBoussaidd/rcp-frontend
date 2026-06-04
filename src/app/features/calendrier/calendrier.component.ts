@@ -141,6 +141,24 @@ export class CalendrierComponent implements OnInit {
     });
   }
 
+  editerSeance(seance: Seance, event: MouseEvent): void {
+    event.stopPropagation();
+    const ref = this.dialog.open(SeanceFormDialogComponent, {
+      width: '480px',
+      maxWidth: '95vw',
+      panelClass: 'dark-dialog',
+      data: { typeSeance: seance.typeSeance, date: seance.date, seance }
+    });
+    ref.afterClosed().subscribe((payload: SeanceCreate | null) => {
+      if (payload) {
+        this.seanceService.update(seance.id, payload as Partial<Seance>).subscribe({
+          next: () => { this.chargerSemaine(); this.snackBar.open('Séance modifiée', 'OK', { duration: 2500 }); },
+          error: () => this.snackBar.open('Modification impossible', 'OK', { duration: 3000 }),
+        });
+      }
+    });
+  }
+
   marquerRealisee(seance: Seance, event: MouseEvent): void {
     event.stopPropagation();
     this.seanceService.marquerRealisee(seance.id).subscribe(() => {

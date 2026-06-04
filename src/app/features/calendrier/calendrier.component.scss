@@ -197,7 +197,7 @@
   transition: opacity .15s;
 }
 
-.btn-realise, .btn-suppr {
+.btn-realise, .btn-suppr, .btn-edit {
   width: 20px;
   height: 20px;
   border-radius: 4px;
@@ -213,6 +213,7 @@
 
 .btn-realise { background: var(--success-bg); color: var(--success); }
 .btn-suppr   { background: var(--danger-bg);  color: var(--danger); }
+.btn-edit    { background: var(--copper-soft); color: var(--copper); }
 
 /* ── Séances techniques (bloc distinct, teal) ── */
 .seance-tech {

@@ -9,6 +9,7 @@ import { TypeSeance, SeanceCreate } from '../../../core/services/seance.service'
 export interface DialogData {
   typeSeance: TypeSeance;
   date: string;
+  seance?: any;   // seance existante => mode edition (preremplissage)
 }
 
 const SUGGESTIONS_COURT = ['Météo', 'Blessure', 'Fatigue collective', 'Décision staff'];
@@ -31,6 +32,7 @@ export class SeanceFormDialogComponent implements OnInit, OnDestroy {
   readonly suggestionsLong   = SUGGESTIONS_LONG;
 
   alerteEcart: 'court' | 'long' | null = null;
+  get editMode(): boolean { return !!this.dialogData.seance; }
 
   private sub!: Subscription;
 
@@ -57,6 +59,18 @@ export class SeanceFormDialogComponent implements OnInit, OnDestroy {
       competition:       [''],
       domicileExterieur: ['', this.estMatch ? Validators.required : null],
     });
+
+    if (this.dialogData.seance) {
+      const s = this.dialogData.seance;
+      this.form.patchValue({
+        titre: s.titre ?? '', heureDebut: s.heureDebut ?? '',
+        dureeMinutes: s.dureeMinutes ?? this.dureeTheorique,
+        terrain: s.terrain ?? '', conditionsMeteo: s.conditionsMeteo ?? '',
+        temperature: s.temperature ?? null, description: s.description ?? '',
+        adversaire: s.adversaire ?? '', competition: s.competition ?? '',
+        domicileExterieur: s.domicileExterieur ?? '',
+      });
+    }
 
     this.sub = this.form.get('dureeMinutes')!.valueChanges.subscribe(val => {
       this.calculerAlerte(val);

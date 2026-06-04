@@ -85,6 +85,8 @@
                 @if (auth.canEcrireSeances()) {
                   <div class="seance-actions">
                     @if (seance.statut === 'PLANIFIEE') {
+                      <button class="btn-edit" (click)="editerSeance(seance, $event)"
+                              matTooltip="Modifier">✎</button>
                       <button class="btn-realise" (click)="marquerRealisee(seance, $event)"
                               matTooltip="Marquer comme réalisée">✓</button>
                     }
