@@ -70,6 +70,28 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
   ];
   formationsCustom = signal<FormationCustom[]>([]);
 
+  // ── Coups de pied arrêtés ──
+  modeArret = signal<'offensif' | 'defensif'>('offensif');
+  // Positions normalisées (côté droit "D"). Offensif = attaque but droit ; Défensif = défend but gauche.
+  private readonly arret = {
+    offensif: {
+      corner: { ball: { x: .985, y: .92 }, players: [
+        { x: .965, y: .89 }, { x: .9, y: .72 }, { x: .9, y: .3 }, { x: .85, y: .5 }, { x: .92, y: .52 },
+        { x: .78, y: .38 }, { x: .78, y: .62 }, { x: .93, y: .83 }, { x: .55, y: .45 }, { x: .55, y: .6 }, { x: .07, y: .5 } ] },
+      cf: { ball: { x: .74, y: .66 }, players: [
+        { x: .72, y: .62 }, { x: .7, y: .74 }, { x: .86, y: .4 }, { x: .86, y: .5 }, { x: .86, y: .6 },
+        { x: .8, y: .3 }, { x: .8, y: .7 }, { x: .6, y: .45 }, { x: .6, y: .6 }, { x: .4, y: .5 }, { x: .07, y: .5 } ] },
+    },
+    defensif: {
+      corner: { ball: { x: .015, y: .92 }, players: [
+        { x: .04, y: .5 }, { x: .06, y: .42 }, { x: .06, y: .58 }, { x: .1, y: .34 }, { x: .1, y: .5 }, { x: .1, y: .66 },
+        { x: .16, y: .4 }, { x: .16, y: .6 }, { x: .22, y: .5 }, { x: .08, y: .83 }, { x: .45, y: .5 } ] },
+      cf: { ball: { x: .26, y: .66 }, players: [
+        { x: .05, y: .5 }, { x: .2, y: .46 }, { x: .2, y: .5 }, { x: .2, y: .54 }, { x: .12, y: .38 }, { x: .12, y: .62 },
+        { x: .16, y: .5 }, { x: .28, y: .4 }, { x: .28, y: .6 }, { x: .45, y: .5 }, { x: .4, y: .7 } ] },
+    },
+  };
+
   private stage!: Konva.Stage;
   private fieldLayer!: Konva.Layer;
   private layer!: Konva.Layer;          // éléments + tracés
@@ -161,6 +183,31 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
 
   appliquerFormationCustom(f: FormationCustom): void {
     try { this.appliquerFormation({ nom: f.nom, positions: JSON.parse(f.positionsJson) }); } catch {}
+  }
+
+  /** Place un coup de pied arrêté (ballon + nos joueurs en violet). Côté G = miroir en largeur. */
+  placerArret(type: 'corner' | 'cf', cote: 'D' | 'G'): void {
+    if (this.terrain() !== 'complet') this.changerTerrain('complet');
+    const base = this.arret[this.modeArret()][type];
+    const couleur = this.equipeViolet.couleur;
+    const m = 24;
+    const mir = (p: { x: number; y: number }) => cote === 'G' ? { x: p.x, y: 1 - p.y } : p;
+    const px = (p: { x: number; y: number }) => ({ x: m + p.x * (this.W - 2 * m), y: m + p.y * (this.H - 2 * m) });
+    // retirer nos joueurs + ballons existants
+    this.elements.filter(e => (e.type === 'joueur' && e.couleur === couleur) || e.type === 'ballon')
+      .forEach(e => this.nodesById.get(e.id)?.destroy());
+    this.elements = this.elements.filter(e => !((e.type === 'joueur' && e.couleur === couleur) || e.type === 'ballon'));
+    // ballon
+    const b = px(mir(base.ball));
+    const ball: SchemaElement = { id: this.uid(), type: 'ballon', couleur: '#fff', x: b.x, y: b.y };
+    this.elements.push(ball); this.dessinerElement(ball);
+    // nos joueurs
+    base.players.forEach((p, i) => {
+      const q = px(mir(p));
+      const el: SchemaElement = { id: this.uid(), type: 'joueur', couleur, numero: i + 1, x: q.x, y: q.y };
+      this.elements.push(el); this.dessinerElement(el);
+    });
+    this.layer.draw();
   }
 
   /** Enregistre la disposition actuelle de l'équipe choisie comme formation réutilisable. */

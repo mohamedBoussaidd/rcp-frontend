@@ -73,6 +73,25 @@
       </div>
 
       <div class="pal-section">
+        <button class="pal-head" (click)="basculer('cpa')">Coups de pied arrêtés <span>{{ ouvert() === 'cpa' ? '▾' : '▸' }}</span></button>
+        @if (ouvert() === 'cpa') {
+          <div class="form-bloc">
+            <div class="form-equipe">
+              <button class="form-eq" [class.on]="modeArret() === 'offensif'" [style.--c]="'#22c55e'" (click)="modeArret.set('offensif')">Offensif</button>
+              <button class="form-eq" [class.on]="modeArret() === 'defensif'" [style.--c]="'#ef4444'" (click)="modeArret.set('defensif')">Défensif</button>
+            </div>
+            <div class="form-grid">
+              <button class="form-btn" (click)="placerArret('corner', 'G')">Corner G</button>
+              <button class="form-btn" (click)="placerArret('corner', 'D')">Corner D</button>
+              <button class="form-btn" (click)="placerArret('cf', 'G')">CF Gauche</button>
+              <button class="form-btn" (click)="placerArret('cf', 'D')">CF Droit</button>
+            </div>
+            <p class="pal-aide">Place le ballon + notre équipe (violet) selon la situation. CF = coup franc à l'entrée de la surface.</p>
+          </div>
+        }
+      </div>
+
+      <div class="pal-section">
         <button class="pal-head" (click)="basculer('violet')">Équipe violette <span>{{ ouvert() === 'violet' ? '▾' : '▸' }}</span></button>
         @if (ouvert() === 'violet') {
           <div class="pal-grid">

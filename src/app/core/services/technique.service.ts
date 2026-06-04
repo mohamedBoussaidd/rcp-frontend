@@ -74,7 +74,7 @@ export interface FormationCustom {
 
 export const CATEGORIES_EXERCICE = [
   'echauffement', 'technique', 'tactique', 'conservation',
-  'jeu_reduit', 'match_a_theme', 'finition', 'transition',
+  'jeu_reduit', 'match_a_theme', 'finition', 'transition', 'coup_pied_arrete',
 ];
 
 @Injectable({ providedIn: 'root' })
