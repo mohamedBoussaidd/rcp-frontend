@@ -275,7 +275,7 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
   private dessinerTrace(t: SchemaTrace): Konva.Group {
     const grp = new Konva.Group();
     const couleur = '#fde047';
-    const base = { points: t.points, stroke: couleur, strokeWidth: 3, tension: 0.35, lineCap: 'round' as const, lineJoin: 'round' as const };
+    const base = { points: t.points, stroke: couleur, strokeWidth: 3, tension: 0.8, lineCap: 'round' as const, lineJoin: 'round' as const };
     if (t.type === 'deplacement') {
       grp.add(new Konva.Arrow({ ...base, dash: [11, 7], fill: couleur, pointerLength: 11, pointerWidth: 11 }));
     } else if (t.type === 'passe') {
@@ -312,7 +312,7 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
       const p = this.stage.getRelativePointerPosition();
       if (!p) return;
       this.pointsEnCours = [p.x, p.y];
-      const base = { points: this.pointsEnCours, stroke: couleur, strokeWidth: 3, tension: 0.35, lineCap: 'round' as const, lineJoin: 'round' as const };
+      const base = { points: this.pointsEnCours, stroke: couleur, strokeWidth: 3, tension: 0.8, lineCap: 'round' as const, lineJoin: 'round' as const };
       this.dessinEnCours = (o === 'deplacement' || o === 'passe')
         ? new Konva.Arrow({ ...base, fill: couleur, dash: o === 'deplacement' ? [11, 7] : undefined, pointerLength: 11, pointerWidth: 11 })
         : new Konva.Line({ ...base });
@@ -325,7 +325,7 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
       if (!p) return;
       const n = this.pointsEnCours.length;
       // n'ajoute un point que si on a bougé d'au moins 8px (lisse + limite le nombre de points)
-      if (Math.hypot(p.x - this.pointsEnCours[n - 2], p.y - this.pointsEnCours[n - 1]) >= 8) {
+      if (Math.hypot(p.x - this.pointsEnCours[n - 2], p.y - this.pointsEnCours[n - 1]) >= 20) {
         this.pointsEnCours.push(p.x, p.y);
         this.dessinEnCours.points(this.pointsEnCours);
         this.layer.batchDraw();
@@ -343,6 +343,7 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
       if (longueurOk) {
         const t: SchemaTrace = { id: this.uid(), type: this.outil() as TraceType, points: pts };
         this.traces.push(t);
+        // const pointsSimplifies = this.simplifierPoints(this.pointsEnCours);
         this.dessinerTrace(t);
       }
       this.pointsEnCours = [];
@@ -351,4 +352,17 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
   }
 
   private uid(): string { return Math.random().toString(36).slice(2, 10); }
+  private simplifierPoints(points: number[]): number[] {
+
+  if (points.length <= 6) return points;
+
+  const resultat: number[] = [];
+
+  for (let i = 0; i < points.length; i += 4) {
+    resultat.push(points[i], points[i + 1]);
+  }
+
+  return resultat;
 }
+}
+

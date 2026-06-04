@@ -167,6 +167,7 @@
                 @for (ex of s.exercices; track ex.exerciceId) { <li>{{ ex.nom }} <small>{{ ex.dureeMinutes || 0 }}'</small></li> }
               </ul>
               <div class="seance-actions">
+                <button class="btn-mini" (click)="ouvrirDetail(s)">👁 Détail</button>
                 @if (s.statut !== 'REALISEE') {
                   <button class="btn-mini" (click)="editerSeance(s)">✎ Modifier</button>
                   <button class="btn-mini" (click)="realiserSeance(s)">✓ Réalisée</button>

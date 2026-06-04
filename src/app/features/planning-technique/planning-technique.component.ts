@@ -10,6 +10,7 @@ import {
   SeanceTechnique, SeanceTechniqueRequest, TechniqueService,
 } from '../../core/services/technique.service';
 import { SchemaEditorComponent } from './schema-editor/schema-editor.component';
+import { SeanceDetailComponent } from './seance-detail/seance-detail.component';
 
 @Component({
   selector: 'app-planning-technique',
@@ -76,6 +77,13 @@ export class PlanningTechniqueComponent implements OnInit {
       data: { exercice: e },
     });
     ref.afterClosed().subscribe(saved => { if (saved) this.charger(); });
+  }
+
+  ouvrirDetail(s: SeanceTechnique): void {
+    this.dialog.open(SeanceDetailComponent, {
+      width: '900px', maxWidth: '96vw', panelClass: 'dark-dialog',
+      data: { seance: s },
+    });
   }
 
   ngOnInit(): void { this.charger(); }

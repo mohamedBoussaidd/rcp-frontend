@@ -34,6 +34,8 @@ export interface ExerciceLigne {
   dureeMinutes?: number;
   intensite?: number;
   objectif?: string;
+  description?: string;
+  schemaJson?: string;
   ordre: number;
 }
 
