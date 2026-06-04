@@ -8,7 +8,8 @@
 
     <div class="tb-group">
       <button class="tb-btn" [class.on]="outil() === 'select'" (click)="choisirOutil('select')" title="Sélection / déplacer">↖</button>
-      <button class="tb-btn" [class.on]="outil() === 'deplacement'" (click)="choisirOutil('deplacement')" title="Déplacement (pointillé)">⇢</button>
+      <button class="tb-btn" [class.on]="outil() === 'deplacement'" (click)="choisirOutil('deplacement')" title="Déplacement sans ballon (pointillé)">⇢</button>
+      <button class="tb-btn" [class.on]="outil() === 'conduite'" (click)="choisirOutil('conduite')" title="Conduite de balle (trait)">／</button>
       <button class="tb-btn" [class.on]="outil() === 'passe'" (click)="choisirOutil('passe')" title="Passe (flèche)">→</button>
       <button class="tb-btn" [class.on]="outil() === 'tir'" (click)="choisirOutil('tir')" title="Tir (bout rond)">●—</button>
       <button class="tb-btn danger" [class.on]="outil() === 'supprimer'" (click)="choisirOutil('supprimer')" title="Supprimer (cliquer un élément/tracé)">🗑</button>

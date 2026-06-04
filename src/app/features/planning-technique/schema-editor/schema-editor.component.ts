@@ -5,10 +5,11 @@ import Konva from 'konva';
 import { Exercice, TechniqueService } from '../../../core/services/technique.service';
 
 type Terrain = 'complet' | 'demi';
-type Outil = 'select' | 'deplacement' | 'passe' | 'tir' | 'supprimer';
+type Outil = 'select' | 'deplacement' | 'conduite' | 'passe' | 'tir' | 'supprimer';
+type TraceType = 'deplacement' | 'conduite' | 'passe' | 'tir';
 
 interface SchemaElement { id: string; type: string; couleur?: string; numero?: number; x: number; y: number; }
-interface SchemaTrace { id: string; type: 'deplacement' | 'passe' | 'tir'; points: number[]; }
+interface SchemaTrace { id: string; type: TraceType; points: number[]; }
 
 const VIOLET = '#7c3aed', JAUNE = '#eab308', ROUGE = '#ef4444';
 const BLEU = '#2563eb';
@@ -51,8 +52,8 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
   private traces: SchemaTrace[] = [];
   private nodesById = new Map<string, Konva.Group>();
 
-  private dessinEnCours: Konva.Shape | Konva.Group | null = null;
-  private depart: { x: number; y: number } | null = null;
+  private dessinEnCours: Konva.Line | null = null;
+  private pointsEnCours: number[] = [];
 
   private get W() { return this.terrain() === 'complet' ? 1040 : 600; }
   private get H() { return 680; }
@@ -218,12 +219,15 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
   private dessinerTrace(t: SchemaTrace): Konva.Group {
     const grp = new Konva.Group();
     const couleur = '#fde047';
+    const base = { points: t.points, stroke: couleur, strokeWidth: 3, tension: 0.35, lineCap: 'round' as const, lineJoin: 'round' as const };
     if (t.type === 'deplacement') {
-      grp.add(new Konva.Arrow({ points: t.points, stroke: couleur, strokeWidth: 3, dash: [10, 6], fill: couleur, pointerLength: 9, pointerWidth: 9 }));
+      grp.add(new Konva.Arrow({ ...base, dash: [11, 7], fill: couleur, pointerLength: 11, pointerWidth: 11 }));
     } else if (t.type === 'passe') {
-      grp.add(new Konva.Arrow({ points: t.points, stroke: couleur, strokeWidth: 3, fill: couleur, pointerLength: 10, pointerWidth: 10 }));
-    } else {
-      grp.add(new Konva.Line({ points: t.points, stroke: couleur, strokeWidth: 3, lineCap: 'round' }));
+      grp.add(new Konva.Arrow({ ...base, fill: couleur, pointerLength: 12, pointerWidth: 12 }));
+    } else if (t.type === 'conduite') {
+      grp.add(new Konva.Line({ ...base }));
+    } else { // tir
+      grp.add(new Konva.Line({ ...base }));
       const n = t.points.length;
       grp.add(new Konva.Circle({ x: t.points[n - 2], y: t.points[n - 1], radius: 6, fill: couleur }));
     }
@@ -238,41 +242,54 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
   }
 
   // ══════════ Dessin des tracés à la souris ══════════
+  private estOutilTrace(o: Outil): o is TraceType {
+    return o === 'deplacement' || o === 'conduite' || o === 'passe' || o === 'tir';
+  }
+
   private brancherDessin(): void {
+    const couleur = '#fde047';
+
     this.stage.on('mousedown touchstart', (e) => {
       const o = this.outil();
-      if (o !== 'deplacement' && o !== 'passe' && o !== 'tir') return;
-      if (e.target !== this.stage && e.target.getParent()?.draggable()) return; // ne pas dessiner sur un élément
+      if (!this.estOutilTrace(o)) return;
+      if (e.target !== this.stage && e.target.getParent()?.draggable()) return; // pas sur un élément
       const p = this.stage.getRelativePointerPosition();
       if (!p) return;
-      this.depart = { x: p.x, y: p.y };
-      const couleur = '#fde047';
-      this.dessinEnCours = o === 'tir'
-        ? new Konva.Line({ points: [p.x, p.y, p.x, p.y], stroke: couleur, strokeWidth: 3, lineCap: 'round' })
-        : new Konva.Arrow({ points: [p.x, p.y, p.x, p.y], stroke: couleur, strokeWidth: 3, fill: couleur, dash: o === 'deplacement' ? [10, 6] : undefined, pointerLength: 9, pointerWidth: 9 });
+      this.pointsEnCours = [p.x, p.y];
+      const base = { points: this.pointsEnCours, stroke: couleur, strokeWidth: 3, tension: 0.35, lineCap: 'round' as const, lineJoin: 'round' as const };
+      this.dessinEnCours = (o === 'deplacement' || o === 'passe')
+        ? new Konva.Arrow({ ...base, fill: couleur, dash: o === 'deplacement' ? [11, 7] : undefined, pointerLength: 11, pointerWidth: 11 })
+        : new Konva.Line({ ...base });
       this.layer.add(this.dessinEnCours);
     });
 
     this.stage.on('mousemove touchmove', () => {
-      if (!this.dessinEnCours || !this.depart) return;
+      if (!this.dessinEnCours) return;
       const p = this.stage.getRelativePointerPosition();
       if (!p) return;
-      (this.dessinEnCours as Konva.Line).points([this.depart.x, this.depart.y, p.x, p.y]);
-      this.layer.batchDraw();
+      const n = this.pointsEnCours.length;
+      // n'ajoute un point que si on a bougé d'au moins 8px (lisse + limite le nombre de points)
+      if (Math.hypot(p.x - this.pointsEnCours[n - 2], p.y - this.pointsEnCours[n - 1]) >= 8) {
+        this.pointsEnCours.push(p.x, p.y);
+        this.dessinEnCours.points(this.pointsEnCours);
+        this.layer.batchDraw();
+      }
     });
 
     this.stage.on('mouseup touchend', () => {
-      if (!this.dessinEnCours || !this.depart) return;
-      const p = this.stage.getRelativePointerPosition()!;
-      const dist = Math.hypot(p.x - this.depart.x, p.y - this.depart.y);
+      if (!this.dessinEnCours) return;
+      const p = this.stage.getRelativePointerPosition();
+      if (p) this.pointsEnCours.push(p.x, p.y);
       this.dessinEnCours.destroy();
       this.dessinEnCours = null;
-      if (dist > 12) {
-        const t: SchemaTrace = { id: this.uid(), type: this.outil() as SchemaTrace['type'], points: [this.depart.x, this.depart.y, p.x, p.y] };
+      const pts = this.pointsEnCours;
+      const longueurOk = pts.length >= 4 && Math.hypot(pts[pts.length - 2] - pts[0], pts[pts.length - 1] - pts[1]) > 12;
+      if (longueurOk) {
+        const t: SchemaTrace = { id: this.uid(), type: this.outil() as TraceType, points: pts };
         this.traces.push(t);
         this.dessinerTrace(t);
       }
-      this.depart = null;
+      this.pointsEnCours = [];
       this.layer.draw();
     });
   }
