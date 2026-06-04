@@ -39,6 +39,7 @@ export class NavSidebarComponent {
     { label: 'Dashboard',    icon: 'dashboard',      route: '/dashboard',   roles: ['SUPER_ADMIN', 'PRESIDENT', 'ENTRAINEUR', 'PREPARATEUR', 'MEDICAL'] },
     { label: 'Calendrier',   icon: 'calendar_month', route: '/calendrier',  roles: ['SUPER_ADMIN', 'PRESIDENT', 'ENTRAINEUR', 'PREPARATEUR', 'MEDICAL'] },
     { label: 'Séances',      icon: 'fitness_center', route: '/seances',     roles: ['SUPER_ADMIN', 'PRESIDENT', 'ENTRAINEUR', 'PREPARATEUR', 'MEDICAL', 'JOUEUR'] },
+    { label: 'Planning technique', icon: 'sports',   route: '/planning-technique', roles: ['SUPER_ADMIN', 'ENTRAINEUR'] },
     { label: 'Pesées',       icon: 'monitor_weight', route: '/pesees',      roles: ['SUPER_ADMIN', 'PRESIDENT', 'PREPARATEUR', 'MEDICAL'] },
     { label: 'Médical',      icon: 'healing',        route: '/medical',     roles: ['SUPER_ADMIN', 'PRESIDENT', 'ENTRAINEUR', 'PREPARATEUR', 'MEDICAL'] },
     { label: 'Import Excel', icon: 'upload_file',    route: '/import',      roles: ['SUPER_ADMIN', 'PREPARATEUR'] },

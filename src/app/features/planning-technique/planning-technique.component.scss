@@ -1,0 +1,205 @@
+:host { display: block; }
+
+.tech-content {
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+/* ── Formulaires ── */
+.exo-form, .compose {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 18px;
+  background: var(--surface-2);
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.f {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  span { font-size: 0.72rem; font-weight: 600; color: var(--muted); }
+  .wide { width: 100%; box-sizing: border-box; text-align: left; }
+  &.span2 { grid-column: span 2; }
+}
+
+.form-actions { display: flex; justify-content: flex-end; margin-top: 8px; }
+
+/* ── Filtres ── */
+.filtres {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+  .param-input { min-width: 160px; }
+}
+
+/* ── Cartes exercice ── */
+.exos-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 12px;
+}
+
+.exo-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface-2);
+}
+
+.exo-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.exo-nom { font-size: 0.88rem; font-weight: 700; color: var(--text); }
+.exo-obj { font-size: 0.76rem; color: var(--text-2); }
+.exo-tags { display: flex; gap: 6px; flex-wrap: wrap; }
+
+.tag {
+  font-size: 0.66rem;
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: var(--surface-input);
+  color: var(--text-2);
+  border: 1px solid var(--border);
+}
+
+.int-badge {
+  font-size: 0.66rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 6px;
+  border: 1px solid transparent;
+}
+.int-1, .int-2 { background: var(--info-bg);    color: var(--info);    border-color: var(--info-border); }
+.int-3        { background: var(--warning-bg); color: var(--warning); border-color: var(--warning-border); }
+.int-4, .int-5 { background: var(--danger-bg);  color: var(--danger);  border-color: var(--danger-border); }
+
+.exo-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 2px;
+  border-top: 1px solid var(--border);
+  padding-top: 6px;
+}
+.exo-auteur { font-size: 0.68rem; color: var(--muted); }
+
+.row-actions { display: flex; gap: 6px; }
+
+.btn-mini {
+  border: 1px solid var(--copper-border);
+  background: var(--copper-soft);
+  color: var(--copper);
+  border-radius: 8px;
+  min-width: 28px;
+  height: 28px;
+  padding: 0 8px;
+  cursor: pointer;
+  font-size: 0.76rem;
+  font-family: inherit;
+  &:hover { opacity: .8; }
+  &.danger { border-color: var(--danger-border); background: var(--danger-bg); color: var(--danger); }
+}
+
+/* ── Composition séance ── */
+.compose-cols {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+.compose-titre { font-size: 0.74rem; font-weight: 700; color: var(--copper); text-transform: uppercase; letter-spacing: .04em; margin-bottom: 8px; }
+
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip {
+  border: 1px solid var(--border);
+  background: var(--surface-input);
+  color: var(--text-2);
+  border-radius: 20px;
+  padding: 5px 11px;
+  font-size: 0.76rem;
+  font-family: inherit;
+  cursor: pointer;
+  small { color: var(--muted); }
+  &:hover { border-color: var(--copper-border); }
+  &.on { background: var(--copper-soft); color: var(--copper); border-color: var(--copper-border); font-weight: 600; }
+}
+
+.sel-list {
+  list-style: none;
+  margin: 0 0 12px;
+  padding: 0;
+  li {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 6px 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 0.8rem;
+    small { color: var(--muted); }
+  }
+}
+
+/* ── Cartes séance technique ── */
+.seances-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 14px;
+}
+.seance-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface-2);
+  &.realisee { opacity: .7; }
+}
+.seance-head { display: flex; align-items: center; justify-content: space-between; }
+.seance-date { font-size: 0.85rem; font-weight: 700; color: var(--text); }
+.seance-titre { font-size: 0.82rem; font-weight: 600; color: var(--text); }
+.seance-meta { font-size: 0.74rem; color: var(--muted); }
+.seance-obj { font-size: 0.76rem; color: var(--text-2); }
+.seance-exos {
+  list-style: none; margin: 4px 0 0; padding: 0;
+  li { font-size: 0.74rem; color: var(--text-2); padding: 2px 0; small { color: var(--muted); } }
+}
+.seance-actions { display: flex; gap: 8px; margin-top: 6px; }
+
+.statut-pill {
+  font-size: 0.66rem; font-weight: 700; padding: 2px 9px; border-radius: 50px;
+  background: var(--info-bg); color: var(--info); border: 1px solid var(--info-border);
+  &.realisee { background: var(--success-bg); color: var(--success); border-color: var(--success-border); }
+}
+
+.muted { color: var(--muted); font-size: 0.8rem; }
+
+@media (max-width: 800px) {
+  .tech-content { padding: 12px 8px; }
+  .form-grid { grid-template-columns: 1fr 1fr; }
+  .compose-cols { grid-template-columns: 1fr; }
+}
+@media (max-width: 480px) {
+  .form-grid { grid-template-columns: 1fr; }
+  .f.span2 { grid-column: span 1; }
+}

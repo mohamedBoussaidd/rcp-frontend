@@ -13,6 +13,7 @@ import { AdminClubsComponent } from './features/admin-clubs/admin-clubs.componen
 import { MonClubComponent } from './features/mon-club/mon-club.component';
 import { MedicalComponent } from './features/medical/medical.component';
 import { EspaceJoueurComponent } from './features/espace-joueur/espace-joueur.component';
+import { PlanningTechniqueComponent } from './features/planning-technique/planning-technique.component';
 import { authGuard } from './core/guards/auth.guard';
 import { roleGuard } from './core/guards/role.guard';
 
@@ -24,6 +25,7 @@ export const routes: Routes = [
   { path: 'mon-club',     component: MonClubComponent,      canActivate: [authGuard, roleGuard], data: { roles: ['PRESIDENT'] } },
   { path: 'medical',      component: MedicalComponent,      canActivate: [authGuard, roleGuard], data: { roles: ['ENTRAINEUR', 'PREPARATEUR', 'MEDICAL', 'PRESIDENT', 'SUPER_ADMIN'] } },
   { path: 'mon-espace',   component: EspaceJoueurComponent, canActivate: [authGuard, roleGuard], data: { roles: ['JOUEUR'] } },
+  { path: 'planning-technique', component: PlanningTechniqueComponent, canActivate: [authGuard, roleGuard], data: { roles: ['ENTRAINEUR', 'SUPER_ADMIN'] } },
   { path: 'dashboard',    component: DashboardComponent,    canActivate: [authGuard] },
   { path: 'joueurs/:id',  component: JoueurDetailComponent, canActivate: [authGuard] },
   { path: 'import',       component: ImportComponent,       canActivate: [authGuard] },
