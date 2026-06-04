@@ -10,6 +10,7 @@ import { MatTooltip } from '@angular/material/tooltip';
 import { DragDropModule } from '@angular/cdk/drag-drop';
 import { DatePipe, LowerCasePipe } from '@angular/common';
 import { AuthService } from '../../core/services/auth.service';
+import { TechniqueService, SeanceTechnique } from '../../core/services/technique.service';
 
 export const COULEURS_TYPE: Record<string, string> = {
   MATCH:        '#ef4444',
@@ -44,6 +45,7 @@ export class CalendrierComponent implements OnInit {
 
   typeSeances: TypeSeance[] = [];
   seancesSemaine: Seance[] = [];
+  seancesTechSemaine: SeanceTechnique[] = [];
   joursGrid: { label: string; date: Date; dateStr: string }[] = [];
   lundiSemaine: Date = this.getLundiCourant();
   readonly today = this.toDateStr(new Date());
@@ -72,7 +74,8 @@ export class CalendrierComponent implements OnInit {
     private dialog: MatDialog,
     private snackBar: MatSnackBar,
     private router: Router,
-    public auth: AuthService
+    public auth: AuthService,
+    private techniqueService: TechniqueService
   ) {}
 
   ngOnInit(): void {
@@ -85,6 +88,10 @@ export class CalendrierComponent implements OnInit {
     const debut = this.toDateStr(this.lundiSemaine);
     const fin = this.toDateStr(this.getFinSemaine());
     this.seanceService.getSemaine(debut, fin).subscribe(s => this.seancesSemaine = s);
+    this.techniqueService.listerSeances(debut, fin).subscribe({
+      next: s => this.seancesTechSemaine = s,
+      error: () => this.seancesTechSemaine = [],
+    });
   }
 
   buildGrid(): void {
@@ -109,6 +116,10 @@ export class CalendrierComponent implements OnInit {
 
   seancesDuJour(dateStr: string): Seance[] {
     return this.seancesSemaine.filter(s => s.date === dateStr);
+  }
+
+  seancesTechDuJour(dateStr: string): SeanceTechnique[] {
+    return this.seancesTechSemaine.filter(s => s.date === dateStr);
   }
 
   onDrop(event: CdkDragDrop<any>, dateStr: string): void {

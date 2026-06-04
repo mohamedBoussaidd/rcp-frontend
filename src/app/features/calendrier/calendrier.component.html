@@ -121,7 +121,19 @@
               </div>
             }
 
-            @if (seancesDuJour(jour.dateStr).length === 0) {
+            <!-- ── Séances techniques (lecture, gérées dans Planning technique) ── -->
+            @for (st of seancesTechDuJour(jour.dateStr); track st.id) {
+              <div class="seance-tech" [class.realisee]="st.statut === 'REALISEE'">
+                <div class="tech-head">
+                  <span class="tech-badge">Technique</span>
+                  @if (st.dureeTotaleMinutes) { <span class="tech-duree">{{ st.dureeTotaleMinutes }} min</span> }
+                </div>
+                <span class="tech-titre">{{ st.titre || 'Séance technique' }}</span>
+                <span class="tech-meta">int. {{ st.intensiteMoyenne ?? '—' }} · {{ st.exercices.length }} exo.</span>
+              </div>
+            }
+
+            @if (seancesDuJour(jour.dateStr).length === 0 && seancesTechDuJour(jour.dateStr).length === 0) {
               <div class="jour-vide">—</div>
             }
           </div>

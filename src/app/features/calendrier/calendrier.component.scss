@@ -214,6 +214,35 @@
 .btn-realise { background: var(--success-bg); color: var(--success); }
 .btn-suppr   { background: var(--danger-bg);  color: var(--danger); }
 
+/* ── Séances techniques (bloc distinct, teal) ── */
+.seance-tech {
+  border-left: 3px solid #14b8a6;
+  background: rgba(20, 184, 166, .08);
+  border-radius: 6px;
+  padding: 6px 8px;
+  margin-bottom: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+
+  &.realisee { opacity: .6; }
+}
+.tech-head { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
+.tech-badge {
+  font-size: 0.58rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  color: #14b8a6;
+  background: rgba(20, 184, 166, .14);
+  border: 1px solid rgba(20, 184, 166, .3);
+  border-radius: 20px;
+  padding: 1px 7px;
+}
+.tech-duree { font-size: 0.62rem; color: var(--muted); }
+.tech-titre { font-size: 0.74rem; font-weight: 600; color: var(--text); }
+.tech-meta { font-size: 0.64rem; color: var(--muted); }
+
 @media (max-width: 1024px) {
   .grille { grid-template-columns: repeat(5, 1fr); }
   .palette { width: 200px; min-width: 200px; }
