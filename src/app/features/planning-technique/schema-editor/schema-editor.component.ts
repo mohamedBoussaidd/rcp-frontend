@@ -2,7 +2,7 @@ import { AfterViewInit, Component, ElementRef, Inject, OnDestroy, ViewChild, sig
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import Konva from 'konva';
-import { Exercice, TechniqueService } from '../../../core/services/technique.service';
+import { Exercice, FormationCustom, TechniqueService } from '../../../core/services/technique.service';
 
 type Terrain = 'complet' | 'demi';
 type Outil = 'select' | 'deplacement' | 'conduite' | 'passe' | 'tir' | 'supprimer';
@@ -68,6 +68,7 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
       { x: .06, y: .5 }, { x: .20, y: .1 }, { x: .20, y: .3 }, { x: .20, y: .5 }, { x: .20, y: .7 }, { x: .20, y: .9 },
       { x: .35, y: .27 }, { x: .35, y: .5 }, { x: .35, y: .73 }, { x: .47, y: .4 }, { x: .47, y: .6 } ] },
   ];
+  formationsCustom = signal<FormationCustom[]>([]);
 
   private stage!: Konva.Stage;
   private fieldLayer!: Konva.Layer;
@@ -103,6 +104,11 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
     this.dessinerTerrain();
     this.chargerSchema();
     this.brancherDessin();
+    this.chargerFormations();
+  }
+
+  private chargerFormations(): void {
+    this.service.listerFormations().subscribe({ next: f => this.formationsCustom.set(f), error: () => {} });
   }
 
   ngOnDestroy(): void { this.stage?.destroy(); }
@@ -151,6 +157,36 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
       this.dessinerElement(el);
     });
     this.layer.draw();
+  }
+
+  appliquerFormationCustom(f: FormationCustom): void {
+    try { this.appliquerFormation({ nom: f.nom, positions: JSON.parse(f.positionsJson) }); } catch {}
+  }
+
+  /** Enregistre la disposition actuelle de l'équipe choisie comme formation réutilisable. */
+  enregistrerFormation(): void {
+    const couleur = this.equipeFormation();
+    const adverse = couleur === JAUNE;
+    const joueurs = this.elements.filter(e => e.type === 'joueur' && e.couleur === couleur);
+    if (joueurs.length === 0) { this.snack.open('Place des joueurs de cette équipe avant d\'enregistrer', 'Fermer', { duration: 3000 }); return; }
+    const nom = prompt('Nom de la formation ?');
+    if (!nom) return;
+    const m = 24;
+    const positions = joueurs.map(e => {
+      let nx = (e.x - m) / (this.W - 2 * m);
+      if (adverse) nx = 1 - nx;                 // stocker en orientation canonique (gauche)
+      return { x: nx, y: (e.y - m) / (this.H - 2 * m) };
+    });
+    this.service.creerFormation({ nom, couleur, positionsJson: JSON.stringify(positions) }).subscribe({
+      next: () => { this.snack.open('Formation enregistrée', 'Fermer', { duration: 2000 }); this.chargerFormations(); },
+      error: () => this.snack.open('Enregistrement impossible', 'Fermer', { duration: 3000 }),
+    });
+  }
+
+  supprimerFormation(f: FormationCustom, ev: Event): void {
+    ev.stopPropagation();
+    if (!confirm(`Supprimer la formation « ${f.nom} » ?`)) return;
+    this.service.supprimerFormation(f.id).subscribe({ next: () => this.chargerFormations(), error: () => {} });
   }
 
   // ── Zoom ──

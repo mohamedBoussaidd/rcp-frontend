@@ -63,6 +63,15 @@ export interface SeanceTechniqueRequest {
   exerciceIds: string[];
 }
 
+export interface FormationCustom {
+  id: string;
+  nom: string;
+  couleur?: string;
+  positionsJson: string;
+  creeParNom?: string;
+  modifiable: boolean;
+}
+
 export const CATEGORIES_EXERCICE = [
   'echauffement', 'technique', 'tactique', 'conservation',
   'jeu_reduit', 'match_a_theme', 'finition', 'transition',
@@ -89,6 +98,17 @@ export class TechniqueService {
 
   sauverSchema(exerciceId: string, schemaJson: string): Observable<Exercice> {
     return this.http.put<Exercice>(`/api/exercices/${exerciceId}/schema`, { schemaJson });
+  }
+
+  // ── Formations personnalisées ──
+  listerFormations(): Observable<FormationCustom[]> {
+    return this.http.get<FormationCustom[]>('/api/formations');
+  }
+  creerFormation(req: { nom: string; couleur?: string; positionsJson: string }): Observable<FormationCustom> {
+    return this.http.post<FormationCustom>('/api/formations', req);
+  }
+  supprimerFormation(id: string): Observable<void> {
+    return this.http.delete<void>(`/api/formations/${id}`);
   }
 
   // ── Seances techniques ──

@@ -52,7 +52,22 @@
                 <button class="form-btn" (click)="appliquerFormation(f)">{{ f.nom }}</button>
               }
             </div>
-            <p class="pal-aide">Place 11 joueurs d'un clic. L'adverse est posé en miroir. (Terrain complet)</p>
+
+            <button class="form-save" (click)="enregistrerFormation()">💾 Enregistrer la dispo actuelle</button>
+
+            @if (formationsCustom().length > 0) {
+              <div class="form-custom-titre">Mes tactiques</div>
+              <div class="form-custom-list">
+                @for (f of formationsCustom(); track f.id) {
+                  <div class="form-custom">
+                    <button class="form-custom-btn" (click)="appliquerFormationCustom(f)" [title]="'Par ' + (f.creeParNom || '—')">{{ f.nom }}</button>
+                    @if (f.modifiable) { <button class="form-custom-del" (click)="supprimerFormation(f, $event)" title="Supprimer">✕</button> }
+                  </div>
+                }
+              </div>
+            }
+
+            <p class="pal-aide">Place 11 joueurs d'un clic. L'adverse est posé en miroir. (Terrain complet)<br>« Enregistrer » sauve la dispo de l'équipe sélectionnée comme tactique réutilisable.</p>
           </div>
         }
       </div>

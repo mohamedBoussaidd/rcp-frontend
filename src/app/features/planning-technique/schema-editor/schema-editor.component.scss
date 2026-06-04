@@ -138,6 +138,47 @@
   &:hover { opacity: .85; }
 }
 
+.form-save {
+  width: 100%;
+  margin-top: 8px;
+  padding: 8px;
+  border-radius: 8px;
+  border: 1px dashed var(--copper-border);
+  background: transparent;
+  color: var(--copper);
+  font-size: 0.76rem;
+  font-family: inherit;
+  cursor: pointer;
+  &:hover { background: var(--copper-soft); }
+}
+
+.form-custom-titre { font-size: 0.68rem; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); margin: 10px 0 5px; }
+.form-custom-list { display: flex; flex-direction: column; gap: 4px; }
+.form-custom { display: flex; gap: 4px; }
+.form-custom-btn {
+  flex: 1;
+  text-align: left;
+  padding: 7px 9px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--text);
+  font-size: 0.78rem;
+  font-family: inherit;
+  cursor: pointer;
+  &:hover { border-color: var(--copper-border); }
+}
+.form-custom-del {
+  width: 30px;
+  border-radius: 8px;
+  border: 1px solid var(--danger-border);
+  background: var(--danger-bg);
+  color: var(--danger);
+  cursor: pointer;
+  font-family: inherit;
+  &:hover { opacity: .8; }
+}
+
 /* ── Stage ── */
 .stage-wrap {
   flex: 1;
