@@ -11,6 +11,7 @@ import { DragDropModule } from '@angular/cdk/drag-drop';
 import { DatePipe, LowerCasePipe } from '@angular/common';
 import { AuthService } from '../../core/services/auth.service';
 import { TechniqueService, SeanceTechnique } from '../../core/services/technique.service';
+import { SeanceDetailComponent } from '../planning-technique/seance-detail/seance-detail.component';
 
 export const COULEURS_TYPE: Record<string, string> = {
   MATCH:        '#ef4444',
@@ -120,6 +121,13 @@ export class CalendrierComponent implements OnInit {
 
   seancesTechDuJour(dateStr: string): SeanceTechnique[] {
     return this.seancesTechSemaine.filter(s => s.date === dateStr);
+  }
+
+  ouvrirDetailTech(st: SeanceTechnique): void {
+    this.dialog.open(SeanceDetailComponent, {
+      width: '900px', maxWidth: '96vw', panelClass: 'dark-dialog',
+      data: { seance: st },
+    });
   }
 
   onDrop(event: CdkDragDrop<any>, dateStr: string): void {

@@ -227,6 +227,7 @@
   gap: 5px;
 
   &.realisee { opacity: .6; }
+  &.clickable { cursor: pointer; transition: border-color .12s; &:hover { box-shadow: 0 0 0 1px #14b8a6aa inset; } }
 }
 .tech-head { display: flex; align-items: center; justify-content: space-between; gap: 6px; flex-wrap: wrap; }
 .tech-badge {

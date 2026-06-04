@@ -121,7 +121,7 @@
 
           <!-- ── Séances techniques (lecture, gérées dans Planning technique) ── -->
           @for (st of seancesTechDuJour(jour.dateStr); track st.id) {
-          <div class="seance-tech" [class.realisee]="st.statut === 'REALISEE'">
+          <div class="seance-tech clickable" [class.realisee]="st.statut === 'REALISEE'" (click)="ouvrirDetailTech(st)" title="Voir le détail">
             <div class="tech-head">
               <span class="tech-badge">Technique</span>
               <span class="tech-duree">{{ st.dureeTotaleMinutes }} min · int. {{ st.intensiteMoyenne ?? '—' }}</span>
