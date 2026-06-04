@@ -72,23 +72,36 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
 
   // ── Coups de pied arrêtés ──
   modeArret = signal<'offensif' | 'defensif'>('offensif');
-  // Positions normalisées (côté droit "D"). Offensif = attaque but droit ; Défensif = défend but gauche.
-  private readonly arret = {
-    offensif: {
-      corner: { ball: { x: .985, y: .92 }, players: [
-        { x: .965, y: .89 }, { x: .9, y: .72 }, { x: .9, y: .3 }, { x: .85, y: .5 }, { x: .92, y: .52 },
-        { x: .78, y: .38 }, { x: .78, y: .62 }, { x: .93, y: .83 }, { x: .55, y: .45 }, { x: .55, y: .6 }, { x: .07, y: .5 } ] },
-      cf: { ball: { x: .74, y: .66 }, players: [
-        { x: .72, y: .62 }, { x: .7, y: .74 }, { x: .86, y: .4 }, { x: .86, y: .5 }, { x: .86, y: .6 },
-        { x: .8, y: .3 }, { x: .8, y: .7 }, { x: .6, y: .45 }, { x: .6, y: .6 }, { x: .4, y: .5 }, { x: .07, y: .5 } ] },
+  // Base : on attaque le but DROIT, corner/CF côté "D" (y haut). Le ballon est dans l'angle.
+  // Pour défensif, on retourne x (on défend le but gauche) ; pour le côté G, on retourne y.
+  private readonly arret: Record<'corner' | 'cf', {
+    ball: { x: number; y: number };
+    attaquants: { x: number; y: number }[];
+    defenseurs: { x: number; y: number }[];
+    mur?: { x: number; y: number }[];
+  }> = {
+    corner: {
+      ball: { x: .992, y: .965 },              // dans l'angle
+      attaquants: [
+        { x: .96, y: .92 },                    // tireur du corner
+        { x: .93, y: .85 }, { x: .9, y: .7 }, { x: .92, y: .5 }, { x: .9, y: .3 },
+        { x: .84, y: .5 }, { x: .77, y: .4 }, { x: .77, y: .6 }, { x: .55, y: .45 }, { x: .55, y: .6 }, { x: .07, y: .5 } ],
+      defenseurs: [
+        { x: .965, y: .5 },                    // gardien adverse
+        { x: .93, y: .44 }, { x: .93, y: .56 }, { x: .88, y: .38 }, { x: .88, y: .5 }, { x: .88, y: .62 },
+        { x: .85, y: .46 }, { x: .85, y: .58 }, { x: .78, y: .5 }, { x: .9, y: .82 }, { x: .6, y: .5 } ],
     },
-    defensif: {
-      corner: { ball: { x: .015, y: .92 }, players: [
-        { x: .04, y: .5 }, { x: .06, y: .42 }, { x: .06, y: .58 }, { x: .1, y: .34 }, { x: .1, y: .5 }, { x: .1, y: .66 },
-        { x: .16, y: .4 }, { x: .16, y: .6 }, { x: .22, y: .5 }, { x: .08, y: .83 }, { x: .45, y: .5 } ] },
-      cf: { ball: { x: .26, y: .66 }, players: [
-        { x: .05, y: .5 }, { x: .2, y: .46 }, { x: .2, y: .5 }, { x: .2, y: .54 }, { x: .12, y: .38 }, { x: .12, y: .62 },
-        { x: .16, y: .5 }, { x: .28, y: .4 }, { x: .28, y: .6 }, { x: .45, y: .5 }, { x: .4, y: .7 } ] },
+    cf: {
+      ball: { x: .72, y: .6 },                 // entrée de la surface, côté droit
+      attaquants: [
+        { x: .71, y: .57 }, { x: .69, y: .66 },           // tireurs
+        { x: .86, y: .4 }, { x: .86, y: .5 }, { x: .86, y: .6 }, { x: .82, y: .32 }, { x: .82, y: .68 },
+        { x: .6, y: .45 }, { x: .6, y: .6 }, { x: .42, y: .5 }, { x: .07, y: .5 } ],
+      defenseurs: [
+        { x: .965, y: .5 },                    // gardien adverse
+        { x: .9, y: .4 }, { x: .9, y: .6 }, { x: .87, y: .45 }, { x: .87, y: .5 }, { x: .87, y: .55 },
+        { x: .7, y: .42 }, { x: .7, y: .58 }, { x: .55, y: .5 }, { x: .5, y: .4 }, { x: .5, y: .6 } ],
+      mur: [{ x: .8, y: .47 }, { x: .8, y: .51 }, { x: .8, y: .55 }, { x: .8, y: .59 }],  // mannequins
     },
   };
 
@@ -185,28 +198,40 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
     try { this.appliquerFormation({ nom: f.nom, positions: JSON.parse(f.positionsJson) }); } catch {}
   }
 
-  /** Place un coup de pied arrêté (ballon + nos joueurs en violet). Côté G = miroir en largeur. */
+  /** Place un coup de pied arrêté : ballon + notre équipe + l'adversaire (rôle inverse) + mur (CF). */
   placerArret(type: 'corner' | 'cf', cote: 'D' | 'G'): void {
     if (this.terrain() !== 'complet') this.changerTerrain('complet');
-    const base = this.arret[this.modeArret()][type];
-    const couleur = this.equipeViolet.couleur;
+    const base = this.arret[type];
+    const mode = this.modeArret();
+    const flipX = mode === 'defensif';   // défensif = on défend le but gauche
+    const flipY = cote === 'G';
     const m = 24;
-    const mir = (p: { x: number; y: number }) => cote === 'G' ? { x: p.x, y: 1 - p.y } : p;
-    const px = (p: { x: number; y: number }) => ({ x: m + p.x * (this.W - 2 * m), y: m + p.y * (this.H - 2 * m) });
-    // retirer nos joueurs + ballons existants
-    this.elements.filter(e => (e.type === 'joueur' && e.couleur === couleur) || e.type === 'ballon')
+    const tr = (p: { x: number; y: number }) => ({ x: flipX ? 1 - p.x : p.x, y: flipY ? 1 - p.y : p.y });
+    const px = (p: { x: number; y: number }) => ({ x: m + (tr(p).x) * (this.W - 2 * m), y: m + (tr(p).y) * (this.H - 2 * m) });
+
+    const NOUS = this.equipeViolet.couleur, EUX = this.equipeJaune.couleur, MANN = '#64748b';
+    // on remplace : nos joueurs + adverses + ballons + mannequins
+    this.elements.filter(e => e.type === 'ballon' || e.type === 'mannequin'
+        || (e.type === 'joueur' && (e.couleur === NOUS || e.couleur === EUX)))
       .forEach(e => this.nodesById.get(e.id)?.destroy());
-    this.elements = this.elements.filter(e => !((e.type === 'joueur' && e.couleur === couleur) || e.type === 'ballon'));
-    // ballon
-    const b = px(mir(base.ball));
-    const ball: SchemaElement = { id: this.uid(), type: 'ballon', couleur: '#fff', x: b.x, y: b.y };
-    this.elements.push(ball); this.dessinerElement(ball);
-    // nos joueurs
-    base.players.forEach((p, i) => {
-      const q = px(mir(p));
-      const el: SchemaElement = { id: this.uid(), type: 'joueur', couleur, numero: i + 1, x: q.x, y: q.y };
-      this.elements.push(el); this.dessinerElement(el);
-    });
+    this.elements = this.elements.filter(e => !(e.type === 'ballon' || e.type === 'mannequin'
+        || (e.type === 'joueur' && (e.couleur === NOUS || e.couleur === EUX))));
+
+    const ajout = (el: SchemaElement) => { this.elements.push(el); this.dessinerElement(el); };
+
+    // ballon dans l'angle / à l'entrée de surface
+    const b = px(base.ball);
+    ajout({ id: this.uid(), type: 'ballon', couleur: '#fff', x: b.x, y: b.y });
+
+    // offensif : nous = attaquants, eux = défenseurs ; défensif : l'inverse
+    const nous = mode === 'offensif' ? base.attaquants : base.defenseurs;
+    const eux = mode === 'offensif' ? base.defenseurs : base.attaquants;
+    nous.forEach((p, i) => { const q = px(p); ajout({ id: this.uid(), type: 'joueur', couleur: NOUS, numero: i + 1, x: q.x, y: q.y }); });
+    eux.forEach((p, i) => { const q = px(p); ajout({ id: this.uid(), type: 'joueur', couleur: EUX, numero: i + 1, x: q.x, y: q.y }); });
+
+    // mur de mannequins (coups francs)
+    (base.mur ?? []).forEach(p => { const q = px(p); ajout({ id: this.uid(), type: 'mannequin', couleur: MANN, x: q.x, y: q.y }); });
+
     this.layer.draw();
   }
 
