@@ -13,6 +13,7 @@
       <button class="tb-btn" [class.on]="outil() === 'passe'" (click)="choisirOutil('passe')" title="Passe (flèche)">→</button>
       <button class="tb-btn" [class.on]="outil() === 'tir'" (click)="choisirOutil('tir')" title="Tir (bout rond)">●—</button>
       <button class="tb-btn danger" [class.on]="outil() === 'supprimer'" (click)="choisirOutil('supprimer')" title="Supprimer (cliquer un élément/tracé)">🗑</button>
+      <button class="tb-btn danger" (click)="viderTerrain()" title="Vider tout le terrain">↺ Vider</button>
     </div>
 
     <div class="tb-group">

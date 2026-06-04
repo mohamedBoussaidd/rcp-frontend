@@ -179,6 +179,17 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
 
   fermer(): void { this.dialogRef.close(false); }
 
+  /** Vide tout le terrain (éléments + tracés). Le terrain dessiné reste. */
+  viderTerrain(): void {
+    if (this.elements.length === 0 && this.traces.length === 0) return;
+    if (!confirm('Vider tout le terrain ? (joueurs, équipement et tracés)')) return;
+    this.layer.destroyChildren();
+    this.elements = [];
+    this.traces = [];
+    this.nodesById.clear();
+    this.layer.draw();
+  }
+
   capture(): void {
     const url = this.stage.toDataURL({ pixelRatio: 2 });
     const a = document.createElement('a');
