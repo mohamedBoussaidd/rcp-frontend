@@ -52,6 +52,7 @@ export class PlanningTechniqueComponent implements OnInit {
 
   // Composition seance
   showSeanceForm = signal(false);
+  editingSeanceId = signal<string | null>(null);
   seanceForm = { date: new Date().toISOString().slice(0, 10), titre: '', objectif: '' };
   selection = signal<Exercice[]>([]);
   savingSeance = signal(false);
@@ -113,6 +114,30 @@ export class PlanningTechniqueComponent implements OnInit {
   }
   retirerSelection(e: Exercice): void { this.selection.update(sel => sel.filter(x => x.id !== e.id)); }
 
+  nouvelleSeance(): void {
+    this.editingSeanceId.set(null);
+    this.selection.set([]);
+    this.seanceForm = { date: new Date().toISOString().slice(0, 10), titre: '', objectif: '' };
+    this.showSeanceForm.set(true);
+  }
+
+  annulerSeance(): void {
+    this.showSeanceForm.set(false);
+    this.editingSeanceId.set(null);
+    this.selection.set([]);
+  }
+
+  editerSeance(s: SeanceTechnique): void {
+    this.editingSeanceId.set(s.id);
+    this.seanceForm = { date: s.date, titre: s.titre ?? '', objectif: s.objectif ?? '' };
+    const lib = this.exercices();
+    this.selection.set(s.exercices.map(l => lib.find(e => e.id === l.exerciceId) ?? ({
+      id: l.exerciceId, nom: l.nom, categorie: l.categorie, dureeMinutes: l.dureeMinutes,
+      intensite: l.intensite, objectif: l.objectif, modifiable: false,
+    } as Exercice)));
+    this.showSeanceForm.set(true);
+  }
+
   enregistrerSeance(): void {
     if (this.selection().length === 0) { this.snack.open('Ajoutez au moins un exercice', 'Fermer', { duration: 2500 }); return; }
     this.savingSeance.set(true);
@@ -122,21 +147,24 @@ export class PlanningTechniqueComponent implements OnInit {
       objectif: this.seanceForm.objectif || undefined,
       exerciceIds: this.selection().map(e => e.id),
     };
-    this.service.creerSeance(req).subscribe({
+    const id = this.editingSeanceId();
+    const obs = id ? this.service.modifierSeance(id, req) : this.service.creerSeance(req);
+    obs.subscribe({
       next: () => {
         this.savingSeance.set(false);
-        this.showSeanceForm.set(false);
-        this.selection.set([]);
-        this.seanceForm = { date: new Date().toISOString().slice(0, 10), titre: '', objectif: '' };
-        this.snack.open('Séance technique créée', 'Fermer', { duration: 2500 });
+        this.annulerSeance();
+        this.snack.open(id ? 'Séance technique modifiée' : 'Séance technique créée', 'Fermer', { duration: 2500 });
         this.charger();
       },
-      error: () => { this.savingSeance.set(false); this.snack.open('Création impossible', 'Fermer', { duration: 3000 }); },
+      error: () => { this.savingSeance.set(false); this.snack.open('Enregistrement impossible', 'Fermer', { duration: 3000 }); },
     });
   }
 
   realiserSeance(s: SeanceTechnique): void {
-    this.service.realiserSeance(s.id).subscribe({ next: () => this.charger(), error: () => {} });
+    this.service.realiserSeance(s.id).subscribe({
+      next: () => this.charger(),
+      error: () => this.snack.open('Action impossible', 'Fermer', { duration: 3000 }),
+    });
   }
   supprimerSeance(s: SeanceTechnique): void {
     if (!confirm('Supprimer cette séance technique ?')) return;
