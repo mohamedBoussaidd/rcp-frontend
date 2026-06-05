@@ -10,7 +10,7 @@ export interface ResumeJoueur {
   score_risque: number;
   score_fatigue: number;
   niveau_risque: 'FAIBLE' | 'MODERE' | 'ELEVE';
-  niveau_fatigue: 'FRAIS' | 'FATIGUE' | 'EPUISE';
+  niveau_fatigue: 'NOMINAL' | 'VIGILANCE' | 'ALERTE';
 }
 
 export interface RisqueBlessure {
@@ -26,7 +26,7 @@ export interface NiveauFatigue {
   nom: string;
   prenom: string;
   score_fatigue: number;
-  niveau: 'FRAIS' | 'FATIGUE' | 'EPUISE';
+  niveau: 'NOMINAL' | 'VIGILANCE' | 'ALERTE';
   raison: string;
 }
 
