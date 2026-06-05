@@ -23,7 +23,7 @@ const TENSION_TRACE = 0.8;
     <div class="sv-wrap">
       <div #c class="sv-container"></div>
       @if (animable) {
-        <button type="button" class="sv-play" (click)="basculerLecture()" [title]="enLecture ? 'Pause' : 'Lire l\\'animation'">
+        <button type="button" class="sv-play" (click)="basculerLecture()" [title]="enLecture ? 'Pause' : 'Lire'">
           {{ enLecture ? '⏸' : '▶' }}
         </button>
       }
@@ -114,7 +114,7 @@ export class SchemaViewerComponent implements AfterViewInit, OnChanges, OnDestro
     // Animation dispo si plusieurs keyframes OU au moins une flèche liée à un élément.
     this.keyframes = (data.keyframes ?? []).slice().sort((a, b) => a.t - b.t);
     this.dureeSecondes = data.dureeSecondes ?? 10;
-    this.modeAnim = data.modeAnim === 'vitesse' ? 'vitesse' : 'temps';
+    this.modeAnim = data.modeAnim === 'temps' ? 'vitesse' : 'temps';
     this.metriqueVitesse = data.metriqueVitesse === 'max' ? 'max' : 'moyenne';
     this.animable = this.keyframes.length > 1 || this.construireTrajectoires().size > 0;
   }
@@ -123,6 +123,7 @@ export class SchemaViewerComponent implements AfterViewInit, OnChanges, OnDestro
   basculerLecture(): void { this.enLecture ? this.pause() : this.play(); }
 
   private play(): void {
+    const coucheVide = new Konva.Layer();
     if (!this.animable || !this.stage) return;
     // En mode vitesse, durée d'animation = fin de la plus longue séquence.
     let duree = this.dureeSecondes;
@@ -391,8 +392,9 @@ export class SchemaViewerComponent implements AfterViewInit, OnChanges, OnDestro
     this.nodesById.set(el.id, g);
     layer.add(g);
   }
-
   private dessinerTrace(layer: Konva.Layer, t: SchemaTrace): void {
+    //decommentez pour  enleve les fleches dans le visuel 
+    // t = { ...t, points: [], elementId: undefined, ballId: undefined };
     const couleur = '#fde047';
     const base = { points: t.points, stroke: couleur, strokeWidth: 3, tension: TENSION_TRACE, lineCap: 'round' as const, lineJoin: 'round' as const };
     if (t.type === 'deplacement') {
@@ -407,4 +409,5 @@ export class SchemaViewerComponent implements AfterViewInit, OnChanges, OnDestro
       layer.add(new Konva.Circle({ x: t.points[n - 2], y: t.points[n - 1], radius: 6, fill: couleur }));
     }
   }
+
 }

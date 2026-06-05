@@ -1,6 +1,10 @@
-:host { display: block; }
+:host {
+  display: block;
+}
 
-.admin-content { padding: 24px; }
+.admin-content {
+  padding: 24px;
+}
 
 .card-head {
   display: flex;
@@ -39,11 +43,23 @@
   flex-direction: column;
   gap: 5px;
 
-  span { font-size: 0.72rem; font-weight: 600; color: var(--muted); }
-  .wide { width: 100%; box-sizing: border-box; text-align: left; }
+  span {
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: var(--muted);
+  }
+
+  .wide {
+    width: 100%;
+    box-sizing: border-box;
+    text-align: left;
+  }
 }
 
-.form-actions { display: flex; justify-content: flex-end; }
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+}
 
 /* ── Liste clubs ── */
 .clubs-grid {
@@ -57,6 +73,7 @@
   border-radius: 12px;
   padding: 14px;
   background: var(--surface-2);
+  width: max-content;
 }
 
 .club-actions-bas {
@@ -93,7 +110,11 @@
   margin-bottom: 10px;
 }
 
-.club-nom { font-size: 0.95rem; font-weight: 700; color: var(--text); }
+.club-nom {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text);
+}
 
 .club-info {
   display: grid;
@@ -109,29 +130,41 @@
   background: var(--danger-bg);
   color: var(--danger);
   border-radius: 8px;
-  width: 28px;
   height: 28px;
   cursor: pointer;
   font-size: 0.8rem;
   flex-shrink: 0;
-  &:hover { opacity: .8; }
+
+  &:hover {
+    opacity: .8;
+  }
 }
 
-.card-actions { display: flex; gap: 6px; flex-shrink: 0; }
+.card-actions {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
 
 .btn-mini {
   border: 1px solid var(--copper-border);
   background: var(--copper-soft);
   color: var(--copper);
   border-radius: 8px;
-  width: 28px;
-  height: 28px;
   cursor: pointer;
   font-size: 0.8rem;
-  &:hover { opacity: .8; }
+
+  &:hover {
+    opacity: .8;
+  }
 }
 
 @media (max-width: 600px) {
-  .admin-content { padding: 12px 8px; }
-  .form-grid { grid-template-columns: 1fr; }
+  .admin-content {
+    padding: 12px 8px;
+  }
+
+  .form-grid {
+    grid-template-columns: 1fr;
+  }
 }

@@ -46,6 +46,9 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
 
   readonly exercice: Exercice;
 
+  // utiliser pour le trace en cours : points, type, élément lié (jeton/ballon), etc. ; mis à jour au fur et à mesure du dessin. utilise pour activer et desactiver le trace du dessin 
+  tracesVisibles = signal(true);
+
   terrain = signal<Terrain>('complet');
   outil = signal<Outil>('select');
   echelle = signal(1);
@@ -677,10 +680,15 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
         grp.destroy(); this.layer.draw();
       }
     });
+    grp.name('trace');
+
+    grp.visible(this.tracesVisibles());
+
     this.layer.add(grp);
     this.remonterElements();   // les jetons/joueurs restent visuellement au-dessus des tracés
     return grp;
   }
+
 
   /** Garde les éléments (jetons, ballon, équipement) au premier plan, au-dessus des tracés. */
   private remonterElements(): void {
@@ -1109,6 +1117,8 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
   // ── Lecture ──
   basculerLecture(): void { this.enLecture() ? this.pause() : this.play(); }
   private play(): void {
+    this.tracesVisibles.set(false);
+    this.updateTracesVisibility();
     if (this.keyframes().length < 2 && !this.aDesTracesAnimees()) {
       this.snack.open('Trace une flèche depuis un joueur, ou ajoute 2 keyframes', 'Fermer', { duration: 2800 });
       return;
@@ -1134,7 +1144,10 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
     }, this.layer);
     this.anim.start();
   }
-  private pause(): void { this.anim?.stop(); this.anim = undefined; this.enLecture.set(false); }
+  private pause(): void {
+    this.tracesVisibles.set(this.tracesVisibles()); this.updateTracesVisibility();
+    this.anim?.stop(); this.anim = undefined; this.enLecture.set(false);
+  }
 
   private uid(): string { return Math.random().toString(36).slice(2, 10); }
   private simplifierPoints(points: number[]): number[] {
@@ -1149,6 +1162,17 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
 
     return resultat;
   }
-
+  // Affiche ou masque tous les tracés selon l'état de la palette (case à cocher). Les éléments restent visibles.
+  private updateTracesVisibility(): void {
+    this.layer.find('.trace').forEach((node: any) => {
+      node.visible(this.tracesVisibles());
+    });
+    this.layer.batchDraw();
+  }
+  // ══════════ Palette : afficher/masquer les tracés (sans les supprimer) ══════════
+   visibiliteTraces(): void {
+    this.tracesVisibles.update(v => !v);
+    this.updateTracesVisibility();
+  }
 }
 

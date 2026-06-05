@@ -45,6 +45,9 @@
       <button class="tb-btn" (click)="capture()" title="Exporter en image">📷</button>
       <button class="tb-btn" [class.on]="estPleinEcran()" (click)="pleinEcran()"
         [title]="estPleinEcran() ? 'Quitter le plein écran' : 'Plein écran'">⛶</button>
+      <button class="tb-btn" (click)="visibiliteTraces()">
+        {{ tracesVisibles() ? 'Masquer tracés' : 'Afficher tracés' }}
+      </button>
     </div>
 
     <div class="tb-group right">
@@ -123,21 +126,21 @@
         <button class="pal-head" (click)="basculer('effectif')">Mon équipe <span>{{ ouvert() === 'effectif' ? '▾' :
             '▸' }}</span></button>
         @if (ouvert() === 'effectif') {
-          @if (effectif().length === 0) {
-          <p class="pal-aide">Aucun joueur dans l'effectif de ton équipe.</p>
-          } @else {
-          <div class="pal-list">
-            @for (j of effectif(); track j.id) {
-            <button class="pal-item" [class.pal-item--pose]="estPose(j)" [disabled]="estPose(j)"
-              (click)="ajouterJoueurReel(j, equipeEffectif.couleur)"
-              [title]="estPose(j) ? (j.prenom + ' ' + j.nom + ' — déjà sur le terrain') : (j.prenom + ' ' + j.nom + (j.postePrincipal ? ' — ' + j.postePrincipal : ''))">
-              <span class="pal-pastille" [style.background]="equipeEffectif.couleur"></span>
-              <span class="pal-nom">{{ j.prenom }} {{ j.nom }}</span>
-              @if (j.postePrincipal) { <span class="pal-poste">{{ j.postePrincipal }}</span> }
-            </button>
-            }
-          </div>
+        @if (effectif().length === 0) {
+        <p class="pal-aide">Aucun joueur dans l'effectif de ton équipe.</p>
+        } @else {
+        <div class="pal-list">
+          @for (j of effectif(); track j.id) {
+          <button class="pal-item" [class.pal-item--pose]="estPose(j)" [disabled]="estPose(j)"
+            (click)="ajouterJoueurReel(j, equipeEffectif.couleur)"
+            [title]="estPose(j) ? (j.prenom + ' ' + j.nom + ' — déjà sur le terrain') : (j.prenom + ' ' + j.nom + (j.postePrincipal ? ' — ' + j.postePrincipal : ''))">
+            <span class="pal-pastille" [style.background]="equipeEffectif.couleur"></span>
+            <span class="pal-nom">{{ j.prenom }} {{ j.nom }}</span>
+            @if (j.postePrincipal) { <span class="pal-poste">{{ j.postePrincipal }}</span> }
+          </button>
           }
+        </div>
+        }
         }
       </div>
 
@@ -145,21 +148,21 @@
         <button class="pal-head" (click)="basculer('violet')">Équipe 1 <span>{{ ouvert() === 'violet' ? '▾' :
             '▸' }}</span></button>
         @if (ouvert() === 'violet') {
-          @if (effectif().length === 0) {
-          <p class="pal-aide">Aucun joueur dans l'effectif de ton équipe.</p>
-          } @else {
-          <div class="pal-list">
-            @for (j of effectif(); track j.id) {
-            <button class="pal-item" [class.pal-item--pose]="estPose(j)" [disabled]="estPose(j)"
-              (click)="ajouterJoueurReel(j, equipeRouge.couleur)"
-              [title]="estPose(j) ? (j.prenom + ' ' + j.nom + ' — déjà sur le terrain') : (j.prenom + ' ' + j.nom + (j.postePrincipal ? ' — ' + j.postePrincipal : ''))">
-              <span class="pal-pastille" [style.background]="equipeRouge.couleur"></span>
-              <span class="pal-nom">{{ j.prenom }} {{ j.nom }}</span>
-              @if (j.postePrincipal) { <span class="pal-poste">{{ j.postePrincipal }}</span> }
-            </button>
-            }
-          </div>
+        @if (effectif().length === 0) {
+        <p class="pal-aide">Aucun joueur dans l'effectif de ton équipe.</p>
+        } @else {
+        <div class="pal-list">
+          @for (j of effectif(); track j.id) {
+          <button class="pal-item" [class.pal-item--pose]="estPose(j)" [disabled]="estPose(j)"
+            (click)="ajouterJoueurReel(j, equipeRouge.couleur)"
+            [title]="estPose(j) ? (j.prenom + ' ' + j.nom + ' — déjà sur le terrain') : (j.prenom + ' ' + j.nom + (j.postePrincipal ? ' — ' + j.postePrincipal : ''))">
+            <span class="pal-pastille" [style.background]="equipeRouge.couleur"></span>
+            <span class="pal-nom">{{ j.prenom }} {{ j.nom }}</span>
+            @if (j.postePrincipal) { <span class="pal-poste">{{ j.postePrincipal }}</span> }
+          </button>
           }
+        </div>
+        }
         }
       </div>
 
@@ -167,21 +170,21 @@
         <button class="pal-head" (click)="basculer('jaune')">Équipe 2 <span>{{ ouvert() === 'jaune' ? '▾' : '▸'
             }}</span></button>
         @if (ouvert() === 'jaune') {
-          @if (effectif().length === 0) {
-          <p class="pal-aide">Aucun joueur dans l'effectif de ton équipe.</p>
-          } @else {
-          <div class="pal-list">
-            @for (j of effectif(); track j.id) {
-            <button class="pal-item" [class.pal-item--pose]="estPose(j)" [disabled]="estPose(j)"
-              (click)="ajouterJoueurReel(j, equipeJaune.couleur)"
-              [title]="estPose(j) ? (j.prenom + ' ' + j.nom + ' — déjà sur le terrain') : (j.prenom + ' ' + j.nom + (j.postePrincipal ? ' — ' + j.postePrincipal : ''))">
-              <span class="pal-pastille" [style.background]="equipeJaune.couleur"></span>
-              <span class="pal-nom">{{ j.prenom }} {{ j.nom }}</span>
-              @if (j.postePrincipal) { <span class="pal-poste">{{ j.postePrincipal }}</span> }
-            </button>
-            }
-          </div>
+        @if (effectif().length === 0) {
+        <p class="pal-aide">Aucun joueur dans l'effectif de ton équipe.</p>
+        } @else {
+        <div class="pal-list">
+          @for (j of effectif(); track j.id) {
+          <button class="pal-item" [class.pal-item--pose]="estPose(j)" [disabled]="estPose(j)"
+            (click)="ajouterJoueurReel(j, equipeJaune.couleur)"
+            [title]="estPose(j) ? (j.prenom + ' ' + j.nom + ' — déjà sur le terrain') : (j.prenom + ' ' + j.nom + (j.postePrincipal ? ' — ' + j.postePrincipal : ''))">
+            <span class="pal-pastille" [style.background]="equipeJaune.couleur"></span>
+            <span class="pal-nom">{{ j.prenom }} {{ j.nom }}</span>
+            @if (j.postePrincipal) { <span class="pal-poste">{{ j.postePrincipal }}</span> }
+          </button>
           }
+        </div>
+        }
         }
       </div>
 
@@ -246,16 +249,20 @@
       <button class="tl-btn" (click)="keyframeSuivante()" title="Keyframe suivante">⏭</button>
       <button class="tl-btn" [class.on]="boucle()" (click)="boucle.set(!boucle())" title="Lecture en boucle">🔁</button>
 
-      <span class="tl-mode" title="Temps : tout le monde arrive ensemble. Vitesse : chacun à son allure réelle le long de sa flèche.">
+      <span class="tl-mode"
+        title="Temps : tout le monde arrive ensemble. Vitesse : chacun à son allure réelle le long de sa flèche.">
         <button class="tl-seg" [class.on]="modeAnim() === 'temps'" (click)="modeAnim.set('temps')">Temps</button>
         <button class="tl-seg" [class.on]="modeAnim() === 'vitesse'" (click)="modeAnim.set('vitesse')">Vitesse</button>
       </span>
 
       @if (modeAnim() === 'vitesse') {
-        <span class="tl-mode" title="Vitesse utilisée par joueur : son record GPS (Max) ou sa moyenne des vitesses max (Moyenne).">
-          <button class="tl-seg" [class.on]="metriqueVitesse() === 'moyenne'" (click)="metriqueVitesse.set('moyenne')">Moy.</button>
-          <button class="tl-seg" [class.on]="metriqueVitesse() === 'max'" (click)="metriqueVitesse.set('max')">Max</button>
-        </span>
+      <span class="tl-mode"
+        title="Vitesse utilisée par joueur : son record GPS (Max) ou sa moyenne des vitesses max (Moyenne).">
+        <button class="tl-seg" [class.on]="metriqueVitesse() === 'moyenne'"
+          (click)="metriqueVitesse.set('moyenne')">Moy.</button>
+        <button class="tl-seg" [class.on]="metriqueVitesse() === 'max'"
+          (click)="metriqueVitesse.set('max')">Max</button>
+      </span>
       }
 
       <button class="tl-kf-add" (click)="ajouterKeyframe()" title="Ajouter une keyframe au temps courant">+
