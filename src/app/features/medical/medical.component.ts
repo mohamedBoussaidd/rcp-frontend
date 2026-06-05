@@ -6,6 +6,7 @@ import { MatCard, MatCardContent, MatCardHeader, MatCardTitle } from '@angular/m
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { Blessure, BlessureRequest, BlessureService } from '../../core/services/blessure.service';
 import { DocumentMedical, DocumentMedicalService } from '../../core/services/document-medical.service';
+import { Wellness, Rpe, SuiviSubjectifService } from '../../core/services/suivi-subjectif.service';
 import { Joueur, JoueurService } from '../../core/services/joueur.service';
 import { AuthService } from '../../core/services/auth.service';
 
@@ -39,6 +40,18 @@ export class MedicalComponent implements OnInit {
     ENTRAINEUR: 'Entraîneur', PREPARATEUR: 'Préparateur', PRESIDENT: 'Président',
   };
 
+  // ── Suivi subjectif (wellness + RPE) ──
+  wellness = signal<Wellness[]>([]);
+  rpe = signal<Rpe[]>([]);
+  filtreJoueurSuivi = signal('');
+  readonly WELLNESS_ITEMS: { key: keyof Pick<Wellness, 'sommeil' | 'fatigue' | 'douleur' | 'stress' | 'humeur'>; label: string }[] = [
+    { key: 'sommeil', label: 'Sommeil' },
+    { key: 'fatigue', label: 'Fatigue' },
+    { key: 'douleur', label: 'Courbatures' },
+    { key: 'stress', label: 'Stress' },
+    { key: 'humeur', label: 'Humeur' },
+  ];
+
   showForm = signal(false);
   editingId = signal<string | null>(null);
   saving = signal(false);
@@ -47,6 +60,7 @@ export class MedicalComponent implements OnInit {
   constructor(
     private blessureService: BlessureService,
     private documentService: DocumentMedicalService,
+    private suiviService: SuiviSubjectifService,
     private joueurService: JoueurService,
     private snack: MatSnackBar,
     public auth: AuthService,
@@ -56,6 +70,7 @@ export class MedicalComponent implements OnInit {
     this.joueurService.getAll().subscribe({ next: j => this.joueurs.set(j), error: () => {} });
     this.charger();
     this.chargerDocuments();
+    this.chargerSuivi();
   }
 
   charger(): void {
@@ -146,6 +161,28 @@ export class MedicalComponent implements OnInit {
       next: () => this.documents.update(list => list.filter(d => d.id !== doc.id)),
       error: () => this.snack.open('Suppression impossible', 'Fermer', { duration: 3000 }),
     });
+  }
+
+  // ──────────────────────────── Suivi subjectif ────────────────────────────
+
+  chargerSuivi(): void {
+    const id = this.filtreJoueurSuivi() || undefined;
+    this.suiviService.getWellness(id).subscribe({ next: d => this.wellness.set(d), error: () => {} });
+    this.suiviService.getRpe(id).subscribe({ next: d => this.rpe.set(d), error: () => {} });
+  }
+
+  onFiltreJoueurSuivi(joueurId: string): void {
+    this.filtreJoueurSuivi.set(joueurId);
+    this.chargerSuivi();
+  }
+
+  /** Classe couleur selon le score de bien-être (vert/orange/rouge). */
+  scoreClass(score: number): string {
+    return score >= 66 ? 'score-ok' : score >= 40 ? 'score-moyen' : 'score-bas';
+  }
+  /** Classe couleur selon le RPE (1..10). */
+  rpeClass(rpe: number): string {
+    return rpe >= 8 ? 'score-bas' : rpe >= 5 ? 'score-moyen' : 'score-ok';
   }
 
   joliLabel(v?: string): string {

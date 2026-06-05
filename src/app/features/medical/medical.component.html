@@ -148,4 +148,66 @@
       }
     </mat-card-content>
   </mat-card>
+
+  <mat-card>
+    <mat-card-header class="card-head">
+      <mat-card-title>Suivi subjectif — ressenti & charge</mat-card-title>
+      <select class="param-input" [ngModel]="filtreJoueurSuivi()" (ngModelChange)="onFiltreJoueurSuivi($event)" name="filtreSuivi">
+        <option value="">Tous les joueurs</option>
+        @for (j of joueurs(); track j.id) {
+          <option [value]="j.id">{{ j.prenom }} {{ j.nom }}</option>
+        }
+      </select>
+    </mat-card-header>
+
+    <mat-card-content>
+      <div class="suivi-grid">
+
+        <div class="suivi-col">
+          <h4 class="suivi-titre">Ressenti (wellness)</h4>
+          @if (wellness().length === 0) {
+            <p class="empty-state">Aucune saisie.</p>
+          } @else {
+            <div class="suivi-liste">
+              @for (w of wellness().slice(0, 20); track w.id) {
+                <div class="suivi-ligne">
+                  <span class="ligne-date">{{ w.date | date:'dd/MM' }}</span>
+                  @if (!filtreJoueurSuivi()) { <span class="suivi-joueur">{{ w.joueurPrenom }} {{ w.joueurNom }}</span> }
+                  <span class="score-badge" [class]="scoreClass(w.scoreBienEtre)">{{ w.scoreBienEtre }}</span>
+                  <span class="suivi-detail">
+                    @for (item of WELLNESS_ITEMS; track item.key) {
+                      <span class="mini">{{ item.label.charAt(0) }}{{ w[item.key] }}</span>
+                    }
+                  </span>
+                  @if (w.commentaire) { <span class="suivi-comm" [title]="w.commentaire">💬</span> }
+                </div>
+              }
+            </div>
+          }
+        </div>
+
+        <div class="suivi-col">
+          <h4 class="suivi-titre">Charge perçue (RPE)</h4>
+          @if (rpe().length === 0) {
+            <p class="empty-state">Aucune saisie.</p>
+          } @else {
+            <div class="suivi-liste">
+              @for (r of rpe().slice(0, 20); track r.id) {
+                <div class="suivi-ligne">
+                  <span class="ligne-date">{{ r.date | date:'dd/MM' }}</span>
+                  @if (!filtreJoueurSuivi()) { <span class="suivi-joueur">{{ r.joueurPrenom }} {{ r.joueurNom }}</span> }
+                  <span class="score-badge" [class]="rpeClass(r.rpe)">{{ r.rpe }}</span>
+                  <span class="suivi-detail">
+                    <span class="mini tag-mini">{{ r.seanceType === 'TECHNIQUE' ? 'Tech' : 'Phys' }}</span>
+                    @if (r.charge != null) { <span class="mini">charge {{ r.charge }}</span> }
+                  </span>
+                </div>
+              }
+            </div>
+          }
+        </div>
+
+      </div>
+    </mat-card-content>
+  </mat-card>
 </div>
