@@ -21,7 +21,7 @@ const BLEU = '#2563eb';
 // Brique 2 : vitesse uniforme (px/s) en mode "vitesse" — sera remplacée par la vraie vitesse GPS en Brique 3.
 const VITESSE_PX_S = 130;
 // Rayon (px) pour lier une flèche au jeton/ballon le plus proche de son point de départ.
-const RAYON_LIEN = 42;
+const RAYON_LIEN = 60;
 
 @Component({
   selector: 'app-schema-editor',
@@ -599,10 +599,10 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
 
   private appliquerPositions(t: number): void {
     const kfs = this.keyframes();
-    const drivers = this.elementsPilotesParTrace();   // id élément -> flèche qui le pilote
+    const traj = this.construireTrajectoires();   // id élément -> segments mobiles dans le temps
     for (const el of this.elements) {
-      const tr = drivers.get(el.id);
-      const p = tr ? this.posSurTrace(tr, t) : this.posElement(el, t, kfs);
+      const legs = traj.get(el.id);
+      const p = legs ? this.posTrajectoire(legs, t) : this.posElement(el, t, kfs);
       el.x = p.x; el.y = p.y;
       this.nodesById.get(el.id)?.position({ x: p.x, y: p.y });
     }
@@ -636,27 +636,115 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
     return best;
   }
 
-  /** Map id-élément -> flèche qui le pilote (joueur/ballon principal + ballon de conduite). */
-  private elementsPilotesParTrace(): Map<string, SchemaTrace> {
-    const m = new Map<string, SchemaTrace>();
-    for (const t of this.traces) {
-      if (t.elementId) m.set(t.elementId, t);
-      if (t.ballId) m.set(t.ballId, t);
+  // ── Trajectoires : chaque mobile (ballon, chaque joueur) suit SES propres flèches ──
+  // Robuste aux branches (au bout d'une conduite : le ballon part en passe ET le joueur
+  // repart en course). Minutage global : une flèche démarre quand celle qui finit à son
+  // départ se termine → le ballon "attend" que son porteur arrive avant de bouger.
+  private construireTrajectoires(): Map<string, { t0: number; t1: number; pts: number[] }[]> {
+    const res = new Map<string, { t0: number; t1: number; pts: number[] }[]>();
+    const fleches = this.traces.filter(t => t.points.length >= 4);
+    if (!fleches.length) return res;
+
+    const debut = (a: SchemaTrace) => ({ x: a.points[0], y: a.points[1] });
+    const fin = (a: SchemaTrace) => ({ x: a.points[a.points.length - 2], y: a.points[a.points.length - 1] });
+    const estBallon = (a: SchemaTrace) => a.type === 'conduite' || a.type === 'passe' || a.type === 'tir';
+    const estJoueur = (a: SchemaTrace) => a.type === 'conduite' || a.type === 'deplacement';
+
+    // Positions de repos (t=0) FIGÉES (l'animation modifie el.x à chaque frame).
+    const kf0 = this.keyframes()[0];
+    const repos = (e: SchemaElement) => kf0?.positions[e.id] ?? { x: e.x, y: e.y };
+    const plusProche = (type: string, p: { x: number; y: number }): SchemaElement | undefined => {
+      let best: SchemaElement | undefined; let dMin = RAYON_LIEN;
+      for (const e of this.elements) {
+        if (e.type !== type) continue;
+        const rp = repos(e); const d = Math.hypot(rp.x - p.x, rp.y - p.y);
+        if (d <= dMin) { dMin = d; best = e; }
+      }
+      return best;
+    };
+
+    // Toutes les flèches qui FINISSENT au départ de a (ses "arrivants").
+    const arrivants = (a: SchemaTrace) => fleches.filter(b =>
+      b.id !== a.id && Math.hypot(debut(a).x - fin(b).x, debut(a).y - fin(b).y) <= RAYON_LIEN);
+    // Prédécesseur de même nature (joueur ou ballon) : le plus proche.
+    const predNature = (a: SchemaTrace, estType: (x: SchemaTrace) => boolean): SchemaTrace | undefined => {
+      let best: SchemaTrace | undefined; let dMin = RAYON_LIEN;
+      for (const b of fleches) {
+        if (b.id === a.id || !estType(b)) continue;
+        const d = Math.hypot(debut(a).x - fin(b).x, debut(a).y - fin(b).y);
+        if (d <= dMin) { dMin = d; best = b; }
+      }
+      return best;
+    };
+
+    // Fenêtres temporelles brutes (t = distance cumulée). Une flèche démarre quand TOUS
+    // ses arrivants sont là (max) → une conduite attend le joueur ET le ballon.
+    const t0 = new Map<string, number>(), t1 = new Map<string, number>();
+    const enCalcul = new Set<string>();
+    const calc = (a: SchemaTrace): number => {
+      if (t1.has(a.id)) return t1.get(a.id)!;
+      if (enCalcul.has(a.id)) { t0.set(a.id, 0); t1.set(a.id, this.longueurChemin(a.points)); return t1.get(a.id)!; }
+      enCalcul.add(a.id);
+      const inc = arrivants(a);
+      const dep = inc.length ? Math.max(...inc.map(calc)) : 0;
+      t0.set(a.id, dep); t1.set(a.id, dep + this.longueurChemin(a.points));
+      enCalcul.delete(a.id);
+      return t1.get(a.id)!;
+    };
+    fleches.forEach(calc);
+
+    // Échelle : vitesse fixe, ou (mode temps) la plus longue séquence remplit la durée.
+    const maxT = Math.max(1, ...fleches.map(a => t1.get(a.id)!));
+    const sc = this.modeAnim() === 'vitesse' ? 1 / VITESSE_PX_S : this.dureeSecondes() / maxT;
+
+    // Propriétaire d'une flèche : hérité du prédécesseur de même nature, sinon l'élément
+    // le plus proche du départ (le ballon se prend au début d'une conduite, etc.).
+    const memo = { ballon: new Map<string, SchemaElement | undefined>(), joueur: new Map<string, SchemaElement | undefined>() };
+    const owner = (a: SchemaTrace, type: 'ballon' | 'joueur', estType: (x: SchemaTrace) => boolean, vu = new Set<string>()): SchemaElement | undefined => {
+      const m = memo[type];
+      if (m.has(a.id)) return m.get(a.id);
+      if (vu.has(a.id)) return undefined;
+      vu.add(a.id);
+      const p = predNature(a, estType);
+      const r = p ? owner(p, type, estType, vu) : plusProche(type, debut(a));
+      m.set(a.id, r);
+      return r;
+    };
+
+    const pousser = (id: string, a: SchemaTrace) => {
+      const arr = res.get(id) ?? [];
+      arr.push({ t0: t0.get(a.id)! * sc, t1: t1.get(a.id)! * sc, pts: a.points });
+      res.set(id, arr);
+    };
+    for (const a of fleches) {
+      if (estJoueur(a)) { const j = owner(a, 'joueur', estJoueur); if (j) pousser(j.id, a); }
+      if (estBallon(a)) { const b = owner(a, 'ballon', estBallon); if (b) pousser(b.id, a); }
     }
-    return m;
+    for (const arr of res.values()) arr.sort((x, y) => x.t0 - y.t0);
+    return res;
   }
 
-  /** Position le long d'une flèche au temps t, selon le mode (temps vs vitesse). */
-  private posSurTrace(t: SchemaTrace, temps: number): { x: number; y: number } {
-    const L = this.longueurChemin(t.points);
-    let p: number;
-    if (this.modeAnim() === 'vitesse') {
-      p = L ? (temps * VITESSE_PX_S) / L : 1;        // chacun à VITESSE_PX_S → les longs arrivent plus tard
-    } else {
-      const d = this.dureeSecondes();
-      p = d ? temps / d : 1;                          // tout le monde arrive à la fin de la durée
+  /** Position d'un mobile à l'instant t le long de ses segments (sinon il attend). */
+  private posTrajectoire(legs: { t0: number; t1: number; pts: number[] }[], t: number): { x: number; y: number } {
+    if (t <= legs[0].t0) return { x: legs[0].pts[0], y: legs[0].pts[1] };
+    for (let i = 0; i < legs.length; i++) {
+      const lg = legs[i];
+      if (t <= lg.t1) {
+        if (t < lg.t0) { const pv = legs[i - 1].pts; return { x: pv[pv.length - 2], y: pv[pv.length - 1] }; }
+        const r = lg.t1 > lg.t0 ? (t - lg.t0) / (lg.t1 - lg.t0) : 1;
+        return this.pointLeLongDe(lg.pts, Math.max(0, Math.min(1, r)));
+      }
     }
-    return this.pointLeLongDe(t.points, Math.max(0, Math.min(1, p)));
+    const last = legs[legs.length - 1].pts;
+    return { x: last[last.length - 2], y: last[last.length - 1] };
+  }
+
+  /** Durée minimale (s) pour que toutes les chaînes finissent en mode vitesse. */
+  private dureeMinPourTraces(): number {
+    let max = 0;
+    for (const legs of this.construireTrajectoires().values())
+      for (const lg of legs) if (lg.t1 > max) max = lg.t1;
+    return max;
   }
 
   private longueurChemin(pts: number[]): number {
@@ -681,7 +769,7 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
     return { x: pts[pts.length - 2], y: pts[pts.length - 1] };
   }
 
-  private aDesTracesAnimees(): boolean { return this.traces.some(t => !!t.elementId); }
+  private aDesTracesAnimees(): boolean { return this.construireTrajectoires().size > 0; }
 
   /** Keyframe au temps t (création = capture des positions actuelles). */
   private keyframeAt(t: number, create = false): Keyframe | undefined {
@@ -731,6 +819,11 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
     if (this.keyframes().length < 2 && !this.aDesTracesAnimees()) {
       this.snack.open('Trace une flèche depuis un joueur, ou ajoute 2 keyframes', 'Fermer', { duration: 2800 });
       return;
+    }
+    // En mode vitesse, étendre la durée pour que la plus longue chaîne se termine.
+    if (this.modeAnim() === 'vitesse') {
+      const min = this.dureeMinPourTraces();
+      if (min > this.dureeSecondes()) this.dureeSecondes.set(Math.ceil(min));
     }
     if (this.tempsCourant() >= this.dureeSecondes()) this.tempsCourant.set(0);
     this.enLecture.set(true);

@@ -6,6 +6,7 @@ interface SchemaTrace { id: string; type: string; points: number[]; elementId?: 
 interface Keyframe { t: number; positions: Record<string, { x: number; y: number }>; }
 
 const VITESSE_PX_S = 130;   // doit rester aligné avec l'éditeur
+const RAYON_LIEN = 60;      // idem éditeur
 
 /** Rendu en lecture seule d'un schéma tactique (terrain + éléments + tracés) + lecture animée. */
 @Component({
@@ -92,7 +93,7 @@ export class SchemaViewerComponent implements AfterViewInit, OnChanges, OnDestro
     this.keyframes = (data.keyframes ?? []).slice().sort((a, b) => a.t - b.t);
     this.dureeSecondes = data.dureeSecondes ?? 10;
     this.modeAnim = data.modeAnim === 'vitesse' ? 'vitesse' : 'temps';
-    this.animable = this.keyframes.length > 1 || this.traces.some(t => !!t.elementId);
+    this.animable = this.keyframes.length > 1 || this.construireTrajectoires().size > 0;
   }
 
   // ── Lecture animée ──
@@ -100,12 +101,18 @@ export class SchemaViewerComponent implements AfterViewInit, OnChanges, OnDestro
 
   private play(): void {
     if (!this.animable || !this.stage) return;
+    // En mode vitesse, durée d'animation = fin de la plus longue séquence.
+    let duree = this.dureeSecondes;
+    if (this.modeAnim === 'vitesse') {
+      for (const legs of this.construireTrajectoires().values())
+        for (const lg of legs) if (lg.t1 > duree) duree = lg.t1;
+    }
     const couche = this.stage.getLayers()[1];
     const debut = Date.now();
     this.enLecture = true;
     this.anim = new Konva.Animation(() => {
       const t = (Date.now() - debut) / 1000;
-      if (t >= this.dureeSecondes) { this.appliquerPositions(this.dureeSecondes); this.pause(); return false; }
+      if (t >= duree) { this.appliquerPositions(duree); this.pause(); return false; }
       this.appliquerPositions(t);
       return undefined;
     }, couche);
@@ -115,24 +122,100 @@ export class SchemaViewerComponent implements AfterViewInit, OnChanges, OnDestro
   private pause(): void { this.anim?.stop(); this.anim = undefined; this.enLecture = false; }
 
   private appliquerPositions(t: number): void {
-    const drivers = new Map<string, SchemaTrace>();
-    for (const tr of this.traces) {
-      if (tr.elementId) drivers.set(tr.elementId, tr);
-      if (tr.ballId) drivers.set(tr.ballId, tr);
-    }
+    const traj = this.construireTrajectoires();
     this.elements.forEach(el => {
-      const tr = drivers.get(el.id);
-      const p = tr ? this.posSurTrace(tr, t) : this.posElement(el, t);
+      const legs = traj.get(el.id);
+      const p = legs ? this.posTrajectoire(legs, t) : this.posElement(el, t);
       this.nodesById.get(el.id)?.position(p);
     });
   }
 
-  private posSurTrace(tr: SchemaTrace, temps: number): { x: number; y: number } {
-    const L = this.longueurChemin(tr.points);
-    const p = this.modeAnim === 'vitesse'
-      ? (L ? (temps * VITESSE_PX_S) / L : 1)
-      : (this.dureeSecondes ? temps / this.dureeSecondes : 1);
-    return this.pointLeLongDe(tr.points, Math.max(0, Math.min(1, p)));
+  // Même modèle que l'éditeur : chaque mobile suit ses flèches, minutage global
+  // (une conduite attend joueur + ballon). Positions de repos = el.x/el.y (non mutées ici).
+  private construireTrajectoires(): Map<string, { t0: number; t1: number; pts: number[] }[]> {
+    const res = new Map<string, { t0: number; t1: number; pts: number[] }[]>();
+    const fleches = this.traces.filter(t => t.points.length >= 4);
+    if (!fleches.length) return res;
+
+    const debut = (a: SchemaTrace) => ({ x: a.points[0], y: a.points[1] });
+    const fin = (a: SchemaTrace) => ({ x: a.points[a.points.length - 2], y: a.points[a.points.length - 1] });
+    const estBallon = (a: SchemaTrace) => a.type === 'conduite' || a.type === 'passe' || a.type === 'tir';
+    const estJoueur = (a: SchemaTrace) => a.type === 'conduite' || a.type === 'deplacement';
+    const plusProche = (type: string, p: { x: number; y: number }): SchemaElement | undefined => {
+      let best: SchemaElement | undefined; let dMin = RAYON_LIEN;
+      for (const e of this.elements) {
+        if (e.type !== type) continue;
+        const d = Math.hypot(e.x - p.x, e.y - p.y);
+        if (d <= dMin) { dMin = d; best = e; }
+      }
+      return best;
+    };
+    const arrivants = (a: SchemaTrace) => fleches.filter(b =>
+      b.id !== a.id && Math.hypot(debut(a).x - fin(b).x, debut(a).y - fin(b).y) <= RAYON_LIEN);
+    const predNature = (a: SchemaTrace, estType: (x: SchemaTrace) => boolean): SchemaTrace | undefined => {
+      let best: SchemaTrace | undefined; let dMin = RAYON_LIEN;
+      for (const b of fleches) {
+        if (b.id === a.id || !estType(b)) continue;
+        const d = Math.hypot(debut(a).x - fin(b).x, debut(a).y - fin(b).y);
+        if (d <= dMin) { dMin = d; best = b; }
+      }
+      return best;
+    };
+
+    const t0 = new Map<string, number>(), t1 = new Map<string, number>();
+    const enCalcul = new Set<string>();
+    const calc = (a: SchemaTrace): number => {
+      if (t1.has(a.id)) return t1.get(a.id)!;
+      if (enCalcul.has(a.id)) { t0.set(a.id, 0); t1.set(a.id, this.longueurChemin(a.points)); return t1.get(a.id)!; }
+      enCalcul.add(a.id);
+      const inc = arrivants(a);
+      const dep = inc.length ? Math.max(...inc.map(calc)) : 0;
+      t0.set(a.id, dep); t1.set(a.id, dep + this.longueurChemin(a.points));
+      enCalcul.delete(a.id);
+      return t1.get(a.id)!;
+    };
+    fleches.forEach(calc);
+
+    const maxT = Math.max(1, ...fleches.map(a => t1.get(a.id)!));
+    const sc = this.modeAnim === 'vitesse' ? 1 / VITESSE_PX_S : this.dureeSecondes / maxT;
+
+    const memo = { ballon: new Map<string, SchemaElement | undefined>(), joueur: new Map<string, SchemaElement | undefined>() };
+    const owner = (a: SchemaTrace, type: 'ballon' | 'joueur', estType: (x: SchemaTrace) => boolean, vu = new Set<string>()): SchemaElement | undefined => {
+      const m = memo[type];
+      if (m.has(a.id)) return m.get(a.id);
+      if (vu.has(a.id)) return undefined;
+      vu.add(a.id);
+      const p = predNature(a, estType);
+      const r = p ? owner(p, type, estType, vu) : plusProche(type, debut(a));
+      m.set(a.id, r);
+      return r;
+    };
+
+    const pousser = (id: string, a: SchemaTrace) => {
+      const arr = res.get(id) ?? [];
+      arr.push({ t0: t0.get(a.id)! * sc, t1: t1.get(a.id)! * sc, pts: a.points });
+      res.set(id, arr);
+    };
+    for (const a of fleches) {
+      if (estJoueur(a)) { const j = owner(a, 'joueur', estJoueur); if (j) pousser(j.id, a); }
+      if (estBallon(a)) { const b = owner(a, 'ballon', estBallon); if (b) pousser(b.id, a); }
+    }
+    for (const arr of res.values()) arr.sort((x, y) => x.t0 - y.t0);
+    return res;
+  }
+
+  private posTrajectoire(legs: { t0: number; t1: number; pts: number[] }[], t: number): { x: number; y: number } {
+    if (t <= legs[0].t0) return { x: legs[0].pts[0], y: legs[0].pts[1] };
+    for (let i = 0; i < legs.length; i++) {
+      const lg = legs[i];
+      if (t <= lg.t1) {
+        if (t < lg.t0) { const pv = legs[i - 1].pts; return { x: pv[pv.length - 2], y: pv[pv.length - 1] }; }
+        const r = lg.t1 > lg.t0 ? (t - lg.t0) / (lg.t1 - lg.t0) : 1;
+        return this.pointLeLongDe(lg.pts, Math.max(0, Math.min(1, r)));
+      }
+    }
+    const last = legs[legs.length - 1].pts;
+    return { x: last[last.length - 2], y: last[last.length - 1] };
   }
 
   private longueurChemin(pts: number[]): number {
