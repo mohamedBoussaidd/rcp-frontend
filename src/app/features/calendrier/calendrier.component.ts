@@ -4,6 +4,7 @@ import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { CdkDragDrop } from '@angular/cdk/drag-drop';
 import { SeanceService, Seance, TypeSeance, SeanceCreate } from '../../core/services/seance.service';
+import { EspaceJoueurService } from '../../core/services/espace-joueur.service';
 import { SeanceFormDialogComponent } from './seance-form-dialog/seance-form-dialog.component';
 import { MatToolbar } from '@angular/material/toolbar';
 import { MatTooltip } from '@angular/material/tooltip';
@@ -76,11 +77,16 @@ export class CalendrierComponent implements OnInit {
     private snackBar: MatSnackBar,
     private router: Router,
     public auth: AuthService,
-    private techniqueService: TechniqueService
+    private techniqueService: TechniqueService,
+    private espaceJoueur: EspaceJoueurService
   ) {}
 
+  /** Joueur : calendrier en lecture seule, données scopées via /api/moi (endpoints staff bloqués). */
+  get lectureSeule(): boolean { return this.auth.hasRole('JOUEUR'); }
+
   ngOnInit(): void {
-    this.seanceService.getTypeSeances().subscribe(t => this.typeSeances = t);
+    // Le catalogue des types n'est utile qu'à la palette d'édition (staff) et est bloqué au joueur.
+    if (!this.lectureSeule) this.seanceService.getTypeSeances().subscribe(t => this.typeSeances = t);
     this.chargerSemaine();
   }
 
@@ -88,8 +94,15 @@ export class CalendrierComponent implements OnInit {
     this.buildGrid();
     const debut = this.toDateStr(this.lundiSemaine);
     const fin = this.toDateStr(this.getFinSemaine());
-    this.seanceService.getSemaine(debut, fin).subscribe(s => this.seancesSemaine = s);
-    this.techniqueService.listerSeances(debut, fin).subscribe({
+    const seances$ = this.lectureSeule
+      ? this.espaceJoueur.getSeances(debut, fin)   // joueur : ses séances d'équipe (scopé)
+      : this.seanceService.getSemaine(debut, fin);
+    seances$.subscribe(s => this.seancesSemaine = s);
+    // Séances techniques : joueur via /api/moi (scopé, lecture seule), staff via le module dédié.
+    const tech$ = this.lectureSeule
+      ? this.espaceJoueur.getSeancesTechniques(debut, fin)
+      : this.techniqueService.listerSeances(debut, fin);
+    tech$.subscribe({
       next: s => this.seancesTechSemaine = s,
       error: () => this.seancesTechSemaine = [],
     });

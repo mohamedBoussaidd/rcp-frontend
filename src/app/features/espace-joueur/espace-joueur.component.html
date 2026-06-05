@@ -7,7 +7,7 @@
   @if (loading()) {
     <p class="empty-state">Chargement…</p>
   } @else if (nonLie()) {
-    <mat-card>
+    <mat-card class="carte-pleine">
       <mat-card-content>
         <p class="empty-state">Votre compte n'est pas encore rattaché à une fiche joueur.<br>Contactez votre club.</p>
       </mat-card-content>
@@ -15,7 +15,7 @@
   } @else {
 
     <!-- ── Profil + poids ── -->
-    <mat-card>
+    <mat-card class="carte-pleine">
       <mat-card-header><mat-card-title>{{ profil()?.prenom }} {{ profil()?.nom }}</mat-card-title></mat-card-header>
       <mat-card-content>
         <div class="profil-grid">
@@ -29,6 +29,35 @@
               {{ ecartCible() != null ? (ecartCible()! > 0 ? '+' : '') + (ecartCible() | number:'1.1-1') + ' kg' : '—' }}
             </span></div>
         </div>
+      </mat-card-content>
+    </mat-card>
+
+    <!-- ── Séances prévues (lecture seule) ── -->
+    <mat-card>
+      <mat-card-header><mat-card-title>Séances prévues</mat-card-title></mat-card-header>
+      <mat-card-content>
+        @if (seancesAVenir().length === 0) {
+          <p class="empty-state">Aucune séance prévue.</p>
+        } @else {
+          <div class="liste">
+            @for (s of seancesAVenir(); track s.id) {
+              <div class="ligne">
+                <span class="ligne-date">
+                  {{ s.date | date:'EEE dd/MM' }}@if (s.heureDebut) { · {{ s.heureDebut }} }
+                </span>
+                <span class="ligne-titre">
+                  {{ s.titre || s.typeSeance.libelle || 'Séance' }}
+                  @if (s.adversaire) { <small>vs {{ s.adversaire }}</small> }
+                </span>
+                <span class="ligne-meta">
+                  {{ s.typeSeance.libelle }}
+                  @if (s.terrain) { · {{ s.terrain }} }
+                  @if (s.dureeMinutes) { · {{ s.dureeMinutes }} min }
+                </span>
+              </div>
+            }
+          </div>
+        }
       </mat-card-content>
     </mat-card>
 
@@ -60,7 +89,7 @@
           <p class="empty-state">Aucune pesée enregistrée.</p>
         } @else {
           <div class="liste">
-            @for (p of pesees(); track p.date) {
+            @for (p of peseesAffichees(); track p.date) {
               <div class="ligne">
                 <span class="ligne-date">{{ p.date | date:'dd/MM/yyyy' }}</span>
                 <span class="ligne-titre">{{ p.poids | number:'1.1-1' }} kg</span>
@@ -68,6 +97,13 @@
               </div>
             }
           </div>
+          @if (peseesNbPages() > 1) {
+            <div class="pagination">
+              <button class="pg-btn" (click)="pagePesees(-1)" [disabled]="peseesPage() === 0">‹</button>
+              <span class="pg-info">{{ peseesPage() + 1 }} / {{ peseesNbPages() }}</span>
+              <button class="pg-btn" (click)="pagePesees(1)" [disabled]="peseesPage() === peseesNbPages() - 1">›</button>
+            </div>
+          }
         }
       </mat-card-content>
     </mat-card>
@@ -80,7 +116,7 @@
           <p class="empty-state">Aucune donnée de séance.</p>
         } @else {
           <div class="liste">
-            @for (g of gps(); track g.seanceId) {
+            @for (g of gpsAffichees(); track g.seanceId) {
               <div class="ligne">
                 <span class="ligne-date">{{ g.date | date:'dd/MM/yyyy' }}</span>
                 <span class="ligne-titre">{{ g.typeLibelle }}</span>
@@ -91,7 +127,30 @@
               </div>
             }
           </div>
+          @if (gpsNbPages() > 1) {
+            <div class="pagination">
+              <button class="pg-btn" (click)="pageGps(-1)" [disabled]="gpsPage() === 0">‹</button>
+              <span class="pg-info">{{ gpsPage() + 1 }} / {{ gpsNbPages() }}</span>
+              <button class="pg-btn" (click)="pageGps(1)" [disabled]="gpsPage() === gpsNbPages() - 1">›</button>
+            </div>
+          }
         }
+      </mat-card-content>
+    </mat-card>
+
+    <!-- ── Mon RPE (à implémenter) ── -->
+    <mat-card>
+      <mat-card-header><mat-card-title>Mon RPE</mat-card-title></mat-card-header>
+      <mat-card-content>
+        <p class="empty-state">Bientôt disponible.</p>
+      </mat-card-content>
+    </mat-card>
+
+    <!-- ── Mes observations (à implémenter) ── -->
+    <mat-card>
+      <mat-card-header><mat-card-title>Mes observations</mat-card-title></mat-card-header>
+      <mat-card-content>
+        <p class="empty-state">Bientôt disponible.</p>
       </mat-card-content>
     </mat-card>
 
