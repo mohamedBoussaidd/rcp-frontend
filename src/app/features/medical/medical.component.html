@@ -3,6 +3,45 @@
 </mat-toolbar>
 
 <div class="medical-content">
+
+  <!-- ── Infirmerie : effectif indisponible ── -->
+  <mat-card>
+    <mat-card-header class="card-head">
+      <mat-card-title>Infirmerie</mat-card-title>
+      <span class="infirmerie-compteurs">
+        <span class="cpt cpt-indispo">{{ nbIndisponibles }} indispo.</span>
+        <span class="cpt cpt-reprise">{{ nbEnReprise }} en reprise</span>
+      </span>
+    </mat-card-header>
+    <mat-card-content>
+      @if (infirmerie.length === 0) {
+        <p class="empty-state">Aucun joueur à l'infirmerie. 💪</p>
+      } @else {
+        <div class="infirmerie-liste">
+          @for (b of infirmerie; track b.id) {
+            <div class="infirmerie-ligne">
+              <span class="inf-joueur">{{ b.joueurPrenom }} {{ b.joueurNom }}</span>
+              <span class="statut-pill" [class]="statutBlessureClass(b.statut)">{{ statutBlessureLabel(b.statut) }}</span>
+              <span class="inf-zone">{{ joliLabel(b.zoneCorporelle) }} <small>{{ joliLabel(b.typeBlessure) }}</small></span>
+              <span class="inf-retour">
+                @if (b.dateRetourPrevue) {
+                  retour {{ b.dateRetourPrevue | date:'dd/MM' }}
+                  @if (joursAvantRetour(b.dateRetourPrevue) !== null) {
+                    @if (joursAvantRetour(b.dateRetourPrevue)! >= 0) {
+                      <span class="inf-jours">J−{{ joursAvantRetour(b.dateRetourPrevue) }}</span>
+                    } @else {
+                      <span class="inf-jours retard">+{{ -joursAvantRetour(b.dateRetourPrevue)! }}j</span>
+                    }
+                  }
+                } @else { <span class="inf-jours">retour non estimé</span> }
+              </span>
+            </div>
+          }
+        </div>
+      }
+    </mat-card-content>
+  </mat-card>
+
   <mat-card>
     <mat-card-header class="card-head">
       <mat-card-title>Blessures</mat-card-title>
@@ -27,6 +66,12 @@
               </select></label>
             <label class="f"><span>Date de blessure *</span>
               <input class="param-input wide" type="date" [(ngModel)]="form.dateBlessure" name="date"></label>
+            <label class="f"><span>Statut</span>
+              <select class="param-input wide" [(ngModel)]="form.statut" name="statut">
+                @for (s of STATUTS_BLESSURE; track s.val) { <option [value]="s.val">{{ s.label }}</option> }
+              </select></label>
+            <label class="f"><span>Retour prévu</span>
+              <input class="param-input wide" type="date" [(ngModel)]="form.dateRetourPrevue" name="retourPrevu"></label>
             <label class="f"><span>Retour effectif</span>
               <input class="param-input wide" type="date" [(ngModel)]="form.dateRetourEffectif" name="retour"></label>
             <label class="f"><span>Type</span>
@@ -76,7 +121,7 @@
             <div class="blessure-card" [class.retabli]="!b.enCours">
               <div class="blessure-head">
                 <span class="blessure-joueur">{{ b.joueurPrenom }} {{ b.joueurNom }}</span>
-                <span class="statut-pill" [class.en-cours]="b.enCours">{{ b.enCours ? 'En cours' : 'Rétabli' }}</span>
+                <span class="statut-pill" [class]="statutBlessureClass(b.statut)">{{ statutBlessureLabel(b.statut) }}</span>
               </div>
               <div class="blessure-tags">
                 @if (b.gravite) { <span class="g-badge" [class]="graviteClass(b.gravite)">{{ joliLabel(b.gravite) }}</span> }
@@ -87,7 +132,11 @@
               </div>
               <div class="blessure-info">
                 <span class="info-label">Blessé le</span><span>{{ b.dateBlessure | date:'dd/MM/yyyy' }}</span>
-                <span class="info-label">Retour</span><span>{{ b.dateRetourEffectif ? (b.dateRetourEffectif | date:'dd/MM/yyyy') : '—' }}</span>
+                @if (b.statut === 'RETABLI') {
+                  <span class="info-label">Retour</span><span>{{ b.dateRetourEffectif ? (b.dateRetourEffectif | date:'dd/MM/yyyy') : '—' }}</span>
+                } @else {
+                  <span class="info-label">Retour prévu</span><span>{{ b.dateRetourPrevue ? (b.dateRetourPrevue | date:'dd/MM/yyyy') : '—' }}</span>
+                }
                 @if (b.causeProbable) { <span class="info-label">Cause</span><span>{{ joliLabel(b.causeProbable) }}</span> }
               </div>
               @if (b.commentaire) { <p class="blessure-comm">{{ b.commentaire }}</p> }

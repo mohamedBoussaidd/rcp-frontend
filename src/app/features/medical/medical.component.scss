@@ -79,7 +79,10 @@
   color: var(--success);
   border: 1px solid var(--success-border);
 
-  &.en-cours { background: var(--danger-bg); color: var(--danger); border-color: var(--danger-border); }
+  &.en-cours,
+  &.st-indispo { background: var(--danger-bg);  color: var(--danger);  border-color: var(--danger-border); }
+  &.st-reprise { background: var(--warning-bg); color: var(--warning); border-color: var(--warning-border); }
+  &.st-retabli { background: var(--success-bg); color: var(--success); border-color: var(--success-border); }
 }
 
 .blessure-tags { display: flex; flex-wrap: wrap; gap: 6px; }
@@ -162,6 +165,41 @@
 .doc-desc { font-size: 0.8rem; color: var(--muted); font-style: italic; }
 .doc-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 3px; }
 .doc-actions { display: flex; gap: 8px; margin-left: auto; flex-shrink: 0; }
+
+/* ── Infirmerie ── */
+.infirmerie-compteurs { display: flex; gap: 8px; }
+.cpt {
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 50px;
+}
+.cpt-indispo { background: var(--danger-bg);  color: var(--danger);  border: 1px solid var(--danger-border); }
+.cpt-reprise { background: var(--warning-bg); color: var(--warning); border: 1px solid var(--warning-border); }
+
+.infirmerie-liste { display: flex; flex-direction: column; }
+.infirmerie-ligne {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 9px 4px;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.85rem;
+  &:last-child { border-bottom: none; }
+}
+.inf-joueur { font-weight: 600; color: var(--text); min-width: 140px; }
+.inf-zone { color: var(--text-2); small { color: var(--muted); } }
+.inf-retour { margin-left: auto; color: var(--text-2); font-size: 0.8rem; display: flex; align-items: center; gap: 8px; }
+.inf-jours {
+  font-weight: 700;
+  font-size: 0.72rem;
+  padding: 2px 8px;
+  border-radius: 50px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  color: var(--text-2);
+  &.retard { background: var(--danger-bg); color: var(--danger); border-color: var(--danger-border); }
+}
 
 /* ── Suivi subjectif (wellness + RPE) ── */
 .suivi-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }

@@ -2,6 +2,8 @@ import { Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
 
+export type StatutBlessure = 'INDISPONIBLE' | 'EN_REPRISE' | 'RETABLI';
+
 export interface Blessure {
   id: string;
   joueurId: string;
@@ -9,6 +11,8 @@ export interface Blessure {
   joueurPrenom?: string;
   dateBlessure: string;
   dateRetourEffectif?: string;
+  dateRetourPrevue?: string;
+  statut: StatutBlessure;
   typeBlessure?: string;
   zoneCorporelle?: string;
   cote?: string;
@@ -23,6 +27,8 @@ export interface BlessureRequest {
   joueurId: string;
   dateBlessure: string;
   dateRetourEffectif?: string | null;
+  dateRetourPrevue?: string | null;
+  statut?: StatutBlessure;
   typeBlessure?: string;
   zoneCorporelle?: string;
   cote?: string;

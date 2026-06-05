@@ -4,7 +4,7 @@ import { DatePipe } from '@angular/common';
 import { MatToolbar } from '@angular/material/toolbar';
 import { MatCard, MatCardContent, MatCardHeader, MatCardTitle } from '@angular/material/card';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { Blessure, BlessureRequest, BlessureService } from '../../core/services/blessure.service';
+import { Blessure, BlessureRequest, BlessureService, StatutBlessure } from '../../core/services/blessure.service';
 import { DocumentMedical, DocumentMedicalService } from '../../core/services/document-medical.service';
 import { Wellness, Rpe, SuiviSubjectifService } from '../../core/services/suivi-subjectif.service';
 import { Joueur, JoueurService } from '../../core/services/joueur.service';
@@ -24,6 +24,11 @@ export class MedicalComponent implements OnInit {
   readonly cotes    = ['gauche', 'droit', 'les_deux'];
   readonly gravites = ['leger', 'modere', 'grave'];
   readonly causes   = ['surcharge', 'contact', 'terrain', 'fatigue_accumulee', 'recidive', 'autre'];
+  readonly STATUTS_BLESSURE: { val: StatutBlessure; label: string }[] = [
+    { val: 'INDISPONIBLE', label: 'Indisponible' },
+    { val: 'EN_REPRISE',   label: 'En reprise' },
+    { val: 'RETABLI',      label: 'Rétabli' },
+  ];
 
   blessures = signal<Blessure[]>([]);
   joueurs = signal<Joueur[]>([]);
@@ -91,6 +96,7 @@ export class MedicalComponent implements OnInit {
     this.editingId.set(b.id);
     this.form = {
       joueurId: b.joueurId, dateBlessure: b.dateBlessure, dateRetourEffectif: b.dateRetourEffectif ?? '',
+      dateRetourPrevue: b.dateRetourPrevue ?? '', statut: b.statut,
       typeBlessure: b.typeBlessure, zoneCorporelle: b.zoneCorporelle, cote: b.cote,
       gravite: b.gravite, causeProbable: b.causeProbable, recidive: b.recidive, commentaire: b.commentaire,
     };
@@ -196,7 +202,39 @@ export class MedicalComponent implements OnInit {
   private formVide(): BlessureRequest {
     return {
       joueurId: '', dateBlessure: new Date().toISOString().slice(0, 10), dateRetourEffectif: '',
+      dateRetourPrevue: '', statut: 'INDISPONIBLE',
       typeBlessure: '', zoneCorporelle: '', cote: '', gravite: '', causeProbable: '', recidive: false, commentaire: '',
     };
+  }
+
+  // ──────────────────────────── Infirmerie ────────────────────────────
+
+  /** Blessures non rétablies (indisponibles + en reprise), retour le plus proche d'abord. */
+  get infirmerie(): Blessure[] {
+    return this.blessures()
+      .filter(b => b.statut !== 'RETABLI')
+      .sort((a, b) => (a.dateRetourPrevue ?? '9999').localeCompare(b.dateRetourPrevue ?? '9999'));
+  }
+
+  get nbIndisponibles(): number {
+    return this.blessures().filter(b => b.statut === 'INDISPONIBLE').length;
+  }
+  get nbEnReprise(): number {
+    return this.blessures().filter(b => b.statut === 'EN_REPRISE').length;
+  }
+
+  statutBlessureLabel(v?: string): string {
+    return this.STATUTS_BLESSURE.find(s => s.val === v)?.label ?? v ?? '—';
+  }
+  statutBlessureClass(v?: string): string {
+    return v === 'EN_REPRISE' ? 'st-reprise' : v === 'RETABLI' ? 'st-retabli' : 'st-indispo';
+  }
+
+  /** Jours avant le retour prévu (négatif si dépassé), null si pas de date. */
+  joursAvantRetour(dateRetourPrevue?: string): number | null {
+    if (!dateRetourPrevue) return null;
+    const cible = new Date(dateRetourPrevue + 'T00:00:00');
+    const auj = new Date(); auj.setHours(0, 0, 0, 0);
+    return Math.round((cible.getTime() - auj.getTime()) / 86400000);
   }
 }
