@@ -92,6 +92,74 @@
 }
 .pg-info { font-size: 0.78rem; color: var(--muted); min-width: 48px; text-align: center; }
 
+/* ── Documents médicaux ── */
+.header-action {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+}
+
+.btn-primaire, .btn-secondaire {
+  border-radius: 8px;
+  padding: 6px 14px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid var(--border);
+  &:disabled { opacity: 0.5; cursor: default; }
+}
+.btn-primaire { background: var(--copper, #b87333); color: #fff; border-color: transparent; }
+.btn-secondaire { background: var(--surface-2); color: var(--text); }
+
+.depot-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px;
+  margin-bottom: 14px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface-2);
+}
+.champ { display: flex; flex-direction: column; gap: 5px; }
+.champ-label { font-size: 0.72rem; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+.champ input[type="text"], .champ select {
+  padding: 7px 9px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 0.85rem;
+}
+.champ-fichier input { font-size: 0.82rem; color: var(--text); }
+
+.roles-cases { display: flex; flex-wrap: wrap; gap: 14px; }
+.roles-edition {
+  flex-basis: 100%;
+  margin-top: 8px;
+  padding: 8px 0 2px;
+  border-top: 1px dashed var(--border);
+}
+.case { display: flex; align-items: center; gap: 6px; font-size: 0.82rem; color: var(--text); cursor: pointer; }
+
+.depot-actions { display: flex; justify-content: flex-end; gap: 10px; }
+.erreur { color: var(--danger); font-size: 0.8rem; margin: 0; }
+
+.ligne-doc { flex-wrap: wrap; }
+.doc-badges { display: flex; flex-wrap: wrap; gap: 6px; }
+.doc-actions { display: flex; gap: 12px; margin-left: auto; }
+.lien {
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: 0.8rem;
+  color: var(--copper, #b87333);
+  cursor: pointer;
+  &:hover { text-decoration: underline; }
+  &.lien-danger { color: var(--danger); }
+}
+
 @media (max-width: 700px) {
   .joueur-content { padding: 12px 8px; grid-template-columns: 1fr; }
   .profil-grid { grid-template-columns: 1fr 1fr; }

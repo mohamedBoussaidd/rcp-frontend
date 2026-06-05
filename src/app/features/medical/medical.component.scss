@@ -143,7 +143,29 @@
   }
 }
 
+/* ── Documents médicaux ── */
+.medical-content > mat-card + mat-card { margin-top: 18px; }
+
+.docs-liste { display: flex; flex-direction: column; }
+.doc-ligne {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 11px 4px;
+  border-bottom: 1px solid var(--border);
+  &:last-child { border-bottom: none; }
+}
+.doc-principal { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.doc-joueur { font-size: 0.72rem; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+.doc-nom { font-weight: 600; color: var(--text); font-size: 0.9rem; }
+.doc-meta { font-size: 0.78rem; color: var(--text-2); }
+.doc-desc { font-size: 0.8rem; color: var(--muted); font-style: italic; }
+.doc-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 3px; }
+.doc-actions { display: flex; gap: 8px; margin-left: auto; flex-shrink: 0; }
+
 @media (max-width: 700px) {
   .medical-content { padding: 12px 8px; }
   .form-grid { grid-template-columns: 1fr; }
+  .doc-ligne { flex-wrap: wrap; }
+  .doc-actions { margin-left: 0; }
 }

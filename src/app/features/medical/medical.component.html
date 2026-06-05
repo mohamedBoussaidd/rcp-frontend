@@ -104,4 +104,48 @@
 
     </mat-card-content>
   </mat-card>
+
+  <mat-card>
+    <mat-card-header class="card-head">
+      <mat-card-title>Documents médicaux</mat-card-title>
+      <select class="param-input" [ngModel]="filtreJoueurDoc()" (ngModelChange)="onFiltreJoueurDoc($event)" name="filtreDoc">
+        <option value="">Tous les joueurs</option>
+        @for (j of joueurs(); track j.id) {
+          <option [value]="j.id">{{ j.prenom }} {{ j.nom }}</option>
+        }
+      </select>
+    </mat-card-header>
+
+    <mat-card-content>
+      @if (documents().length === 0) {
+        <p class="empty-state">Aucun document accessible.</p>
+      } @else {
+        <div class="docs-liste">
+          @for (d of documents(); track d.id) {
+            <div class="doc-ligne">
+              <div class="doc-principal">
+                <span class="doc-joueur">{{ d.joueurPrenom }} {{ d.joueurNom }}</span>
+                <span class="doc-nom">{{ d.nomOriginal }}</span>
+                <span class="doc-meta">
+                  {{ categorieDocLabel(d.categorie) }} · {{ tailleLisible(d.tailleOctets) }} · {{ d.dateDepot | date:'dd/MM/yyyy' }}
+                </span>
+                @if (d.description) { <span class="doc-desc">{{ d.description }}</span> }
+                @if (d.partageRoles.length) {
+                  <span class="doc-tags">
+                    @for (role of d.partageRoles; track role) { <span class="tag">{{ roleDocLabel(role) }}</span> }
+                  </span>
+                }
+              </div>
+              <div class="doc-actions">
+                <button class="btn-mini" (click)="telechargerDoc(d)">Télécharger</button>
+                @if (auth.canEcrireBlessures()) {
+                  <button class="btn-mini danger" (click)="supprimerDoc(d)">Supprimer</button>
+                }
+              </div>
+            </div>
+          }
+        </div>
+      }
+    </mat-card-content>
+  </mat-card>
 </div>

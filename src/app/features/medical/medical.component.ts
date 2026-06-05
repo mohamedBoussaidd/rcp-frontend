@@ -5,6 +5,7 @@ import { MatToolbar } from '@angular/material/toolbar';
 import { MatCard, MatCardContent, MatCardHeader, MatCardTitle } from '@angular/material/card';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { Blessure, BlessureRequest, BlessureService } from '../../core/services/blessure.service';
+import { DocumentMedical, DocumentMedicalService } from '../../core/services/document-medical.service';
 import { Joueur, JoueurService } from '../../core/services/joueur.service';
 import { AuthService } from '../../core/services/auth.service';
 
@@ -27,6 +28,17 @@ export class MedicalComponent implements OnInit {
   joueurs = signal<Joueur[]>([]);
   loading = signal(true);
 
+  // ── Documents médicaux ──
+  documents = signal<DocumentMedical[]>([]);
+  filtreJoueurDoc = signal('');
+  readonly CATEGORIES_DOC: Record<string, string> = {
+    certificat: 'Certificat', ordonnance: 'Ordonnance', imagerie: 'Imagerie',
+    compte_rendu: 'Compte rendu', autre: 'Autre',
+  };
+  readonly ROLES_DOC: Record<string, string> = {
+    ENTRAINEUR: 'Entraîneur', PREPARATEUR: 'Préparateur', PRESIDENT: 'Président',
+  };
+
   showForm = signal(false);
   editingId = signal<string | null>(null);
   saving = signal(false);
@@ -34,6 +46,7 @@ export class MedicalComponent implements OnInit {
 
   constructor(
     private blessureService: BlessureService,
+    private documentService: DocumentMedicalService,
     private joueurService: JoueurService,
     private snack: MatSnackBar,
     public auth: AuthService,
@@ -42,6 +55,7 @@ export class MedicalComponent implements OnInit {
   ngOnInit(): void {
     this.joueurService.getAll().subscribe({ next: j => this.joueurs.set(j), error: () => {} });
     this.charger();
+    this.chargerDocuments();
   }
 
   charger(): void {
@@ -86,6 +100,50 @@ export class MedicalComponent implements OnInit {
     if (!confirm('Supprimer cette blessure ?')) return;
     this.blessureService.supprimer(b.id).subscribe({
       next: () => this.charger(),
+      error: () => this.snack.open('Suppression impossible', 'Fermer', { duration: 3000 }),
+    });
+  }
+
+  // ──────────────────────────── Documents médicaux ────────────────────────────
+
+  chargerDocuments(): void {
+    this.documentService.lister(this.filtreJoueurDoc() || undefined).subscribe({
+      next: d => this.documents.set(d),
+      error: () => {},
+    });
+  }
+
+  onFiltreJoueurDoc(joueurId: string): void {
+    this.filtreJoueurDoc.set(joueurId);
+    this.chargerDocuments();
+  }
+
+  categorieDocLabel(val: string): string { return this.CATEGORIES_DOC[val] ?? val; }
+  roleDocLabel(val: string): string { return this.ROLES_DOC[val] ?? val; }
+  tailleLisible(octets: number): string {
+    if (octets < 1024) return octets + ' o';
+    if (octets < 1024 * 1024) return Math.round(octets / 1024) + ' Ko';
+    return (Math.round(octets / (1024 * 1024) * 10) / 10) + ' Mo';
+  }
+
+  telechargerDoc(doc: DocumentMedical): void {
+    this.documentService.telecharger(doc.id).subscribe({
+      next: blob => {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = doc.nomOriginal;
+        a.click();
+        URL.revokeObjectURL(url);
+      },
+      error: () => this.snack.open('Téléchargement impossible', 'Fermer', { duration: 3000 }),
+    });
+  }
+
+  supprimerDoc(doc: DocumentMedical): void {
+    if (!confirm(`Supprimer « ${doc.nomOriginal} » ?`)) return;
+    this.documentService.supprimer(doc.id).subscribe({
+      next: () => this.documents.update(list => list.filter(d => d.id !== doc.id)),
       error: () => this.snack.open('Suppression impossible', 'Fermer', { duration: 3000 }),
     });
   }
