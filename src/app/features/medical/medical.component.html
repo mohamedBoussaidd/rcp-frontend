@@ -13,6 +13,22 @@
       <mat-card-content>
         <div class="alertes-grid">
 
+          @if (genesSignalees.length > 0) {
+            <div class="alerte-bloc">
+              <h4 class="alerte-titre rouge">Gênes signalées (7 j)</h4>
+              @for (g of genesSignalees; track g.id) {
+                <div class="alerte-ligne">
+                  <span class="al-joueur">{{ g.joueurPrenom }} {{ g.joueurNom }}</span>
+                  <span class="al-info">
+                    {{ joliLabel(g.geneZone) }}
+                    <span class="score-badge score-bas">{{ g.geneIntensite }}/5</span>
+                    <small>{{ momentGeneLabel(g.geneMoment) }} · {{ g.date | date:'dd/MM' }}</small>
+                  </span>
+                </div>
+              }
+            </div>
+          }
+
           @if (retoursEnRetard.length > 0) {
             <div class="alerte-bloc">
               <h4 class="alerte-titre rouge">Retours en retard</h4>

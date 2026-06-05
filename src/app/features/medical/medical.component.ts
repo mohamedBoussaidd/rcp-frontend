@@ -82,7 +82,21 @@ export class MedicalComponent implements OnInit {
 
   // ── Bilan & alertes ──
   joueursRisque = signal<ResumeJoueur[]>([]);
+  /** Wellness non filtré (toute l'équipe) pour les alertes de gêne. */
+  wellnessAlertes = signal<Wellness[]>([]);
   readonly SEUIL_RETOUR_IMMINENT = 7; // jours
+  readonly MOMENTS_GENE: Record<string, string> = {
+    EFFORT: "à l'effort", APRES: 'juste après', REPOS: 'au repos',
+  };
+
+  /** Gênes signalées par les joueurs sur les 7 derniers jours (détection précoce). */
+  get genesSignalees(): Wellness[] {
+    const limite = new Date(Date.now() - 7 * 86400000).toISOString().slice(0, 10);
+    return this.wellnessAlertes()
+      .filter(w => w.geneZone && w.date >= limite)
+      .sort((a, b) => b.date.localeCompare(a.date));
+  }
+  momentGeneLabel(v?: string): string { return v ? (this.MOMENTS_GENE[v] ?? v) : ''; }
 
   get statsTotal(): number { return this.blessures().length; }
   get statsEnCours(): number { return this.blessures().filter(b => b.statut !== 'RETABLI').length; }
@@ -143,7 +157,8 @@ export class MedicalComponent implements OnInit {
   }
   /** Y a-t-il au moins une alerte à afficher ? */
   get aDesAlertes(): boolean {
-    return this.retoursImminents.length > 0 || this.retoursEnRetard.length > 0 || this.joueursRisqueEleve.length > 0;
+    return this.retoursImminents.length > 0 || this.retoursEnRetard.length > 0
+      || this.joueursRisqueEleve.length > 0 || this.genesSignalees.length > 0;
   }
 
   constructor(
@@ -163,6 +178,7 @@ export class MedicalComponent implements OnInit {
     this.chargerDocuments();
     this.chargerSuivi();
     this.predictionService.getResumeEquipe().subscribe({ next: d => this.joueursRisque.set(d), error: () => {} });
+    this.suiviService.getWellness().subscribe({ next: d => this.wellnessAlertes.set(d), error: () => {} });
   }
 
   charger(): void {

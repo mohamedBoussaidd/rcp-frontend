@@ -15,6 +15,9 @@ export interface Wellness {
   humeur: number;
   scoreBienEtre: number;
   commentaire?: string;
+  geneZone?: string;
+  geneIntensite?: number;
+  geneMoment?: string;
 }
 
 export interface Rpe {

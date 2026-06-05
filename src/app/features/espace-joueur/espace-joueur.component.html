@@ -288,6 +288,39 @@
               <span class="champ-label">Commentaire (optionnel)</span>
               <input type="text" [ngModel]="wForm().commentaire" (ngModelChange)="setWCommentaire($event)" placeholder="Ex. nuit difficile">
             </label>
+
+            <div class="gene-bloc">
+              <label class="case case-gene">
+                <input type="checkbox" [checked]="geneActive()" (change)="geneActive.set(!geneActive())">
+                J'ai une gêne / douleur à signaler
+              </label>
+
+              @if (geneActive()) {
+                <div class="gene-champs">
+                  <label class="champ">
+                    <span class="champ-label">Zone</span>
+                    <select [ngModel]="gForm().zone" (ngModelChange)="setGItem('zone', $event)">
+                      @for (z of ZONES_GENE; track z) { <option [value]="z">{{ joli(z) }}</option> }
+                    </select>
+                  </label>
+                  <label class="champ">
+                    <span class="champ-label">Moment</span>
+                    <select [ngModel]="gForm().moment" (ngModelChange)="setGItem('moment', $event)">
+                      @for (m of MOMENTS_GENE; track m.val) { <option [value]="m.val">{{ m.label }}</option> }
+                    </select>
+                  </label>
+                  <div class="champ">
+                    <span class="champ-label">Intensité</span>
+                    <div class="w-echelle">
+                      @for (n of [1,2,3,4,5]; track n) {
+                        <button type="button" class="w-note" [class.sel]="gForm().intensite === n" (click)="setGItem('intensite', n)">{{ n }}</button>
+                      }
+                    </div>
+                  </div>
+                </div>
+              }
+            </div>
+
             <div class="depot-actions">
               <button class="btn-secondaire" (click)="annulerWellness()" [disabled]="wEnvoi()">Annuler</button>
               <button class="btn-primaire" (click)="enregistrerWellness()" [disabled]="wEnvoi()">
@@ -306,6 +339,9 @@
               </div>
             </div>
             @if (w.commentaire) { <p class="ligne-comm">{{ w.commentaire }}</p> }
+            @if (w.geneZone) {
+              <p class="gene-resume">⚠️ Gêne signalée : {{ joli(w.geneZone) }} ({{ w.geneIntensite }}/5)</p>
+            }
           } @else {
             <p class="empty-state">Pas encore rempli aujourd'hui.</p>
           }

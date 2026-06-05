@@ -34,6 +34,9 @@ export interface Wellness {
   humeur: number;
   scoreBienEtre: number;
   commentaire?: string;
+  geneZone?: string;
+  geneIntensite?: number;
+  geneMoment?: string;
   createdAt?: string;
 }
 
@@ -45,6 +48,9 @@ export interface WellnessRequest {
   stress: number;
   humeur: number;
   commentaire?: string;
+  geneZone?: string | null;
+  geneIntensite?: number | null;
+  geneMoment?: string | null;
 }
 
 export interface Rpe {

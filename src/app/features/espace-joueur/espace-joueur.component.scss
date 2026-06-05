@@ -142,6 +142,18 @@
 }
 .w-historique { margin-top: 14px; border-top: 1px solid var(--border); padding-top: 6px; }
 
+/* ── Signalement de gêne (dans le wellness) ── */
+.gene-bloc {
+  border-top: 1px dashed var(--border);
+  padding-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.case-gene { font-weight: 600; color: var(--text); }
+.gene-champs { display: flex; flex-direction: column; gap: 12px; padding-left: 4px; }
+.gene-resume { color: var(--danger); font-size: 0.82rem; margin: 8px 0 0; font-weight: 600; }
+
 /* ── RPE ── */
 .rpe-consigne { font-size: 0.78rem; color: var(--muted); margin: 0 0 8px; }
 .rpe-anoter { display: flex; flex-direction: column; gap: 2px; }

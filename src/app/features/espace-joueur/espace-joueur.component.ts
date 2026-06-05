@@ -64,6 +64,20 @@ export class EspaceJoueurComponent implements OnInit {
     { sommeil: 3, fatigue: 3, douleur: 3, stress: 3, humeur: 3, commentaire: '' });
   wEnvoi = signal(false);
 
+  // ── Signalement de gêne (intégré au wellness) ──
+  readonly ZONES_GENE = [
+    'ischio_jambiers', 'quadriceps', 'mollet', 'cheville', 'genou',
+    'hanche', 'dos', 'epaule', 'adducteurs', 'autre',
+  ];
+  readonly MOMENTS_GENE: { val: string; label: string }[] = [
+    { val: 'EFFORT', label: "À l'effort" },
+    { val: 'APRES',  label: 'Juste après' },
+    { val: 'REPOS',  label: 'Au repos' },
+  ];
+  geneActive = signal(false);
+  gForm = signal<{ zone: string; intensite: number; moment: string }>(
+    { zone: 'cheville', intensite: 2, moment: 'EFFORT' });
+
   readonly wellnessAujourdhui = computed(() => {
     const auj = new Date().toISOString().slice(0, 10);
     return this.wellness().find(w => w.date === auj) ?? null;
@@ -254,6 +268,10 @@ export class EspaceJoueurComponent implements OnInit {
     this.wForm.set(w
       ? { sommeil: w.sommeil, fatigue: w.fatigue, douleur: w.douleur, stress: w.stress, humeur: w.humeur, commentaire: w.commentaire ?? '' }
       : { sommeil: 3, fatigue: 3, douleur: 3, stress: 3, humeur: 3, commentaire: '' });
+    this.geneActive.set(!!w?.geneZone);
+    this.gForm.set(w?.geneZone
+      ? { zone: w.geneZone, intensite: w.geneIntensite ?? 2, moment: w.geneMoment ?? 'EFFORT' }
+      : { zone: 'cheville', intensite: 2, moment: 'EFFORT' });
     this.wellnessFormOuvert.set(true);
   }
   annulerWellness(): void { this.wellnessFormOuvert.set(false); }
@@ -264,11 +282,20 @@ export class EspaceJoueurComponent implements OnInit {
   setWCommentaire(val: string): void {
     this.wForm.update(f => ({ ...f, commentaire: val }));
   }
+  setGItem(key: 'zone' | 'intensite' | 'moment', val: string | number): void {
+    this.gForm.update(f => ({ ...f, [key]: val }));
+  }
 
   enregistrerWellness(): void {
     this.wEnvoi.set(true);
     const f = this.wForm();
-    this.service.saisirWellness({ ...f }).subscribe({
+    const g = this.geneActive() ? this.gForm() : null;
+    this.service.saisirWellness({
+      ...f,
+      geneZone: g ? g.zone : null,
+      geneIntensite: g ? g.intensite : null,
+      geneMoment: g ? g.moment : null,
+    }).subscribe({
       next: w => {
         // remplace la saisie du jour si elle existe, sinon l'ajoute en tête
         this.wellness.update(list => [w, ...list.filter(x => x.date !== w.date)]);
