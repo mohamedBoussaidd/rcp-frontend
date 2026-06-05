@@ -45,6 +45,8 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
   terrain = signal<Terrain>('complet');
   outil = signal<Outil>('select');
   echelle = signal(1);
+  // Mode de tracé : main libre (à la souris), semi-assisté (clics), assisté (droite départ→arrivée).
+  modeDessin = signal<'libre' | 'semi' | 'assiste'>('libre');
 
   // ── Animation (Phase B) ──
   tempsCourant = signal(0);
@@ -584,29 +586,62 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
     return o === 'deplacement' || o === 'conduite' || o === 'passe' || o === 'tir';
   }
 
-  private brancherDessin(): void {
-    const couleur = '#fde047';
+  private readonly couleurTrace = '#fde047';
 
+  /** Crée l'aperçu (flèche/ligne) lié à this.pointsEnCours pendant le tracé. */
+  private creerApercu(o: TraceType): Konva.Line | Konva.Arrow {
+    const base = { points: this.pointsEnCours, stroke: this.couleurTrace, strokeWidth: 3, tension: 0.8, lineCap: 'round' as const, lineJoin: 'round' as const };
+    return (o === 'deplacement' || o === 'passe')
+      ? new Konva.Arrow({ ...base, fill: this.couleurTrace, dash: o === 'deplacement' ? [11, 7] : undefined, pointerLength: 11, pointerWidth: 11 })
+      : new Konva.Line({ ...base });
+  }
+
+  /** Valide un tracé terminé : liaison + ajout, si assez long. */
+  private finaliserTrace(pts: number[]): void {
+    const longueurOk = pts.length >= 4 && Math.hypot(pts[pts.length - 2] - pts[0], pts[pts.length - 1] - pts[1]) > 12;
+    if (longueurOk) {
+      const t: SchemaTrace = { id: this.uid(), type: this.outil() as TraceType, points: pts };
+      this.lierTrace(t);   // associe la flèche au jeton/ballon le plus proche de son départ
+      this.traces.push(t);
+      this.dessinerTrace(t);
+    }
+  }
+
+  private surElement(e: Konva.KonvaEventObject<any>): boolean {
+    return e.target !== this.stage && !!e.target.getParent()?.draggable();
+  }
+
+  private brancherDessin(): void {
+    // ── Modes "à main libre" et "assisté" : on presse puis on relâche (drag) ──
     this.stage.on('mousedown touchstart', (e) => {
       const o = this.outil();
-      if (!this.estOutilTrace(o)) return;
-      if (e.target !== this.stage && e.target.getParent()?.draggable()) return; // pas sur un élément
+      if (!this.estOutilTrace(o) || this.modeDessin() === 'semi') return; // semi = clics
+      if (this.surElement(e)) return;
       const p = this.stage.getRelativePointerPosition();
       if (!p) return;
       this.pointsEnCours = [p.x, p.y];
-      const base = { points: this.pointsEnCours, stroke: couleur, strokeWidth: 3, tension: 0.8, lineCap: 'round' as const, lineJoin: 'round' as const };
-      this.dessinEnCours = (o === 'deplacement' || o === 'passe')
-        ? new Konva.Arrow({ ...base, fill: couleur, dash: o === 'deplacement' ? [11, 7] : undefined, pointerLength: 11, pointerWidth: 11 })
-        : new Konva.Line({ ...base });
+      this.dessinEnCours = this.creerApercu(o);
       this.layer.add(this.dessinEnCours);
+      this.remonterElements();
     });
 
     this.stage.on('mousemove touchmove', () => {
       if (!this.dessinEnCours) return;
       const p = this.stage.getRelativePointerPosition();
       if (!p) return;
+      if (this.modeDessin() === 'semi') {
+        // aperçu élastique : points posés + segment vers le curseur
+        if (this.pointsEnCours.length >= 2) { this.dessinEnCours.points([...this.pointsEnCours, p.x, p.y]); this.layer.batchDraw(); }
+        return;
+      }
+      if (this.modeDessin() === 'assiste') {
+        // ligne droite : départ -> position courante
+        this.dessinEnCours.points([this.pointsEnCours[0], this.pointsEnCours[1], p.x, p.y]);
+        this.layer.batchDraw();
+        return;
+      }
+      // à main libre : on ajoute un point tous les ~20px
       const n = this.pointsEnCours.length;
-      // n'ajoute un point que si on a bougé d'au moins 8px (lisse + limite le nombre de points)
       if (Math.hypot(p.x - this.pointsEnCours[n - 2], p.y - this.pointsEnCours[n - 1]) >= 20) {
         this.pointsEnCours.push(p.x, p.y);
         this.dessinEnCours.points(this.pointsEnCours);
@@ -615,19 +650,44 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
     });
 
     this.stage.on('mouseup touchend', () => {
-      if (!this.dessinEnCours) return;
+      if (this.modeDessin() === 'semi' || !this.dessinEnCours) return;
       const p = this.stage.getRelativePointerPosition();
-      if (p) this.pointsEnCours.push(p.x, p.y);
-      this.dessinEnCours.destroy();
-      this.dessinEnCours = null;
-      const pts = this.pointsEnCours;
-      const longueurOk = pts.length >= 4 && Math.hypot(pts[pts.length - 2] - pts[0], pts[pts.length - 1] - pts[1]) > 12;
-      if (longueurOk) {
-        const t: SchemaTrace = { id: this.uid(), type: this.outil() as TraceType, points: pts };
-        this.lierTrace(t);   // associe la flèche au jeton/ballon le plus proche de son départ
-        this.traces.push(t);
-        this.dessinerTrace(t);
+      let pts: number[];
+      if (this.modeDessin() === 'assiste') {
+        pts = p ? [this.pointsEnCours[0], this.pointsEnCours[1], p.x, p.y] : this.pointsEnCours;
+      } else {
+        if (p) this.pointsEnCours.push(p.x, p.y);
+        pts = this.pointsEnCours;
       }
+      this.dessinEnCours.destroy(); this.dessinEnCours = null;
+      this.finaliserTrace(pts);
+      this.pointsEnCours = [];
+      this.layer.draw();
+    });
+
+    // ── Mode "semi-assisté" : clic = poser un point, double-clic = terminer ──
+    this.stage.on('click tap', (e) => {
+      const o = this.outil();
+      if (this.modeDessin() !== 'semi' || !this.estOutilTrace(o) || this.surElement(e)) return;
+      const p = this.stage.getRelativePointerPosition();
+      if (!p) return;
+      if (!this.dessinEnCours) {
+        this.pointsEnCours = [p.x, p.y];
+        this.dessinEnCours = this.creerApercu(o);
+        this.layer.add(this.dessinEnCours);
+        this.remonterElements();
+      } else {
+        this.pointsEnCours.push(p.x, p.y);
+      }
+      this.layer.batchDraw();
+    });
+
+    this.stage.on('dblclick dbltap', () => {
+      if (this.modeDessin() !== 'semi' || !this.dessinEnCours) return;
+      if (this.pointsEnCours.length >= 4) this.pointsEnCours.splice(-2, 2); // retire le point en doublon du double-clic
+      const pts = this.pointsEnCours;
+      this.dessinEnCours.destroy(); this.dessinEnCours = null;
+      this.finaliserTrace(pts);
       this.pointsEnCours = [];
       this.layer.draw();
     });

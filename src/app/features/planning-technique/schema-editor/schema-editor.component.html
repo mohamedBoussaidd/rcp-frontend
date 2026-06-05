@@ -22,6 +22,18 @@
     </div>
 
     <div class="tb-group">
+      <span class="tb-label">Tracé</span>
+      <span class="tl-mode">
+        <button class="tl-seg" [class.on]="modeDessin() === 'libre'" (click)="modeDessin.set('libre')"
+          title="À main libre : trace à la souris, la flèche suit ta main.">Main</button>
+        <button class="tl-seg" [class.on]="modeDessin() === 'semi'" (click)="modeDessin.set('semi')"
+          title="Semi-assisté : clique des points, double-clic pour terminer.">Semi</button>
+        <button class="tl-seg" [class.on]="modeDessin() === 'assiste'" (click)="modeDessin.set('assiste')"
+          title="Assisté : départ → arrivée, flèche droite automatique.">Assisté</button>
+      </span>
+    </div>
+
+    <div class="tb-group">
       <span class="tb-label">Terrain</span>
       <button class="tb-btn" [class.on]="terrain() === 'complet'" (click)="changerTerrain('complet')">Complet</button>
       <button class="tb-btn" [class.on]="terrain() === 'demi'" (click)="changerTerrain('demi')">Demi</button>
