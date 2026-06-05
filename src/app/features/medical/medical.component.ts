@@ -1,6 +1,7 @@
 import { Component, OnInit, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { DatePipe } from '@angular/common';
+import { RouterLink } from '@angular/router';
 import { MatToolbar } from '@angular/material/toolbar';
 import { MatCard, MatCardContent, MatCardHeader, MatCardTitle } from '@angular/material/card';
 import { MatSnackBar } from '@angular/material/snack-bar';
@@ -17,7 +18,7 @@ import { AuthService } from '../../core/services/auth.service';
   standalone: true,
   templateUrl: './medical.component.html',
   styleUrl: './medical.component.scss',
-  imports: [FormsModule, DatePipe, MatToolbar, MatCard, MatCardContent, MatCardHeader, MatCardTitle],
+  imports: [FormsModule, DatePipe, RouterLink, MatToolbar, MatCard, MatCardContent, MatCardHeader, MatCardTitle],
 })
 export class MedicalComponent implements OnInit {
 
@@ -63,6 +64,8 @@ export class MedicalComponent implements OnInit {
   editingId = signal<string | null>(null);
   saving = signal(false);
   form: BlessureRequest = this.formVide();
+  /** id de la gêne en cours de conversion en blessure (marquée traitée à l'enregistrement). */
+  geneEnConversion = signal<string | null>(null);
 
   // ── Suivi d'une blessure (journal + RTP) ──
   suiviBlessure = signal<Blessure | null>(null);
@@ -89,14 +92,40 @@ export class MedicalComponent implements OnInit {
     EFFORT: "à l'effort", APRES: 'juste après', REPOS: 'au repos',
   };
 
-  /** Gênes signalées par les joueurs sur les 7 derniers jours (détection précoce). */
+  /** Gênes non traitées signalées sur les 7 derniers jours (détection précoce). */
   get genesSignalees(): Wellness[] {
     const limite = new Date(Date.now() - 7 * 86400000).toISOString().slice(0, 10);
     return this.wellnessAlertes()
-      .filter(w => w.geneZone && w.date >= limite)
+      .filter(w => w.geneZone && !w.geneTraitee && w.date >= limite)
       .sort((a, b) => b.date.localeCompare(a.date));
   }
   momentGeneLabel(v?: string): string { return v ? (this.MOMENTS_GENE[v] ?? v) : ''; }
+
+  /** Qui peut traiter / convertir une gêne (médical, préparateur, super-admin). */
+  get peutTraiterGene(): boolean {
+    return this.auth.hasRole('MEDICAL', 'PREPARATEUR', 'SUPER_ADMIN');
+  }
+
+  traiterGene(w: Wellness): void {
+    this.suiviService.traiterGene(w.id).subscribe({
+      next: maj => this.wellnessAlertes.update(l => l.map(x => x.id === w.id ? maj : x)),
+      error: () => this.snack.open('Action impossible', 'Fermer', { duration: 3000 }),
+    });
+  }
+
+  /** Pré-remplit le formulaire blessure depuis la gêne ; la gêne sera traitée à l'enregistrement. */
+  convertirGeneEnBlessure(w: Wellness): void {
+    if (!w.geneZone) return;
+    this.editingId.set(null);
+    this.form = {
+      ...this.formVide(),
+      joueurId: w.joueurId,
+      dateBlessure: w.date,
+      zoneCorporelle: w.geneZone,
+    };
+    this.geneEnConversion.set(w.id);
+    this.showForm.set(true);
+  }
 
   get statsTotal(): number { return this.blessures().length; }
   get statsEnCours(): number { return this.blessures().filter(b => b.statut !== 'RETABLI').length; }
@@ -191,6 +220,7 @@ export class MedicalComponent implements OnInit {
 
   nouveau(): void {
     this.editingId.set(null);
+    this.geneEnConversion.set(null);
     this.form = this.formVide();
     this.showForm.set(true);
   }
@@ -206,7 +236,7 @@ export class MedicalComponent implements OnInit {
     this.showForm.set(true);
   }
 
-  annuler(): void { this.showForm.set(false); this.editingId.set(null); }
+  annuler(): void { this.showForm.set(false); this.editingId.set(null); this.geneEnConversion.set(null); }
 
   enregistrer(): void {
     if (!this.form.joueurId || !this.form.dateBlessure) return;
@@ -215,7 +245,18 @@ export class MedicalComponent implements OnInit {
     const id = this.editingId();
     const obs = id ? this.blessureService.modifier(id, payload) : this.blessureService.creer(payload);
     obs.subscribe({
-      next: () => { this.saving.set(false); this.showForm.set(false); this.editingId.set(null); this.charger(); },
+      next: () => {
+        // Conversion d'une gêne : on la marque traitée une fois la blessure créée.
+        const geneId = this.geneEnConversion();
+        if (geneId) {
+          this.suiviService.traiterGene(geneId).subscribe({
+            next: maj => this.wellnessAlertes.update(l => l.map(x => x.id === geneId ? maj : x)),
+            error: () => {},
+          });
+          this.geneEnConversion.set(null);
+        }
+        this.saving.set(false); this.showForm.set(false); this.editingId.set(null); this.charger();
+      },
       error: () => { this.saving.set(false); this.snack.open('Erreur lors de l\'enregistrement', 'Fermer', { duration: 3000 }); },
     });
   }

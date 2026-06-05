@@ -283,19 +283,36 @@
 
 /* ── Alertes ── */
 .carte-alertes { border-left: 4px solid var(--warning); }
-.alertes-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 20px; }
+.alerte-section { margin-bottom: 18px; &:last-child { margin-bottom: 0; } }
 .alerte-titre {
-  font-size: 0.8rem; font-weight: 700; margin: 0 0 6px;
+  display: flex; align-items: center; gap: 8px;
+  font-size: 0.82rem; font-weight: 700; margin: 0 0 10px;
   &.rouge { color: var(--danger); }
   &.orange { color: var(--warning); }
 }
-.alerte-ligne {
-  display: flex; align-items: center; justify-content: space-between; gap: 10px;
-  padding: 5px 2px; border-bottom: 1px solid var(--border); font-size: 0.83rem;
-  &:last-child { border-bottom: none; }
+.al-compte {
+  font-size: 0.7rem; font-weight: 700;
+  min-width: 18px; height: 18px; padding: 0 5px;
+  display: inline-flex; align-items: center; justify-content: center;
+  border-radius: 50px; background: var(--surface-2); border: 1px solid var(--border); color: var(--text-2);
 }
-.al-joueur { font-weight: 600; color: var(--text); }
-.al-info { display: flex; align-items: center; gap: 6px; color: var(--text-2); font-size: 0.78rem; }
+.alerte-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; }
+.alerte-card {
+  display: flex; flex-direction: column; gap: 6px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface-2);
+  &.sev-rouge  { border-left-color: var(--danger); }
+  &.sev-orange { border-left-color: var(--warning); }
+}
+.ac-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.ac-joueur { font-weight: 700; font-size: 0.85rem; color: var(--text); }
+.ac-corps { font-size: 0.83rem; color: var(--text-2); }
+.ac-badges { display: flex; flex-wrap: wrap; gap: 6px; }
+.ac-meta { font-size: 0.72rem; color: var(--muted); }
+.ac-actions { display: flex; gap: 8px; margin-top: 4px; }
 
 /* ── Bilan ── */
 .bilan-tuiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 12px; margin-bottom: 18px; }

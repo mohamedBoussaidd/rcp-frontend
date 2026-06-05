@@ -18,6 +18,7 @@ export interface Wellness {
   geneZone?: string;
   geneIntensite?: number;
   geneMoment?: string;
+  geneTraitee?: boolean;
 }
 
 export interface Rpe {
@@ -50,5 +51,10 @@ export class SuiviSubjectifService {
     let params = new HttpParams();
     if (joueurId) params = params.set('joueurId', joueurId);
     return this.http.get<Rpe[]>('/api/rpe', { params });
+  }
+
+  /** Marque la gêne d'une saisie comme traitée (staff médical / préparateur). */
+  traiterGene(wellnessId: string): Observable<Wellness> {
+    return this.http.patch<Wellness>(`/api/wellness/${wellnessId}/gene-traitee`, {});
   }
 }

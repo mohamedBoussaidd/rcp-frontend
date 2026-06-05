@@ -11,68 +11,100 @@
         <mat-card-title>⚠️ Alertes</mat-card-title>
       </mat-card-header>
       <mat-card-content>
-        <div class="alertes-grid">
 
-          @if (genesSignalees.length > 0) {
-            <div class="alerte-bloc">
-              <h4 class="alerte-titre rouge">Gênes signalées (7 j)</h4>
+        @if (genesSignalees.length > 0) {
+          <section class="alerte-section">
+            <h4 class="alerte-titre rouge">🩹 Gênes signalées <span class="al-compte">{{ genesSignalees.length }}</span></h4>
+            <div class="alerte-cards">
               @for (g of genesSignalees; track g.id) {
-                <div class="alerte-ligne">
-                  <span class="al-joueur">{{ g.joueurPrenom }} {{ g.joueurNom }}</span>
-                  <span class="al-info">
-                    {{ joliLabel(g.geneZone) }}
+                <div class="alerte-card sev-rouge">
+                  <div class="ac-head">
+                    <span class="ac-joueur">{{ g.joueurPrenom }} {{ g.joueurNom }}</span>
                     <span class="score-badge score-bas">{{ g.geneIntensite }}/5</span>
-                    <small>{{ momentGeneLabel(g.geneMoment) }} · {{ g.date | date:'dd/MM' }}</small>
-                  </span>
+                  </div>
+                  <div class="ac-corps">{{ joliLabel(g.geneZone) }}</div>
+                  <div class="ac-meta">{{ momentGeneLabel(g.geneMoment) }} · {{ g.date | date:'dd/MM' }}</div>
+                  @if (peutTraiterGene) {
+                    <div class="ac-actions">
+                      <button class="btn-mini" (click)="traiterGene(g)">Traiter</button>
+                      @if (auth.canEcrireBlessures()) {
+                        <button class="btn-mini" (click)="convertirGeneEnBlessure(g)">+ Blessure</button>
+                      }
+                    </div>
+                  }
                 </div>
               }
             </div>
-          }
+          </section>
+        }
 
-          @if (retoursEnRetard.length > 0) {
-            <div class="alerte-bloc">
-              <h4 class="alerte-titre rouge">Retours en retard</h4>
+        @if (retoursEnRetard.length > 0) {
+          <section class="alerte-section">
+            <h4 class="alerte-titre rouge">⏰ Retours en retard <span class="al-compte">{{ retoursEnRetard.length }}</span></h4>
+            <div class="alerte-cards">
               @for (b of retoursEnRetard; track b.id) {
-                <div class="alerte-ligne">
-                  <span class="al-joueur">{{ b.joueurPrenom }} {{ b.joueurNom }}</span>
-                  <span class="al-info">prévu {{ b.dateRetourPrevue | date:'dd/MM' }}
+                <div class="alerte-card sev-rouge">
+                  <div class="ac-head">
+                    <span class="ac-joueur">{{ b.joueurPrenom }} {{ b.joueurNom }}</span>
                     <span class="inf-jours retard">+{{ -joursAvantRetour(b.dateRetourPrevue)! }}j</span>
-                  </span>
+                  </div>
+                  <div class="ac-corps">{{ joliLabel(b.zoneCorporelle) }}</div>
+                  <div class="ac-meta">prévu {{ b.dateRetourPrevue | date:'dd/MM' }}</div>
+                  <div class="ac-actions">
+                    <button class="btn-mini" [routerLink]="['/joueurs', b.joueurId]">Fiche</button>
+                    @if (auth.canEcrireBlessures()) {
+                      <button class="btn-mini" (click)="editer(b)">Mettre à jour</button>
+                    }
+                  </div>
                 </div>
               }
             </div>
-          }
+          </section>
+        }
 
-          @if (retoursImminents.length > 0) {
-            <div class="alerte-bloc">
-              <h4 class="alerte-titre orange">Retours imminents (7 j)</h4>
+        @if (retoursImminents.length > 0) {
+          <section class="alerte-section">
+            <h4 class="alerte-titre orange">📅 Retours imminents (7 j) <span class="al-compte">{{ retoursImminents.length }}</span></h4>
+            <div class="alerte-cards">
               @for (b of retoursImminents; track b.id) {
-                <div class="alerte-ligne">
-                  <span class="al-joueur">{{ b.joueurPrenom }} {{ b.joueurNom }}</span>
-                  <span class="al-info">{{ b.dateRetourPrevue | date:'dd/MM' }}
+                <div class="alerte-card sev-orange">
+                  <div class="ac-head">
+                    <span class="ac-joueur">{{ b.joueurPrenom }} {{ b.joueurNom }}</span>
                     <span class="inf-jours">J−{{ joursAvantRetour(b.dateRetourPrevue) }}</span>
-                  </span>
+                  </div>
+                  <div class="ac-corps">{{ joliLabel(b.zoneCorporelle) }}</div>
+                  <div class="ac-meta">prévu {{ b.dateRetourPrevue | date:'dd/MM' }}</div>
+                  <div class="ac-actions">
+                    <button class="btn-mini" [routerLink]="['/joueurs', b.joueurId]">Fiche</button>
+                  </div>
                 </div>
               }
             </div>
-          }
+          </section>
+        }
 
-          @if (joueursRisqueEleve.length > 0) {
-            <div class="alerte-bloc">
-              <h4 class="alerte-titre rouge">Risque / fatigue élevés</h4>
+        @if (joueursRisqueEleve.length > 0) {
+          <section class="alerte-section">
+            <h4 class="alerte-titre orange">📈 Risque / fatigue élevés <span class="al-compte">{{ joueursRisqueEleve.length }}</span></h4>
+            <div class="alerte-cards">
               @for (j of joueursRisqueEleve; track j.joueur_id) {
-                <div class="alerte-ligne">
-                  <span class="al-joueur">{{ j.prenom }} {{ j.nom }}</span>
-                  <span class="al-info">
+                <div class="alerte-card sev-orange">
+                  <div class="ac-head">
+                    <span class="ac-joueur">{{ j.prenom }} {{ j.nom }}</span>
+                  </div>
+                  <div class="ac-corps ac-badges">
                     @if (j.niveau_risque === 'ELEVE') { <span class="score-badge score-bas">risque {{ j.score_risque }}</span> }
                     @if (j.niveau_fatigue === 'ALERTE') { <span class="score-badge score-bas">fatigue</span> }
-                  </span>
+                  </div>
+                  <div class="ac-actions">
+                    <button class="btn-mini" [routerLink]="['/joueurs', j.joueur_id]">Fiche</button>
+                  </div>
                 </div>
               }
             </div>
-          }
+          </section>
+        }
 
-        </div>
       </mat-card-content>
     </mat-card>
   }
