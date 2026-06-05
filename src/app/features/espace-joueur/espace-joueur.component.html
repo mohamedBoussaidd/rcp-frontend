@@ -62,6 +62,33 @@
     <mat-card>
       <mat-card-header><mat-card-title>Mon suivi médical</mat-card-title></mat-card-header>
       <mat-card-content>
+
+        @if (blessureActive(); as b) {
+          <div class="parcours-medical">
+            <span class="parcours-label">Mon parcours de reprise — {{ joli(b.zoneCorporelle) }}</span>
+            <div class="parcours-timeline">
+              @for (etape of PARCOURS; track etape.statut; let i = $index) {
+                <div class="pm-etape" [class.atteinte]="i <= parcoursIndex()" [class.courante]="i === parcoursIndex()">
+                  <span class="pm-puce"></span>
+                  <span class="pm-label">{{ etape.label }}</span>
+                </div>
+              }
+            </div>
+            @if (rtpEtapes().length > 0) {
+              <div class="pm-rtp">
+                <div class="pm-barre"><span [style.width.%]="rtpProgression()"></span></div>
+                <span class="pm-rtp-info">
+                  {{ rtpProgression() }}%
+                  @if (rtpEtapeCourante(); as e) { · étape : {{ e.libelle }} }
+                </span>
+              </div>
+            }
+            @if (b.dateRetourPrevue && b.statut !== 'RETABLI') {
+              <p class="parcours-retour">Retour prévu : {{ b.dateRetourPrevue | date:'dd/MM/yyyy' }}</p>
+            }
+          </div>
+        }
+
         @if (blessures().length === 0) {
           <p class="empty-state">Aucune blessure enregistrée. 💪</p>
         } @else {

@@ -12,6 +12,15 @@ export interface MaPesee {
   commentaire?: string;
 }
 
+export interface RtpEtape {
+  id: string;
+  blessureId: string;
+  ordre: number;
+  libelle: string;
+  statut: 'A_FAIRE' | 'EN_COURS' | 'VALIDEE';
+  dateValidation?: string;
+}
+
 export interface Wellness {
   id: string;
   joueurId: string;
@@ -91,6 +100,11 @@ export class EspaceJoueurService {
 
   getBlessures(): Observable<Blessure[]> {
     return this.http.get<Blessure[]>(`${this.base}/blessures`);
+  }
+
+  /** Protocole de reprise (RTP) d'une de mes blessures — lecture seule. */
+  getEtapesRtp(blessureId: string): Observable<RtpEtape[]> {
+    return this.http.get<RtpEtape[]>(`${this.base}/blessures/${blessureId}/rtp`);
   }
 
   getGps(): Observable<GpsPoint[]> {

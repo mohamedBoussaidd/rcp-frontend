@@ -3,7 +3,7 @@ import { DatePipe, DecimalPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatToolbar } from '@angular/material/toolbar';
 import { MatCard, MatCardContent, MatCardHeader, MatCardTitle } from '@angular/material/card';
-import { EspaceJoueurService, MaPesee, DocumentMedical, Wellness, Rpe } from '../../core/services/espace-joueur.service';
+import { EspaceJoueurService, MaPesee, DocumentMedical, Wellness, Rpe, RtpEtape } from '../../core/services/espace-joueur.service';
 import { Joueur, GpsPoint } from '../../core/services/joueur.service';
 import { Blessure } from '../../core/services/blessure.service';
 import { Seance } from '../../core/services/seance.service';
@@ -41,6 +41,7 @@ export class EspaceJoueurComponent implements OnInit {
   profil = signal<Joueur | null>(null);
   pesees = signal<MaPesee[]>([]);
   blessures = signal<Blessure[]>([]);
+  rtpEtapes = signal<RtpEtape[]>([]);
   gps = signal<GpsPoint[]>([]);
   seances = signal<Seance[]>([]);
   seancesTech = signal<SeanceTechnique[]>([]);
@@ -117,6 +118,30 @@ export class EspaceJoueurComponent implements OnInit {
 
   /** id du document dont on édite le partage (null = aucun). */
   partageEnEdition = signal<string | null>(null);
+
+  // ── Parcours de reprise (lecture seule) ──
+  readonly PARCOURS: { statut: string; label: string }[] = [
+    { statut: 'INDISPONIBLE', label: 'Indisponible' },
+    { statut: 'EN_REPRISE',   label: 'En reprise' },
+    { statut: 'RETABLI',      label: 'Rétabli' },
+  ];
+  /** Blessure active (non rétablie), la plus récente. */
+  readonly blessureActive = computed(() =>
+    this.blessures()
+      .filter(b => b.statut !== 'RETABLI')
+      .sort((a, b) => (b.dateBlessure ?? '').localeCompare(a.dateBlessure ?? ''))[0] ?? null);
+  readonly parcoursIndex = computed(() => {
+    const b = this.blessureActive();
+    return b ? this.PARCOURS.findIndex(p => p.statut === b.statut) : -1;
+  });
+  readonly rtpProgression = computed(() => {
+    const e = this.rtpEtapes();
+    return e.length === 0 ? 0 : Math.round(e.filter(x => x.statut === 'VALIDEE').length / e.length * 100);
+  });
+  readonly rtpEtapeCourante = computed(() =>
+    this.rtpEtapes().find(e => e.statut === 'EN_COURS')
+    ?? this.rtpEtapes().find(e => e.statut === 'A_FAIRE')
+    ?? null);
 
   /**
    * Séances non annulées à partir d'aujourd'hui, triées chronologiquement (vue « prévues »).
@@ -202,7 +227,16 @@ export class EspaceJoueurComponent implements OnInit {
       },
     });
     this.service.getPesees().subscribe({ next: d => this.pesees.set(d), error: () => {} });
-    this.service.getBlessures().subscribe({ next: d => this.blessures.set(d), error: () => {} });
+    this.service.getBlessures().subscribe({
+      next: d => {
+        this.blessures.set(d);
+        const active = this.blessureActive();
+        if (active) {
+          this.service.getEtapesRtp(active.id).subscribe({ next: e => this.rtpEtapes.set(e), error: () => {} });
+        }
+      },
+      error: () => {},
+    });
     this.service.getGps().subscribe({ next: d => this.gps.set(d), error: () => {} });
     this.service.getSeances().subscribe({ next: d => this.seances.set(d), error: () => {} });
     this.service.getSeancesTechniques().subscribe({ next: d => this.seancesTech.set(d), error: () => {} });
