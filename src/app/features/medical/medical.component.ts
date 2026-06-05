@@ -5,6 +5,7 @@ import { MatToolbar } from '@angular/material/toolbar';
 import { MatCard, MatCardContent, MatCardHeader, MatCardTitle } from '@angular/material/card';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { Blessure, BlessureRequest, BlessureService, StatutBlessure } from '../../core/services/blessure.service';
+import { BlessureNote, RtpEtape, StatutEtape, BlessureSuiviService } from '../../core/services/blessure-suivi.service';
 import { DocumentMedical, DocumentMedicalService } from '../../core/services/document-medical.service';
 import { Wellness, Rpe, SuiviSubjectifService } from '../../core/services/suivi-subjectif.service';
 import { Joueur, JoueurService } from '../../core/services/joueur.service';
@@ -62,10 +63,27 @@ export class MedicalComponent implements OnInit {
   saving = signal(false);
   form: BlessureRequest = this.formVide();
 
+  // ── Suivi d'une blessure (journal + RTP) ──
+  suiviBlessure = signal<Blessure | null>(null);
+  notes = signal<BlessureNote[]>([]);
+  rtp = signal<RtpEtape[]>([]);
+  noteTexte = signal('');
+  readonly ETAPE_LABELS: Record<StatutEtape, string> = {
+    A_FAIRE: 'À faire', EN_COURS: 'En cours', VALIDEE: 'Validée',
+  };
+
+  /** Progression RTP en % (étapes validées / total). */
+  get rtpProgression(): number {
+    const t = this.rtp();
+    if (t.length === 0) return 0;
+    return Math.round(t.filter(e => e.statut === 'VALIDEE').length / t.length * 100);
+  }
+
   constructor(
     private blessureService: BlessureService,
     private documentService: DocumentMedicalService,
     private suiviService: SuiviSubjectifService,
+    private blessureSuiviService: BlessureSuiviService,
     private joueurService: JoueurService,
     private snack: MatSnackBar,
     public auth: AuthService,
@@ -236,5 +254,68 @@ export class MedicalComponent implements OnInit {
     const cible = new Date(dateRetourPrevue + 'T00:00:00');
     const auj = new Date(); auj.setHours(0, 0, 0, 0);
     return Math.round((cible.getTime() - auj.getTime()) / 86400000);
+  }
+
+  // ──────────────────────────── Suivi blessure (journal + RTP) ────────────────────────────
+
+  ouvrirSuivi(b: Blessure): void {
+    if (this.suiviBlessure()?.id === b.id) { this.fermerSuivi(); return; }
+    this.suiviBlessure.set(b);
+    this.noteTexte.set('');
+    this.blessureSuiviService.listerNotes(b.id).subscribe({ next: d => this.notes.set(d), error: () => {} });
+    this.blessureSuiviService.listerRtp(b.id).subscribe({ next: d => this.rtp.set(d), error: () => {} });
+  }
+  fermerSuivi(): void {
+    this.suiviBlessure.set(null);
+    this.notes.set([]);
+    this.rtp.set([]);
+  }
+
+  ajouterNote(): void {
+    const b = this.suiviBlessure();
+    const texte = this.noteTexte().trim();
+    if (!b || !texte) return;
+    this.blessureSuiviService.ajouterNote(b.id, texte).subscribe({
+      next: n => { this.notes.update(l => [n, ...l]); this.noteTexte.set(''); },
+      error: () => this.snack.open('Ajout impossible', 'Fermer', { duration: 3000 }),
+    });
+  }
+  supprimerNote(n: BlessureNote): void {
+    const b = this.suiviBlessure();
+    if (!b) return;
+    this.blessureSuiviService.supprimerNote(b.id, n.id).subscribe({
+      next: () => this.notes.update(l => l.filter(x => x.id !== n.id)),
+      error: () => {},
+    });
+  }
+
+  initRtp(): void {
+    const b = this.suiviBlessure();
+    if (!b) return;
+    this.blessureSuiviService.initialiserRtp(b.id).subscribe({
+      next: d => this.rtp.set(d),
+      error: () => this.snack.open('Protocole déjà initialisé', 'Fermer', { duration: 3000 }),
+    });
+  }
+  /** Fait avancer une étape : À faire → En cours → Validée → À faire. */
+  cyclerEtape(e: RtpEtape): void {
+    const b = this.suiviBlessure();
+    if (!b) return;
+    const suivant: StatutEtape = e.statut === 'A_FAIRE' ? 'EN_COURS' : e.statut === 'EN_COURS' ? 'VALIDEE' : 'A_FAIRE';
+    this.blessureSuiviService.majEtape(b.id, e.id, suivant).subscribe({
+      next: maj => this.rtp.update(l => l.map(x => x.id === e.id ? maj : x)),
+      error: () => {},
+    });
+  }
+  supprimerRtp(): void {
+    const b = this.suiviBlessure();
+    if (!b || !confirm('Supprimer le protocole de reprise ?')) return;
+    this.blessureSuiviService.supprimerRtp(b.id).subscribe({
+      next: () => this.rtp.set([]),
+      error: () => {},
+    });
+  }
+  etapeClass(statut: StatutEtape): string {
+    return statut === 'VALIDEE' ? 'et-validee' : statut === 'EN_COURS' ? 'et-encours' : 'et-afaire';
   }
 }

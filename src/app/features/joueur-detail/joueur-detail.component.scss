@@ -133,3 +133,58 @@
 /* Objectif correction */
 
 /* objectif-cell, objectif-correction, objectif-cible → mutualisés dans styles.scss */
+
+/* ── Parcours médical (timeline de reprise) ── */
+.parcours-medical { grid-column: 1 / -1; }
+.parcours-timeline {
+  display: flex;
+  align-items: flex-start;
+  gap: 4px;
+  margin-top: 6px;
+}
+.pm-etape {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  position: relative;
+  font-size: 0.68rem;
+  color: var(--muted);
+  text-align: center;
+
+  /* ligne reliant les puces */
+  &::before {
+    content: '';
+    position: absolute;
+    top: 6px;
+    left: -50%;
+    width: 100%;
+    height: 2px;
+    background: var(--border);
+    z-index: 0;
+  }
+  &:first-child::before { display: none; }
+
+  &.atteinte { color: var(--text); }
+  &.atteinte::before { background: var(--success); }
+}
+.pm-puce {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--surface-2);
+  border: 2px solid var(--border);
+  z-index: 1;
+}
+.pm-etape.atteinte .pm-puce { background: var(--success); border-color: var(--success); }
+.pm-etape.courante .pm-puce { background: var(--warning); border-color: var(--warning); box-shadow: 0 0 0 3px var(--warning-bg); }
+.pm-label { line-height: 1.1; }
+
+.pm-rtp { display: flex; align-items: center; gap: 8px; margin-top: 10px; }
+.pm-barre {
+  flex: 1; height: 6px; border-radius: 50px;
+  background: var(--surface-2); border: 1px solid var(--border); overflow: hidden;
+  span { display: block; height: 100%; background: var(--success); transition: width .25s; }
+}
+.pm-rtp-info { font-size: 0.7rem; color: var(--text-2); white-space: nowrap; }

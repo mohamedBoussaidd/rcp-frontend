@@ -4,6 +4,8 @@ import { MatDialog } from '@angular/material/dialog';
 import { JoueurService, Joueur, GpsPoint } from '../../core/services/joueur.service';
 import { PredictionService, NiveauFatigue } from '../../core/services/prediction.service';
 import { PeseesService, Pesee } from '../../core/services/pesees.service';
+import { Blessure, BlessureService } from '../../core/services/blessure.service';
+import { RtpEtape, BlessureSuiviService } from '../../core/services/blessure-suivi.service';
 import { JoueurFormDialogComponent } from '../joueur-form-dialog/joueur-form-dialog.component';
 import { MatCard, MatCardHeader, MatCardTitle, MatCardContent } from '@angular/material/card';
 import { MatProgressBar } from '@angular/material/progress-bar';
@@ -46,6 +48,28 @@ export class JoueurDetailComponent implements OnInit {
   joueur: Joueur | null = null;
   risque: any = null;
   fatigue: NiveauFatigue | null = null;
+
+  // ── Parcours médical (blessure active + protocole de reprise) ──
+  blessureActive: Blessure | null = null;
+  rtpEtapes: RtpEtape[] = [];
+  readonly PARCOURS: { statut: string; label: string }[] = [
+    { statut: 'INDISPONIBLE', label: 'Indisponible' },
+    { statut: 'EN_REPRISE',   label: 'En reprise' },
+    { statut: 'RETABLI',      label: 'Rétabli' },
+  ];
+
+  get parcoursIndex(): number {
+    return this.blessureActive ? this.PARCOURS.findIndex(p => p.statut === this.blessureActive!.statut) : -1;
+  }
+  get rtpProgression(): number {
+    if (this.rtpEtapes.length === 0) return 0;
+    return Math.round(this.rtpEtapes.filter(e => e.statut === 'VALIDEE').length / this.rtpEtapes.length * 100);
+  }
+  get rtpEtapeCourante(): RtpEtape | null {
+    return this.rtpEtapes.find(e => e.statut === 'EN_COURS')
+      ?? this.rtpEtapes.find(e => e.statut === 'A_FAIRE')
+      ?? null;
+  }
 
   gpsData: GpsPoint[] = [];
   gpsLoading = true;
@@ -335,6 +359,8 @@ export class JoueurDetailComponent implements OnInit {
     private joueurService: JoueurService,
     private predictionService: PredictionService,
     private peseesService: PeseesService,
+    private blessureService: BlessureService,
+    private blessureSuiviService: BlessureSuiviService,
     private dialog: MatDialog
   ) {}
 
@@ -389,8 +415,12 @@ export class JoueurDetailComponent implements OnInit {
     this.fatigue   = null;
     this.gpsData   = [];
     this.pesees    = [];
+    this.blessureActive = null;
+    this.rtpEtapes = [];
     this.gpsLoading = true;
     this.pageIndex  = 0;
+
+    this.chargerParcoursMedical(id);
 
     this.joueurService.getById(id).subscribe(j => {
       this.joueur = j;
@@ -413,6 +443,25 @@ export class JoueurDetailComponent implements OnInit {
         this.buildPoidsChart();
       },
       error: () => {}
+    });
+  }
+
+  /** Blessure active du joueur (statut != RETABLI) + son protocole de reprise. */
+  private chargerParcoursMedical(id: string): void {
+    this.blessureService.lister(id).subscribe({
+      next: blessures => {
+        const active = blessures
+          .filter(b => b.statut !== 'RETABLI')
+          .sort((a, b) => (b.dateBlessure ?? '').localeCompare(a.dateBlessure ?? ''))[0] ?? null;
+        this.blessureActive = active;
+        if (active) {
+          this.blessureSuiviService.listerRtp(active.id).subscribe({
+            next: etapes => this.rtpEtapes = etapes,
+            error: () => {},
+          });
+        }
+      },
+      error: () => {},
     });
   }
 

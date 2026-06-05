@@ -140,12 +140,13 @@
                 @if (b.causeProbable) { <span class="info-label">Cause</span><span>{{ joliLabel(b.causeProbable) }}</span> }
               </div>
               @if (b.commentaire) { <p class="blessure-comm">{{ b.commentaire }}</p> }
-              @if (auth.canEcrireBlessures()) {
-                <div class="blessure-actions">
+              <div class="blessure-actions">
+                <button class="btn-mini" [class.actif]="suiviBlessure()?.id === b.id" (click)="ouvrirSuivi(b)">Suivi</button>
+                @if (auth.canEcrireBlessures()) {
                   <button class="btn-mini" (click)="editer(b)">Modifier</button>
                   <button class="btn-mini danger" (click)="supprimer(b)">Supprimer</button>
-                </div>
-              }
+                }
+              </div>
             </div>
           }
         </div>
@@ -153,6 +154,87 @@
 
     </mat-card-content>
   </mat-card>
+
+  <!-- ── Suivi d'une blessure : journal + protocole RTP ── -->
+  @if (suiviBlessure(); as b) {
+    <mat-card>
+      <mat-card-header class="card-head">
+        <mat-card-title>Suivi — {{ b.joueurPrenom }} {{ b.joueurNom }}
+          <small class="suivi-sous">{{ joliLabel(b.zoneCorporelle) }} · {{ statutBlessureLabel(b.statut) }}</small>
+        </mat-card-title>
+        <button class="btn-mini" (click)="fermerSuivi()">Fermer</button>
+      </mat-card-header>
+
+      <mat-card-content>
+        <div class="suivi-grid">
+
+          <!-- Protocole de retour au jeu -->
+          <div class="suivi-col">
+            <div class="rtp-head">
+              <h4 class="suivi-titre">Protocole de reprise</h4>
+              @if (rtp().length > 0 && auth.canEcrireBlessures()) {
+                <button class="lien lien-danger" (click)="supprimerRtp()">Réinitialiser</button>
+              }
+            </div>
+
+            @if (rtp().length === 0) {
+              <p class="empty-state">Aucun protocole.</p>
+              @if (auth.canEcrireBlessures()) {
+                <button class="btn-dark-primary" (click)="initRtp()">Démarrer un protocole</button>
+              }
+            } @else {
+              <div class="rtp-progress">
+                <div class="rtp-barre"><span [style.width.%]="rtpProgression"></span></div>
+                <span class="rtp-pct">{{ rtpProgression }}%</span>
+              </div>
+              <ol class="rtp-etapes">
+                @for (e of rtp(); track e.id) {
+                  <li class="rtp-etape" [class]="etapeClass(e.statut)">
+                    <button class="rtp-puce"
+                            [disabled]="!auth.canEcrireBlessures()"
+                            (click)="cyclerEtape(e)"
+                            [title]="ETAPE_LABELS[e.statut]">
+                      {{ e.statut === 'VALIDEE' ? '✓' : e.statut === 'EN_COURS' ? '•' : '' }}
+                    </button>
+                    <span class="rtp-libelle">{{ e.libelle }}</span>
+                    @if (e.dateValidation) { <span class="rtp-date">{{ e.dateValidation | date:'dd/MM' }}</span> }
+                  </li>
+                }
+              </ol>
+            }
+          </div>
+
+          <!-- Journal d'évolution -->
+          <div class="suivi-col">
+            <h4 class="suivi-titre">Journal</h4>
+            @if (auth.canEcrireBlessures()) {
+              <div class="note-form">
+                <input class="param-input" [ngModel]="noteTexte()" (ngModelChange)="noteTexte.set($event)"
+                       placeholder="Soin, observation…" (keyup.enter)="ajouterNote()">
+                <button class="btn-mini" [disabled]="!noteTexte().trim()" (click)="ajouterNote()">Ajouter</button>
+              </div>
+            }
+            @if (notes().length === 0) {
+              <p class="empty-state">Aucune note.</p>
+            } @else {
+              <div class="note-liste">
+                @for (n of notes(); track n.id) {
+                  <div class="note-ligne">
+                    <span class="ligne-date">{{ n.date | date:'dd/MM/yyyy' }}</span>
+                    <span class="note-texte">{{ n.texte }}</span>
+                    @if (auth.canEcrireBlessures()) {
+                      <button class="lien lien-danger" (click)="supprimerNote(n)">✕</button>
+                    }
+                  </div>
+                }
+              </div>
+            }
+          </div>
+
+        </div>
+      </mat-card-content>
+    </mat-card>
+  }
 
   <mat-card>
     <mat-card-header class="card-head">

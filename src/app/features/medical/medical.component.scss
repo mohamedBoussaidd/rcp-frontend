@@ -233,6 +233,54 @@
   &.score-bas   { background: var(--danger-bg);  color: var(--danger);  border: 1px solid var(--danger-border); }
 }
 
+/* ── Suivi blessure : RTP + journal ── */
+.suivi-sous { font-weight: 400; font-size: 0.78rem; color: var(--muted); margin-left: 8px; }
+.btn-mini.actif { background: var(--copper-soft); border-color: var(--copper); }
+
+.lien {
+  background: none; border: none; padding: 0; cursor: pointer;
+  font-size: 0.78rem; color: var(--copper);
+  &:hover { text-decoration: underline; }
+  &.lien-danger { color: var(--danger); }
+}
+
+.rtp-head { display: flex; align-items: center; justify-content: space-between; }
+.rtp-progress { display: flex; align-items: center; gap: 10px; margin: 6px 0 12px; }
+.rtp-barre {
+  flex: 1; height: 8px; border-radius: 50px; background: var(--surface-2);
+  border: 1px solid var(--border); overflow: hidden;
+  span { display: block; height: 100%; background: var(--success); transition: width .25s; }
+}
+.rtp-pct { font-size: 0.78rem; font-weight: 700; color: var(--text-2); min-width: 38px; text-align: right; }
+
+.rtp-etapes { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.rtp-etape {
+  display: flex; align-items: center; gap: 10px;
+  padding: 7px 2px; border-bottom: 1px solid var(--border);
+  &:last-child { border-bottom: none; }
+  &.et-validee .rtp-libelle { color: var(--muted); text-decoration: line-through; }
+}
+.rtp-puce {
+  width: 22px; height: 22px; flex-shrink: 0;
+  border-radius: 50%; border: 2px solid var(--border);
+  background: var(--surface); color: #fff; cursor: pointer;
+  font-size: 0.8rem; line-height: 1; display: flex; align-items: center; justify-content: center;
+  &:disabled { cursor: default; }
+}
+.et-validee .rtp-puce { background: var(--success); border-color: var(--success); }
+.et-encours .rtp-puce { background: var(--warning); border-color: var(--warning); }
+.rtp-libelle { font-size: 0.85rem; color: var(--text); }
+.rtp-date { margin-left: auto; font-size: 0.72rem; color: var(--muted); }
+
+.note-form { display: flex; gap: 8px; margin-bottom: 10px; .param-input { flex: 1; } }
+.note-liste { display: flex; flex-direction: column; }
+.note-ligne {
+  display: flex; align-items: baseline; gap: 10px;
+  padding: 7px 2px; border-bottom: 1px solid var(--border); font-size: 0.83rem;
+  &:last-child { border-bottom: none; }
+}
+.note-texte { color: var(--text); flex: 1; }
+
 @media (max-width: 700px) {
   .medical-content { padding: 12px 8px; }
   .form-grid { grid-template-columns: 1fr; }

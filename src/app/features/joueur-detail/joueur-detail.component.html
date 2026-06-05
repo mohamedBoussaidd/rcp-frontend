@@ -69,6 +69,32 @@
                       {{ STATUTS[joueur!.statut] || joueur!.statut }}
                     </span>
                   </div>
+
+                  @if (blessureActive) {
+                    <div class="info-item parcours-medical">
+                      <span class="info-label">Parcours de reprise</span>
+                      <div class="parcours-timeline">
+                        @for (etape of PARCOURS; track etape.statut; let i = $index) {
+                          <div class="pm-etape"
+                               [class.atteinte]="i <= parcoursIndex"
+                               [class.courante]="i === parcoursIndex">
+                            <span class="pm-puce"></span>
+                            <span class="pm-label">{{ etape.label }}</span>
+                          </div>
+                        }
+                      </div>
+                      @if (rtpEtapes.length > 0) {
+                        <div class="pm-rtp">
+                          <div class="pm-barre"><span [style.width.%]="rtpProgression"></span></div>
+                          <span class="pm-rtp-info">
+                            {{ rtpProgression }}%
+                            @if (rtpEtapeCourante) { · {{ rtpEtapeCourante.libelle }} }
+                          </span>
+                        </div>
+                      }
+                    </div>
+                  }
+
                   <div class="info-item">
                     <span class="info-label">Au club depuis</span>
                     <span class="info-value">{{ joueur!.dateArriveeClub ? (joueur!.dateArriveeClub | date:'dd/MM/yyyy') : '—' }}</span>
