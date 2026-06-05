@@ -249,6 +249,26 @@
   &.sm { min-width: 0; height: 28px; font-size: 0.74rem; padding: 0 7px; }
   &.danger { color: var(--danger); border-color: var(--danger-border); background: var(--danger-bg); }
 }
+.tl-mode {
+  display: inline-flex;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  margin-left: 4px;
+}
+.tl-seg {
+  height: 32px;
+  padding: 0 11px;
+  border: 0;
+  background: var(--surface-2);
+  color: var(--text-2);
+  font-size: 0.78rem;
+  font-family: inherit;
+  cursor: pointer;
+  &:first-child { border-right: 1px solid var(--border); }
+  &:hover { color: var(--text); }
+  &.on { background: var(--copper-soft); color: var(--copper); font-weight: 700; }
+}
 .tl-kf-add {
   height: 32px;
   padding: 0 12px;

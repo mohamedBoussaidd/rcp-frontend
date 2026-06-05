@@ -11,11 +11,17 @@ type Outil = 'select' | 'deplacement' | 'conduite' | 'passe' | 'tir' | 'supprime
 type TraceType = 'deplacement' | 'conduite' | 'passe' | 'tir';
 
 interface SchemaElement { id: string; type: string; couleur?: string; numero?: number; label?: string; joueurId?: string; x: number; y: number; }
-interface SchemaTrace { id: string; type: TraceType; points: number[]; }
+// elementId = jeton/ballon qui suit le tracé ; ballId = ballon entraîné par une conduite.
+interface SchemaTrace { id: string; type: TraceType; points: number[]; elementId?: string; ballId?: string; }
 interface Keyframe { t: number; positions: Record<string, { x: number; y: number }>; }
 
 const VIOLET = '#7c3aed', JAUNE = '#eab308', ROUGE = '#ef4444';
 const BLEU = '#2563eb';
+
+// Brique 2 : vitesse uniforme (px/s) en mode "vitesse" — sera remplacée par la vraie vitesse GPS en Brique 3.
+const VITESSE_PX_S = 130;
+// Rayon (px) pour lier une flèche au jeton/ballon le plus proche de son point de départ.
+const RAYON_LIEN = 42;
 
 @Component({
   selector: 'app-schema-editor',
@@ -40,6 +46,8 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
   enLecture = signal(false);
   boucle = signal(false);
   vitesse = signal(1);
+  // Brique 2 : temps = tout le monde arrive ensemble ; vitesse = chacun son allure le long de sa flèche.
+  modeAnim = signal<'temps' | 'vitesse'>('temps');
   keyframes = signal<Keyframe[]>([]);
   private anim?: Konva.Animation;
   // Palette dépliable
@@ -359,11 +367,13 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
   // ── Sauvegarde ──
   enregistrer(): void {
     this.pause();
+    this.scrub(0);   // état de départ : positions cohérentes avec le début des flèches/keyframes
     const data = {
       terrain: this.terrain(),
       elements: this.elements,
       traces: this.traces,
       dureeSecondes: this.dureeSecondes(),
+      modeAnim: this.modeAnim(),
       keyframes: this.keyframes(),
     };
     this.service.sauverSchema(this.exercice.id, JSON.stringify(data)).subscribe({
@@ -399,6 +409,7 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
       const d = JSON.parse(this.exercice.schemaJson);
       (d.elements ?? []).forEach((el: SchemaElement) => { this.elements.push(el); this.dessinerElement(el); });
       (d.traces ?? []).forEach((t: SchemaTrace) => { this.traces.push(t); this.dessinerTrace(t); });
+      if (d.modeAnim === 'temps' || d.modeAnim === 'vitesse') this.modeAnim.set(d.modeAnim);
       if (Array.isArray(d.keyframes) && d.keyframes.length) {
         this.keyframes.set([...d.keyframes].sort((a: Keyframe, b: Keyframe) => a.t - b.t));
         if (d.dureeSecondes) this.dureeSecondes.set(d.dureeSecondes);
@@ -477,6 +488,7 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
         this.elements = this.elements.filter(e => e.id !== el.id);
         this.nodesById.delete(el.id);
         this.keyframes.update(ks => { ks.forEach(k => delete k.positions[el.id]); return [...ks]; });
+        this.traces.forEach(t => { if (t.elementId === el.id) t.elementId = undefined; if (t.ballId === el.id) t.ballId = undefined; });
         g.destroy(); this.layer.draw();
       }
     });
@@ -554,8 +566,8 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
       const longueurOk = pts.length >= 4 && Math.hypot(pts[pts.length - 2] - pts[0], pts[pts.length - 1] - pts[1]) > 12;
       if (longueurOk) {
         const t: SchemaTrace = { id: this.uid(), type: this.outil() as TraceType, points: pts };
+        this.lierTrace(t);   // associe la flèche au jeton/ballon le plus proche de son départ
         this.traces.push(t);
-        // const pointsSimplifies = this.simplifierPoints(this.pointsEnCours);
         this.dessinerTrace(t);
       }
       this.pointsEnCours = [];
@@ -587,13 +599,89 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
 
   private appliquerPositions(t: number): void {
     const kfs = this.keyframes();
+    const drivers = this.elementsPilotesParTrace();   // id élément -> flèche qui le pilote
     for (const el of this.elements) {
-      const p = this.posElement(el, t, kfs);
+      const tr = drivers.get(el.id);
+      const p = tr ? this.posSurTrace(tr, t) : this.posElement(el, t, kfs);
       el.x = p.x; el.y = p.y;
       this.nodesById.get(el.id)?.position({ x: p.x, y: p.y });
     }
     this.layer.batchDraw();
   }
+
+  // ══════════ Brique 2 : flèche = route suivie ══════════
+  /** Lie une flèche au jeton (déplacement/conduite) ou ballon (passe/tir) le plus proche du départ. */
+  private lierTrace(t: SchemaTrace): void {
+    const x0 = t.points[0], y0 = t.points[1];
+    if (t.type === 'passe' || t.type === 'tir') {
+      const b = this.elementLePlusProche('ballon', x0, y0);
+      if (b) { t.elementId = b.id; t.points[0] = b.x; t.points[1] = b.y; }
+    } else { // déplacement / conduite -> un joueur
+      const j = this.elementLePlusProche('joueur', x0, y0);
+      if (j) { t.elementId = j.id; t.points[0] = j.x; t.points[1] = j.y; }
+      if (t.type === 'conduite') {
+        const b = this.elementLePlusProche('ballon', x0, y0);
+        if (b) t.ballId = b.id;   // le ballon est conduit le long du même chemin
+      }
+    }
+  }
+
+  private elementLePlusProche(type: string, x: number, y: number): SchemaElement | undefined {
+    let best: SchemaElement | undefined; let dMin = RAYON_LIEN;
+    for (const e of this.elements) {
+      if (e.type !== type) continue;
+      const d = Math.hypot(e.x - x, e.y - y);
+      if (d <= dMin) { dMin = d; best = e; }
+    }
+    return best;
+  }
+
+  /** Map id-élément -> flèche qui le pilote (joueur/ballon principal + ballon de conduite). */
+  private elementsPilotesParTrace(): Map<string, SchemaTrace> {
+    const m = new Map<string, SchemaTrace>();
+    for (const t of this.traces) {
+      if (t.elementId) m.set(t.elementId, t);
+      if (t.ballId) m.set(t.ballId, t);
+    }
+    return m;
+  }
+
+  /** Position le long d'une flèche au temps t, selon le mode (temps vs vitesse). */
+  private posSurTrace(t: SchemaTrace, temps: number): { x: number; y: number } {
+    const L = this.longueurChemin(t.points);
+    let p: number;
+    if (this.modeAnim() === 'vitesse') {
+      p = L ? (temps * VITESSE_PX_S) / L : 1;        // chacun à VITESSE_PX_S → les longs arrivent plus tard
+    } else {
+      const d = this.dureeSecondes();
+      p = d ? temps / d : 1;                          // tout le monde arrive à la fin de la durée
+    }
+    return this.pointLeLongDe(t.points, Math.max(0, Math.min(1, p)));
+  }
+
+  private longueurChemin(pts: number[]): number {
+    let L = 0;
+    for (let i = 2; i < pts.length; i += 2) L += Math.hypot(pts[i] - pts[i - 2], pts[i + 1] - pts[i - 1]);
+    return L;
+  }
+
+  /** Point à la fraction p (0→1) de la polyligne. */
+  private pointLeLongDe(pts: number[], p: number): { x: number; y: number } {
+    if (pts.length < 4) return { x: pts[0], y: pts[1] };
+    const cible = p * this.longueurChemin(pts);
+    let acc = 0;
+    for (let i = 2; i < pts.length; i += 2) {
+      const seg = Math.hypot(pts[i] - pts[i - 2], pts[i + 1] - pts[i - 1]);
+      if (acc + seg >= cible) {
+        const r = seg ? (cible - acc) / seg : 0;
+        return { x: pts[i - 2] + (pts[i] - pts[i - 2]) * r, y: pts[i - 1] + (pts[i + 1] - pts[i - 1]) * r };
+      }
+      acc += seg;
+    }
+    return { x: pts[pts.length - 2], y: pts[pts.length - 1] };
+  }
+
+  private aDesTracesAnimees(): boolean { return this.traces.some(t => !!t.elementId); }
 
   /** Keyframe au temps t (création = capture des positions actuelles). */
   private keyframeAt(t: number, create = false): Keyframe | undefined {
@@ -640,7 +728,10 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
   // ── Lecture ──
   basculerLecture(): void { this.enLecture() ? this.pause() : this.play(); }
   private play(): void {
-    if (this.keyframes().length < 2) { this.snack.open('Ajoutez au moins 2 keyframes', 'Fermer', { duration: 2500 }); return; }
+    if (this.keyframes().length < 2 && !this.aDesTracesAnimees()) {
+      this.snack.open('Trace une flèche depuis un joueur, ou ajoute 2 keyframes', 'Fermer', { duration: 2800 });
+      return;
+    }
     if (this.tempsCourant() >= this.dureeSecondes()) this.tempsCourant.set(0);
     this.enLecture.set(true);
     let last = performance.now();

@@ -2,8 +2,10 @@ import { AfterViewInit, Component, ElementRef, Input, OnChanges, OnDestroy, View
 import Konva from 'konva';
 
 interface SchemaElement { id: string; type: string; couleur?: string; numero?: number; label?: string; x: number; y: number; }
-interface SchemaTrace { id: string; type: string; points: number[]; }
+interface SchemaTrace { id: string; type: string; points: number[]; elementId?: string; ballId?: string; }
 interface Keyframe { t: number; positions: Record<string, { x: number; y: number }>; }
+
+const VITESSE_PX_S = 130;   // doit rester aligné avec l'éditeur
 
 /** Rendu en lecture seule d'un schéma tactique (terrain + éléments + tracés) + lecture animée. */
 @Component({
@@ -44,8 +46,10 @@ export class SchemaViewerComponent implements AfterViewInit, OnChanges, OnDestro
 
   private nodesById = new Map<string, Konva.Group>();
   private elements: SchemaElement[] = [];
+  private traces: SchemaTrace[] = [];
   private keyframes: Keyframe[] = [];
   private dureeSecondes = 10;
+  private modeAnim: 'temps' | 'vitesse' = 'temps';
   private anim?: Konva.Animation;
 
   animable = false;
@@ -64,9 +68,9 @@ export class SchemaViewerComponent implements AfterViewInit, OnChanges, OnDestro
     this.anim?.stop(); this.anim = undefined; this.enLecture = false;
     this.stage?.destroy();
     this.nodesById.clear();
-    this.elements = []; this.keyframes = []; this.animable = false;
+    this.elements = []; this.traces = []; this.keyframes = []; this.animable = false;
     if (!this.schemaJson) return;
-    let data: { terrain: string; elements: SchemaElement[]; traces: SchemaTrace[]; keyframes?: Keyframe[]; dureeSecondes?: number };
+    let data: { terrain: string; elements: SchemaElement[]; traces: SchemaTrace[]; keyframes?: Keyframe[]; dureeSecondes?: number; modeAnim?: 'temps' | 'vitesse' };
     try { data = JSON.parse(this.schemaJson); } catch { return; }
 
     const W = data.terrain === 'demi' ? 600 : 1040;
@@ -79,14 +83,16 @@ export class SchemaViewerComponent implements AfterViewInit, OnChanges, OnDestro
     this.stage.add(fond); this.stage.add(couche);
     this.dessinerTerrain(fond, data.terrain, W, H);
     this.elements = data.elements ?? [];
+    this.traces = data.traces ?? [];
     this.elements.forEach(el => this.dessinerElement(couche, el));
-    (data.traces ?? []).forEach(t => this.dessinerTrace(couche, t));
+    this.traces.forEach(t => this.dessinerTrace(couche, t));
     fond.draw(); couche.draw();
 
-    // Animation disponible seulement si plusieurs keyframes décrivent un mouvement.
+    // Animation dispo si plusieurs keyframes OU au moins une flèche liée à un élément.
     this.keyframes = (data.keyframes ?? []).slice().sort((a, b) => a.t - b.t);
     this.dureeSecondes = data.dureeSecondes ?? 10;
-    this.animable = this.keyframes.length > 1;
+    this.modeAnim = data.modeAnim === 'vitesse' ? 'vitesse' : 'temps';
+    this.animable = this.keyframes.length > 1 || this.traces.some(t => !!t.elementId);
   }
 
   // ── Lecture animée ──
@@ -109,10 +115,45 @@ export class SchemaViewerComponent implements AfterViewInit, OnChanges, OnDestro
   private pause(): void { this.anim?.stop(); this.anim = undefined; this.enLecture = false; }
 
   private appliquerPositions(t: number): void {
+    const drivers = new Map<string, SchemaTrace>();
+    for (const tr of this.traces) {
+      if (tr.elementId) drivers.set(tr.elementId, tr);
+      if (tr.ballId) drivers.set(tr.ballId, tr);
+    }
     this.elements.forEach(el => {
-      const p = this.posElement(el, t);
+      const tr = drivers.get(el.id);
+      const p = tr ? this.posSurTrace(tr, t) : this.posElement(el, t);
       this.nodesById.get(el.id)?.position(p);
     });
+  }
+
+  private posSurTrace(tr: SchemaTrace, temps: number): { x: number; y: number } {
+    const L = this.longueurChemin(tr.points);
+    const p = this.modeAnim === 'vitesse'
+      ? (L ? (temps * VITESSE_PX_S) / L : 1)
+      : (this.dureeSecondes ? temps / this.dureeSecondes : 1);
+    return this.pointLeLongDe(tr.points, Math.max(0, Math.min(1, p)));
+  }
+
+  private longueurChemin(pts: number[]): number {
+    let L = 0;
+    for (let i = 2; i < pts.length; i += 2) L += Math.hypot(pts[i] - pts[i - 2], pts[i + 1] - pts[i - 1]);
+    return L;
+  }
+
+  private pointLeLongDe(pts: number[], p: number): { x: number; y: number } {
+    if (pts.length < 4) return { x: pts[0], y: pts[1] };
+    const cible = p * this.longueurChemin(pts);
+    let acc = 0;
+    for (let i = 2; i < pts.length; i += 2) {
+      const seg = Math.hypot(pts[i] - pts[i - 2], pts[i + 1] - pts[i - 1]);
+      if (acc + seg >= cible) {
+        const r = seg ? (cible - acc) / seg : 0;
+        return { x: pts[i - 2] + (pts[i] - pts[i - 2]) * r, y: pts[i - 1] + (pts[i + 1] - pts[i - 1]) * r };
+      }
+      acc += seg;
+    }
+    return { x: pts[pts.length - 2], y: pts[pts.length - 1] };
   }
 
   private posElement(el: SchemaElement, t: number): { x: number; y: number } {
