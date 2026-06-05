@@ -12,6 +12,55 @@ export interface MaPesee {
   commentaire?: string;
 }
 
+export interface Wellness {
+  id: string;
+  joueurId: string;
+  joueurNom?: string;
+  joueurPrenom?: string;
+  date: string;
+  sommeil: number;
+  fatigue: number;
+  douleur: number;
+  stress: number;
+  humeur: number;
+  scoreBienEtre: number;
+  commentaire?: string;
+  createdAt?: string;
+}
+
+export interface WellnessRequest {
+  date?: string;
+  sommeil: number;
+  fatigue: number;
+  douleur: number;
+  stress: number;
+  humeur: number;
+  commentaire?: string;
+}
+
+export interface Rpe {
+  id: string;
+  joueurId: string;
+  joueurNom?: string;
+  joueurPrenom?: string;
+  seanceId: string;
+  seanceType: 'PHYSIQUE' | 'TECHNIQUE';
+  date: string;
+  rpe: number;
+  dureeMinutes?: number;
+  charge?: number;
+  commentaire?: string;
+  createdAt?: string;
+}
+
+export interface RpeRequest {
+  seanceId: string;
+  seanceType: 'PHYSIQUE' | 'TECHNIQUE';
+  rpe: number;
+  dureeMinutes?: number;
+  commentaire?: string;
+}
+
 export interface DocumentMedical {
   id: string;
   joueurId: string;
@@ -58,6 +107,22 @@ export class EspaceJoueurService {
   getSeancesTechniques(debut?: string, fin?: string): Observable<SeanceTechnique[]> {
     const q = debut && fin ? `?debut=${debut}&fin=${fin}` : '';
     return this.http.get<SeanceTechnique[]>(`${this.base}/seances-techniques${q}`);
+  }
+
+  // ── Wellness (ressenti quotidien) ──
+  getWellness(): Observable<Wellness[]> {
+    return this.http.get<Wellness[]>(`${this.base}/wellness`);
+  }
+  saisirWellness(req: WellnessRequest): Observable<Wellness> {
+    return this.http.post<Wellness>(`${this.base}/wellness`, req);
+  }
+
+  // ── RPE de séance ──
+  getRpe(): Observable<Rpe[]> {
+    return this.http.get<Rpe[]>(`${this.base}/rpe`);
+  }
+  saisirRpe(req: RpeRequest): Observable<Rpe> {
+    return this.http.post<Rpe>(`${this.base}/rpe`, req);
   }
 
   // ── Documents médicaux ──

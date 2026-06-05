@@ -230,19 +230,113 @@
       </mat-card-content>
     </mat-card>
 
-    <!-- ── Mon RPE (à implémenter) ── -->
+    <!-- ── Mon ressenti (wellness quotidien) ── -->
     <mat-card>
-      <mat-card-header><mat-card-title>Mon RPE</mat-card-title></mat-card-header>
+      <mat-card-header class="header-action">
+        <mat-card-title>Mon ressenti du jour</mat-card-title>
+        @if (!wellnessFormOuvert()) {
+          <button class="btn-primaire" (click)="ouvrirWellness()">
+            {{ wellnessAujourdhui() ? 'Modifier' : 'Remplir' }}
+          </button>
+        }
+      </mat-card-header>
       <mat-card-content>
-        <p class="empty-state">Bientôt disponible.</p>
+
+        @if (wellnessFormOuvert()) {
+          <div class="wellness-form">
+            @for (item of WELLNESS_ITEMS; track item.key) {
+              <div class="w-item">
+                <div class="w-item-head">
+                  <span class="w-label">{{ item.label }}</span>
+                  <span class="w-hint">{{ item.bas }} → {{ item.haut }}</span>
+                </div>
+                <div class="w-echelle">
+                  @for (n of [1,2,3,4,5]; track n) {
+                    <button class="w-note" [class.sel]="wForm()[item.key] === n" (click)="setWItem(item.key, n)">{{ n }}</button>
+                  }
+                </div>
+              </div>
+            }
+            <label class="champ">
+              <span class="champ-label">Commentaire (optionnel)</span>
+              <input type="text" [ngModel]="wForm().commentaire" (ngModelChange)="setWCommentaire($event)" placeholder="Ex. nuit difficile">
+            </label>
+            <div class="depot-actions">
+              <button class="btn-secondaire" (click)="annulerWellness()" [disabled]="wEnvoi()">Annuler</button>
+              <button class="btn-primaire" (click)="enregistrerWellness()" [disabled]="wEnvoi()">
+                {{ wEnvoi() ? 'Envoi…' : 'Enregistrer' }}
+              </button>
+            </div>
+          </div>
+        } @else {
+          @if (wellnessAujourdhui(); as w) {
+            <div class="w-resume">
+              <span class="w-score">{{ w.scoreBienEtre }}<small>/100</small></span>
+              <div class="w-detail">
+                @for (item of WELLNESS_ITEMS; track item.key) {
+                  <span class="w-chip">{{ item.label }} {{ w[item.key] }}/5</span>
+                }
+              </div>
+            </div>
+            @if (w.commentaire) { <p class="ligne-comm">{{ w.commentaire }}</p> }
+          } @else {
+            <p class="empty-state">Pas encore rempli aujourd'hui.</p>
+          }
+        }
+
+        @if (wellness().length > 0) {
+          <div class="liste w-historique">
+            @for (w of wellness().slice(0, 7); track w.id) {
+              <div class="ligne">
+                <span class="ligne-date">{{ w.date | date:'EEE dd/MM' }}</span>
+                <span class="ligne-titre">Bien-être {{ w.scoreBienEtre }}/100</span>
+              </div>
+            }
+          </div>
+        }
       </mat-card-content>
     </mat-card>
 
-    <!-- ── Mes observations (à implémenter) ── -->
+    <!-- ── Mon RPE (effort perçu par séance) ── -->
     <mat-card>
-      <mat-card-header><mat-card-title>Mes observations</mat-card-title></mat-card-header>
+      <mat-card-header><mat-card-title>Mon RPE — effort des séances</mat-card-title></mat-card-header>
       <mat-card-content>
-        <p class="empty-state">Bientôt disponible.</p>
+
+        @if (seancesANoter().length > 0) {
+          <div class="rpe-anoter">
+            <p class="rpe-consigne">Note l'intensité ressentie (1 = très facile, 10 = maximal) :</p>
+            @for (s of seancesANoter(); track s.type + s.id) {
+              <div class="rpe-ligne">
+                <span class="ligne-date">{{ s.date | date:'dd/MM' }}</span>
+                <span class="ligne-titre">
+                  <span class="pill-type" [class.tech]="s.type === 'TECHNIQUE'">{{ s.type === 'TECHNIQUE' ? 'Tech' : 'Phys' }}</span>
+                  {{ s.titre }}
+                </span>
+                <select class="rpe-select" [ngModel]="rpeBrouillon()[s.id]" (ngModelChange)="setRpeBrouillon(s.id, $event)">
+                  <option [ngValue]="null" disabled>RPE</option>
+                  @for (n of NOTES_RPE; track n) { <option [ngValue]="n">{{ n }}</option> }
+                </select>
+                <button class="btn-primaire" [disabled]="!rpeBrouillon()[s.id]" (click)="noterSeance(s)">Noter</button>
+              </div>
+            }
+          </div>
+        } @else {
+          <p class="empty-state">Aucune séance récente à noter.</p>
+        }
+
+        @if (rpe().length > 0) {
+          <div class="liste w-historique">
+            @for (r of rpe().slice(0, 7); track r.id) {
+              <div class="ligne">
+                <span class="ligne-date">{{ r.date | date:'dd/MM' }}</span>
+                <span class="ligne-titre">RPE {{ r.rpe }}/10</span>
+                <span class="ligne-meta">
+                  @if (r.charge != null) { charge {{ r.charge }} } @else { — }
+                </span>
+              </div>
+            }
+          </div>
+        }
       </mat-card-content>
     </mat-card>
 

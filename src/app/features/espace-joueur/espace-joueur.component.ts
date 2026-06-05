@@ -3,7 +3,7 @@ import { DatePipe, DecimalPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatToolbar } from '@angular/material/toolbar';
 import { MatCard, MatCardContent, MatCardHeader, MatCardTitle } from '@angular/material/card';
-import { EspaceJoueurService, MaPesee, DocumentMedical } from '../../core/services/espace-joueur.service';
+import { EspaceJoueurService, MaPesee, DocumentMedical, Wellness, Rpe } from '../../core/services/espace-joueur.service';
 import { Joueur, GpsPoint } from '../../core/services/joueur.service';
 import { Blessure } from '../../core/services/blessure.service';
 import { Seance } from '../../core/services/seance.service';
@@ -18,6 +18,15 @@ interface SeancePrevue {
   titre: string;
   sousTitre?: string;
   meta: string;
+}
+
+/** Séance passée que le joueur peut noter (RPE pas encore saisi). */
+interface SeanceANoter {
+  id: string;
+  type: 'PHYSIQUE' | 'TECHNIQUE';
+  date: string;
+  titre: string;
+  duree?: number;
 }
 
 @Component({
@@ -36,8 +45,53 @@ export class EspaceJoueurComponent implements OnInit {
   seances = signal<Seance[]>([]);
   seancesTech = signal<SeanceTechnique[]>([]);
   documents = signal<DocumentMedical[]>([]);
+  wellness = signal<Wellness[]>([]);
+  rpe = signal<Rpe[]>([]);
   loading = signal(true);
   nonLie = signal(false);
+
+  // ── Wellness (ressenti quotidien, indice de Hooper) ──
+  readonly WELLNESS_ITEMS: { key: 'sommeil' | 'fatigue' | 'douleur' | 'stress' | 'humeur'; label: string; bas: string; haut: string }[] = [
+    { key: 'sommeil', label: 'Sommeil',     bas: 'très mauvais', haut: 'excellent' },
+    { key: 'fatigue', label: 'Fatigue',     bas: 'épuisé',       haut: 'en forme' },
+    { key: 'douleur', label: 'Courbatures', bas: 'intenses',     haut: 'aucune' },
+    { key: 'stress',  label: 'Stress',      bas: 'très stressé', haut: 'détendu' },
+    { key: 'humeur',  label: 'Humeur',      bas: 'très basse',   haut: 'excellente' },
+  ];
+  wellnessFormOuvert = signal(false);
+  wForm = signal<{ sommeil: number; fatigue: number; douleur: number; stress: number; humeur: number; commentaire: string }>(
+    { sommeil: 3, fatigue: 3, douleur: 3, stress: 3, humeur: 3, commentaire: '' });
+  wEnvoi = signal(false);
+
+  readonly wellnessAujourdhui = computed(() => {
+    const auj = new Date().toISOString().slice(0, 10);
+    return this.wellness().find(w => w.date === auj) ?? null;
+  });
+
+  // ── RPE de séance ──
+  /** seanceId déjà notés. */
+  private readonly rpeNotes = computed(() => new Set(this.rpe().map(r => r.seanceId)));
+
+  /** Séances passées (≤ 14 j) non encore notées, à proposer au joueur. */
+  readonly seancesANoter = computed<SeanceANoter[]>(() => {
+    const auj = new Date().toISOString().slice(0, 10);
+    const limite = new Date(Date.now() - 14 * 86400000).toISOString().slice(0, 10);
+    const notes = this.rpeNotes();
+
+    const phys: SeanceANoter[] = this.seances()
+      .filter(s => s.statut !== 'ANNULEE' && s.date <= auj && s.date >= limite && !notes.has(s.id))
+      .map(s => ({ id: s.id, type: 'PHYSIQUE', date: s.date, titre: s.titre || s.typeSeance?.libelle || 'Séance', duree: s.dureeMinutes }));
+
+    const tech: SeanceANoter[] = this.seancesTech()
+      .filter(s => s.statut !== 'ANNULEE' && s.date <= auj && s.date >= limite && !notes.has(s.id))
+      .map(s => ({ id: s.id, type: 'TECHNIQUE', date: s.date, titre: s.titre || 'Séance technique', duree: s.dureeTotaleMinutes }));
+
+    return [...phys, ...tech].sort((a, b) => b.date.localeCompare(a.date));
+  });
+
+  /** Valeur RPE sélectionnée (avant validation) par séance. */
+  rpeBrouillon = signal<Record<string, number>>({});
+  readonly NOTES_RPE = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
 
   // ── Dépôt de document médical (formulaire inline) ──
   readonly CATEGORIES = [
@@ -152,10 +206,62 @@ export class EspaceJoueurComponent implements OnInit {
     this.service.getGps().subscribe({ next: d => this.gps.set(d), error: () => {} });
     this.service.getSeances().subscribe({ next: d => this.seances.set(d), error: () => {} });
     this.service.getSeancesTechniques().subscribe({ next: d => this.seancesTech.set(d), error: () => {} });
+    this.service.getWellness().subscribe({ next: d => this.wellness.set(d), error: () => {} });
+    this.service.getRpe().subscribe({ next: d => this.rpe.set(d), error: () => {} });
     this.chargerDocuments();
   }
 
   joli(v?: string): string { return v ? v.replace(/_/g, ' ') : '—'; }
+
+  // ──────────────────────────── Wellness ────────────────────────────
+
+  ouvrirWellness(): void {
+    const w = this.wellnessAujourdhui();
+    this.wForm.set(w
+      ? { sommeil: w.sommeil, fatigue: w.fatigue, douleur: w.douleur, stress: w.stress, humeur: w.humeur, commentaire: w.commentaire ?? '' }
+      : { sommeil: 3, fatigue: 3, douleur: 3, stress: 3, humeur: 3, commentaire: '' });
+    this.wellnessFormOuvert.set(true);
+  }
+  annulerWellness(): void { this.wellnessFormOuvert.set(false); }
+
+  setWItem(key: 'sommeil' | 'fatigue' | 'douleur' | 'stress' | 'humeur', val: number): void {
+    this.wForm.update(f => ({ ...f, [key]: val }));
+  }
+  setWCommentaire(val: string): void {
+    this.wForm.update(f => ({ ...f, commentaire: val }));
+  }
+
+  enregistrerWellness(): void {
+    this.wEnvoi.set(true);
+    const f = this.wForm();
+    this.service.saisirWellness({ ...f }).subscribe({
+      next: w => {
+        // remplace la saisie du jour si elle existe, sinon l'ajoute en tête
+        this.wellness.update(list => [w, ...list.filter(x => x.date !== w.date)]);
+        this.wEnvoi.set(false);
+        this.wellnessFormOuvert.set(false);
+      },
+      error: () => this.wEnvoi.set(false),
+    });
+  }
+
+  // ──────────────────────────── RPE ────────────────────────────
+
+  setRpeBrouillon(seanceId: string, val: number): void {
+    this.rpeBrouillon.update(m => ({ ...m, [seanceId]: val }));
+  }
+
+  noterSeance(s: SeanceANoter): void {
+    const note = this.rpeBrouillon()[s.id];
+    if (!note) return;
+    this.service.saisirRpe({ seanceId: s.id, seanceType: s.type, rpe: note, dureeMinutes: s.duree }).subscribe({
+      next: r => {
+        this.rpe.update(list => [r, ...list]);
+        this.rpeBrouillon.update(m => { const c = { ...m }; delete c[s.id]; return c; });
+      },
+      error: () => {},
+    });
+  }
 
   // ──────────────────────────── Documents médicaux ────────────────────────────
 
