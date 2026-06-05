@@ -7,6 +7,18 @@ import { EspaceJoueurService, MaPesee, DocumentMedical } from '../../core/servic
 import { Joueur, GpsPoint } from '../../core/services/joueur.service';
 import { Blessure } from '../../core/services/blessure.service';
 import { Seance } from '../../core/services/seance.service';
+import { SeanceTechnique } from '../../core/services/technique.service';
+
+/** Ligne unifiée pour la liste « Séances prévues » (physique + technique). */
+interface SeancePrevue {
+  id: string;
+  type: 'physique' | 'technique';
+  date: string;
+  heureDebut?: string;
+  titre: string;
+  sousTitre?: string;
+  meta: string;
+}
 
 @Component({
   selector: 'app-espace-joueur',
@@ -22,6 +34,7 @@ export class EspaceJoueurComponent implements OnInit {
   blessures = signal<Blessure[]>([]);
   gps = signal<GpsPoint[]>([]);
   seances = signal<Seance[]>([]);
+  seancesTech = signal<SeanceTechnique[]>([]);
   documents = signal<DocumentMedical[]>([]);
   loading = signal(true);
   nonLie = signal(false);
@@ -51,11 +64,42 @@ export class EspaceJoueurComponent implements OnInit {
   /** id du document dont on édite le partage (null = aucun). */
   partageEnEdition = signal<string | null>(null);
 
-  /** Séances non annulées à partir d'aujourd'hui, triées chronologiquement (vue « prévues »). */
-  readonly seancesAVenir = computed(() => {
+  /**
+   * Séances non annulées à partir d'aujourd'hui, triées chronologiquement (vue « prévues »).
+   * Fusionne les séances physiques (préparateur) et techniques (entraîneur).
+   */
+  readonly seancesAVenir = computed<SeancePrevue[]>(() => {
     const auj = new Date().toISOString().slice(0, 10);
-    return this.seances()
+
+    const physiques: SeancePrevue[] = this.seances()
       .filter(s => s.statut !== 'ANNULEE' && s.date >= auj)
+      .map(s => ({
+        id: s.id,
+        type: 'physique',
+        date: s.date,
+        heureDebut: s.heureDebut,
+        titre: s.titre || s.typeSeance?.libelle || 'Séance',
+        sousTitre: s.adversaire ? `vs ${s.adversaire}` : undefined,
+        meta: [s.typeSeance?.libelle, s.terrain, s.dureeMinutes ? `${s.dureeMinutes} min` : null]
+          .filter(Boolean).join(' · '),
+      }));
+
+    const techniques: SeancePrevue[] = this.seancesTech()
+      .filter(s => s.statut !== 'ANNULEE' && s.date >= auj)
+      .map(s => ({
+        id: s.id,
+        type: 'technique',
+        date: s.date,
+        heureDebut: s.heureDebut,
+        titre: s.titre || 'Séance technique',
+        sousTitre: s.objectif || undefined,
+        meta: [
+          s.exercices?.length ? `${s.exercices.length} exercice${s.exercices.length > 1 ? 's' : ''}` : null,
+          s.dureeTotaleMinutes ? `${s.dureeTotaleMinutes} min` : null,
+        ].filter(Boolean).join(' · '),
+      }));
+
+    return [...physiques, ...techniques]
       .sort((a, b) => (a.date + (a.heureDebut ?? '')).localeCompare(b.date + (b.heureDebut ?? '')));
   });
 
@@ -107,6 +151,7 @@ export class EspaceJoueurComponent implements OnInit {
     this.service.getBlessures().subscribe({ next: d => this.blessures.set(d), error: () => {} });
     this.service.getGps().subscribe({ next: d => this.gps.set(d), error: () => {} });
     this.service.getSeances().subscribe({ next: d => this.seances.set(d), error: () => {} });
+    this.service.getSeancesTechniques().subscribe({ next: d => this.seancesTech.set(d), error: () => {} });
     this.chargerDocuments();
   }
 

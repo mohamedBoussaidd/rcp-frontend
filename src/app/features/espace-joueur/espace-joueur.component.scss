@@ -92,6 +92,22 @@
 }
 .pg-info { font-size: 0.78rem; color: var(--muted); min-width: 48px; text-align: center; }
 
+/* Badge type de séance (physique / technique) dans « Séances prévues ». */
+.pill-type {
+  display: inline-block;
+  font-size: 0.6rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .03em;
+  padding: 1px 6px;
+  border-radius: 4px;
+  margin-right: 6px;
+  vertical-align: middle;
+  background: var(--copper-soft, rgba(184, 115, 51, .15));
+  color: var(--copper, #b87333);
+  &.tech { background: var(--success-bg); color: var(--success); }
+}
+
 /* ── Documents médicaux ── */
 .header-action {
   display: flex;

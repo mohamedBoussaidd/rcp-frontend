@@ -40,20 +40,17 @@
           <p class="empty-state">Aucune séance prévue.</p>
         } @else {
           <div class="liste">
-            @for (s of seancesAVenir(); track s.id) {
+            @for (s of seancesAVenir(); track s.type + s.id) {
               <div class="ligne">
                 <span class="ligne-date">
                   {{ s.date | date:'EEE dd/MM' }}@if (s.heureDebut) { · {{ s.heureDebut }} }
                 </span>
                 <span class="ligne-titre">
-                  {{ s.titre || s.typeSeance.libelle || 'Séance' }}
-                  @if (s.adversaire) { <small>vs {{ s.adversaire }}</small> }
+                  <span class="pill-type" [class.tech]="s.type === 'technique'">{{ s.type === 'technique' ? 'Tech' : 'Phys' }}</span>
+                  {{ s.titre }}
+                  @if (s.sousTitre) { <small>{{ s.sousTitre }}</small> }
                 </span>
-                <span class="ligne-meta">
-                  {{ s.typeSeance.libelle }}
-                  @if (s.terrain) { · {{ s.terrain }} }
-                  @if (s.dureeMinutes) { · {{ s.dureeMinutes }} min }
-                </span>
+                @if (s.meta) { <span class="ligne-meta">{{ s.meta }}</span> }
               </div>
             }
           </div>
