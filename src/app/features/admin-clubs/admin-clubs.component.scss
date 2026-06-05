@@ -59,6 +59,33 @@
   background: var(--surface-2);
 }
 
+.club-actions-bas {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.club-entrer {
+  flex: 1;
+}
+
+.badge-etat {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  background: var(--success-bg);
+  color: var(--success);
+  border: 1px solid var(--success-border);
+
+  &.inactif {
+    background: var(--surface);
+    color: var(--text-muted);
+    border-color: var(--border);
+  }
+}
+
 .club-card-head {
   display: flex;
   align-items: center;

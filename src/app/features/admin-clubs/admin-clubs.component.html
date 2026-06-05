@@ -71,15 +71,31 @@
                 <input class="param-input wide" [(ngModel)]="editForm.logo" name="editlogo-{{c.id}}" placeholder="Logo (URL)">
               }
               <div class="club-info">
+                <span class="info-label">État</span>
+                <span>
+                  <span class="badge-etat" [class.inactif]="!c.actif">{{ c.actif ? 'Actif' : 'Archivé' }}</span>
+                </span>
                 <span class="info-label">Président</span>
                 <span>{{ c.presidentPrenom }} {{ c.presidentNom }}</span>
                 <span class="info-label">Email</span>
                 <span>{{ c.presidentEmail || '—' }}</span>
                 <span class="info-label">Équipes</span>
                 <span>{{ c.nbEquipes }} / 3</span>
+                <span class="info-label">Joueurs</span>
+                <span>{{ c.nbJoueurs }}</span>
                 <span class="info-label">Créé le</span>
                 <span>{{ c.dateCreation | date:'dd/MM/yyyy' }}</span>
               </div>
+              @if (editingId() !== c.id) {
+                <div class="club-actions-bas">
+                  <button class="btn-dark-primary club-entrer" (click)="entrer(c)">
+                    Entrer dans le club →
+                  </button>
+                  <button class="btn-mini" (click)="basculerActif(c)">
+                    {{ c.actif ? 'Archiver' : 'Réactiver' }}
+                  </button>
+                </div>
+              }
             </div>
           }
         </div>

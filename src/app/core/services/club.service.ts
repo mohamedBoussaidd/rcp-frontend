@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
+import { EquipeContexte } from './contexte.service';
 
 export interface Club {
   id: string;
@@ -12,6 +13,8 @@ export interface Club {
   presidentNom?: string;
   presidentPrenom?: string;
   nbEquipes: number;
+  nbJoueurs: number;
+  actif: boolean;
 }
 
 export interface ClubCreateRequest {
@@ -40,5 +43,15 @@ export class ClubService {
 
   supprimer(id: string): Observable<void> {
     return this.http.delete<void>(`${this.base}/${id}`);
+  }
+
+  /** Active ou archive un club. */
+  definirActif(id: string, actif: boolean): Observable<Club> {
+    return this.http.patch<Club>(`${this.base}/${id}/actif`, null, { params: { actif } });
+  }
+
+  /** Équipes d'un club (pour entrer dans son contexte). */
+  getEquipes(id: string): Observable<EquipeContexte[]> {
+    return this.http.get<EquipeContexte[]>(`${this.base}/${id}/equipes`);
   }
 }

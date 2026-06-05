@@ -20,6 +20,12 @@ export const roleGuard: CanActivateFn = (route) => {
     return true;
   }
 
-  router.navigate(['/dashboard']);
+  // Rôle non autorisé : on renvoie vers sa page d'accueil. Garde anti-boucle si
+  // la route refusée EST déjà la home du rôle (ex. rôle sans aucun module).
+  const home = auth.homeRoute();
+  const attempted = '/' + (route.routeConfig?.path ?? '');
+  if (attempted !== home) {
+    router.navigateByUrl(home);
+  }
   return false;
 };

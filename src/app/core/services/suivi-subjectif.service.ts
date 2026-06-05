@@ -19,6 +19,9 @@ export interface Wellness {
   geneIntensite?: number;
   geneMoment?: string;
   geneTraitee?: boolean;
+  /** Type de résolution une fois traitée : ARCHIVEE | CONVERTIE. */
+  geneResolution?: 'ARCHIVEE' | 'CONVERTIE';
+  geneTraiteeLe?: string;
 }
 
 export interface Rpe {
@@ -53,8 +56,17 @@ export class SuiviSubjectifService {
     return this.http.get<Rpe[]>('/api/rpe', { params });
   }
 
-  /** Marque la gêne d'une saisie comme traitée (staff médical / préparateur). */
-  traiterGene(wellnessId: string): Observable<Wellness> {
-    return this.http.patch<Wellness>(`/api/wellness/${wellnessId}/gene-traitee`, {});
+  /**
+   * Marque la gêne d'une saisie comme traitée (staff médical / préparateur).
+   * `resolution` = ARCHIVEE (archivage) ou CONVERTIE (convertie en blessure).
+   */
+  traiterGene(wellnessId: string, resolution: 'ARCHIVEE' | 'CONVERTIE' = 'ARCHIVEE'): Observable<Wellness> {
+    const params = new HttpParams().set('resolution', resolution);
+    return this.http.patch<Wellness>(`/api/wellness/${wellnessId}/gene-traitee`, {}, { params });
+  }
+
+  /** Rouvre une gêne traitée (médical) : elle redevient active dans les alertes. */
+  rouvrirGene(wellnessId: string): Observable<Wellness> {
+    return this.http.patch<Wellness>(`/api/wellness/${wellnessId}/gene-rouvrir`, {});
   }
 }

@@ -4,7 +4,9 @@ import { DatePipe } from '@angular/common';
 import { MatToolbar } from '@angular/material/toolbar';
 import { MatCard, MatCardContent, MatCardHeader, MatCardTitle } from '@angular/material/card';
 import { MatSnackBar } from '@angular/material/snack-bar';
+import { Router } from '@angular/router';
 import { Club, ClubCreateRequest, ClubService } from '../../core/services/club.service';
+import { ContexteService } from '../../core/services/contexte.service';
 
 @Component({
   selector: 'app-admin-clubs',
@@ -25,7 +27,35 @@ export class AdminClubsComponent implements OnInit {
   editingId = signal<string | null>(null);
   editForm = { nom: '', logo: '' };
 
-  constructor(private clubService: ClubService, private snack: MatSnackBar) {}
+  constructor(
+    private clubService: ClubService,
+    private contexte: ContexteService,
+    private router: Router,
+    private snack: MatSnackBar,
+  ) {}
+
+  /** Entre dans le contexte du club (charge ses équipes) et bascule sur le tableau de bord. */
+  entrer(c: Club): void {
+    this.clubService.getEquipes(c.id).subscribe({
+      next: equipes => {
+        this.contexte.entrerClub({ id: c.id, nom: c.nom }, equipes);
+        this.router.navigate(['/dashboard']);
+      },
+      error: () => {
+        // Repli : on entre quand même dans le club (toutes équipes), sans sélecteur.
+        this.contexte.entrerClub({ id: c.id, nom: c.nom });
+        this.router.navigate(['/dashboard']);
+      },
+    });
+  }
+
+  /** Active / archive un club. */
+  basculerActif(c: Club): void {
+    this.clubService.definirActif(c.id, !c.actif).subscribe({
+      next: maj => this.clubs.update(list => list.map(x => x.id === c.id ? maj : x)),
+      error: () => this.snack.open('Action impossible', 'Fermer', { duration: 3000 }),
+    });
+  }
 
   editer(c: Club): void {
     this.editingId.set(c.id);

@@ -109,6 +109,38 @@
     </mat-card>
   }
 
+  <!-- ── Historique des gênes (médical / préparateur) ── -->
+  @if (peutVoirHistoriqueGenes && genesHistorique.length > 0) {
+    <mat-card class="carte-alertes">
+      <mat-card-header class="card-head">
+        <mat-card-title>🗂️ Historique des gênes <span class="al-compte">{{ genesHistorique.length }}</span></mat-card-title>
+      </mat-card-header>
+      <mat-card-content>
+        <div class="alerte-cards">
+          @for (g of genesHistorique; track g.id) {
+            <div class="alerte-card" [class.sev-bleu]="g.geneResolution === 'CONVERTIE'">
+              <div class="ac-head">
+                <span class="ac-joueur">{{ g.joueurPrenom }} {{ g.joueurNom }}</span>
+                <span class="score-badge">{{ g.geneIntensite }}/5</span>
+              </div>
+              <div class="ac-corps">{{ joliLabel(g.geneZone) }}</div>
+              <div class="ac-meta">{{ momentGeneLabel(g.geneMoment) }} · signalée {{ g.date | date:'dd/MM' }}</div>
+              <div class="ac-meta">
+                <strong>{{ resolutionGeneLabel(g.geneResolution) }}</strong>
+                @if (g.geneTraiteeLe) { · le {{ g.geneTraiteeLe | date:'dd/MM' }} }
+              </div>
+              @if (peutRouvrirGene) {
+                <div class="ac-actions">
+                  <button class="btn-mini" (click)="rouvrirGene(g)">Rouvrir</button>
+                </div>
+              }
+            </div>
+          }
+        </div>
+      </mat-card-content>
+    </mat-card>
+  }
+
   <!-- ── Infirmerie : effectif indisponible ── -->
   <mat-card>
     <mat-card-header class="card-head">

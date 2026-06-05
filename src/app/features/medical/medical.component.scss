@@ -698,6 +698,10 @@
   &.sev-orange {
     border-left-color: var(--warning);
   }
+
+  &.sev-bleu {
+    border-left-color: var(--info);
+  }
 }
 
 .ac-head {

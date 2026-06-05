@@ -1,0 +1,35 @@
+@if (visible) {
+  <div class="barre-contexte">
+    <span class="bc-pastille">
+      <mat-icon class="bc-icon">apartment</mat-icon>
+      <span class="bc-label">Club actif</span>
+      <strong class="bc-valeur">{{ contexte.clubActif()!.nom }}</strong>
+    </span>
+
+    <span class="bc-sep">·</span>
+
+    <span class="bc-pastille">
+      <mat-icon class="bc-icon">groups</mat-icon>
+      <span class="bc-label">Équipe</span>
+      @if (contexte.equipesDispo().length > 0) {
+        <select class="bc-select"
+                [value]="contexte.equipesActives().length ? contexte.equipesActives()[0] : ''"
+                (change)="onChangerEquipe($any($event.target).value)">
+          <option value="">Toutes les équipes</option>
+          @for (e of contexte.equipesDispo(); track e.id) {
+            <option [value]="e.id">{{ e.nom }}</option>
+          }
+        </select>
+      } @else {
+        <strong class="bc-valeur">{{ contexte.libelleEquipe() }}</strong>
+      }
+    </span>
+
+    @if (estSuperAdmin) {
+      <button class="bc-retour" (click)="retourAdmin()">
+        <mat-icon>arrow_back</mat-icon>
+        <span>Retour administration</span>
+      </button>
+    }
+  </div>
+}

@@ -101,13 +101,40 @@ export class MedicalComponent implements OnInit {
   }
   momentGeneLabel(v?: string): string { return v ? (this.MOMENTS_GENE[v] ?? v) : ''; }
 
+  /** Gênes traitées (archivées ou converties) — historique pour médical / préparateur. */
+  get genesHistorique(): Wellness[] {
+    return this.wellnessAlertes()
+      .filter(w => w.geneZone && w.geneTraitee)
+      .sort((a, b) => (b.geneTraiteeLe ?? b.date).localeCompare(a.geneTraiteeLe ?? a.date));
+  }
+  resolutionGeneLabel(r?: string): string {
+    return r === 'CONVERTIE' ? 'Convertie en blessure' : 'Archivée';
+  }
+
   /** Qui peut traiter / convertir une gêne (médical, préparateur, super-admin). */
   get peutTraiterGene(): boolean {
     return this.auth.hasRole('MEDICAL', 'PREPARATEUR', 'SUPER_ADMIN');
   }
+  /** Qui voit l'historique des gênes (médical, préparateur, super-admin). */
+  get peutVoirHistoriqueGenes(): boolean {
+    return this.auth.hasRole('MEDICAL', 'PREPARATEUR', 'SUPER_ADMIN');
+  }
+  /** Qui peut rouvrir une gêne traitée (médical seul revient sur la décision). */
+  get peutRouvrirGene(): boolean {
+    return this.auth.hasRole('MEDICAL', 'SUPER_ADMIN');
+  }
 
   traiterGene(w: Wellness): void {
-    this.suiviService.traiterGene(w.id).subscribe({
+    if (!confirm('Archiver cette gêne ? Elle quittera les alertes mais restera dans l\'historique.')) return;
+    this.suiviService.traiterGene(w.id, 'ARCHIVEE').subscribe({
+      next: maj => this.wellnessAlertes.update(l => l.map(x => x.id === w.id ? maj : x)),
+      error: () => this.snack.open('Action impossible', 'Fermer', { duration: 3000 }),
+    });
+  }
+
+  /** Rouvre une gêne traitée : elle réapparaît dans les alertes (médical). */
+  rouvrirGene(w: Wellness): void {
+    this.suiviService.rouvrirGene(w.id).subscribe({
       next: maj => this.wellnessAlertes.update(l => l.map(x => x.id === w.id ? maj : x)),
       error: () => this.snack.open('Action impossible', 'Fermer', { duration: 3000 }),
     });
@@ -249,7 +276,7 @@ export class MedicalComponent implements OnInit {
         // Conversion d'une gêne : on la marque traitée une fois la blessure créée.
         const geneId = this.geneEnConversion();
         if (geneId) {
-          this.suiviService.traiterGene(geneId).subscribe({
+          this.suiviService.traiterGene(geneId, 'CONVERTIE').subscribe({
             next: maj => this.wellnessAlertes.update(l => l.map(x => x.id === geneId ? maj : x)),
             error: () => {},
           });
