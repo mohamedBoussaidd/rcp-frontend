@@ -3,7 +3,7 @@ import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import Konva from 'konva';
 import { Exercice, FormationCustom, TechniqueService } from '../../../core/services/technique.service';
-import { Joueur, JoueurService } from '../../../core/services/joueur.service';
+import { Joueur, JoueurService, VitesseJoueur } from '../../../core/services/joueur.service';
 import { MatIcon } from "@angular/material/icon";
 
 type Terrain = 'complet' | 'demi';
@@ -18,10 +18,13 @@ interface Keyframe { t: number; positions: Record<string, { x: number; y: number
 const VIOLET = '#7c3aed', JAUNE = '#eab308', ROUGE = '#ef4444';
 const BLEU = '#2563eb';
 
-// Brique 2 : vitesse uniforme (px/s) en mode "vitesse" — sera remplacée par la vraie vitesse GPS en Brique 3.
-const VITESSE_PX_S = 130;
+// Brique 3 : vitesses réelles. Joueur sans donnée GPS → vitesse de course par défaut.
+const VITESSE_DEFAUT_KMH = 24;   // course modérée
+const BALLE_KMH = 60;            // une passe va plus vite qu'une course
 // Rayon (px) pour lier une flèche au jeton/ballon le plus proche de son point de départ.
 const RAYON_LIEN = 60;
+// Longueur réelle (m) représentée par la largeur du terrain, pour convertir km/h → px/s.
+const LONGUEUR_TERRAIN_M = { complet: 105, demi: 52.5 };
 
 @Component({
   selector: 'app-schema-editor',
@@ -51,6 +54,9 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
   vitesse = signal(1);
   // Brique 2 : temps = tout le monde arrive ensemble ; vitesse = chacun son allure le long de sa flèche.
   modeAnim = signal<'temps' | 'vitesse'>('temps');
+  // Brique 3 : en mode vitesse, on utilise la vraie vitesse GPS (record vmax ou moyenne vmoy).
+  metriqueVitesse = signal<'max' | 'moyenne'>('moyenne');
+  private vitesses = new Map<string, { vmax: number | null; vmoy: number | null }>();
   keyframes = signal<Keyframe[]>([]);
   private anim?: Konva.Animation;
   // Palette dépliable
@@ -181,6 +187,7 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
     this.brancherDessin();
     this.chargerFormations();
     this.chargerEffectif();
+    this.chargerVitesses();
     if (this.keyframes().length === 0) this.resetKeyframes();
     this.onFs = () => this.estPleinEcran.set(!!document.fullscreenElement);
     document.addEventListener('fullscreenchange', this.onFs);
@@ -198,6 +205,29 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
         js.slice().sort((a, b) => (a.nom || '').localeCompare(b.nom || ''))),
       error: () => { },
     });
+  }
+
+  private chargerVitesses(): void {
+    this.joueurService.getVitesses().subscribe({
+      next: (vs: VitesseJoueur[]) => {
+        this.vitesses.clear();
+        vs.forEach(v => this.vitesses.set(v.joueurId, { vmax: v.vmaxKmh, vmoy: v.vmoyKmh }));
+      },
+      error: () => { },
+    });
+  }
+
+  /** px par mètre selon le terrain (pour convertir une vitesse km/h en px/s). */
+  private get pxParMetre(): number {
+    return this.W / LONGUEUR_TERRAIN_M[this.terrain()];
+  }
+  private kmhEnPxS(kmh: number): number { return (kmh / 3.6) * this.pxParMetre; }
+  private vitesseBallePxS(): number { return this.kmhEnPxS(BALLE_KMH); }
+  /** Vitesse (px/s) d'un joueur : sa donnée GPS (vmax ou vmoy) sinon vitesse par défaut. */
+  private vitesseJoueurPxS(joueur?: SchemaElement): number {
+    const v = joueur?.joueurId ? this.vitesses.get(joueur.joueurId) : undefined;
+    const kmh = v ? (this.metriqueVitesse() === 'max' ? v.vmax : v.vmoy) : null;
+    return this.kmhEnPxS(kmh && kmh > 0 ? kmh : VITESSE_DEFAUT_KMH);
   }
 
   /** Étiquette portée par le jeton : nom de famille (initiales seulement si vraiment trop long). */
@@ -386,6 +416,7 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
       traces: this.traces,
       dureeSecondes: this.dureeSecondes(),
       modeAnim: this.modeAnim(),
+      metriqueVitesse: this.metriqueVitesse(),
       keyframes: this.keyframes(),
     };
     this.service.sauverSchema(this.exercice.id, JSON.stringify(data)).subscribe({
@@ -430,6 +461,7 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
       (d.elements ?? []).forEach((el: SchemaElement) => { this.elements.push(el); this.dessinerElement(el); });
       (d.traces ?? []).forEach((t: SchemaTrace) => { this.traces.push(t); this.dessinerTrace(t); });
       if (d.modeAnim === 'temps' || d.modeAnim === 'vitesse') this.modeAnim.set(d.modeAnim);
+      if (d.metriqueVitesse === 'max' || d.metriqueVitesse === 'moyenne') this.metriqueVitesse.set(d.metriqueVitesse);
       if (Array.isArray(d.keyframes) && d.keyframes.length) {
         this.keyframes.set([...d.keyframes].sort((a: Keyframe, b: Keyframe) => a.t - b.t));
         if (d.dureeSecondes) this.dureeSecondes.set(d.dureeSecondes);
@@ -703,26 +735,6 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
       return best;
     };
 
-    // Fenêtres temporelles brutes (t = distance cumulée). Une flèche démarre quand TOUS
-    // ses arrivants sont là (max) → une conduite attend le joueur ET le ballon.
-    const t0 = new Map<string, number>(), t1 = new Map<string, number>();
-    const enCalcul = new Set<string>();
-    const calc = (a: SchemaTrace): number => {
-      if (t1.has(a.id)) return t1.get(a.id)!;
-      if (enCalcul.has(a.id)) { t0.set(a.id, 0); t1.set(a.id, this.longueurChemin(a.points)); return t1.get(a.id)!; }
-      enCalcul.add(a.id);
-      const inc = arrivants(a);
-      const dep = inc.length ? Math.max(...inc.map(calc)) : 0;
-      t0.set(a.id, dep); t1.set(a.id, dep + this.longueurChemin(a.points));
-      enCalcul.delete(a.id);
-      return t1.get(a.id)!;
-    };
-    fleches.forEach(calc);
-
-    // Échelle : vitesse fixe, ou (mode temps) la plus longue séquence remplit la durée.
-    const maxT = Math.max(1, ...fleches.map(a => t1.get(a.id)!));
-    const sc = this.modeAnim() === 'vitesse' ? 1 / VITESSE_PX_S : this.dureeSecondes() / maxT;
-
     // Propriétaire d'une flèche : hérité du prédécesseur de même nature, sinon l'élément
     // le plus proche du départ (le ballon se prend au début d'une conduite, etc.).
     const memo = { ballon: new Map<string, SchemaElement | undefined>(), joueur: new Map<string, SchemaElement | undefined>() };
@@ -736,6 +748,35 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
       m.set(a.id, r);
       return r;
     };
+
+    // Vitesse (px/s) d'un segment. Mode vitesse : vitesse réelle du joueur (vmax/vmoy GPS)
+    // pour course/conduite, vitesse de passe pour passe/tir. Mode temps : distance brute (1),
+    // l'échelle ramène ensuite la plus longue séquence à la durée choisie.
+    const vitLeg = (a: SchemaTrace): number => {
+      if (this.modeAnim() !== 'vitesse') return 1;
+      if (a.type === 'passe' || a.type === 'tir') return this.vitesseBallePxS();
+      return this.vitesseJoueurPxS(owner(a, 'joueur', estJoueur));
+    };
+
+    // Fenêtres temporelles : une flèche démarre quand TOUS ses arrivants sont là (max)
+    // → une conduite attend le joueur ET le ballon. Durée d'un segment = longueur / vitesse.
+    const t0 = new Map<string, number>(), t1 = new Map<string, number>();
+    const enCalcul = new Set<string>();
+    const calc = (a: SchemaTrace): number => {
+      if (t1.has(a.id)) return t1.get(a.id)!;
+      if (enCalcul.has(a.id)) { t0.set(a.id, 0); t1.set(a.id, this.longueurChemin(a.points) / vitLeg(a)); return t1.get(a.id)!; }
+      enCalcul.add(a.id);
+      const inc = arrivants(a);
+      const dep = inc.length ? Math.max(...inc.map(calc)) : 0;
+      t0.set(a.id, dep); t1.set(a.id, dep + this.longueurChemin(a.points) / vitLeg(a));
+      enCalcul.delete(a.id);
+      return t1.get(a.id)!;
+    };
+    fleches.forEach(calc);
+
+    // Mode vitesse : t déjà en secondes (sc=1). Mode temps : la plus longue séquence = durée.
+    const maxT = Math.max(1, ...fleches.map(a => t1.get(a.id)!));
+    const sc = this.modeAnim() === 'vitesse' ? 1 : this.dureeSecondes() / maxT;
 
     const pousser = (id: string, a: SchemaTrace) => {
       const arr = res.get(id) ?? [];

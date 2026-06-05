@@ -1,6 +1,13 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
+import { shareReplay } from 'rxjs/operators';
+
+export interface VitesseJoueur {
+  joueurId: string;
+  vmaxKmh: number | null;
+  vmoyKmh: number | null;
+}
 
 export interface GpsPoint {
   seanceId: string;
@@ -74,5 +81,14 @@ export class JoueurService {
 
   getHistoriqueGps(id: string): Observable<GpsPoint[]> {
     return this.http.get<GpsPoint[]>(`${this.base}/${id}/gps`);
+  }
+
+  /** Fiche vitesse (vmax/vmoy km/h) des joueurs de l'équipe. Mise en cache (1 appel réseau). */
+  private vitesses$?: Observable<VitesseJoueur[]>;
+  getVitesses(): Observable<VitesseJoueur[]> {
+    if (!this.vitesses$) {
+      this.vitesses$ = this.http.get<VitesseJoueur[]>(`${this.base}/vitesses`).pipe(shareReplay(1));
+    }
+    return this.vitesses$;
   }
 }

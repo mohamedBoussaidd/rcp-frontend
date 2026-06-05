@@ -202,10 +202,17 @@
       <button class="tl-btn" (click)="keyframeSuivante()" title="Keyframe suivante">⏭</button>
       <button class="tl-btn" [class.on]="boucle()" (click)="boucle.set(!boucle())" title="Lecture en boucle">🔁</button>
 
-      <span class="tl-mode" title="Temps : tout le monde arrive ensemble. Vitesse : chacun à son allure le long de sa flèche.">
+      <span class="tl-mode" title="Temps : tout le monde arrive ensemble. Vitesse : chacun à son allure réelle le long de sa flèche.">
         <button class="tl-seg" [class.on]="modeAnim() === 'temps'" (click)="modeAnim.set('temps')">Temps</button>
         <button class="tl-seg" [class.on]="modeAnim() === 'vitesse'" (click)="modeAnim.set('vitesse')">Vitesse</button>
       </span>
+
+      @if (modeAnim() === 'vitesse') {
+        <span class="tl-mode" title="Vitesse utilisée par joueur : son record GPS (Max) ou sa moyenne des vitesses max (Moyenne).">
+          <button class="tl-seg" [class.on]="metriqueVitesse() === 'moyenne'" (click)="metriqueVitesse.set('moyenne')">Moy.</button>
+          <button class="tl-seg" [class.on]="metriqueVitesse() === 'max'" (click)="metriqueVitesse.set('max')">Max</button>
+        </span>
+      }
 
       <button class="tl-kf-add" (click)="ajouterKeyframe()" title="Ajouter une keyframe au temps courant">+
         Keyframe</button>
