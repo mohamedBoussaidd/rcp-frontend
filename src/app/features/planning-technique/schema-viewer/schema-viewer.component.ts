@@ -1,12 +1,16 @@
 import { AfterViewInit, Component, ElementRef, Input, OnChanges, OnDestroy, ViewChild } from '@angular/core';
 import Konva from 'konva';
+import { JoueurService } from '../../../core/services/joueur.service';
 
-interface SchemaElement { id: string; type: string; couleur?: string; numero?: number; label?: string; x: number; y: number; }
+interface SchemaElement { id: string; type: string; couleur?: string; numero?: number; label?: string; joueurId?: string; x: number; y: number; }
 interface SchemaTrace { id: string; type: string; points: number[]; elementId?: string; ballId?: string; }
 interface Keyframe { t: number; positions: Record<string, { x: number; y: number }>; }
 
-const VITESSE_PX_S = 130;   // doit rester aligné avec l'éditeur
-const RAYON_LIEN = 60;      // idem éditeur
+// Alignés avec l'éditeur (Brique 3).
+const VITESSE_DEFAUT_KMH = 24;
+const BALLE_KMH = 60;
+const RAYON_LIEN = 60;
+const LONGUEUR_TERRAIN_M: Record<string, number> = { complet: 105, demi: 52.5 };
 
 /** Rendu en lecture seule d'un schéma tactique (terrain + éléments + tracés) + lecture animée. */
 @Component({
@@ -51,12 +55,25 @@ export class SchemaViewerComponent implements AfterViewInit, OnChanges, OnDestro
   private keyframes: Keyframe[] = [];
   private dureeSecondes = 10;
   private modeAnim: 'temps' | 'vitesse' = 'temps';
+  private metriqueVitesse: 'max' | 'moyenne' = 'moyenne';
+  private terrain = 'complet';
+  private W = 1040;
+  private vitesses = new Map<string, { vmax: number | null; vmoy: number | null }>();
   private anim?: Konva.Animation;
 
   animable = false;
   enLecture = false;
 
-  ngAfterViewInit(): void { this.pret = true; this.rendre(); }
+  constructor(private joueurService: JoueurService) {}
+
+  ngAfterViewInit(): void {
+    this.pret = true;
+    this.joueurService.getVitesses().subscribe({
+      next: vs => { this.vitesses.clear(); vs.forEach(v => this.vitesses.set(v.joueurId, { vmax: v.vmaxKmh, vmoy: v.vmoyKmh })); },
+      error: () => { },
+    });
+    this.rendre();
+  }
   ngOnChanges(): void { if (this.pret) this.rendre(); }
   ngOnDestroy(): void { this.anim?.stop(); this.stage?.destroy(); }
 
@@ -71,10 +88,12 @@ export class SchemaViewerComponent implements AfterViewInit, OnChanges, OnDestro
     this.nodesById.clear();
     this.elements = []; this.traces = []; this.keyframes = []; this.animable = false;
     if (!this.schemaJson) return;
-    let data: { terrain: string; elements: SchemaElement[]; traces: SchemaTrace[]; keyframes?: Keyframe[]; dureeSecondes?: number; modeAnim?: 'temps' | 'vitesse' };
+    let data: { terrain: string; elements: SchemaElement[]; traces: SchemaTrace[]; keyframes?: Keyframe[]; dureeSecondes?: number; modeAnim?: 'temps' | 'vitesse'; metriqueVitesse?: 'max' | 'moyenne' };
     try { data = JSON.parse(this.schemaJson); } catch { return; }
 
+    this.terrain = data.terrain === 'demi' ? 'demi' : 'complet';
     const W = data.terrain === 'demi' ? 600 : 1040;
+    this.W = W;
     const H = 680;
     const s = this.largeur / W;
 
@@ -93,6 +112,7 @@ export class SchemaViewerComponent implements AfterViewInit, OnChanges, OnDestro
     this.keyframes = (data.keyframes ?? []).slice().sort((a, b) => a.t - b.t);
     this.dureeSecondes = data.dureeSecondes ?? 10;
     this.modeAnim = data.modeAnim === 'vitesse' ? 'vitesse' : 'temps';
+    this.metriqueVitesse = data.metriqueVitesse === 'max' ? 'max' : 'moyenne';
     this.animable = this.keyframes.length > 1 || this.construireTrajectoires().size > 0;
   }
 
@@ -162,23 +182,6 @@ export class SchemaViewerComponent implements AfterViewInit, OnChanges, OnDestro
       return best;
     };
 
-    const t0 = new Map<string, number>(), t1 = new Map<string, number>();
-    const enCalcul = new Set<string>();
-    const calc = (a: SchemaTrace): number => {
-      if (t1.has(a.id)) return t1.get(a.id)!;
-      if (enCalcul.has(a.id)) { t0.set(a.id, 0); t1.set(a.id, this.longueurChemin(a.points)); return t1.get(a.id)!; }
-      enCalcul.add(a.id);
-      const inc = arrivants(a);
-      const dep = inc.length ? Math.max(...inc.map(calc)) : 0;
-      t0.set(a.id, dep); t1.set(a.id, dep + this.longueurChemin(a.points));
-      enCalcul.delete(a.id);
-      return t1.get(a.id)!;
-    };
-    fleches.forEach(calc);
-
-    const maxT = Math.max(1, ...fleches.map(a => t1.get(a.id)!));
-    const sc = this.modeAnim === 'vitesse' ? 1 / VITESSE_PX_S : this.dureeSecondes / maxT;
-
     const memo = { ballon: new Map<string, SchemaElement | undefined>(), joueur: new Map<string, SchemaElement | undefined>() };
     const owner = (a: SchemaTrace, type: 'ballon' | 'joueur', estType: (x: SchemaTrace) => boolean, vu = new Set<string>()): SchemaElement | undefined => {
       const m = memo[type];
@@ -191,6 +194,31 @@ export class SchemaViewerComponent implements AfterViewInit, OnChanges, OnDestro
       return r;
     };
 
+    // Vitesse (px/s) d'un segment : mode vitesse = vitesse réelle du joueur / de la balle ;
+    // mode temps = distance brute (1), l'échelle ramène la plus longue séquence à la durée.
+    const vitLeg = (a: SchemaTrace): number => {
+      if (this.modeAnim !== 'vitesse') return 1;
+      if (a.type === 'passe' || a.type === 'tir') return this.vitesseBallePxS();
+      return this.vitesseJoueurPxS(owner(a, 'joueur', estJoueur));
+    };
+
+    const t0 = new Map<string, number>(), t1 = new Map<string, number>();
+    const enCalcul = new Set<string>();
+    const calc = (a: SchemaTrace): number => {
+      if (t1.has(a.id)) return t1.get(a.id)!;
+      if (enCalcul.has(a.id)) { t0.set(a.id, 0); t1.set(a.id, this.longueurChemin(a.points) / vitLeg(a)); return t1.get(a.id)!; }
+      enCalcul.add(a.id);
+      const inc = arrivants(a);
+      const dep = inc.length ? Math.max(...inc.map(calc)) : 0;
+      t0.set(a.id, dep); t1.set(a.id, dep + this.longueurChemin(a.points) / vitLeg(a));
+      enCalcul.delete(a.id);
+      return t1.get(a.id)!;
+    };
+    fleches.forEach(calc);
+
+    const maxT = Math.max(1, ...fleches.map(a => t1.get(a.id)!));
+    const sc = this.modeAnim === 'vitesse' ? 1 : this.dureeSecondes / maxT;
+
     const pousser = (id: string, a: SchemaTrace) => {
       const arr = res.get(id) ?? [];
       arr.push({ t0: t0.get(a.id)! * sc, t1: t1.get(a.id)! * sc, pts: a.points });
@@ -202,6 +230,15 @@ export class SchemaViewerComponent implements AfterViewInit, OnChanges, OnDestro
     }
     for (const arr of res.values()) arr.sort((x, y) => x.t0 - y.t0);
     return res;
+  }
+
+  private get pxParMetre(): number { return this.W / (LONGUEUR_TERRAIN_M[this.terrain] ?? 105); }
+  private kmhEnPxS(kmh: number): number { return (kmh / 3.6) * this.pxParMetre; }
+  private vitesseBallePxS(): number { return this.kmhEnPxS(BALLE_KMH); }
+  private vitesseJoueurPxS(joueur?: SchemaElement): number {
+    const v = joueur?.joueurId ? this.vitesses.get(joueur.joueurId) : undefined;
+    const kmh = v ? (this.metriqueVitesse === 'max' ? v.vmax : v.vmoy) : null;
+    return this.kmhEnPxS(kmh && kmh > 0 ? kmh : VITESSE_DEFAUT_KMH);
   }
 
   private posTrajectoire(legs: { t0: number; t1: number; pts: number[] }[], t: number): { x: number; y: number } {
