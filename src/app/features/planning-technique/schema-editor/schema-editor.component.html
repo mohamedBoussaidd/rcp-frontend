@@ -1,4 +1,4 @@
-<div class="editor">
+<div class="editor" #editorRoot>
   <!-- ── Barre d'outils ── -->
   <div class="toolbar">
     <div class="tb-group">
@@ -31,6 +31,8 @@
       <button class="tb-btn" (click)="zoom(-0.1)" title="Zoom −">−</button>
       <button class="tb-btn" (click)="zoom(0.1)" title="Zoom +">+</button>
       <button class="tb-btn" (click)="capture()" title="Exporter en image">📷</button>
+      <button class="tb-btn" [class.on]="estPleinEcran()" (click)="pleinEcran()"
+        [title]="estPleinEcran() ? 'Quitter le plein écran' : 'Plein écran'">⛶</button>
     </div>
 
     <div class="tb-group right">

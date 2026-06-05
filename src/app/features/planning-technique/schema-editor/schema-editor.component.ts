@@ -33,6 +33,9 @@ const RAYON_LIEN = 60;
 export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
 
   @ViewChild('stageContainer', { static: true }) containerRef!: ElementRef<HTMLDivElement>;
+  @ViewChild('editorRoot', { static: true }) editorRoot!: ElementRef<HTMLDivElement>;
+
+  estPleinEcran = signal(false);
 
   readonly exercice: Exercice;
 
@@ -179,7 +182,11 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
     this.chargerFormations();
     this.chargerEffectif();
     if (this.keyframes().length === 0) this.resetKeyframes();
+    this.onFs = () => this.estPleinEcran.set(!!document.fullscreenElement);
+    document.addEventListener('fullscreenchange', this.onFs);
   }
+
+  private onFs?: () => void;
 
   private chargerFormations(): void {
     this.service.listerFormations().subscribe({ next: f => this.formationsCustom.set(f), error: () => { } });
@@ -230,7 +237,12 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
     });
   }
 
-  ngOnDestroy(): void { this.pause(); this.stage?.destroy(); }
+  ngOnDestroy(): void {
+    this.pause();
+    if (this.onFs) document.removeEventListener('fullscreenchange', this.onFs);
+    if (document.fullscreenElement) document.exitFullscreen().catch(() => { });
+    this.stage?.destroy();
+  }
 
   // ── Palette ──
   basculer(section: string): void { this.ouvert.update(o => o === section ? null : section); }
@@ -384,6 +396,14 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
 
   fermer(): void { this.dialogRef.close(false); }
 
+  /** Bascule l'éditeur en plein écran (toolbar + palette + terrain + timeline). */
+  pleinEcran(): void {
+    const el = this.editorRoot?.nativeElement;
+    if (!el) return;
+    if (document.fullscreenElement) document.exitFullscreen();
+    else el.requestFullscreen?.().catch(() => { });
+  }
+
   /** Vide tout le terrain (éléments + tracés). Le terrain dessiné reste. */
   viderTerrain(): void {
     if (this.elements.length === 0 && this.traces.length === 0) return;
@@ -518,7 +538,13 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
       }
     });
     this.layer.add(grp);
+    this.remonterElements();   // les jetons/joueurs restent visuellement au-dessus des tracés
     return grp;
+  }
+
+  /** Garde les éléments (jetons, ballon, équipement) au premier plan, au-dessus des tracés. */
+  private remonterElements(): void {
+    this.nodesById.forEach(g => g.moveToTop());
   }
 
   // ══════════ Dessin des tracés à la souris ══════════
