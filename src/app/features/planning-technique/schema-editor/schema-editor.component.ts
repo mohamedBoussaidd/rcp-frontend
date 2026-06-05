@@ -17,6 +17,7 @@ interface Keyframe { t: number; positions: Record<string, { x: number; y: number
 
 const VIOLET = '#7c3aed', JAUNE = '#eab308', ROUGE = '#ef4444';
 const BLEU = '#2563eb';
+const NOIR = '#1f2937';   // jetons « Adversaire » (génériques, éditables)
 
 // Brique 3 : vitesses réelles. Joueur sans donnée GPS → vitesse de course par défaut.
 const VITESSE_DEFAUT_KMH = 24;   // course modérée
@@ -25,6 +26,9 @@ const BALLE_KMH = 60;            // une passe va plus vite qu'une course
 const RAYON_LIEN = 60;
 // Longueur réelle (m) représentée par la largeur du terrain, pour convertir km/h → px/s.
 const LONGUEUR_TERRAIN_M = { complet: 105, demi: 52.5 };
+// Tension de la spline Konva des tracés. DOIT rester identique côté rendu et côté
+// échantillonnage de trajectoire (cheminRendu), sinon le jeton ne suit pas la courbe dessinée.
+const TENSION_TRACE = 0.5;
 
 @Component({
   selector: 'app-schema-editor',
@@ -46,7 +50,7 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
   outil = signal<Outil>('select');
   echelle = signal(1);
   // Mode de tracé : main libre (à la souris), semi-assisté (clics), assisté (droite départ→arrivée).
-  modeDessin = signal<'libre' | 'semi' | 'assiste'>('libre');
+  modeDessin = signal<'libre' | 'semi' | 'assiste'>('semi');
 
   // ── Animation (Phase B) ──
   tempsCourant = signal(0);
@@ -65,9 +69,16 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
   ouvert = signal<string | null>('formations');
 
   // équipes / jokers
-  readonly equipeViolet = { couleur: VIOLET, nums: Array.from({ length: 11 }, (_, i) => i + 1) };
+  readonly equipeEffectif = { couleur: VIOLET, nums: Array.from({ length: 11 }, (_, i) => i + 1) };
+  readonly equipeRouge = { couleur: ROUGE, nums: Array.from({ length: 11 }, (_, i) => i + 1) };
   readonly equipeJaune = { couleur: JAUNE, nums: Array.from({ length: 11 }, (_, i) => i + 1) };
+  // Adversaire : jetons génériques numérotés, éditables (double-clic → texte libre).
+  readonly adversaire = { couleur: NOIR, nums: Array.from({ length: 11 }, (_, i) => i + 1) };
   readonly jokers = { couleur: ROUGE, nums: [1, 2, 3, 4] };
+
+  // Vrais joueurs (joueurId) actuellement posés sur le terrain : grisés/désactivés dans les
+  // palettes Mon équipe / Équipe 1 / Équipe 2 tant qu'ils y sont (un joueur = un seul jeton).
+  joueursPlaces = signal<Set<string>>(new Set());
   readonly equipement = [
     { type: 'plot', couleur: ROUGE, label: 'Plot rouge' },
     { type: 'plot', couleur: BLEU, label: 'Plot bleu' },
@@ -240,15 +251,16 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
     return ini || nom.slice(0, 3).toUpperCase() || '?';
   }
 
-  /** Rang de ligne d'un poste : gardien(0) → défense(1) → milieu(2-3) → attaque(4-5). */
+  /** Rang de ligne d'un poste : gardien(0) → défense(1) → milieu(2-3) → attaque(5).
+   *  Codes réels de l'effectif (cf. joueur-form-dialog) : GK, DC, LB, RB, MDC, MC, MG, MD, AG, AD, ATT. */
   private rangPoste(poste?: string): number {
     switch (poste) {
-      case 'gardien': return 0;
-      case 'defenseur_central': case 'lateral_droit': case 'lateral_gauche': return 1;
-      case 'milieu_defensif': case 'milieu_central': return 2;
-      case 'milieu_offensif': return 3;
-      case 'ailier_droit': case 'ailier_gauche': return 4;
-      case 'attaquant': case 'avant_centre': return 5;
+      case 'GK': return 0;
+      case 'DC': case 'LB': case 'RB': return 1;
+      case 'MDC': return 2;
+      case 'MC': case 'MG': case 'MD': return 3;
+      case 'AG': case 'AD': return 4;
+      case 'ATT': return 5;
       default: return 6; // poste non défini → en fin de liste
     }
   }
@@ -260,13 +272,59 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
       || (a.nom || '').localeCompare(b.nom || ''));
   }
 
-  /** Ajoute un jeton lié à un vrai joueur (équipe "Nous" = violet). */
-  ajouterJoueurReel(j: Joueur): void {
+  /** Ligne d'un emplacement selon sa profondeur x (0=notre but → 1=but adverse) :
+   *  0 gardien, 1 défense, 2 milieu, 3 attaque. */
+  private lignePosition(x: number): number {
+    if (x <= 0.12) return 0;
+    if (x <= 0.27) return 1;
+    if (x <= 0.40) return 2;
+    return 3;
+  }
+
+  /** Ligne d'un joueur d'après son poste (mêmes 4 paliers que lignePosition). */
+  private ligneJoueur(j: Joueur): number {
+    const r = this.rangPoste(j.postePrincipal);
+    if (r === 0) return 0;          // GK
+    if (r === 1) return 1;          // DC / LB / RB
+    if (r <= 3) return 2;           // MDC / MC / MG / MD
+    if (r <= 5) return 3;           // AG / AD / ATT
+    return 2;                       // poste inconnu → milieu (neutre)
+  }
+
+  /** Affecte à chaque emplacement le meilleur joueur dispo : même ligne en priorité, puis la
+   *  plus proche. Les joueurs en surnombre sur une ligne restent sur le banc (non placés)
+   *  au lieu de déborder sur une autre ligne. positions = profondeurs normalisées (x∈[0,1]). */
+  private affecterJoueurs(positions: { x: number; y: number }[]): (Joueur | undefined)[] {
+    const pool = this.effectifTriParLigne();   // trié gardien→attaque (départage par rang puis nom)
+    return positions.map(pos => {
+      const lp = this.lignePosition(pos.x);
+      let best = -1, bestScore = Infinity;
+      pool.forEach((j, idx) => {
+        const score = Math.abs(this.ligneJoueur(j) - lp);   // distance de ligne
+        if (score < bestScore) { bestScore = score; best = idx; }
+      });
+      return best < 0 ? undefined : pool.splice(best, 1)[0];
+    });
+  }
+
+  /** Ajoute un jeton lié à un vrai joueur, dans la couleur de l'équipe choisie (Mon équipe /
+   *  Équipe 1 / Équipe 2). Sans effet si le joueur est déjà posé (grisé dans la palette). */
+  ajouterJoueurReel(j: Joueur, couleur: string = VIOLET): void {
+    if (this.joueursPlaces().has(j.id)) return;
     this.ajouterElement({
-      id: this.uid(), type: 'joueur', couleur: VIOLET,
+      id: this.uid(), type: 'joueur', couleur,
       label: this.labelJoueur(j), joueurId: j.id,
       x: this.W / 2, y: this.H / 2,
     });
+  }
+
+  /** Un vrai joueur est-il déjà posé sur le terrain (donc indisponible dans les palettes) ? */
+  estPose(j: Joueur): boolean { return this.joueursPlaces().has(j.id); }
+
+  /** Recalcule l'ensemble des vrais joueurs présents sur le terrain (pour le grisage). */
+  private majJoueursPlaces(): void {
+    this.joueursPlaces.set(new Set(
+      this.elements.filter(e => e.type === 'joueur' && e.joueurId).map(e => e.joueurId!)));
   }
 
   ngOnDestroy(): void {
@@ -301,6 +359,7 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
     // présent dans toutes les keyframes (à la même position au départ)
     if (this.keyframes().length === 0) this.keyframes.set([{ t: 0, positions: {} }]);
     this.keyframes.update(ks => { ks.forEach(k => k.positions[el.id] = { x: el.x, y: el.y }); return [...ks]; });
+    this.majJoueursPlaces();
     this.layer.draw();
   }
 
@@ -308,16 +367,16 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
   appliquerFormation(f: { nom: string; positions: { x: number; y: number }[] }): void {
     if (this.terrain() !== 'complet') this.changerTerrain('complet'); // formations pensées pour le terrain complet
     const couleur = this.equipeFormation();
-    const adverse = couleur === JAUNE;
+    const adverse = couleur === NOIR;
     // retirer les joueurs existants de cette couleur (re-cliquer = remplacer)
     this.elements.filter(e => e.type === 'joueur' && e.couleur === couleur).forEach(e => this.nodesById.get(e.id)?.destroy());
     this.elements = this.elements.filter(e => !(e.type === 'joueur' && e.couleur === couleur));
-    // « Nous » (violet) = vrais joueurs triés par ligne ; adverse (jaune) = numéros génériques
-    const tries = adverse ? [] : this.effectifTriParLigne();
+    // « Mon équipe » (violet) = vrais joueurs affectés par ligne ; Adversaire (noir) = numéros génériques
+    const affectes = adverse ? [] : this.affecterJoueurs(f.positions);
     const m = 24;
     f.positions.forEach((pos, i) => {
       const nx = adverse ? 1 - pos.x : pos.x;
-      const j = tries[i];
+      const j = affectes[i];
       const el: SchemaElement = {
         id: this.uid(), type: 'joueur', couleur,
         ...(j ? { label: this.labelJoueur(j), joueurId: j.id } : { numero: i + 1 }),
@@ -344,8 +403,9 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
     const m = 24;
     const tr = (p: { x: number; y: number }) => ({ x: flipX ? 1 - p.x : p.x, y: flipY ? 1 - p.y : p.y });
     const px = (p: { x: number; y: number }) => ({ x: m + (tr(p).x) * (this.W - 2 * m), y: m + (tr(p).y) * (this.H - 2 * m) });
+    const pxN = (p: { x: number; y: number }) => ({ x: m + p.x * (this.W - 2 * m), y: m + p.y * (this.H - 2 * m) }); // p déjà orienté
 
-    const NOUS = this.equipeViolet.couleur, EUX = this.equipeJaune.couleur, MANN = '#64748b';
+    const NOUS = this.equipeEffectif.couleur, EUX = NOIR, MANN = '#64748b';
     // on remplace : nos joueurs + adverses + ballons + mannequins
     this.elements.filter(e => e.type === 'ballon' || e.type === 'mannequin'
       || (e.type === 'joueur' && (e.couleur === NOUS || e.couleur === EUX)))
@@ -359,11 +419,20 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
     const b = px(base.ball);
     ajout({ id: this.uid(), type: 'ballon', couleur: '#fff', x: b.x, y: b.y });
 
-    // offensif : nous = attaquants, eux = défenseurs ; défensif : l'inverse
-    const nous = mode === 'offensif' ? base.attaquants : base.defenseurs;
-    const eux = mode === 'offensif' ? base.defenseurs : base.attaquants;
-    nous.forEach((p, i) => { const q = px(p); ajout({ id: this.uid(), type: 'joueur', couleur: NOUS, numero: i + 1, x: q.x, y: q.y }); });
-    eux.forEach((p, i) => { const q = px(p); ajout({ id: this.uid(), type: 'joueur', couleur: EUX, numero: i + 1, x: q.x, y: q.y }); });
+    // offensif : nous = attaquants, eux = défenseurs ; défensif : l'inverse.
+    // Positions orientées une fois (tr) ; la ligne pour l'affectation se déduit de la profondeur orientée.
+    const nous = (mode === 'offensif' ? base.attaquants : base.defenseurs).map(tr);
+    const eux = (mode === 'offensif' ? base.defenseurs : base.attaquants).map(tr);
+    const affectes = this.affecterJoueurs(nous);   // notre équipe = vrais joueurs par ligne
+    nous.forEach((p, i) => {
+      const q = pxN(p); const j = affectes[i];
+      ajout({
+        id: this.uid(), type: 'joueur', couleur: NOUS,
+        ...(j ? { label: this.labelJoueur(j), joueurId: j.id } : { numero: i + 1 }),
+        x: q.x, y: q.y,
+      });
+    });
+    eux.forEach((p, i) => { const q = pxN(p); ajout({ id: this.uid(), type: 'joueur', couleur: EUX, numero: i + 1, x: q.x, y: q.y }); });
 
     // mur de mannequins (coups francs)
     (base.mur ?? []).forEach(p => { const q = px(p); ajout({ id: this.uid(), type: 'mannequin', couleur: MANN, x: q.x, y: q.y }); });
@@ -375,7 +444,7 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
   /** Enregistre la disposition actuelle de l'équipe choisie comme formation réutilisable. */
   enregistrerFormation(): void {
     const couleur = this.equipeFormation();
-    const adverse = couleur === JAUNE;
+    const adverse = couleur === NOIR;
     const joueurs = this.elements.filter(e => e.type === 'joueur' && e.couleur === couleur);
     if (joueurs.length === 0) { this.snack.open('Place des joueurs de cette équipe avant d\'enregistrer', 'Fermer', { duration: 3000 }); return; }
     const nom = prompt('Nom de la formation ?');
@@ -470,6 +539,7 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
       } else {
         this.resetKeyframes();
       }
+      this.majJoueursPlaces();
       this.layer.draw();
     } catch { }
   }
@@ -543,17 +613,53 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
         this.nodesById.delete(el.id);
         this.keyframes.update(ks => { ks.forEach(k => delete k.positions[el.id]); return [...ks]; });
         this.traces.forEach(t => { if (t.elementId === el.id) t.elementId = undefined; if (t.ballId === el.id) t.ballId = undefined; });
-        g.destroy(); this.layer.draw();
+        g.destroy(); this.majJoueursPlaces(); this.layer.draw();
       }
     });
+    // Jetons génériques (sans vrai joueur) : double-clic pour éditer le texte (Adversaire, etc.).
+    if (el.type === 'joueur' && !el.joueurId) {
+      g.on('dblclick dbltap', () => this.editerLabelJeton(el));
+    }
     this.nodesById.set(el.id, g);
     this.layer.add(g);
+  }
+
+  /** Édite le texte d'un jeton générique : input HTML superposé au jeton (Entrée/clic = valider). */
+  private editerLabelJeton(el: SchemaElement): void {
+    const g = this.nodesById.get(el.id);
+    if (!g) return;
+    const pos = g.getAbsolutePosition();
+    const box = this.stage.container().getBoundingClientRect();
+    const input = document.createElement('input');
+    input.value = el.label ?? String(el.numero ?? '');
+    input.maxLength = 14;
+    Object.assign(input.style, {
+      position: 'fixed', left: `${box.left + pos.x - 32}px`, top: `${box.top + pos.y - 12}px`,
+      width: '64px', height: '24px', textAlign: 'center', font: 'bold 12px sans-serif',
+      border: '2px solid #fff', borderRadius: '5px', background: el.couleur ?? NOIR,
+      color: '#fff', outline: 'none', zIndex: '9999',
+    } as CSSStyleDeclaration);
+    document.body.appendChild(input);
+    input.focus(); input.select();
+    let fini = false;
+    const valider = () => {
+      if (fini) return; fini = true;
+      const v = input.value.trim();
+      el.label = v || undefined;   // vide → on retombe sur le numéro d'origine
+      g.destroy(); this.nodesById.delete(el.id); this.dessinerElement(el); this.layer.draw();
+      input.remove();
+    };
+    input.addEventListener('blur', valider);
+    input.addEventListener('keydown', e => {
+      if (e.key === 'Enter') input.blur();
+      else if (e.key === 'Escape') { fini = true; input.remove(); }
+    });
   }
 
   private dessinerTrace(t: SchemaTrace): Konva.Group {
     const grp = new Konva.Group();
     const couleur = '#fde047';
-    const base = { points: t.points, stroke: couleur, strokeWidth: 3, tension: 0.8, lineCap: 'round' as const, lineJoin: 'round' as const };
+    const base = { points: t.points, stroke: couleur, strokeWidth: 3, tension: TENSION_TRACE, lineCap: 'round' as const, lineJoin: 'round' as const };
     if (t.type === 'deplacement') {
       grp.add(new Konva.Arrow({ ...base, dash: [11, 7], fill: couleur, pointerLength: 11, pointerWidth: 11 }));
     } else if (t.type === 'passe') {
@@ -590,7 +696,7 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
 
   /** Crée l'aperçu (flèche/ligne) lié à this.pointsEnCours pendant le tracé. */
   private creerApercu(o: TraceType): Konva.Line | Konva.Arrow {
-    const base = { points: this.pointsEnCours, stroke: this.couleurTrace, strokeWidth: 3, tension: 0.8, lineCap: 'round' as const, lineJoin: 'round' as const };
+    const base = { points: this.pointsEnCours, stroke: this.couleurTrace, strokeWidth: 3, tension: TENSION_TRACE, lineCap: 'round' as const, lineJoin: 'round' as const };
     return (o === 'deplacement' || o === 'passe')
       ? new Konva.Arrow({ ...base, fill: this.couleurTrace, dash: o === 'deplacement' ? [11, 7] : undefined, pointerLength: 11, pointerWidth: 11 })
       : new Konva.Line({ ...base });
@@ -697,6 +803,7 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
   private resetKeyframes(): void {
     this.keyframes.set([{ t: 0, positions: Object.fromEntries(this.elements.map(e => [e.id, { x: e.x, y: e.y }])) }]);
     this.tempsCourant.set(0);
+    this.majJoueursPlaces();   // formations / CPA / vider reconstruisent les éléments
   }
 
   private posElement(el: SchemaElement, t: number, kfs: Keyframe[]): { x: number; y: number } {
@@ -763,6 +870,11 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
     const fleches = this.traces.filter(t => t.points.length >= 4);
     if (!fleches.length) return res;
 
+    // Le rendu Konva courbe les tracés (tension). On échantillonne la MÊME courbe pour que
+    // le jeton suive la flèche dessinée, pas la polyligne droite entre les points cliqués.
+    const rendu = new Map<string, number[]>();
+    fleches.forEach(a => rendu.set(a.id, this.cheminRendu(a.points)));
+
     const debut = (a: SchemaTrace) => ({ x: a.points[0], y: a.points[1] });
     const fin = (a: SchemaTrace) => ({ x: a.points[a.points.length - 2], y: a.points[a.points.length - 1] });
     const estBallon = (a: SchemaTrace) => a.type === 'conduite' || a.type === 'passe' || a.type === 'tir';
@@ -824,11 +936,11 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
     const enCalcul = new Set<string>();
     const calc = (a: SchemaTrace): number => {
       if (t1.has(a.id)) return t1.get(a.id)!;
-      if (enCalcul.has(a.id)) { t0.set(a.id, 0); t1.set(a.id, this.longueurChemin(a.points) / vitLeg(a)); return t1.get(a.id)!; }
+      if (enCalcul.has(a.id)) { t0.set(a.id, 0); t1.set(a.id, this.longueurChemin(rendu.get(a.id)!) / vitLeg(a)); return t1.get(a.id)!; }
       enCalcul.add(a.id);
       const inc = arrivants(a);
       const dep = inc.length ? Math.max(...inc.map(calc)) : 0;
-      t0.set(a.id, dep); t1.set(a.id, dep + this.longueurChemin(a.points) / vitLeg(a));
+      t0.set(a.id, dep); t1.set(a.id, dep + this.longueurChemin(rendu.get(a.id)!) / vitLeg(a));
       enCalcul.delete(a.id);
       return t1.get(a.id)!;
     };
@@ -840,7 +952,7 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
 
     const pousser = (id: string, a: SchemaTrace) => {
       const arr = res.get(id) ?? [];
-      arr.push({ t0: t0.get(a.id)! * sc, t1: t1.get(a.id)! * sc, pts: a.points });
+      arr.push({ t0: t0.get(a.id)! * sc, t1: t1.get(a.id)! * sc, pts: rendu.get(a.id)! });
       res.set(id, arr);
     };
     for (const a of fleches) {
@@ -872,6 +984,60 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
     for (const legs of this.construireTrajectoires().values())
       for (const lg of legs) if (lg.t1 > max) max = lg.t1;
     return max;
+  }
+
+  /**
+   * Développe une polyligne en la courbe réellement rendue par Konva (Line/Arrow avec
+   * tension), pour que l'animation suive la flèche dessinée et non les segments droits.
+   * Réplique l'algorithme Konva : points de contrôle cardinaux → quadratique aux extrémités
+   * + cubiques au milieu, échantillonnés en une polyligne dense.
+   */
+  private cheminRendu(pts: number[]): number[] {
+    const len = pts.length;
+    if (len <= 4) return pts;   // 2 points = ligne droite, pas de courbe
+    const tp = this.pointsTension(pts, TENSION_TRACE);
+    const PAS = 16;
+    const out = [pts[0], pts[1]];
+    // 1er segment : quadratique p0 → 1er point intérieur, contrôle tp[0..1]
+    this.echQuad(out, pts[0], pts[1], tp[0], tp[1], tp[2], tp[3], PAS);
+    // segments intérieurs : cubiques d'un point intérieur au suivant
+    for (let n = 4; n < tp.length - 2; n += 6) {
+      const x0 = out[out.length - 2], y0 = out[out.length - 1];
+      this.echCubic(out, x0, y0, tp[n], tp[n + 1], tp[n + 2], tp[n + 3], tp[n + 4], tp[n + 5], PAS);
+    }
+    // dernier segment : quadratique → dernier point, contrôle tp[len-2..len-1]
+    const x0 = out[out.length - 2], y0 = out[out.length - 1];
+    this.echQuad(out, x0, y0, tp[tp.length - 2], tp[tp.length - 1], pts[len - 2], pts[len - 1], PAS);
+    return out;
+  }
+
+  /** Points de contrôle de la spline cardinale (équivalent Konva Util._expandPoints). */
+  private pointsTension(p: number[], t: number): number[] {
+    const out: number[] = [];
+    for (let n = 2; n < p.length - 2; n += 2) {
+      const x0 = p[n - 2], y0 = p[n - 1], x1 = p[n], y1 = p[n + 1], x2 = p[n + 2], y2 = p[n + 3];
+      const d01 = Math.hypot(x1 - x0, y1 - y0), d12 = Math.hypot(x2 - x1, y2 - y1);
+      const fa = (t * d01) / (d01 + d12) || 0, fb = (t * d12) / (d01 + d12) || 0;
+      out.push(x1 - fa * (x2 - x0), y1 - fa * (y2 - y0), x1, y1, x1 + fb * (x2 - x0), y1 + fb * (y2 - y0));
+    }
+    return out;
+  }
+
+  /** Échantillonne une courbe de Bézier quadratique (hors point de départ déjà présent). */
+  private echQuad(out: number[], x0: number, y0: number, cx: number, cy: number, x1: number, y1: number, pas: number): void {
+    for (let i = 1; i <= pas; i++) {
+      const s = i / pas, u = 1 - s;
+      out.push(u * u * x0 + 2 * u * s * cx + s * s * x1, u * u * y0 + 2 * u * s * cy + s * s * y1);
+    }
+  }
+
+  /** Échantillonne une courbe de Bézier cubique (hors point de départ déjà présent). */
+  private echCubic(out: number[], x0: number, y0: number, c1x: number, c1y: number, c2x: number, c2y: number, x1: number, y1: number, pas: number): void {
+    for (let i = 1; i <= pas; i++) {
+      const s = i / pas, u = 1 - s;
+      const a = u * u * u, b = 3 * u * u * s, c = 3 * u * s * s, d = s * s * s;
+      out.push(a * x0 + b * c1x + c * c2x + d * x1, a * y0 + b * c1y + c * c2y + d * y1);
+    }
   }
 
   private longueurChemin(pts: number[]): number {

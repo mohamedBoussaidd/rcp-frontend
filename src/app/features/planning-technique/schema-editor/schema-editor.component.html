@@ -62,12 +62,11 @@
         @if (ouvert() === 'formations') {
         <div class="form-bloc">
           <div class="form-equipe">
-            <button class="form-eq" [class.on]="equipeFormation() === equipeViolet.couleur"
-              [style.--c]="equipeViolet.couleur" (click)="equipeFormation.set(equipeViolet.couleur)">Nous
-              (violette)</button>
-            <button class="form-eq" [class.on]="equipeFormation() === equipeJaune.couleur"
-              [style.--c]="equipeJaune.couleur" (click)="equipeFormation.set(equipeJaune.couleur)">Adverse
-              (jaune)</button>
+            <button class="form-eq" [class.on]="equipeFormation() === equipeEffectif.couleur"
+              [style.--c]="equipeEffectif.couleur" (click)="equipeFormation.set(equipeEffectif.couleur)">Mon
+              équipe</button>
+            <button class="form-eq" [class.on]="equipeFormation() === adversaire.couleur"
+              [style.--c]="adversaire.couleur" (click)="equipeFormation.set(adversaire.couleur)">Adversaire</button>
           </div>
           <div class="form-grid">
             @for (f of formations; track f.nom) {
@@ -114,8 +113,8 @@
             <button class="form-btn" (click)="placerArret('cf', 'G')">CF Gauche</button>
             <button class="form-btn" (click)="placerArret('cf', 'D')">CF Droit</button>
           </div>
-          <p class="pal-aide">Place le ballon + notre équipe (violet) selon la situation. CF = coup franc à l'entrée
-            de la surface.</p>
+          <p class="pal-aide">Place le ballon + notre équipe (vrais joueurs, violet) et l'adversaire (noir) selon la
+            situation. CF = coup franc à l'entrée de la surface.</p>
         </div>
         }
       </div>
@@ -129,10 +128,10 @@
           } @else {
           <div class="pal-list">
             @for (j of effectif(); track j.id) {
-            <button class="pal-item"
-              (click)="ajouterJoueurReel(j)"
-              [title]="j.prenom + ' ' + j.nom + (j.postePrincipal ? ' — ' + j.postePrincipal : '')">
-              <span class="pal-pastille" [style.background]="equipeViolet.couleur"></span>
+            <button class="pal-item" [class.pal-item--pose]="estPose(j)" [disabled]="estPose(j)"
+              (click)="ajouterJoueurReel(j, equipeEffectif.couleur)"
+              [title]="estPose(j) ? (j.prenom + ' ' + j.nom + ' — déjà sur le terrain') : (j.prenom + ' ' + j.nom + (j.postePrincipal ? ' — ' + j.postePrincipal : ''))">
+              <span class="pal-pastille" [style.background]="equipeEffectif.couleur"></span>
               <span class="pal-nom">{{ j.prenom }} {{ j.nom }}</span>
               @if (j.postePrincipal) { <span class="pal-poste">{{ j.postePrincipal }}</span> }
             </button>
@@ -143,28 +142,61 @@
       </div>
 
       <div class="pal-section">
-        <button class="pal-head" (click)="basculer('violet')">Équipe violette <span>{{ ouvert() === 'violet' ? '▾' :
+        <button class="pal-head" (click)="basculer('violet')">Équipe 1 <span>{{ ouvert() === 'violet' ? '▾' :
             '▸' }}</span></button>
         @if (ouvert() === 'violet') {
-        <div class="pal-grid">
-          @for (n of equipeViolet.nums; track n) {
-          <button class="jeton" [style.background]="equipeViolet.couleur"
-            (click)="ajouterJoueur(equipeViolet.couleur, n)">{{ n }}</button>
+          @if (effectif().length === 0) {
+          <p class="pal-aide">Aucun joueur dans l'effectif de ton équipe.</p>
+          } @else {
+          <div class="pal-list">
+            @for (j of effectif(); track j.id) {
+            <button class="pal-item" [class.pal-item--pose]="estPose(j)" [disabled]="estPose(j)"
+              (click)="ajouterJoueurReel(j, equipeRouge.couleur)"
+              [title]="estPose(j) ? (j.prenom + ' ' + j.nom + ' — déjà sur le terrain') : (j.prenom + ' ' + j.nom + (j.postePrincipal ? ' — ' + j.postePrincipal : ''))">
+              <span class="pal-pastille" [style.background]="equipeRouge.couleur"></span>
+              <span class="pal-nom">{{ j.prenom }} {{ j.nom }}</span>
+              @if (j.postePrincipal) { <span class="pal-poste">{{ j.postePrincipal }}</span> }
+            </button>
+            }
+          </div>
           }
-        </div>
         }
       </div>
 
       <div class="pal-section">
-        <button class="pal-head" (click)="basculer('jaune')">Équipe jaune <span>{{ ouvert() === 'jaune' ? '▾' : '▸'
+        <button class="pal-head" (click)="basculer('jaune')">Équipe 2 <span>{{ ouvert() === 'jaune' ? '▾' : '▸'
             }}</span></button>
         @if (ouvert() === 'jaune') {
+          @if (effectif().length === 0) {
+          <p class="pal-aide">Aucun joueur dans l'effectif de ton équipe.</p>
+          } @else {
+          <div class="pal-list">
+            @for (j of effectif(); track j.id) {
+            <button class="pal-item" [class.pal-item--pose]="estPose(j)" [disabled]="estPose(j)"
+              (click)="ajouterJoueurReel(j, equipeJaune.couleur)"
+              [title]="estPose(j) ? (j.prenom + ' ' + j.nom + ' — déjà sur le terrain') : (j.prenom + ' ' + j.nom + (j.postePrincipal ? ' — ' + j.postePrincipal : ''))">
+              <span class="pal-pastille" [style.background]="equipeJaune.couleur"></span>
+              <span class="pal-nom">{{ j.prenom }} {{ j.nom }}</span>
+              @if (j.postePrincipal) { <span class="pal-poste">{{ j.postePrincipal }}</span> }
+            </button>
+            }
+          </div>
+          }
+        }
+      </div>
+
+      <div class="pal-section">
+        <button class="pal-head" (click)="basculer('adversaire')">Adversaire <span>{{ ouvert() === 'adversaire' ? '▾' :
+            '▸' }}</span></button>
+        @if (ouvert() === 'adversaire') {
         <div class="pal-grid">
-          @for (n of equipeJaune.nums; track n) {
-          <button class="jeton" [style.background]="equipeJaune.couleur" [style.color]="'#1a1f36'"
-            (click)="ajouterJoueur(equipeJaune.couleur, n)">{{ n }}</button>
+          @for (n of adversaire.nums; track n) {
+          <button class="jeton" [style.background]="adversaire.couleur"
+            (click)="ajouterJoueur(adversaire.couleur, n)">{{ n }}</button>
           }
         </div>
+        <p class="pal-aide">Jetons génériques. Double-clic sur un jeton posé pour saisir un texte (ou garder le
+          numéro).</p>
         }
       </div>
 

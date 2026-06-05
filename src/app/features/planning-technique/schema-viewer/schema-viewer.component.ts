@@ -11,6 +11,9 @@ const VITESSE_DEFAUT_KMH = 24;
 const BALLE_KMH = 60;
 const RAYON_LIEN = 60;
 const LONGUEUR_TERRAIN_M: Record<string, number> = { complet: 105, demi: 52.5 };
+// Tension de la spline Konva : identique à l'éditeur (rendu + échantillonnage cheminRendu),
+// pour que la courbe affichée et la trajectoire du jeton soient les mêmes des deux côtés.
+const TENSION_TRACE = 0.8;
 
 /** Rendu en lecture seule d'un schéma tactique (terrain + éléments + tracés) + lecture animée. */
 @Component({
@@ -157,6 +160,10 @@ export class SchemaViewerComponent implements AfterViewInit, OnChanges, OnDestro
     const fleches = this.traces.filter(t => t.points.length >= 4);
     if (!fleches.length) return res;
 
+    // Échantillonne la courbe rendue (tension) pour que le jeton suive la flèche dessinée.
+    const rendu = new Map<string, number[]>();
+    fleches.forEach(a => rendu.set(a.id, this.cheminRendu(a.points)));
+
     const debut = (a: SchemaTrace) => ({ x: a.points[0], y: a.points[1] });
     const fin = (a: SchemaTrace) => ({ x: a.points[a.points.length - 2], y: a.points[a.points.length - 1] });
     const estBallon = (a: SchemaTrace) => a.type === 'conduite' || a.type === 'passe' || a.type === 'tir';
@@ -206,11 +213,11 @@ export class SchemaViewerComponent implements AfterViewInit, OnChanges, OnDestro
     const enCalcul = new Set<string>();
     const calc = (a: SchemaTrace): number => {
       if (t1.has(a.id)) return t1.get(a.id)!;
-      if (enCalcul.has(a.id)) { t0.set(a.id, 0); t1.set(a.id, this.longueurChemin(a.points) / vitLeg(a)); return t1.get(a.id)!; }
+      if (enCalcul.has(a.id)) { t0.set(a.id, 0); t1.set(a.id, this.longueurChemin(rendu.get(a.id)!) / vitLeg(a)); return t1.get(a.id)!; }
       enCalcul.add(a.id);
       const inc = arrivants(a);
       const dep = inc.length ? Math.max(...inc.map(calc)) : 0;
-      t0.set(a.id, dep); t1.set(a.id, dep + this.longueurChemin(a.points) / vitLeg(a));
+      t0.set(a.id, dep); t1.set(a.id, dep + this.longueurChemin(rendu.get(a.id)!) / vitLeg(a));
       enCalcul.delete(a.id);
       return t1.get(a.id)!;
     };
@@ -221,7 +228,7 @@ export class SchemaViewerComponent implements AfterViewInit, OnChanges, OnDestro
 
     const pousser = (id: string, a: SchemaTrace) => {
       const arr = res.get(id) ?? [];
-      arr.push({ t0: t0.get(a.id)! * sc, t1: t1.get(a.id)! * sc, pts: a.points });
+      arr.push({ t0: t0.get(a.id)! * sc, t1: t1.get(a.id)! * sc, pts: rendu.get(a.id)! });
       res.set(id, arr);
     };
     for (const a of fleches) {
@@ -253,6 +260,50 @@ export class SchemaViewerComponent implements AfterViewInit, OnChanges, OnDestro
     }
     const last = legs[legs.length - 1].pts;
     return { x: last[last.length - 2], y: last[last.length - 1] };
+  }
+
+  // Développe une polyligne en la courbe rendue par Konva (tension), pour que le jeton
+  // suive la flèche dessinée. Identique à l'éditeur (réplique Konva Util._expandPoints).
+  private cheminRendu(pts: number[]): number[] {
+    const len = pts.length;
+    if (len <= 4) return pts;
+    const tp = this.pointsTension(pts, TENSION_TRACE);
+    const PAS = 16;
+    const out = [pts[0], pts[1]];
+    this.echQuad(out, pts[0], pts[1], tp[0], tp[1], tp[2], tp[3], PAS);
+    for (let n = 4; n < tp.length - 2; n += 6) {
+      const x0 = out[out.length - 2], y0 = out[out.length - 1];
+      this.echCubic(out, x0, y0, tp[n], tp[n + 1], tp[n + 2], tp[n + 3], tp[n + 4], tp[n + 5], PAS);
+    }
+    const x0 = out[out.length - 2], y0 = out[out.length - 1];
+    this.echQuad(out, x0, y0, tp[tp.length - 2], tp[tp.length - 1], pts[len - 2], pts[len - 1], PAS);
+    return out;
+  }
+
+  private pointsTension(p: number[], t: number): number[] {
+    const out: number[] = [];
+    for (let n = 2; n < p.length - 2; n += 2) {
+      const x0 = p[n - 2], y0 = p[n - 1], x1 = p[n], y1 = p[n + 1], x2 = p[n + 2], y2 = p[n + 3];
+      const d01 = Math.hypot(x1 - x0, y1 - y0), d12 = Math.hypot(x2 - x1, y2 - y1);
+      const fa = (t * d01) / (d01 + d12) || 0, fb = (t * d12) / (d01 + d12) || 0;
+      out.push(x1 - fa * (x2 - x0), y1 - fa * (y2 - y0), x1, y1, x1 + fb * (x2 - x0), y1 + fb * (y2 - y0));
+    }
+    return out;
+  }
+
+  private echQuad(out: number[], x0: number, y0: number, cx: number, cy: number, x1: number, y1: number, pas: number): void {
+    for (let i = 1; i <= pas; i++) {
+      const s = i / pas, u = 1 - s;
+      out.push(u * u * x0 + 2 * u * s * cx + s * s * x1, u * u * y0 + 2 * u * s * cy + s * s * y1);
+    }
+  }
+
+  private echCubic(out: number[], x0: number, y0: number, c1x: number, c1y: number, c2x: number, c2y: number, x1: number, y1: number, pas: number): void {
+    for (let i = 1; i <= pas; i++) {
+      const s = i / pas, u = 1 - s;
+      const a = u * u * u, b = 3 * u * u * s, c = 3 * u * s * s, d = s * s * s;
+      out.push(a * x0 + b * c1x + c * c2x + d * x1, a * y0 + b * c1y + c * c2y + d * y1);
+    }
   }
 
   private longueurChemin(pts: number[]): number {
@@ -343,7 +394,7 @@ export class SchemaViewerComponent implements AfterViewInit, OnChanges, OnDestro
 
   private dessinerTrace(layer: Konva.Layer, t: SchemaTrace): void {
     const couleur = '#fde047';
-    const base = { points: t.points, stroke: couleur, strokeWidth: 3, tension: 0.35, lineCap: 'round' as const, lineJoin: 'round' as const };
+    const base = { points: t.points, stroke: couleur, strokeWidth: 3, tension: TENSION_TRACE, lineCap: 'round' as const, lineJoin: 'round' as const };
     if (t.type === 'deplacement') {
       layer.add(new Konva.Arrow({ ...base, dash: [11, 7], fill: couleur, pointerLength: 11, pointerWidth: 11 }));
     } else if (t.type === 'passe') {

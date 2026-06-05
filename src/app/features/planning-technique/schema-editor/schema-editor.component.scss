@@ -121,6 +121,14 @@
   cursor: pointer;
   &:hover { border-color: var(--copper-border); color: var(--text); }
 }
+/* Joueur déjà posé sur le terrain : grisé et non cliquable. */
+.pal-item--pose {
+  opacity: 0.4;
+  cursor: not-allowed;
+  filter: grayscale(1);
+  &:hover { border-color: var(--border); color: var(--text-2); }
+  .pal-nom { text-decoration: line-through; }
+}
 .pal-pastille { width: 14px; height: 14px; border-radius: 50%; border: 1px solid #00000033; flex-shrink: 0; }
 .pal-nom { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .pal-poste {
