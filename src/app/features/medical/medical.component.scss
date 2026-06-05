@@ -281,10 +281,53 @@
 }
 .note-texte { color: var(--text); flex: 1; }
 
+/* ── Alertes ── */
+.carte-alertes { border-left: 4px solid var(--warning); }
+.alertes-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 20px; }
+.alerte-titre {
+  font-size: 0.8rem; font-weight: 700; margin: 0 0 6px;
+  &.rouge { color: var(--danger); }
+  &.orange { color: var(--warning); }
+}
+.alerte-ligne {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  padding: 5px 2px; border-bottom: 1px solid var(--border); font-size: 0.83rem;
+  &:last-child { border-bottom: none; }
+}
+.al-joueur { font-weight: 600; color: var(--text); }
+.al-info { display: flex; align-items: center; gap: 6px; color: var(--text-2); font-size: 0.78rem; }
+
+/* ── Bilan ── */
+.bilan-tuiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 12px; margin-bottom: 18px; }
+.tuile {
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+  padding: 14px 10px; border-radius: 10px;
+  background: var(--surface-2); border: 1px solid var(--border);
+}
+.tuile-val { font-size: 1.5rem; font-weight: 800; color: var(--text); }
+.tuile-lbl { font-size: 0.72rem; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+.tuile.g-leger  .tuile-val { color: var(--success); }
+.tuile.g-modere .tuile-val { color: var(--warning); }
+.tuile.g-grave  .tuile-val { color: var(--danger); }
+
+.bilan-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 24px; }
+.zone-liste { display: flex; flex-direction: column; gap: 7px; }
+.zone-ligne { display: flex; align-items: center; gap: 10px; font-size: 0.82rem; }
+.zone-nom { min-width: 120px; color: var(--text); }
+.zone-barre {
+  flex: 1; height: 10px; border-radius: 50px;
+  background: var(--surface-2); border: 1px solid var(--border); overflow: hidden;
+  span { display: block; height: 100%; background: var(--copper, #b87333); }
+}
+.zone-count { min-width: 22px; text-align: right; font-weight: 700; color: var(--text-2); }
+.gravite-tuiles { display: flex; gap: 12px; }
+.gravite-tuiles .tuile { flex: 1; }
+
 @media (max-width: 700px) {
   .medical-content { padding: 12px 8px; }
   .form-grid { grid-template-columns: 1fr; }
   .doc-ligne { flex-wrap: wrap; }
   .doc-actions { margin-left: 0; }
   .suivi-grid { grid-template-columns: 1fr; gap: 16px; }
+  .bilan-grid { grid-template-columns: 1fr; gap: 16px; }
 }

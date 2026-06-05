@@ -4,6 +4,63 @@
 
 <div class="medical-content">
 
+  <!-- ── Alertes ── -->
+  @if (aDesAlertes) {
+    <mat-card class="carte-alertes">
+      <mat-card-header class="card-head">
+        <mat-card-title>⚠️ Alertes</mat-card-title>
+      </mat-card-header>
+      <mat-card-content>
+        <div class="alertes-grid">
+
+          @if (retoursEnRetard.length > 0) {
+            <div class="alerte-bloc">
+              <h4 class="alerte-titre rouge">Retours en retard</h4>
+              @for (b of retoursEnRetard; track b.id) {
+                <div class="alerte-ligne">
+                  <span class="al-joueur">{{ b.joueurPrenom }} {{ b.joueurNom }}</span>
+                  <span class="al-info">prévu {{ b.dateRetourPrevue | date:'dd/MM' }}
+                    <span class="inf-jours retard">+{{ -joursAvantRetour(b.dateRetourPrevue)! }}j</span>
+                  </span>
+                </div>
+              }
+            </div>
+          }
+
+          @if (retoursImminents.length > 0) {
+            <div class="alerte-bloc">
+              <h4 class="alerte-titre orange">Retours imminents (7 j)</h4>
+              @for (b of retoursImminents; track b.id) {
+                <div class="alerte-ligne">
+                  <span class="al-joueur">{{ b.joueurPrenom }} {{ b.joueurNom }}</span>
+                  <span class="al-info">{{ b.dateRetourPrevue | date:'dd/MM' }}
+                    <span class="inf-jours">J−{{ joursAvantRetour(b.dateRetourPrevue) }}</span>
+                  </span>
+                </div>
+              }
+            </div>
+          }
+
+          @if (joueursRisqueEleve.length > 0) {
+            <div class="alerte-bloc">
+              <h4 class="alerte-titre rouge">Risque / fatigue élevés</h4>
+              @for (j of joueursRisqueEleve; track j.joueur_id) {
+                <div class="alerte-ligne">
+                  <span class="al-joueur">{{ j.prenom }} {{ j.nom }}</span>
+                  <span class="al-info">
+                    @if (j.niveau_risque === 'ELEVE') { <span class="score-badge score-bas">risque {{ j.score_risque }}</span> }
+                    @if (j.niveau_fatigue === 'ALERTE') { <span class="score-badge score-bas">fatigue</span> }
+                  </span>
+                </div>
+              }
+            </div>
+          }
+
+        </div>
+      </mat-card-content>
+    </mat-card>
+  }
+
   <!-- ── Infirmerie : effectif indisponible ── -->
   <mat-card>
     <mat-card-header class="card-head">
@@ -339,6 +396,49 @@
         </div>
 
       </div>
+    </mat-card-content>
+  </mat-card>
+
+  <!-- ── Bilan blessures ── -->
+  <mat-card>
+    <mat-card-header class="card-head">
+      <mat-card-title>Bilan blessures</mat-card-title>
+    </mat-card-header>
+    <mat-card-content>
+      @if (statsTotal === 0) {
+        <p class="empty-state">Aucune blessure enregistrée.</p>
+      } @else {
+        <div class="bilan-tuiles">
+          <div class="tuile"><span class="tuile-val">{{ statsTotal }}</span><span class="tuile-lbl">Total</span></div>
+          <div class="tuile"><span class="tuile-val">{{ statsEnCours }}</span><span class="tuile-lbl">En cours</span></div>
+          <div class="tuile"><span class="tuile-val">{{ statsRecidivePct }}%</span><span class="tuile-lbl">Récidives</span></div>
+          <div class="tuile"><span class="tuile-val">{{ statsJoursPerdus }}</span><span class="tuile-lbl">Jours perdus</span></div>
+        </div>
+
+        <div class="bilan-grid">
+          <div class="bilan-col">
+            <h4 class="suivi-titre">Par zone corporelle</h4>
+            <div class="zone-liste">
+              @for (z of statsParZone; track z.zone) {
+                <div class="zone-ligne">
+                  <span class="zone-nom">{{ joliLabel(z.zone) }}</span>
+                  <div class="zone-barre"><span [style.width.%]="z.count / statsZoneMax * 100"></span></div>
+                  <span class="zone-count">{{ z.count }}</span>
+                </div>
+              }
+            </div>
+          </div>
+
+          <div class="bilan-col">
+            <h4 class="suivi-titre">Par gravité</h4>
+            <div class="gravite-tuiles">
+              <div class="tuile g-leger"><span class="tuile-val">{{ statsParGravite.leger }}</span><span class="tuile-lbl">Léger</span></div>
+              <div class="tuile g-modere"><span class="tuile-val">{{ statsParGravite.modere }}</span><span class="tuile-lbl">Modéré</span></div>
+              <div class="tuile g-grave"><span class="tuile-val">{{ statsParGravite.grave }}</span><span class="tuile-lbl">Grave</span></div>
+            </div>
+          </div>
+        </div>
+      }
     </mat-card-content>
   </mat-card>
 </div>

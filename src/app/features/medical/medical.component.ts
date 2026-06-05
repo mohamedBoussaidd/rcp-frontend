@@ -8,6 +8,7 @@ import { Blessure, BlessureRequest, BlessureService, StatutBlessure } from '../.
 import { BlessureNote, RtpEtape, StatutEtape, BlessureSuiviService } from '../../core/services/blessure-suivi.service';
 import { DocumentMedical, DocumentMedicalService } from '../../core/services/document-medical.service';
 import { Wellness, Rpe, SuiviSubjectifService } from '../../core/services/suivi-subjectif.service';
+import { PredictionService, ResumeJoueur } from '../../core/services/prediction.service';
 import { Joueur, JoueurService } from '../../core/services/joueur.service';
 import { AuthService } from '../../core/services/auth.service';
 
@@ -79,11 +80,78 @@ export class MedicalComponent implements OnInit {
     return Math.round(t.filter(e => e.statut === 'VALIDEE').length / t.length * 100);
   }
 
+  // ── Bilan & alertes ──
+  joueursRisque = signal<ResumeJoueur[]>([]);
+  readonly SEUIL_RETOUR_IMMINENT = 7; // jours
+
+  get statsTotal(): number { return this.blessures().length; }
+  get statsEnCours(): number { return this.blessures().filter(b => b.statut !== 'RETABLI').length; }
+  get statsRecidivePct(): number {
+    const t = this.blessures();
+    return t.length === 0 ? 0 : Math.round(t.filter(b => b.recidive).length / t.length * 100);
+  }
+  /** Jours d'indisponibilité cumulés (retour effectif ou aujourd'hui si en cours). */
+  get statsJoursPerdus(): number {
+    const auj = new Date(); auj.setHours(0, 0, 0, 0);
+    return this.blessures().reduce((tot, b) => {
+      if (!b.dateBlessure) return tot;
+      const debut = new Date(b.dateBlessure + 'T00:00:00');
+      const fin = b.dateRetourEffectif ? new Date(b.dateRetourEffectif + 'T00:00:00') : auj;
+      const jours = Math.round((fin.getTime() - debut.getTime()) / 86400000);
+      return tot + Math.max(0, jours);
+    }, 0);
+  }
+  /** Répartition par zone corporelle, triée par fréquence. */
+  get statsParZone(): { zone: string; count: number }[] {
+    const map = new Map<string, number>();
+    for (const b of this.blessures()) {
+      const z = b.zoneCorporelle || 'autre';
+      map.set(z, (map.get(z) ?? 0) + 1);
+    }
+    return [...map.entries()].map(([zone, count]) => ({ zone, count })).sort((a, b) => b.count - a.count);
+  }
+  get statsZoneMax(): number {
+    return this.statsParZone.reduce((m, z) => Math.max(m, z.count), 0);
+  }
+  get statsParGravite(): { leger: number; modere: number; grave: number } {
+    const t = this.blessures();
+    return {
+      leger:  t.filter(b => b.gravite === 'leger').length,
+      modere: t.filter(b => b.gravite === 'modere').length,
+      grave:  t.filter(b => b.gravite === 'grave').length,
+    };
+  }
+
+  /** Blessures non rétablies dont le retour prévu est dans les 7 prochains jours. */
+  get retoursImminents(): Blessure[] {
+    return this.blessures().filter(b => {
+      if (b.statut === 'RETABLI' || !b.dateRetourPrevue) return false;
+      const j = this.joursAvantRetour(b.dateRetourPrevue);
+      return j !== null && j >= 0 && j <= this.SEUIL_RETOUR_IMMINENT;
+    }).sort((a, b) => (a.dateRetourPrevue ?? '').localeCompare(b.dateRetourPrevue ?? ''));
+  }
+  /** Blessures non rétablies dont le retour prévu est dépassé. */
+  get retoursEnRetard(): Blessure[] {
+    return this.blessures().filter(b => {
+      if (b.statut === 'RETABLI' || !b.dateRetourPrevue) return false;
+      const j = this.joursAvantRetour(b.dateRetourPrevue);
+      return j !== null && j < 0;
+    }).sort((a, b) => (a.dateRetourPrevue ?? '').localeCompare(b.dateRetourPrevue ?? ''));
+  }
+  get joueursRisqueEleve(): ResumeJoueur[] {
+    return this.joueursRisque().filter(j => j.niveau_risque === 'ELEVE' || j.niveau_fatigue === 'ALERTE');
+  }
+  /** Y a-t-il au moins une alerte à afficher ? */
+  get aDesAlertes(): boolean {
+    return this.retoursImminents.length > 0 || this.retoursEnRetard.length > 0 || this.joueursRisqueEleve.length > 0;
+  }
+
   constructor(
     private blessureService: BlessureService,
     private documentService: DocumentMedicalService,
     private suiviService: SuiviSubjectifService,
     private blessureSuiviService: BlessureSuiviService,
+    private predictionService: PredictionService,
     private joueurService: JoueurService,
     private snack: MatSnackBar,
     public auth: AuthService,
@@ -94,6 +162,7 @@ export class MedicalComponent implements OnInit {
     this.charger();
     this.chargerDocuments();
     this.chargerSuivi();
+    this.predictionService.getResumeEquipe().subscribe({ next: d => this.joueursRisque.set(d), error: () => {} });
   }
 
   charger(): void {
