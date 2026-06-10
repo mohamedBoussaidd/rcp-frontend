@@ -1,0 +1,138 @@
+:host { display: block; }
+
+.block { margin-bottom: 16px; }
+.block__titre { font-size: 15px; font-weight: 700; color: var(--text); margin: 0; }
+.block__head {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  padding: 12px 16px;
+}
+.block__body { padding: 0 16px 16px; }
+
+/* Ligne haute de l'onglet Avant : Infos + Schémas côte à côte */
+.avant-top {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start;
+}
+@media (max-width: 900px) { .avant-top { grid-template-columns: 1fr; } }
+
+/* Joueurs à surveiller */
+.surveille-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+@media (max-width: 700px) { .surveille-cols { grid-template-columns: 1fr; } }
+.surveille-col {
+  border: 1px solid var(--border); border-radius: var(--r-md); padding: 10px 12px;
+}
+.surveille-row {
+  display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; padding: 6px 0;
+  & + .surveille-row { border-top: 1px solid var(--border); }
+}
+.surveille-row__txt { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.surveille-row__nom { font-size: 13px; font-weight: 600; color: var(--text); }
+.surveille-row__note { font-size: 12px; color: var(--text-3); }
+.surveille-form {
+  display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 14px;
+  padding-top: 12px; border-top: 1px solid var(--border);
+}
+.vide { color: var(--text-3); font-size: 13px; font-style: italic; margin: 0; }
+.i14 { font-size: 14px; width: 14px; height: 14px; vertical-align: middle; }
+
+/* ── Liste ── */
+.matchs-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px;
+}
+.match-card {
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-md);
+  padding: 14px 16px; cursor: pointer; transition: border-color .15s, transform .1s;
+  &:hover { border-color: var(--border-strong); transform: translateY(-1px); }
+}
+.match-card__adv { font-size: 15px; font-weight: 700; color: var(--text); }
+.match-card__meta { font-size: 13px; color: var(--text-3); margin: 6px 0 0; }
+
+/* ── Segmented control ── */
+.segmented {
+  display: inline-flex; gap: 4px; padding: 4px; margin-bottom: 16px;
+  background: var(--surface-2, var(--surface)); border: 1px solid var(--border); border-radius: var(--r-md);
+}
+.segmented__btn {
+  border: none; background: transparent; color: var(--text-2);
+  font-size: 13px; font-weight: 600; padding: 7px 16px; border-radius: var(--r-sm, 6px); cursor: pointer;
+  &.on { background: var(--green-600, #0F7E43); color: #fff; }
+}
+
+/* ── Schémas adverses ── */
+.schemas-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px;
+}
+.schema-card { display: flex; flex-direction: column; gap: 6px; }
+.schema-card__img {
+  width: 100%; aspect-ratio: 16 / 10; object-fit: cover;
+  border-radius: var(--r-md); border: 1px solid var(--border-strong); background: #0F7E43; cursor: pointer; display: block;
+}
+.schema-card__vide {
+  width: 100%; aspect-ratio: 16 / 10; display: grid; place-items: center;
+  border: 1px dashed var(--border-strong); border-radius: var(--r-md); color: var(--text-3); font-size: 13px;
+}
+.schema-card__titre { font-size: 13px; color: var(--text-2); margin: 0; }
+
+/* ── Compo ── */
+.compo { display: grid; grid-template-columns: 1fr 320px; gap: 16px; }
+@media (max-width: 900px) { .compo { grid-template-columns: 1fr; } }
+
+.pitch {
+  position: relative; aspect-ratio: 68 / 105; width: 100%; max-width: 460px; margin: 0 auto;
+  border-radius: var(--r-md); border: 2px solid rgba(255,255,255,.6);
+  background-color: #0e7a40;
+  /* bandes de tonte alternées (overlay translucide sur le vert) */
+  background-image:
+    repeating-linear-gradient(0deg, rgba(255,255,255,.07) 0 9.09%, rgba(0,0,0,.05) 9.09% 18.18%);
+  overflow: hidden;
+}
+.pitch::before {  /* ligne médiane */
+  content: ''; position: absolute; left: 0; right: 0; top: 50%; height: 2px; background: rgba(255,255,255,.5);
+}
+.pitch::after {  /* rond central */
+  content: ''; position: absolute; left: 50%; top: 50%; width: 22%; aspect-ratio: 1;
+  transform: translate(-50%, -50%); border: 2px solid rgba(255,255,255,.5); border-radius: 50%;
+}
+.pitch__hint {
+  position: absolute; inset: 0; display: grid; place-items: center; padding: 24px;
+  text-align: center; color: rgba(255,255,255,.85); font-size: 13px;
+}
+
+.token {
+  position: absolute; transform: translate(-50%, -50%);
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+  cursor: grab; user-select: none; z-index: 2;
+  &:active { cursor: grabbing; }
+  &.cdk-drag-dragging { z-index: 5; }
+}
+.token__ini {
+  width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center;
+  background: #fff; color: #0e7a40; font-weight: 800; font-size: 12px;
+  border: 2px solid #0e7a40; box-shadow: 0 2px 6px rgba(0,0,0,.3);
+}
+.token__nom {
+  font-size: 10px; font-weight: 600; color: #fff; max-width: 64px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  text-shadow: 0 1px 2px rgba(0,0,0,.6);
+}
+
+.compo-side { display: flex; flex-direction: column; gap: 14px; }
+.compo-col {
+  border: 1px solid var(--border); border-radius: var(--r-md); padding: 10px 12px;
+}
+.compo-col__titre { font-size: 12px; font-weight: 700; color: var(--text-2); margin: 0 0 8px; text-transform: uppercase; letter-spacing: .03em; }
+.compo-row {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  font-size: 13px; color: var(--text); padding: 4px 0;
+  & + .compo-row { border-top: 1px solid var(--border); }
+}
+.compo-row__nom { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.select--mini { height: 28px; padding: 2px 6px; font-size: 12px; max-width: 120px; }
+
+/* ── Tableau charge GPS ── */
+.table-wrap { overflow-x: auto; }
+.charge-table {
+  width: 100%; border-collapse: collapse; font-size: 13px;
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+  th { color: var(--text-3); font-weight: 600; }
+  td { color: var(--text-2); }
+}

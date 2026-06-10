@@ -1,6 +1,9 @@
-<mat-toolbar color="primary">
-  <span>RCP — Mon club{{ data()?.clubNom ? ' · ' + data()?.clubNom : '' }}</span>
-</mat-toolbar>
+<div class="page-head" style="padding:24px 24px 0;margin-bottom:0">
+  <div>
+    <h1 class="page-head__title">Mon club</h1>
+    <p class="page-head__sub">{{ data()?.clubNom || 'Gestion des équipes et du roster' }}</p>
+  </div>
+</div>
 
 <div class="club-content">
 

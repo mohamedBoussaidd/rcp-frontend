@@ -1,6 +1,5 @@
 import { Component, OnInit, computed, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { MatToolbar } from '@angular/material/toolbar';
 import { MatCard, MatCardContent, MatCardHeader, MatCardTitle } from '@angular/material/card';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import {
@@ -23,7 +22,7 @@ const ROLES_MEMBRES = [
   standalone: true,
   templateUrl: './mon-club.component.html',
   styleUrl: './mon-club.component.scss',
-  imports: [FormsModule, MatToolbar, MatCard, MatCardContent, MatCardHeader, MatCardTitle],
+  imports: [FormsModule, MatCard, MatCardContent, MatCardHeader, MatCardTitle],
 })
 export class MonClubComponent implements OnInit {
 

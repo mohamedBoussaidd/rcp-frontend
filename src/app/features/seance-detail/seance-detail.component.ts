@@ -1,8 +1,6 @@
 import { Component, OnInit } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { PredictionService, RapportSeance, LigneRapport } from '../../core/services/prediction.service';
-import { MatToolbar } from '@angular/material/toolbar';
-import { MatCard, MatCardHeader, MatCardTitle, MatCardContent } from '@angular/material/card';
 import { MatTable, MatColumnDef, MatHeaderCellDef, MatHeaderCell, MatCellDef, MatCell, MatHeaderRowDef, MatHeaderRow, MatRowDef, MatRow } from '@angular/material/table';
 import { DecimalPipe, DatePipe } from '@angular/common';
 
@@ -22,7 +20,6 @@ const COULEURS_TYPE: Record<string, string> = {
   templateUrl: './seance-detail.component.html',
   styleUrl: './seance-detail.component.scss',
   imports: [
-    MatToolbar, MatCard, MatCardHeader, MatCardTitle, MatCardContent,
     MatTable, MatColumnDef, MatHeaderCellDef, MatHeaderCell,
     MatCellDef, MatCell, MatHeaderRowDef, MatHeaderRow, MatRowDef, MatRow,
     DecimalPipe, DatePipe,
@@ -32,22 +29,20 @@ export class SeanceDetailComponent implements OnInit {
 
   rapport: RapportSeance | null = null;
   loading = true;
-  error = false;
+  error   = false;
 
-  readonly colonnesBase = ['joueur', 'poste', 'duree', 'dist_reelle', 'ratio_reel', 'dist_attendue', 'delta', 'statut', 'vitesse', 'sprints'];
+  readonly colonnesBase  = ['joueur', 'poste', 'duree', 'dist_reelle', 'ratio_reel', 'dist_attendue', 'delta', 'statut', 'vitesse', 'sprints'];
   readonly colonnesMatch = [...this.colonnesBase, 'objectif'];
 
   get displayedColumns(): string[] {
     if (!this.rapport) return this.colonnesBase;
-    return ['MATCH', 'MATCH_AMICAL'].includes(this.rapport.type_code)
-      ? this.colonnesMatch
-      : this.colonnesBase;
+    return ['MATCH', 'MATCH_AMICAL'].includes(this.rapport.type_code) ? this.colonnesMatch : this.colonnesBase;
   }
 
   constructor(
     private route: ActivatedRoute,
     private router: Router,
-    private predictionService: PredictionService
+    private predictionService: PredictionService,
   ) {}
 
   ngOnInit(): void {
@@ -58,32 +53,19 @@ export class SeanceDetailComponent implements OnInit {
     });
   }
 
-  retourSeances(): void {
-    this.router.navigate(['/seances']);
-  }
+  retourSeances(): void { this.router.navigate(['/seances']); }
 
-  couleurType(code: string): string {
-    return COULEURS_TYPE[code] ?? '#6366f1';
-  }
+  couleurType(code: string): string { return COULEURS_TYPE[code] ?? '#6366f1'; }
 
   statutClass(statut: string): string {
-    return {
-      SOUS_NORME:    'statut-sous',
-      DANS_NORME:    'statut-dans',
-      SUR_NORME:     'statut-sur',
-      SANS_BASELINE: 'statut-sans',
-    }[statut] ?? '';
+    return { SOUS_NORME: 'statut-sous', DANS_NORME: 'statut-dans', SUR_NORME: 'statut-sur', SANS_BASELINE: 'statut-sans' }[statut] ?? '';
   }
-
   statutLibelle(statut: string): string {
-    return {
-      SOUS_NORME:    'Sous la norme',
-      DANS_NORME:    'Dans la norme',
-      SUR_NORME:     'Sur la norme',
-      SANS_BASELINE: 'Pas de baseline',
-    }[statut] ?? statut;
+    return { SOUS_NORME: 'Sous la norme', DANS_NORME: 'Dans la norme', SUR_NORME: 'Sur la norme', SANS_BASELINE: 'Pas de baseline' }[statut] ?? statut;
   }
-
+  statutBadgeClass(statut: string): string {
+    return { SOUS_NORME: 'badge--bad', DANS_NORME: 'badge--ok', SUR_NORME: 'badge--info', SANS_BASELINE: 'badge--neutral' }[statut] ?? 'badge--neutral';
+  }
   deltaClass(delta: number | null): string {
     if (delta === null) return '';
     return delta < 0 ? 'delta-neg' : delta > 0 ? 'delta-pos' : '';
@@ -91,9 +73,7 @@ export class SeanceDetailComponent implements OnInit {
 
   get lignesSorted(): LigneRapport[] {
     if (!this.rapport) return [];
-    return [...this.rapport.lignes].sort((a, b) => {
-      const order = { SOUS_NORME: 0, SANS_BASELINE: 1, DANS_NORME: 2, SUR_NORME: 3 };
-      return (order[a.statut] ?? 9) - (order[b.statut] ?? 9);
-    });
+    const order: Record<string, number> = { SOUS_NORME: 0, SANS_BASELINE: 1, DANS_NORME: 2, SUR_NORME: 3 };
+    return [...this.rapport.lignes].sort((a, b) => (order[a.statut] ?? 9) - (order[b.statut] ?? 9));
   }
 }

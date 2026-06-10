@@ -1,8 +1,9 @@
-import { Component, OnInit } from '@angular/core';
-import { Router } from '@angular/router';
+import { Component, OnInit, inject } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { ActivatedRoute, Router } from '@angular/router';
+import { map } from 'rxjs';
 import { SeanceService, Seance } from '../../core/services/seance.service';
-import { MatToolbar } from '@angular/material/toolbar';
-import { MatCard, MatCardHeader, MatCardTitle, MatCardContent } from '@angular/material/card';
+import { MatIcon } from '@angular/material/icon';
 import { MatTable, MatColumnDef, MatHeaderCellDef, MatHeaderCell, MatCellDef, MatCell, MatHeaderRowDef, MatHeaderRow, MatRowDef, MatRow } from '@angular/material/table';
 import { MatPaginator, PageEvent } from '@angular/material/paginator';
 import { DatePipe } from '@angular/common';
@@ -23,13 +24,20 @@ const COULEURS_TYPE: Record<string, string> = {
   templateUrl: './seances.component.html',
   styleUrl: './seances.component.scss',
   imports: [
-    MatToolbar, MatCard, MatCardHeader, MatCardTitle, MatCardContent,
+    MatIcon,
     MatTable, MatColumnDef, MatHeaderCellDef, MatHeaderCell,
     MatCellDef, MatCell, MatHeaderRowDef, MatHeaderRow, MatRowDef, MatRow,
     MatPaginator, DatePipe,
   ]
 })
 export class SeancesComponent implements OnInit {
+
+  /** Section active pilotée par ?section= (liste par défaut). */
+  private route = inject(ActivatedRoute);
+  readonly section = toSignal(
+    this.route.queryParamMap.pipe(map(p => p.get('section') ?? 'liste')),
+    { initialValue: 'liste' },
+  );
 
   seances: Seance[] = [];
   loading = true;
@@ -61,10 +69,6 @@ export class SeancesComponent implements OnInit {
 
   allerDetail(seance: Seance): void {
     this.router.navigate(['/seances', seance.id]);
-  }
-
-  retourDashboard(): void {
-    this.router.navigate(['/dashboard']);
   }
 
   couleurType(code: string): string {

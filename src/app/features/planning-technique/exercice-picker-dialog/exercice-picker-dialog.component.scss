@@ -1,0 +1,168 @@
+:host {
+  display: block;
+}
+
+.epick {
+  display: flex;
+  flex-direction: column;
+  width: 520px;
+  max-width: 100%;
+  max-height: 80vh;
+  background: var(--surface, #1b2330);
+  color: var(--text, #e6eaf0);
+  padding: 20px;
+}
+
+.epick__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.epick__title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.epick__sub {
+  margin: 4px 0 12px;
+  font-size: 13px;
+  color: var(--text-3, #7a8694);
+}
+
+.epick__close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border: 0;
+  border-radius: var(--r-md, 8px);
+  background: transparent;
+  color: var(--text-2, #aeb6c2);
+  cursor: pointer;
+
+  &:hover {
+    background: var(--surface-3, #232c3a);
+  }
+}
+
+.epick__search {
+  height: 38px;
+  padding: 0 12px;
+  margin-bottom: 12px;
+  border-radius: var(--r-md, 8px);
+  border: 1px solid var(--border-strong, #39445480);
+  background: var(--surface-3, #232c3a);
+  color: var(--text, #e6eaf0);
+  font-size: 14px;
+  font-family: inherit;
+  outline: none;
+
+  &:focus {
+    border-color: var(--green-600, #16a34a);
+  }
+
+  &::placeholder {
+    color: var(--text-3, #7a8694);
+  }
+}
+
+.epick__body {
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.epick__empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 40px 16px;
+  color: var(--text-3, #7a8694);
+
+  mat-icon {
+    font-size: 32px;
+    width: 32px;
+    height: 32px;
+    opacity: .6;
+  }
+
+  p {
+    margin: 0;
+  }
+}
+
+.erow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  text-align: left;
+  padding: 10px 12px;
+  cursor: pointer;
+  border: 1px solid var(--border, #2a3340);
+  border-radius: var(--r-md, 8px);
+  background: var(--surface-3, #232c3a);
+  color: inherit;
+  font-family: inherit;
+  transition: border-color 120ms ease, background 120ms ease;
+
+  &:hover {
+    border-color: var(--green-600, #16a34a);
+    background: var(--surface, #1b2330);
+  }
+}
+
+.erow__main {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.erow__name {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.erow__meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.badge {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--surface, #1b2330);
+  border: 1px solid var(--border-strong, #39445480);
+  color: var(--text-2, #aeb6c2);
+}
+
+.erow__has {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 11px;
+  color: var(--warn, #eab308);
+
+  mat-icon {
+    font-size: 13px;
+    width: 13px;
+    height: 13px;
+  }
+}
+
+.erow__go {
+  color: var(--text-3, #7a8694);
+  flex-shrink: 0;
+}

@@ -1,13 +1,10 @@
 :host { display: block; }
 
 .joueur-content {
-  padding: 24px;
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
   align-items: start;
   gap: 18px;
-  max-width: 1200px;
-  margin: 0 auto;
 }
 
 /* Cartes/messages occupant toute la largeur (profil, chargement, non rattaché). */
@@ -299,6 +296,6 @@
 }
 
 @media (max-width: 700px) {
-  .joueur-content { padding: 12px 8px; grid-template-columns: 1fr; }
+  .joueur-content { grid-template-columns: 1fr; }
   .profil-grid { grid-template-columns: 1fr 1fr; }
 }

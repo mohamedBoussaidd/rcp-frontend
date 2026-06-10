@@ -1,0 +1,31 @@
+<div class="epick">
+  <div class="epick__head">
+    <h2 class="epick__title">Ajouter le schéma à un exercice</h2>
+    <button class="epick__close" (click)="annuler()" title="Fermer"><mat-icon>close</mat-icon></button>
+  </div>
+  <p class="epick__sub">Le schéma est copié dans l'exercice choisi. S'il en a déjà un, il sera remplacé.</p>
+
+  <input class="epick__search" type="text" [ngModel]="filtre()" (ngModelChange)="filtre.set($event)"
+         placeholder="Rechercher un exercice…" />
+
+  <div class="epick__body">
+    @if (loading()) {
+      <div class="epick__empty">Chargement…</div>
+    } @else if (visibles().length === 0) {
+      <div class="epick__empty"><mat-icon>fitness_center</mat-icon><p>Aucun exercice modifiable.</p></div>
+    } @else {
+      @for (e of visibles(); track e.id) {
+        <button class="erow" (click)="choisir(e)">
+          <span class="erow__main">
+            <span class="erow__name">{{ e.nom }}</span>
+            <span class="erow__meta">
+              @if (e.categorie) { <span class="badge">{{ label(e.categorie) }}</span> }
+              @if (e.schemaJson) { <span class="erow__has"><mat-icon>schema</mat-icon>schéma existant</span> }
+            </span>
+          </span>
+          <mat-icon class="erow__go">chevron_right</mat-icon>
+        </button>
+      }
+    }
+  </div>
+</div>

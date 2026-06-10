@@ -2,7 +2,6 @@ import { Component, OnInit } from '@angular/core';
 import { Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { CommonModule, DatePipe } from '@angular/common';
-import { MatToolbar } from '@angular/material/toolbar';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { SeanceService, Seance, AnalyseImportResponse, ResolutionImport } from '../../core/services/seance.service';
 import { JoueurService, Joueur } from '../../core/services/joueur.service';
@@ -42,7 +41,7 @@ type Etape = 'selection' | 'analyse' | 'resolution' | 'import' | 'resultat';
   standalone: true,
   templateUrl: './import.component.html',
   styleUrl: './import.component.scss',
-  imports: [CommonModule, MatToolbar, DatePipe, FormsModule]
+  imports: [CommonModule, DatePipe, FormsModule]
 })
 export class ImportComponent implements OnInit {
 

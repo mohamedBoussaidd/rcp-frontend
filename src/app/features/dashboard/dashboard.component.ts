@@ -7,12 +7,9 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatDialog } from '@angular/material/dialog';
 import { JoueurFormDialogComponent } from '../joueur-form-dialog/joueur-form-dialog.component';
 import { JoueurSupprimerDialogComponent } from '../joueur-supprimer-dialog/joueur-supprimer-dialog.component';
-import { ApexChart, ApexAxisChartSeries, ApexXAxis, ApexStroke, ApexDataLabels, ApexTitleSubtitle, ChartComponent } from 'ng-apexcharts';
-import { MatToolbar } from '@angular/material/toolbar';
+import { ApexChart, ApexAxisChartSeries, ApexXAxis, ApexStroke, ApexDataLabels, ApexTitleSubtitle, ApexTheme, ApexGrid, ApexYAxis, ChartComponent } from 'ng-apexcharts';
 import { MatIcon } from '@angular/material/icon';
-import { MatCard, MatCardHeader, MatCardTitle, MatCardContent } from '@angular/material/card';
 import { FormsModule } from '@angular/forms';
-
 import { MatTable, MatColumnDef, MatHeaderCellDef, MatHeaderCell, MatCellDef, MatCell, MatHeaderRowDef, MatHeaderRow, MatRowDef, MatRow } from '@angular/material/table';
 import { MatPaginator, PageEvent } from '@angular/material/paginator';
 import { RouterLink } from '@angular/router';
@@ -21,30 +18,56 @@ import { MatProgressBar } from '@angular/material/progress-bar';
 import { AuthService } from '../../core/services/auth.service';
 
 @Component({
-    selector: 'app-dashboard',
-    templateUrl: './dashboard.component.html',
-    standalone: true,
-    styleUrl: './dashboard.component.scss',
-    imports: [MatToolbar, MatIcon, MatCard, ChartComponent, MatCardHeader, MatCardTitle, MatCardContent, MatTable, MatColumnDef, MatHeaderCellDef, MatHeaderCell, MatCellDef, MatCell, RouterLink, BadgeRisqueComponent, MatProgressBar, MatHeaderRowDef, MatHeaderRow, MatRowDef, MatRow, MatPaginator, FormsModule, DecimalPipe]
+  selector: 'app-dashboard',
+  templateUrl: './dashboard.component.html',
+  standalone: true,
+  styleUrl: './dashboard.component.scss',
+  imports: [
+    MatIcon, ChartComponent, FormsModule, DecimalPipe, RouterLink,
+    BadgeRisqueComponent, MatProgressBar,
+    MatTable, MatColumnDef, MatHeaderCellDef, MatHeaderCell,
+    MatCellDef, MatCell, MatHeaderRowDef, MatHeaderRow, MatRowDef, MatRow,
+    MatPaginator,
+  ]
 })
 export class DashboardComponent implements OnInit {
 
   joueurs: ResumeJoueur[] = [];
-  poidsMap   = new Map<string, PoidsFicheJoueur>();
-  statutMap  = new Map<string, string>();
-  loading = true;
+  poidsMap  = new Map<string, PoidsFicheJoueur>();
+  statutMap = new Map<string, string>();
+  loading   = true;
+
   displayedColumns = ['joueur', 'poste', 'statut', 'risque', 'fatigue', 'poids'];
 
-  chargeExpanded   = false;
+  chargeExpanded   = true;
   effectifExpanded = true;
 
   pageIndex = 0;
   pageSize  = 10;
 
-  recherche = '';
+  recherche  = '';
   triFatigue: 'asc' | 'desc' | null = null;
   triRisque:  'asc' | 'desc' | null = null;
 
+  /* ── KPIs dérivés ── */
+  get nbDisponibles(): number {
+    return [...this.statutMap.values()].filter(s => s === 'actif').length;
+  }
+  get nbBlesses(): number {
+    return [...this.statutMap.values()].filter(s => s === 'blesse').length;
+  }
+  get fatigueMoyenne(): number {
+    if (!this.joueurs.length) return 0;
+    const sum = this.joueurs.reduce((a, j) => a + (j.score_fatigue ?? 0), 0);
+    return sum / this.joueurs.length;
+  }
+  get risqueMoyen(): number {
+    if (!this.joueurs.length) return 0;
+    const sum = this.joueurs.reduce((a, j) => a + (j.score_risque ?? 0), 0);
+    return sum / this.joueurs.length;
+  }
+
+  /* ── Filtrage / tri / pagination ── */
   get joueursFiltres(): ResumeJoueur[] {
     const q = this.recherche.trim().toLowerCase();
     let liste = q
@@ -63,45 +86,47 @@ export class DashboardComponent implements OnInit {
     return liste;
   }
 
-  get joueursPagines() {
+  get joueursPagines(): ResumeJoueur[] {
     return this.joueursFiltres.slice(this.pageIndex * this.pageSize, (this.pageIndex + 1) * this.pageSize);
   }
 
-  onPageChange(event: PageEvent): void {
-    this.pageIndex = event.pageIndex;
-    this.pageSize  = event.pageSize;
-  }
-
-  onRecherche(): void {
-    this.pageIndex = 0;
-  }
+  onPageChange(event: PageEvent): void { this.pageIndex = event.pageIndex; this.pageSize = event.pageSize; }
+  onRecherche(): void { this.pageIndex = 0; }
 
   toggleTriFatigue(): void {
-    this.triRisque = null;
+    this.triRisque  = null;
     this.triFatigue = this.triFatigue === 'desc' ? 'asc' : 'desc';
-    this.pageIndex = 0;
+    this.pageIndex  = 0;
   }
-
   toggleTriRisque(): void {
     this.triFatigue = null;
-    this.triRisque = this.triRisque === 'desc' ? 'asc' : 'desc';
-    this.pageIndex = 0;
+    this.triRisque  = this.triRisque === 'desc' ? 'asc' : 'desc';
+    this.pageIndex  = 0;
   }
 
+  /* ── Chart ApexCharts ── */
   chartOptions: {
     series: ApexAxisChartSeries;
     chart: ApexChart;
     xaxis: ApexXAxis;
+    yaxis: ApexYAxis;
     stroke: ApexStroke;
     dataLabels: ApexDataLabels;
     title: ApexTitleSubtitle;
+    theme: ApexTheme;
+    grid: ApexGrid;
+    colors: string[];
   } = {
-    series: [{ name: 'Charge équipe (km)', data: [0, 0, 0, 0] }],
-    chart: { type: 'line', height: 280, toolbar: { show: false } },
-    xaxis: { categories: ['S-4', 'S-3', 'S-2', 'S-1'] },
-    stroke: { curve: 'smooth', width: 3 },
+    series:     [{ name: 'Charge équipe (km)', data: [0, 0, 0, 0] }],
+    chart:      { type: 'line', height: 260, toolbar: { show: false }, background: 'transparent', fontFamily: 'Manrope, sans-serif' },
+    xaxis:      { categories: ['S-4', 'S-3', 'S-2', 'S-1'], labels: { style: { colors: '#64748B', fontSize: '12px' } } },
+    yaxis:      { labels: { style: { colors: '#64748B', fontSize: '12px' } } },
+    stroke:     { curve: 'smooth', width: 2.5 },
     dataLabels: { enabled: false },
-    title: { text: 'Charge collective — 4 dernières semaines', align: 'left' }
+    title:      { text: '' },
+    theme:      { mode: 'light' },
+    grid:       { borderColor: '#E5E9EF', strokeDashArray: 3 },
+    colors:     ['#15803D'],
   };
 
   constructor(
@@ -110,7 +135,7 @@ export class DashboardComponent implements OnInit {
     private joueurService: JoueurService,
     private snackBar: MatSnackBar,
     private dialog: MatDialog,
-    public auth: AuthService
+    public auth: AuthService,
   ) {}
 
   ngOnInit(): void {
@@ -129,9 +154,7 @@ export class DashboardComponent implements OnInit {
 
   loadPoids(): void {
     this.peseesService.getEquipe().subscribe({
-      next: data => {
-        this.poidsMap = new Map(data.map(d => [d.joueurId, d]));
-      },
+      next: data => { this.poidsMap = new Map(data.map(d => [d.joueurId, d])); },
       error: () => {}
     });
   }
@@ -152,7 +175,7 @@ export class DashboardComponent implements OnInit {
         this.chartOptions = {
           ...this.chartOptions,
           series: [{ name: 'Charge équipe (km)', data: res.data }],
-          xaxis: { categories: res.labels }
+          xaxis: { ...this.chartOptions.xaxis, categories: res.labels },
         };
       },
       error: () => {}
@@ -161,22 +184,15 @@ export class DashboardComponent implements OnInit {
 
   ouvrirDialogJoueur(): void {
     const ref = this.dialog.open(JoueurFormDialogComponent, {
-      width: '560px',
-      maxWidth: '95vw',
-      panelClass: 'dark-dialog',
+      width: '560px', maxWidth: '95vw', panelClass: 'dark-dialog',
     });
-    ref.afterClosed().subscribe(joueur => {
-      if (joueur) this.loadEquipe();
-    });
+    ref.afterClosed().subscribe(joueur => { if (joueur) this.loadEquipe(); });
   }
 
   ouvrirDialogSuppression(): void {
     const ref = this.dialog.open(JoueurSupprimerDialogComponent, {
-      width: '500px',
-      maxWidth: '95vw',
-      panelClass: 'dark-dialog',
+      width: '500px', maxWidth: '95vw', panelClass: 'dark-dialog',
     });
     ref.afterClosed().subscribe(() => this.loadEquipe());
   }
-
 }

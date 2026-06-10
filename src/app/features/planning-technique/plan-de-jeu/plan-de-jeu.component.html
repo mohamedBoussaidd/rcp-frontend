@@ -1,0 +1,78 @@
+<div class="page-head">
+  <div>
+    <h1 class="page-head__title">Plan de jeu</h1>
+    <p class="page-head__sub">Identité de jeu de l'équipe · {{ sections().length }} section{{ sections().length > 1 ? 's' : '' }}</p>
+  </div>
+  @if (modifiable()) {
+    <div class="page-head__actions">
+      <button class="btn btn--primary" (click)="ajouter()">
+        <mat-icon>add</mat-icon>Ajouter une section
+      </button>
+    </div>
+  }
+</div>
+
+@if (loading()) {
+  <div class="card card--padded"><div class="loading">Chargement…</div></div>
+} @else if (sections().length === 0) {
+  <div class="card card--padded"><div class="empty-state">Aucune section. Ajoutez la première.</div></div>
+} @else {
+  <div class="sections" cdkDropList (cdkDropListDropped)="drop($event)">
+    @for (s of sections(); track s.id) {
+      <div class="card section" cdkDrag [cdkDragDisabled]="!modifiable() || editingId() === s.id">
+
+        <div class="section__head">
+          @if (modifiable()) {
+            <span class="section__grip" cdkDragHandle title="Glisser pour réordonner"><mat-icon>drag_indicator</mat-icon></span>
+          }
+
+          @if (editingId() === s.id) {
+            <input class="input section__titre-edit" [(ngModel)]="editBuf.titre" name="titre" placeholder="Titre de la section">
+          } @else {
+            <span class="section__titre">{{ s.titre }}</span>
+            @if (animee(s)) { <span class="badge badge--info">animé</span> }
+          }
+
+          <span class="section__date">maj {{ s.updatedAt | date:'dd/MM/yyyy' }}</span>
+
+          @if (modifiable() && editingId() !== s.id) {
+            <div class="row" style="gap:4px">
+              <button class="btn btn--secondary btn--sm btn--icon" (click)="editer(s)" title="Modifier">✎</button>
+              <button class="btn btn--danger btn--sm btn--icon" (click)="supprimer(s)" title="Supprimer">✕</button>
+            </div>
+          }
+        </div>
+
+        @if (editingId() === s.id) {
+          <textarea class="input section__texte-edit" [(ngModel)]="editBuf.texte" name="texte" rows="4"
+                    placeholder="Principes, consignes, repères…"></textarea>
+          <div class="row" style="justify-content:flex-end;gap:8px;margin-top:10px">
+            <button class="btn btn--secondary btn--sm" (click)="annuler()">Annuler</button>
+            <button class="btn btn--primary btn--sm" [disabled]="saving() || !editBuf.titre.trim()" (click)="enregistrer(s)">
+              {{ saving() ? '…' : 'Enregistrer' }}
+            </button>
+          </div>
+        } @else {
+          <div class="section__body">
+            <div class="section__texte">
+              @if (s.texte) { <p>{{ s.texte }}</p> }
+              @else { <p class="section__vide">— Aucune consigne saisie.</p> }
+            </div>
+            <div class="section__schema">
+              @if (s.apercu) {
+                <img class="section__apercu" [src]="s.apercu" alt="Schéma de {{ s.titre }}" (click)="modifiable() && ouvrirSchema(s)">
+              } @else {
+                <div class="section__schema-vide">Pas de schéma</div>
+              }
+              @if (modifiable()) {
+                <button class="btn btn--secondary btn--sm" (click)="ouvrirSchema(s)">
+                  <mat-icon>edit</mat-icon>{{ s.apercu ? 'Éditer le schéma' : 'Ajouter un schéma' }}
+                </button>
+              }
+            </div>
+          </div>
+        }
+      </div>
+    }
+  </div>
+}

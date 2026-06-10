@@ -2,7 +2,6 @@ import { Component, OnInit } from '@angular/core';
 import { Router } from '@angular/router';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { ConfigurationService } from '../../core/services/configuration.service';
-import { MatToolbar } from '@angular/material/toolbar';
 import { MatCard, MatCardHeader, MatCardTitle, MatCardContent, MatCardActions } from '@angular/material/card';
 import { MatTooltip } from '@angular/material/tooltip';
 import { FormsModule } from '@angular/forms';
@@ -291,7 +290,7 @@ interface GroupeParams {
   standalone: true,
   templateUrl: './parametres.component.html',
   styleUrl:    './parametres.component.scss',
-  imports: [MatToolbar, MatCard, MatCardHeader, MatCardTitle, MatCardContent, MatCardActions, MatTooltip, FormsModule, RouterLink]
+  imports: [MatCard, MatCardHeader, MatCardTitle, MatCardContent, MatCardActions, MatTooltip, FormsModule, RouterLink]
 })
 export class ParametresComponent implements OnInit {
 

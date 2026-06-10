@@ -1,524 +1,576 @@
-<mat-toolbar color="primary">
-  <span>RCP — Suivi médical</span>
-</mat-toolbar>
+<div class="screen">
 
-<div class="medical-content">
+  <!-- ══ En-tête dynamique ══ -->
+  <div class="page-head">
+    <div>
+      <h1 class="page-head__title">
+        {{ section() === 'blessures' ? 'Blessures' :
+           section() === 'suivi'     ? 'Suivi subjectif' :
+           section() === 'bilan'     ? 'Bilan blessures' :
+           section() === 'documents' ? 'Documents médicaux' : 'Alertes' }}
+      </h1>
+      <p class="page-head__sub">Suivi médical de l'effectif</p>
+    </div>
+    @if (section() === 'blessures' && auth.canEcrireBlessures()) {
+      <div class="page-head__actions">
+        <button class="btn btn--primary" (click)="showForm() ? annuler() : nouveau()">
+          {{ showForm() ? 'Annuler' : '+ Déclarer une blessure' }}
+        </button>
+      </div>
+    }
+  </div>
 
-  <!-- ── Alertes ── -->
-  @if (aDesAlertes) {
-    <mat-card class="carte-alertes">
-      <mat-card-header class="card-head">
-        <mat-card-title>⚠️ Alertes</mat-card-title>
-      </mat-card-header>
-      <mat-card-content>
+  <!-- ═══════════════════════════════════════
+       SECTION : ALERTES
+       ═══════════════════════════════════════ -->
+  @if (section() === 'alertes') {
 
-        @if (genesSignalees.length > 0) {
-          <section class="alerte-section">
-            <h4 class="alerte-titre rouge">🩹 Gênes signalées <span class="al-compte">{{ genesSignalees.length }}</span></h4>
-            <div class="alerte-cards">
-              @for (g of genesSignalees; track g.id) {
-                <div class="alerte-card sev-rouge">
-                  <div class="ac-head">
-                    <span class="ac-joueur">{{ g.joueurPrenom }} {{ g.joueurNom }}</span>
-                    <span class="score-badge score-bas">{{ g.geneIntensite }}/5</span>
+    @if (aDesAlertes) {
+      <div class="card" style="margin-bottom:16px">
+        <div class="card__header">
+          <h3 class="card__title">Alertes en cours</h3>
+          <span class="badge badge--warn">
+            {{ retoursEnRetard.length + retoursImminents.length + joueursRisqueEleve.length + genesSignalees.length }}
+          </span>
+        </div>
+        <div class="card__body stack stack--lg">
+
+          @if (genesSignalees.length > 0) {
+            <div>
+              <p class="section-title section-title--bad">Gênes signalées ({{ genesSignalees.length }})</p>
+              <div class="alerte-grid">
+                @for (g of genesSignalees; track g.id) {
+                  <div class="alerte-card alerte-card--bad">
+                    <div class="row row--between">
+                      <span class="alerte-card__joueur">{{ g.joueurPrenom }} {{ g.joueurNom }}</span>
+                      <span class="badge badge--bad">{{ g.geneIntensite }}/5</span>
+                    </div>
+                    <p class="alerte-card__corps">{{ joliLabel(g.geneZone) }}</p>
+                    <p class="alerte-card__meta">{{ momentGeneLabel(g.geneMoment) }} · {{ g.date | date:'dd/MM' }}</p>
+                    @if (peutTraiterGene) {
+                      <div class="row" style="gap:6px;margin-top:8px">
+                        <button class="btn btn--secondary btn--sm" (click)="traiterGene(g)">Traiter</button>
+                        @if (auth.canEcrireBlessures()) {
+                          <button class="btn btn--secondary btn--sm" (click)="convertirGeneEnBlessure(g)">+ Blessure</button>
+                        }
+                      </div>
+                    }
                   </div>
-                  <div class="ac-corps">{{ joliLabel(g.geneZone) }}</div>
-                  <div class="ac-meta">{{ momentGeneLabel(g.geneMoment) }} · {{ g.date | date:'dd/MM' }}</div>
-                  @if (peutTraiterGene) {
-                    <div class="ac-actions">
-                      <button class="btn-mini" (click)="traiterGene(g)">Traiter</button>
+                }
+              </div>
+            </div>
+          }
+
+          @if (retoursEnRetard.length > 0) {
+            <div>
+              <p class="section-title section-title--bad">Retours en retard ({{ retoursEnRetard.length }})</p>
+              <div class="alerte-grid">
+                @for (b of retoursEnRetard; track b.id) {
+                  <div class="alerte-card alerte-card--bad">
+                    <div class="row row--between">
+                      <span class="alerte-card__joueur">{{ b.joueurPrenom }} {{ b.joueurNom }}</span>
+                      <span class="badge badge--bad">+{{ -joursAvantRetour(b.dateRetourPrevue)! }}j</span>
+                    </div>
+                    <p class="alerte-card__corps">{{ joliLabel(b.zoneCorporelle) }}</p>
+                    <p class="alerte-card__meta">prévu {{ b.dateRetourPrevue | date:'dd/MM' }}</p>
+                    <div class="row" style="gap:6px;margin-top:8px">
+                      <button class="btn btn--secondary btn--sm" [routerLink]="['/joueurs', b.joueurId]">Fiche</button>
+                    </div>
+                  </div>
+                }
+              </div>
+            </div>
+          }
+
+          @if (retoursImminents.length > 0) {
+            <div>
+              <p class="section-title section-title--warn">Retours imminents — 7 j ({{ retoursImminents.length }})</p>
+              <div class="alerte-grid">
+                @for (b of retoursImminents; track b.id) {
+                  <div class="alerte-card alerte-card--warn">
+                    <div class="row row--between">
+                      <span class="alerte-card__joueur">{{ b.joueurPrenom }} {{ b.joueurNom }}</span>
+                      <span class="badge badge--warn">J−{{ joursAvantRetour(b.dateRetourPrevue) }}</span>
+                    </div>
+                    <p class="alerte-card__corps">{{ joliLabel(b.zoneCorporelle) }}</p>
+                    <p class="alerte-card__meta">prévu {{ b.dateRetourPrevue | date:'dd/MM' }}</p>
+                    <button class="btn btn--secondary btn--sm" style="margin-top:8px" [routerLink]="['/joueurs', b.joueurId]">Fiche</button>
+                  </div>
+                }
+              </div>
+            </div>
+          }
+
+          @if (joueursRisqueEleve.length > 0) {
+            <div>
+              <p class="section-title section-title--warn">Risque / fatigue élevés ({{ joueursRisqueEleve.length }})</p>
+              <div class="alerte-grid">
+                @for (j of joueursRisqueEleve; track j.joueur_id) {
+                  <div class="alerte-card alerte-card--warn">
+                    <span class="alerte-card__joueur">{{ j.prenom }} {{ j.nom }}</span>
+                    <div class="row" style="gap:6px;margin-top:6px;flex-wrap:wrap">
+                      @if (j.niveau_risque === 'ELEVE') { <span class="badge badge--bad">risque {{ j.score_risque }}</span> }
+                      @if (j.niveau_fatigue === 'ALERTE') { <span class="badge badge--warn">fatigue</span> }
+                    </div>
+                    <button class="btn btn--secondary btn--sm" style="margin-top:8px" [routerLink]="['/joueurs', j.joueur_id]">Fiche</button>
+                  </div>
+                }
+              </div>
+            </div>
+          }
+
+        </div>
+      </div>
+    } @else {
+      <div class="card card--padded"><div class="empty-state">Aucune alerte en cours. 💪</div></div>
+    }
+
+    @if (peutVoirHistoriqueGenes && genesHistorique.length > 0) {
+      <div class="card">
+        <div class="card__header">
+          <h3 class="card__title">Historique des gênes</h3>
+          <span class="badge badge--neutral">{{ genesHistorique.length }}</span>
+        </div>
+        <div class="card__body">
+          <div class="alerte-grid">
+            @for (g of genesHistorique; track g.id) {
+              <div class="alerte-card" [class.alerte-card--info]="g.geneResolution === 'CONVERTIE'">
+                <div class="row row--between">
+                  <span class="alerte-card__joueur">{{ g.joueurPrenom }} {{ g.joueurNom }}</span>
+                  <span class="badge badge--neutral">{{ g.geneIntensite }}/5</span>
+                </div>
+                <p class="alerte-card__corps">{{ joliLabel(g.geneZone) }}</p>
+                <p class="alerte-card__meta">{{ momentGeneLabel(g.geneMoment) }} · signalée {{ g.date | date:'dd/MM' }}</p>
+                <p class="alerte-card__meta"><strong>{{ resolutionGeneLabel(g.geneResolution) }}</strong>@if (g.geneTraiteeLe) { · le {{ g.geneTraiteeLe | date:'dd/MM' }} }</p>
+                @if (peutRouvrirGene) {
+                  <button class="btn btn--ghost btn--sm" style="margin-top:8px" (click)="rouvrirGene(g)">Rouvrir</button>
+                }
+              </div>
+            }
+          </div>
+        </div>
+      </div>
+    }
+  }
+
+  <!-- ═══════════════════════════════════════
+       SECTION : BLESSURES (+ infirmerie)
+       ═══════════════════════════════════════ -->
+  @if (section() === 'blessures') {
+
+    <!-- Infirmerie -->
+    <div class="card" style="margin-bottom:16px">
+      <div class="card__header">
+        <h3 class="card__title">Infirmerie</h3>
+        <div class="row" style="gap:8px">
+          <span class="badge badge--bad badge--dot">{{ nbIndisponibles }} indispo.</span>
+          <span class="badge badge--warn badge--dot">{{ nbEnReprise }} en reprise</span>
+        </div>
+      </div>
+      <div class="card__body card__body--flush">
+        @if (infirmerie.length === 0) {
+          <div class="empty-state">Aucun joueur à l'infirmerie. 💪</div>
+        } @else {
+          @for (b of infirmerie; track b.id) {
+            <div class="infirmerie-ligne">
+              <span class="infirmerie-ligne__joueur">{{ b.joueurPrenom }} {{ b.joueurNom }}</span>
+              <span class="badge" [class]="'badge--' + (b.statut === 'EN_REPRISE' ? 'warn' : 'bad')">{{ statutBlessureLabel(b.statut) }}</span>
+              <span class="infirmerie-ligne__zone">{{ joliLabel(b.zoneCorporelle) }} <small>{{ joliLabel(b.typeBlessure) }}</small></span>
+              <span class="infirmerie-ligne__retour">
+                @if (b.dateRetourPrevue) {
+                  retour {{ b.dateRetourPrevue | date:'dd/MM' }}
+                  @let j = joursAvantRetour(b.dateRetourPrevue);
+                  @if (j !== null) {
+                    <span class="badge" [class]="j < 0 ? 'badge--bad' : 'badge--neutral'" style="margin-left:4px">
+                      {{ j < 0 ? '+' + (-j) + 'j retard' : 'J−' + j }}
+                    </span>
+                  }
+                } @else {
+                  <span style="color:var(--text-3)">retour non estimé</span>
+                }
+              </span>
+            </div>
+          }
+        }
+      </div>
+    </div>
+
+    <!-- Liste blessures -->
+    <div class="card" style="margin-bottom:16px">
+      <div class="card__header">
+        <h3 class="card__title">Blessures déclarées</h3>
+        <span class="badge badge--neutral">{{ blessures().length }}</span>
+      </div>
+      <div class="card__body">
+        @if (showForm() && auth.canEcrireBlessures()) {
+          <form class="form-panel" style="margin-bottom:20px" (ngSubmit)="enregistrer()">
+            <div class="form-grid">
+              <div class="field">
+                <label class="field__label">Joueur *</label>
+                <select class="input select" [(ngModel)]="form.joueurId" name="joueur">
+                  <option value="" disabled>Choisir…</option>
+                  @for (j of joueurs(); track j.id) { <option [value]="j.id">{{ j.prenom }} {{ j.nom }}</option> }
+                </select>
+              </div>
+              <div class="field">
+                <label class="field__label">Date de blessure *</label>
+                <input class="input" type="date" [(ngModel)]="form.dateBlessure" name="date">
+              </div>
+              <div class="field">
+                <label class="field__label">Statut</label>
+                <select class="input select" [(ngModel)]="form.statut" name="statut">
+                  @for (s of STATUTS_BLESSURE; track s.val) { <option [value]="s.val">{{ s.label }}</option> }
+                </select>
+              </div>
+              <div class="field">
+                <label class="field__label">Retour prévu</label>
+                <input class="input" type="date" [(ngModel)]="form.dateRetourPrevue" name="retourPrevu">
+              </div>
+              <div class="field">
+                <label class="field__label">Retour effectif</label>
+                <input class="input" type="date" [(ngModel)]="form.dateRetourEffectif" name="retour">
+              </div>
+              <div class="field">
+                <label class="field__label">Type</label>
+                <select class="input select" [(ngModel)]="form.typeBlessure" name="type">
+                  <option value="">—</option>
+                  @for (t of types; track t) { <option [value]="t">{{ joliLabel(t) }}</option> }
+                </select>
+              </div>
+              <div class="field">
+                <label class="field__label">Zone</label>
+                <select class="input select" [(ngModel)]="form.zoneCorporelle" name="zone">
+                  <option value="">—</option>
+                  @for (z of zones; track z) { <option [value]="z">{{ joliLabel(z) }}</option> }
+                </select>
+              </div>
+              <div class="field">
+                <label class="field__label">Côté</label>
+                <select class="input select" [(ngModel)]="form.cote" name="cote">
+                  <option value="">—</option>
+                  @for (c of cotes; track c) { <option [value]="c">{{ joliLabel(c) }}</option> }
+                </select>
+              </div>
+              <div class="field">
+                <label class="field__label">Gravité</label>
+                <select class="input select" [(ngModel)]="form.gravite" name="gravite">
+                  <option value="">—</option>
+                  @for (g of gravites; track g) { <option [value]="g">{{ joliLabel(g) }}</option> }
+                </select>
+              </div>
+              <div class="field">
+                <label class="field__label">Cause probable</label>
+                <select class="input select" [(ngModel)]="form.causeProbable" name="cause">
+                  <option value="">—</option>
+                  @for (c of causes; track c) { <option [value]="c">{{ joliLabel(c) }}</option> }
+                </select>
+              </div>
+              <div class="field span2">
+                <label class="field__label">Commentaire</label>
+                <input class="input" [(ngModel)]="form.commentaire" name="commentaire" placeholder="Observations…">
+              </div>
+            </div>
+            <label style="display:inline-flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;margin-top:8px">
+              <input type="checkbox" [(ngModel)]="form.recidive" name="recidive" style="accent-color:var(--green-600)">
+              Récidive
+            </label>
+            <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:14px">
+              <button type="button" class="btn btn--secondary" (click)="annuler()">Annuler</button>
+              <button type="submit" class="btn btn--primary" [disabled]="saving() || !form.joueurId || !form.dateBlessure">
+                {{ saving() ? 'Enregistrement…' : (editingId() ? 'Enregistrer' : 'Déclarer') }}
+              </button>
+            </div>
+          </form>
+        }
+
+        @if (loading()) {
+          <div class="loading">Chargement…</div>
+        } @else if (blessures().length === 0) {
+          <div class="empty-state">Aucune blessure enregistrée.</div>
+        } @else {
+          <div class="blessures-grid">
+            @for (b of blessures(); track b.id) {
+              <div class="blessure-card" [class.blessure-card--retabli]="!b.enCours">
+                <div class="row row--between" style="margin-bottom:8px">
+                  <span class="blessure-card__joueur">{{ b.joueurPrenom }} {{ b.joueurNom }}</span>
+                  <span class="badge" [class]="b.statut === 'EN_REPRISE' ? 'badge--warn' : b.statut === 'RETABLI' ? 'badge--ok' : 'badge--bad'">
+                    {{ statutBlessureLabel(b.statut) }}
+                  </span>
+                </div>
+                <div class="row" style="gap:6px;flex-wrap:wrap;margin-bottom:8px">
+                  @if (b.gravite) { <span class="badge" [class]="graviteClass(b.gravite)">{{ joliLabel(b.gravite) }}</span> }
+                  @if (b.zoneCorporelle) { <span class="badge badge--neutral">{{ joliLabel(b.zoneCorporelle) }}</span> }
+                  @if (b.typeBlessure) { <span class="badge badge--neutral">{{ joliLabel(b.typeBlessure) }}</span> }
+                  @if (b.recidive) { <span class="badge badge--warn">récidive</span> }
+                </div>
+                <div class="blessure-card__info">
+                  <span class="info-label">Blessé le</span>
+                  <span>{{ b.dateBlessure | date:'dd/MM/yyyy' }}</span>
+                  @if (b.statut === 'RETABLI') {
+                    <span class="info-label">Retour effectif</span>
+                    <span>{{ b.dateRetourEffectif ? (b.dateRetourEffectif | date:'dd/MM/yyyy') : '—' }}</span>
+                  } @else {
+                    <span class="info-label">Retour prévu</span>
+                    <span>{{ b.dateRetourPrevue ? (b.dateRetourPrevue | date:'dd/MM/yyyy') : '—' }}</span>
+                  }
+                  @if (b.causeProbable) {
+                    <span class="info-label">Cause</span>
+                    <span>{{ joliLabel(b.causeProbable) }}</span>
+                  }
+                </div>
+                @if (b.commentaire) { <p class="blessure-card__comm">{{ b.commentaire }}</p> }
+                <div class="row" style="gap:6px;margin-top:10px;flex-wrap:wrap">
+                  <button class="btn btn--secondary btn--sm" [class.btn--dark]="suiviBlessure()?.id === b.id" (click)="ouvrirSuivi(b)">Suivi</button>
+                  @if (auth.canEcrireBlessures()) {
+                    <button class="btn btn--secondary btn--sm" (click)="editer(b)">Modifier</button>
+                    <button class="btn btn--danger btn--sm" (click)="supprimer(b)">Supprimer</button>
+                  }
+                </div>
+              </div>
+            }
+          </div>
+        }
+      </div>
+    </div>
+
+    <!-- Suivi d'une blessure (journal + RTP) -->
+    @if (suiviBlessure(); as b) {
+      <div class="card">
+        <div class="card__header">
+          <h3 class="card__title">
+            Suivi — {{ b.joueurPrenom }} {{ b.joueurNom }}
+            <span class="card__sub" style="margin-left:8px">{{ joliLabel(b.zoneCorporelle) }} · {{ statutBlessureLabel(b.statut) }}</span>
+          </h3>
+          <button class="btn btn--secondary btn--sm" (click)="fermerSuivi()">Fermer</button>
+        </div>
+        <div class="card__body">
+          <div class="suivi-cols">
+            <div>
+              <div class="row row--between" style="margin-bottom:10px">
+                <p class="section-title">Protocole de reprise</p>
+                @if (rtp().length > 0 && auth.canEcrireBlessures()) {
+                  <button class="btn btn--danger btn--sm" (click)="supprimerRtp()">Réinitialiser</button>
+                }
+              </div>
+              @if (rtp().length === 0) {
+                <div class="empty-state" style="padding:24px 0">Aucun protocole.</div>
+                @if (auth.canEcrireBlessures()) {
+                  <button class="btn btn--primary btn--sm" (click)="initRtp()">Démarrer un protocole</button>
+                }
+              } @else {
+                <div class="rtp-progress">
+                  <div class="rtp-barre"><span [style.width.%]="rtpProgression"></span></div>
+                  <span class="rtp-pct">{{ rtpProgression }}%</span>
+                </div>
+                <ol class="rtp-etapes">
+                  @for (e of rtp(); track e.id) {
+                    <li class="rtp-etape" [class]="etapeClass(e.statut)">
+                      <button class="rtp-puce" [disabled]="!auth.canEcrireBlessures()" (click)="cyclerEtape(e)" [title]="ETAPE_LABELS[e.statut]">
+                        {{ e.statut === 'VALIDEE' ? '✓' : e.statut === 'EN_COURS' ? '•' : '' }}
+                      </button>
+                      <span class="rtp-libelle">{{ e.libelle }}</span>
+                      @if (e.dateValidation) { <span style="font-size:11px;color:var(--text-3)">{{ e.dateValidation | date:'dd/MM' }}</span> }
+                    </li>
+                  }
+                </ol>
+              }
+            </div>
+            <div>
+              <p class="section-title" style="margin-bottom:10px">Journal</p>
+              @if (auth.canEcrireBlessures()) {
+                <div class="row" style="gap:8px;margin-bottom:12px">
+                  <input class="input" style="flex:1" [ngModel]="noteTexte()" (ngModelChange)="noteTexte.set($event)" placeholder="Soin, observation…" (keyup.enter)="ajouterNote()">
+                  <button class="btn btn--primary btn--sm" [disabled]="!noteTexte().trim()" (click)="ajouterNote()">Ajouter</button>
+                </div>
+              }
+              @if (notes().length === 0) {
+                <div class="empty-state" style="padding:24px 0">Aucune note.</div>
+              } @else {
+                <div class="notes-liste">
+                  @for (n of notes(); track n.id) {
+                    <div class="note-ligne">
+                      <span class="note-ligne__date">{{ n.date | date:'dd/MM/yyyy' }}</span>
+                      <span class="note-ligne__texte">{{ n.texte }}</span>
                       @if (auth.canEcrireBlessures()) {
-                        <button class="btn-mini" (click)="convertirGeneEnBlessure(g)">+ Blessure</button>
+                        <button class="btn btn--danger btn--sm btn--icon" (click)="supprimerNote(n)">✕</button>
                       }
                     </div>
                   }
                 </div>
               }
             </div>
-          </section>
-        }
-
-        @if (retoursEnRetard.length > 0) {
-          <section class="alerte-section">
-            <h4 class="alerte-titre rouge">⏰ Retours en retard <span class="al-compte">{{ retoursEnRetard.length }}</span></h4>
-            <div class="alerte-cards">
-              @for (b of retoursEnRetard; track b.id) {
-                <div class="alerte-card sev-rouge">
-                  <div class="ac-head">
-                    <span class="ac-joueur">{{ b.joueurPrenom }} {{ b.joueurNom }}</span>
-                    <span class="inf-jours retard">+{{ -joursAvantRetour(b.dateRetourPrevue)! }}j</span>
-                  </div>
-                  <div class="ac-corps">{{ joliLabel(b.zoneCorporelle) }}</div>
-                  <div class="ac-meta">prévu {{ b.dateRetourPrevue | date:'dd/MM' }}</div>
-                  <div class="ac-actions">
-                    <button class="btn-mini" [routerLink]="['/joueurs', b.joueurId]">Fiche</button>
-                    @if (auth.canEcrireBlessures()) {
-                      <button class="btn-mini" (click)="editer(b)">Mettre à jour</button>
-                    }
-                  </div>
-                </div>
-              }
-            </div>
-          </section>
-        }
-
-        @if (retoursImminents.length > 0) {
-          <section class="alerte-section">
-            <h4 class="alerte-titre orange">📅 Retours imminents (7 j) <span class="al-compte">{{ retoursImminents.length }}</span></h4>
-            <div class="alerte-cards">
-              @for (b of retoursImminents; track b.id) {
-                <div class="alerte-card sev-orange">
-                  <div class="ac-head">
-                    <span class="ac-joueur">{{ b.joueurPrenom }} {{ b.joueurNom }}</span>
-                    <span class="inf-jours">J−{{ joursAvantRetour(b.dateRetourPrevue) }}</span>
-                  </div>
-                  <div class="ac-corps">{{ joliLabel(b.zoneCorporelle) }}</div>
-                  <div class="ac-meta">prévu {{ b.dateRetourPrevue | date:'dd/MM' }}</div>
-                  <div class="ac-actions">
-                    <button class="btn-mini" [routerLink]="['/joueurs', b.joueurId]">Fiche</button>
-                  </div>
-                </div>
-              }
-            </div>
-          </section>
-        }
-
-        @if (joueursRisqueEleve.length > 0) {
-          <section class="alerte-section">
-            <h4 class="alerte-titre orange">📈 Risque / fatigue élevés <span class="al-compte">{{ joueursRisqueEleve.length }}</span></h4>
-            <div class="alerte-cards">
-              @for (j of joueursRisqueEleve; track j.joueur_id) {
-                <div class="alerte-card sev-orange">
-                  <div class="ac-head">
-                    <span class="ac-joueur">{{ j.prenom }} {{ j.nom }}</span>
-                  </div>
-                  <div class="ac-corps ac-badges">
-                    @if (j.niveau_risque === 'ELEVE') { <span class="score-badge score-bas">risque {{ j.score_risque }}</span> }
-                    @if (j.niveau_fatigue === 'ALERTE') { <span class="score-badge score-bas">fatigue</span> }
-                  </div>
-                  <div class="ac-actions">
-                    <button class="btn-mini" [routerLink]="['/joueurs', j.joueur_id]">Fiche</button>
-                  </div>
-                </div>
-              }
-            </div>
-          </section>
-        }
-
-      </mat-card-content>
-    </mat-card>
+          </div>
+        </div>
+      </div>
+    }
   }
 
-  <!-- ── Historique des gênes (médical / préparateur) ── -->
-  @if (peutVoirHistoriqueGenes && genesHistorique.length > 0) {
-    <mat-card class="carte-alertes">
-      <mat-card-header class="card-head">
-        <mat-card-title>🗂️ Historique des gênes <span class="al-compte">{{ genesHistorique.length }}</span></mat-card-title>
-      </mat-card-header>
-      <mat-card-content>
-        <div class="alerte-cards">
-          @for (g of genesHistorique; track g.id) {
-            <div class="alerte-card" [class.sev-bleu]="g.geneResolution === 'CONVERTIE'">
-              <div class="ac-head">
-                <span class="ac-joueur">{{ g.joueurPrenom }} {{ g.joueurNom }}</span>
-                <span class="score-badge">{{ g.geneIntensite }}/5</span>
-              </div>
-              <div class="ac-corps">{{ joliLabel(g.geneZone) }}</div>
-              <div class="ac-meta">{{ momentGeneLabel(g.geneMoment) }} · signalée {{ g.date | date:'dd/MM' }}</div>
-              <div class="ac-meta">
-                <strong>{{ resolutionGeneLabel(g.geneResolution) }}</strong>
-                @if (g.geneTraiteeLe) { · le {{ g.geneTraiteeLe | date:'dd/MM' }} }
-              </div>
-              @if (peutRouvrirGene) {
-                <div class="ac-actions">
-                  <button class="btn-mini" (click)="rouvrirGene(g)">Rouvrir</button>
-                </div>
-              }
-            </div>
-          }
-        </div>
-      </mat-card-content>
-    </mat-card>
-  }
-
-  <!-- ── Infirmerie : effectif indisponible ── -->
-  <mat-card>
-    <mat-card-header class="card-head">
-      <mat-card-title>Infirmerie</mat-card-title>
-      <span class="infirmerie-compteurs">
-        <span class="cpt cpt-indispo">{{ nbIndisponibles }} indispo.</span>
-        <span class="cpt cpt-reprise">{{ nbEnReprise }} en reprise</span>
-      </span>
-    </mat-card-header>
-    <mat-card-content>
-      @if (infirmerie.length === 0) {
-        <p class="empty-state">Aucun joueur à l'infirmerie. 💪</p>
-      } @else {
-        <div class="infirmerie-liste">
-          @for (b of infirmerie; track b.id) {
-            <div class="infirmerie-ligne">
-              <span class="inf-joueur">{{ b.joueurPrenom }} {{ b.joueurNom }}</span>
-              <span class="statut-pill" [class]="statutBlessureClass(b.statut)">{{ statutBlessureLabel(b.statut) }}</span>
-              <span class="inf-zone">{{ joliLabel(b.zoneCorporelle) }} <small>{{ joliLabel(b.typeBlessure) }}</small></span>
-              <span class="inf-retour">
-                @if (b.dateRetourPrevue) {
-                  retour {{ b.dateRetourPrevue | date:'dd/MM' }}
-                  @if (joursAvantRetour(b.dateRetourPrevue) !== null) {
-                    @if (joursAvantRetour(b.dateRetourPrevue)! >= 0) {
-                      <span class="inf-jours">J−{{ joursAvantRetour(b.dateRetourPrevue) }}</span>
-                    } @else {
-                      <span class="inf-jours retard">+{{ -joursAvantRetour(b.dateRetourPrevue)! }}j</span>
-                    }
-                  }
-                } @else { <span class="inf-jours">retour non estimé</span> }
-              </span>
-            </div>
-          }
-        </div>
-      }
-    </mat-card-content>
-  </mat-card>
-
-  <mat-card>
-    <mat-card-header class="card-head">
-      <mat-card-title>Blessures</mat-card-title>
-      @if (auth.canEcrireBlessures()) {
-        <button class="btn-dark-primary" (click)="showForm() ? annuler() : nouveau()">
-          {{ showForm() ? 'Annuler' : '+ Déclarer une blessure' }}
-        </button>
-      }
-    </mat-card-header>
-
-    <mat-card-content>
-
-      @if (showForm() && auth.canEcrireBlessures()) {
-        <form class="blessure-form" (ngSubmit)="enregistrer()">
-          <div class="form-grid">
-            <label class="f"><span>Joueur *</span>
-              <select class="param-input wide" [(ngModel)]="form.joueurId" name="joueur">
-                <option value="" disabled>Choisir…</option>
-                @for (j of joueurs(); track j.id) {
-                  <option [value]="j.id">{{ j.prenom }} {{ j.nom }}</option>
-                }
-              </select></label>
-            <label class="f"><span>Date de blessure *</span>
-              <input class="param-input wide" type="date" [(ngModel)]="form.dateBlessure" name="date"></label>
-            <label class="f"><span>Statut</span>
-              <select class="param-input wide" [(ngModel)]="form.statut" name="statut">
-                @for (s of STATUTS_BLESSURE; track s.val) { <option [value]="s.val">{{ s.label }}</option> }
-              </select></label>
-            <label class="f"><span>Retour prévu</span>
-              <input class="param-input wide" type="date" [(ngModel)]="form.dateRetourPrevue" name="retourPrevu"></label>
-            <label class="f"><span>Retour effectif</span>
-              <input class="param-input wide" type="date" [(ngModel)]="form.dateRetourEffectif" name="retour"></label>
-            <label class="f"><span>Type</span>
-              <select class="param-input wide" [(ngModel)]="form.typeBlessure" name="type">
-                <option value="">—</option>
-                @for (t of types; track t) { <option [value]="t">{{ joliLabel(t) }}</option> }
-              </select></label>
-            <label class="f"><span>Zone</span>
-              <select class="param-input wide" [(ngModel)]="form.zoneCorporelle" name="zone">
-                <option value="">—</option>
-                @for (z of zones; track z) { <option [value]="z">{{ joliLabel(z) }}</option> }
-              </select></label>
-            <label class="f"><span>Côté</span>
-              <select class="param-input wide" [(ngModel)]="form.cote" name="cote">
-                <option value="">—</option>
-                @for (c of cotes; track c) { <option [value]="c">{{ joliLabel(c) }}</option> }
-              </select></label>
-            <label class="f"><span>Gravité</span>
-              <select class="param-input wide" [(ngModel)]="form.gravite" name="gravite">
-                <option value="">—</option>
-                @for (g of gravites; track g) { <option [value]="g">{{ joliLabel(g) }}</option> }
-              </select></label>
-            <label class="f"><span>Cause probable</span>
-              <select class="param-input wide" [(ngModel)]="form.causeProbable" name="cause">
-                <option value="">—</option>
-                @for (c of causes; track c) { <option [value]="c">{{ joliLabel(c) }}</option> }
-              </select></label>
-            <label class="f check"><input type="checkbox" [(ngModel)]="form.recidive" name="recidive"> <span>Récidive</span></label>
-          </div>
-          <label class="f"><span>Commentaire</span>
-            <input class="param-input wide" [(ngModel)]="form.commentaire" name="commentaire" placeholder="Observations…"></label>
-          <div class="form-actions">
-            <button type="submit" class="btn-dark-primary" [disabled]="saving() || !form.joueurId || !form.dateBlessure">
-              {{ saving() ? 'Enregistrement…' : (editingId() ? 'Enregistrer' : 'Déclarer') }}
-            </button>
-          </div>
-        </form>
-      }
-
-      @if (loading()) {
-        <p class="empty-state">Chargement…</p>
-      } @else if (blessures().length === 0) {
-        <p class="empty-state">Aucune blessure enregistrée.</p>
-      } @else {
-        <div class="blessures-grid">
-          @for (b of blessures(); track b.id) {
-            <div class="blessure-card" [class.retabli]="!b.enCours">
-              <div class="blessure-head">
-                <span class="blessure-joueur">{{ b.joueurPrenom }} {{ b.joueurNom }}</span>
-                <span class="statut-pill" [class]="statutBlessureClass(b.statut)">{{ statutBlessureLabel(b.statut) }}</span>
-              </div>
-              <div class="blessure-tags">
-                @if (b.gravite) { <span class="g-badge" [class]="graviteClass(b.gravite)">{{ joliLabel(b.gravite) }}</span> }
-                @if (b.zoneCorporelle) { <span class="tag">{{ joliLabel(b.zoneCorporelle) }}</span> }
-                @if (b.typeBlessure) { <span class="tag">{{ joliLabel(b.typeBlessure) }}</span> }
-                @if (b.cote) { <span class="tag">{{ joliLabel(b.cote) }}</span> }
-                @if (b.recidive) { <span class="tag tag-recidive">récidive</span> }
-              </div>
-              <div class="blessure-info">
-                <span class="info-label">Blessé le</span><span>{{ b.dateBlessure | date:'dd/MM/yyyy' }}</span>
-                @if (b.statut === 'RETABLI') {
-                  <span class="info-label">Retour</span><span>{{ b.dateRetourEffectif ? (b.dateRetourEffectif | date:'dd/MM/yyyy') : '—' }}</span>
-                } @else {
-                  <span class="info-label">Retour prévu</span><span>{{ b.dateRetourPrevue ? (b.dateRetourPrevue | date:'dd/MM/yyyy') : '—' }}</span>
-                }
-                @if (b.causeProbable) { <span class="info-label">Cause</span><span>{{ joliLabel(b.causeProbable) }}</span> }
-              </div>
-              @if (b.commentaire) { <p class="blessure-comm">{{ b.commentaire }}</p> }
-              <div class="blessure-actions">
-                <button class="btn-mini" [class.actif]="suiviBlessure()?.id === b.id" (click)="ouvrirSuivi(b)">Suivi</button>
-                @if (auth.canEcrireBlessures()) {
-                  <button class="btn-mini" (click)="editer(b)">Modifier</button>
-                  <button class="btn-mini danger" (click)="supprimer(b)">Supprimer</button>
-                }
-              </div>
-            </div>
-          }
-        </div>
-      }
-
-    </mat-card-content>
-  </mat-card>
-
-  <!-- ── Suivi d'une blessure : journal + protocole RTP ── -->
-  @if (suiviBlessure(); as b) {
-    <mat-card>
-      <mat-card-header class="card-head">
-        <mat-card-title>Suivi — {{ b.joueurPrenom }} {{ b.joueurNom }}
-          <small class="suivi-sous">{{ joliLabel(b.zoneCorporelle) }} · {{ statutBlessureLabel(b.statut) }}</small>
-        </mat-card-title>
-        <button class="btn-mini" (click)="fermerSuivi()">Fermer</button>
-      </mat-card-header>
-
-      <mat-card-content>
-        <div class="suivi-grid">
-
-          <!-- Protocole de retour au jeu -->
-          <div class="suivi-col">
-            <div class="rtp-head">
-              <h4 class="suivi-titre">Protocole de reprise</h4>
-              @if (rtp().length > 0 && auth.canEcrireBlessures()) {
-                <button class="lien lien-danger" (click)="supprimerRtp()">Réinitialiser</button>
-              }
-            </div>
-
-            @if (rtp().length === 0) {
-              <p class="empty-state">Aucun protocole.</p>
-              @if (auth.canEcrireBlessures()) {
-                <button class="btn-dark-primary" (click)="initRtp()">Démarrer un protocole</button>
-              }
+  <!-- ═══════════════════════════════════════
+       SECTION : SUIVI SUBJECTIF
+       ═══════════════════════════════════════ -->
+  @if (section() === 'suivi') {
+    <div class="card">
+      <div class="card__header">
+        <h3 class="card__title">Ressenti &amp; charge perçue</h3>
+        <select class="input select" style="max-width:200px" [ngModel]="filtreJoueurSuivi()" (ngModelChange)="onFiltreJoueurSuivi($event)" name="filtreSuivi">
+          <option value="">Tous les joueurs</option>
+          @for (j of joueurs(); track j.id) { <option [value]="j.id">{{ j.prenom }} {{ j.nom }}</option> }
+        </select>
+      </div>
+      <div class="card__body">
+        <div class="suivi-cols">
+          <div>
+            <p class="section-title" style="margin-bottom:10px">Ressenti (wellness)</p>
+            @if (wellness().length === 0) {
+              <div class="empty-state">Aucune saisie.</div>
             } @else {
-              <div class="rtp-progress">
-                <div class="rtp-barre"><span [style.width.%]="rtpProgression"></span></div>
-                <span class="rtp-pct">{{ rtpProgression }}%</span>
-              </div>
-              <ol class="rtp-etapes">
-                @for (e of rtp(); track e.id) {
-                  <li class="rtp-etape" [class]="etapeClass(e.statut)">
-                    <button class="rtp-puce"
-                            [disabled]="!auth.canEcrireBlessures()"
-                            (click)="cyclerEtape(e)"
-                            [title]="ETAPE_LABELS[e.statut]">
-                      {{ e.statut === 'VALIDEE' ? '✓' : e.statut === 'EN_COURS' ? '•' : '' }}
-                    </button>
-                    <span class="rtp-libelle">{{ e.libelle }}</span>
-                    @if (e.dateValidation) { <span class="rtp-date">{{ e.dateValidation | date:'dd/MM' }}</span> }
-                  </li>
-                }
-              </ol>
-            }
-          </div>
-
-          <!-- Journal d'évolution -->
-          <div class="suivi-col">
-            <h4 class="suivi-titre">Journal</h4>
-            @if (auth.canEcrireBlessures()) {
-              <div class="note-form">
-                <input class="param-input" [ngModel]="noteTexte()" (ngModelChange)="noteTexte.set($event)"
-                       placeholder="Soin, observation…" (keyup.enter)="ajouterNote()">
-                <button class="btn-mini" [disabled]="!noteTexte().trim()" (click)="ajouterNote()">Ajouter</button>
-              </div>
-            }
-            @if (notes().length === 0) {
-              <p class="empty-state">Aucune note.</p>
-            } @else {
-              <div class="note-liste">
-                @for (n of notes(); track n.id) {
-                  <div class="note-ligne">
-                    <span class="ligne-date">{{ n.date | date:'dd/MM/yyyy' }}</span>
-                    <span class="note-texte">{{ n.texte }}</span>
-                    @if (auth.canEcrireBlessures()) {
-                      <button class="lien lien-danger" (click)="supprimerNote(n)">✕</button>
-                    }
+              <div class="suivi-liste">
+                @for (w of wellness().slice(0, 20); track w.id) {
+                  <div class="suivi-ligne">
+                    <span class="suivi-ligne__date">{{ w.date | date:'dd/MM' }}</span>
+                    @if (!filtreJoueurSuivi()) { <span class="suivi-ligne__joueur">{{ w.joueurPrenom }} {{ w.joueurNom }}</span> }
+                    <span class="score-badge" [class]="scoreClass(w.scoreBienEtre)">{{ w.scoreBienEtre }}</span>
+                    <span class="suivi-detail">
+                      @for (item of WELLNESS_ITEMS; track item.key) {
+                        <span class="mini">{{ item.label.charAt(0) }}{{ w[item.key] }}</span>
+                      }
+                    </span>
+                    @if (w.commentaire) { <span title="{{ w.commentaire }}" style="cursor:help">💬</span> }
                   </div>
                 }
               </div>
             }
           </div>
-
+          <div>
+            <p class="section-title" style="margin-bottom:10px">Charge perçue (RPE)</p>
+            @if (rpe().length === 0) {
+              <div class="empty-state">Aucune saisie.</div>
+            } @else {
+              <div class="suivi-liste">
+                @for (r of rpe().slice(0, 20); track r.id) {
+                  <div class="suivi-ligne">
+                    <span class="suivi-ligne__date">{{ r.date | date:'dd/MM' }}</span>
+                    @if (!filtreJoueurSuivi()) { <span class="suivi-ligne__joueur">{{ r.joueurPrenom }} {{ r.joueurNom }}</span> }
+                    <span class="score-badge" [class]="rpeClass(r.rpe)">{{ r.rpe }}</span>
+                    <span class="suivi-detail">
+                      <span class="mini">{{ r.seanceType === 'TECHNIQUE' ? 'Tech' : 'Phys' }}</span>
+                      @if (r.charge != null) { <span class="mini">charge {{ r.charge }}</span> }
+                    </span>
+                  </div>
+                }
+              </div>
+            }
+          </div>
         </div>
-      </mat-card-content>
-    </mat-card>
+      </div>
+    </div>
   }
 
-  <mat-card>
-    <mat-card-header class="card-head">
-      <mat-card-title>Documents médicaux</mat-card-title>
-      <select class="param-input" [ngModel]="filtreJoueurDoc()" (ngModelChange)="onFiltreJoueurDoc($event)" name="filtreDoc">
-        <option value="">Tous les joueurs</option>
-        @for (j of joueurs(); track j.id) {
-          <option [value]="j.id">{{ j.prenom }} {{ j.nom }}</option>
-        }
-      </select>
-    </mat-card-header>
+  <!-- ═══════════════════════════════════════
+       SECTION : BILAN BLESSURES
+       ═══════════════════════════════════════ -->
+  @if (section() === 'bilan') {
+    <div class="card">
+      <div class="card__header"><h3 class="card__title">Bilan blessures</h3></div>
+      <div class="card__body">
+        @if (statsTotal === 0) {
+          <div class="empty-state">Aucune blessure enregistrée.</div>
+        } @else {
+          <div class="bilan-kpis">
+            <div class="card kpi" style="padding:14px 16px">
+              <div class="kpi__label">Total</div>
+              <div class="kpi__value">{{ statsTotal }}</div>
+            </div>
+            <div class="card kpi" style="padding:14px 16px">
+              <div class="kpi__label">En cours</div>
+              <div class="kpi__value">{{ statsEnCours }}</div>
+            </div>
+            <div class="card kpi" style="padding:14px 16px">
+              <div class="kpi__label">Récidives</div>
+              <div class="kpi__value">{{ statsRecidivePct }}<span class="unit"> %</span></div>
+            </div>
+            <div class="card kpi" style="padding:14px 16px">
+              <div class="kpi__label">Jours perdus</div>
+              <div class="kpi__value">{{ statsJoursPerdus }}</div>
+            </div>
+          </div>
 
-    <mat-card-content>
-      @if (documents().length === 0) {
-        <p class="empty-state">Aucun document accessible.</p>
-      } @else {
-        <div class="docs-liste">
+          <div class="bilan-cols" style="margin-top:20px">
+            <div>
+              <p class="section-title" style="margin-bottom:10px">Par zone corporelle</p>
+              <div class="stack">
+                @for (z of statsParZone; track z.zone) {
+                  <div class="row" style="gap:10px;font-size:13px">
+                    <span style="min-width:140px;color:var(--text-2)">{{ joliLabel(z.zone) }}</span>
+                    <div class="zone-barre"><span [style.width.%]="z.count / statsZoneMax * 100"></span></div>
+                    <span class="num" style="font-weight:600;min-width:20px">{{ z.count }}</span>
+                  </div>
+                }
+              </div>
+            </div>
+            <div>
+              <p class="section-title" style="margin-bottom:10px">Par gravité</p>
+              <div class="stack" style="gap:8px">
+                <div class="row row--between" style="font-size:13px">
+                  <span class="badge badge--ok">Léger</span>
+                  <span class="num" style="font-weight:700">{{ statsParGravite.leger }}</span>
+                </div>
+                <div class="row row--between" style="font-size:13px">
+                  <span class="badge badge--warn">Modéré</span>
+                  <span class="num" style="font-weight:700">{{ statsParGravite.modere }}</span>
+                </div>
+                <div class="row row--between" style="font-size:13px">
+                  <span class="badge badge--bad">Grave</span>
+                  <span class="num" style="font-weight:700">{{ statsParGravite.grave }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        }
+      </div>
+    </div>
+  }
+
+  <!-- ═══════════════════════════════════════
+       SECTION : DOCUMENTS
+       ═══════════════════════════════════════ -->
+  @if (section() === 'documents') {
+    <div class="card">
+      <div class="card__header">
+        <h3 class="card__title">Documents médicaux</h3>
+        <select class="input select" style="max-width:200px" [ngModel]="filtreJoueurDoc()" (ngModelChange)="onFiltreJoueurDoc($event)" name="filtreDoc">
+          <option value="">Tous les joueurs</option>
+          @for (j of joueurs(); track j.id) { <option [value]="j.id">{{ j.prenom }} {{ j.nom }}</option> }
+        </select>
+      </div>
+      <div class="card__body card__body--flush">
+        @if (documents().length === 0) {
+          <div class="empty-state" style="padding:32px">Aucun document accessible.</div>
+        } @else {
           @for (d of documents(); track d.id) {
             <div class="doc-ligne">
-              <div class="doc-principal">
-                <span class="doc-joueur">{{ d.joueurPrenom }} {{ d.joueurNom }}</span>
-                <span class="doc-nom">{{ d.nomOriginal }}</span>
-                <span class="doc-meta">
-                  {{ categorieDocLabel(d.categorie) }} · {{ tailleLisible(d.tailleOctets) }} · {{ d.dateDepot | date:'dd/MM/yyyy' }}
-                </span>
-                @if (d.description) { <span class="doc-desc">{{ d.description }}</span> }
+              <div class="doc-ligne__info">
+                <span class="doc-ligne__joueur">{{ d.joueurPrenom }} {{ d.joueurNom }}</span>
+                <span class="doc-ligne__nom">{{ d.nomOriginal }}</span>
+                <span class="doc-ligne__meta">{{ categorieDocLabel(d.categorie) }} · {{ tailleLisible(d.tailleOctets) }} · {{ d.dateDepot | date:'dd/MM/yyyy' }}</span>
+                @if (d.description) { <span class="doc-ligne__desc">{{ d.description }}</span> }
                 @if (d.partageRoles.length) {
-                  <span class="doc-tags">
-                    @for (role of d.partageRoles; track role) { <span class="tag">{{ roleDocLabel(role) }}</span> }
-                  </span>
+                  <div class="row" style="gap:4px;flex-wrap:wrap">
+                    @for (role of d.partageRoles; track role) { <span class="badge badge--neutral">{{ roleDocLabel(role) }}</span> }
+                  </div>
                 }
               </div>
-              <div class="doc-actions">
-                <button class="btn-mini" (click)="telechargerDoc(d)">Télécharger</button>
+              <div class="row" style="gap:6px;flex-shrink:0">
+                <button class="btn btn--secondary btn--sm" (click)="telechargerDoc(d)">Télécharger</button>
                 @if (auth.canEcrireBlessures()) {
-                  <button class="btn-mini danger" (click)="supprimerDoc(d)">Supprimer</button>
+                  <button class="btn btn--danger btn--sm" (click)="supprimerDoc(d)">Supprimer</button>
                 }
               </div>
             </div>
           }
-        </div>
-      }
-    </mat-card-content>
-  </mat-card>
-
-  <mat-card>
-    <mat-card-header class="card-head">
-      <mat-card-title>Suivi subjectif — ressenti & charge</mat-card-title>
-      <select class="param-input" [ngModel]="filtreJoueurSuivi()" (ngModelChange)="onFiltreJoueurSuivi($event)" name="filtreSuivi">
-        <option value="">Tous les joueurs</option>
-        @for (j of joueurs(); track j.id) {
-          <option [value]="j.id">{{ j.prenom }} {{ j.nom }}</option>
         }
-      </select>
-    </mat-card-header>
-
-    <mat-card-content>
-      <div class="suivi-grid">
-
-        <div class="suivi-col">
-          <h4 class="suivi-titre">Ressenti (wellness)</h4>
-          @if (wellness().length === 0) {
-            <p class="empty-state">Aucune saisie.</p>
-          } @else {
-            <div class="suivi-liste">
-              @for (w of wellness().slice(0, 20); track w.id) {
-                <div class="suivi-ligne">
-                  <span class="ligne-date">{{ w.date | date:'dd/MM' }}</span>
-                  @if (!filtreJoueurSuivi()) { <span class="suivi-joueur">{{ w.joueurPrenom }} {{ w.joueurNom }}</span> }
-                  <span class="score-badge" [class]="scoreClass(w.scoreBienEtre)">{{ w.scoreBienEtre }}</span>
-                  <span class="suivi-detail">
-                    @for (item of WELLNESS_ITEMS; track item.key) {
-                      <span class="mini">{{ item.label.charAt(0) }}{{ w[item.key] }}</span>
-                    }
-                  </span>
-                  @if (w.commentaire) { <span class="suivi-comm" [title]="w.commentaire">💬</span> }
-                </div>
-              }
-            </div>
-          }
-        </div>
-
-        <div class="suivi-col">
-          <h4 class="suivi-titre">Charge perçue (RPE)</h4>
-          @if (rpe().length === 0) {
-            <p class="empty-state">Aucune saisie.</p>
-          } @else {
-            <div class="suivi-liste">
-              @for (r of rpe().slice(0, 20); track r.id) {
-                <div class="suivi-ligne">
-                  <span class="ligne-date">{{ r.date | date:'dd/MM' }}</span>
-                  @if (!filtreJoueurSuivi()) { <span class="suivi-joueur">{{ r.joueurPrenom }} {{ r.joueurNom }}</span> }
-                  <span class="score-badge" [class]="rpeClass(r.rpe)">{{ r.rpe }}</span>
-                  <span class="suivi-detail">
-                    <span class="mini tag-mini">{{ r.seanceType === 'TECHNIQUE' ? 'Tech' : 'Phys' }}</span>
-                    @if (r.charge != null) { <span class="mini">charge {{ r.charge }}</span> }
-                  </span>
-                </div>
-              }
-            </div>
-          }
-        </div>
-
       </div>
-    </mat-card-content>
-  </mat-card>
+    </div>
+  }
 
-  <!-- ── Bilan blessures ── -->
-  <mat-card>
-    <mat-card-header class="card-head">
-      <mat-card-title>Bilan blessures</mat-card-title>
-    </mat-card-header>
-    <mat-card-content>
-      @if (statsTotal === 0) {
-        <p class="empty-state">Aucune blessure enregistrée.</p>
-      } @else {
-        <div class="bilan-tuiles">
-          <div class="tuile"><span class="tuile-val">{{ statsTotal }}</span><span class="tuile-lbl">Total</span></div>
-          <div class="tuile"><span class="tuile-val">{{ statsEnCours }}</span><span class="tuile-lbl">En cours</span></div>
-          <div class="tuile"><span class="tuile-val">{{ statsRecidivePct }}%</span><span class="tuile-lbl">Récidives</span></div>
-          <div class="tuile"><span class="tuile-val">{{ statsJoursPerdus }}</span><span class="tuile-lbl">Jours perdus</span></div>
-        </div>
-
-        <div class="bilan-grid">
-          <div class="bilan-col">
-            <h4 class="suivi-titre">Par zone corporelle</h4>
-            <div class="zone-liste">
-              @for (z of statsParZone; track z.zone) {
-                <div class="zone-ligne">
-                  <span class="zone-nom">{{ joliLabel(z.zone) }}</span>
-                  <div class="zone-barre"><span [style.width.%]="z.count / statsZoneMax * 100"></span></div>
-                  <span class="zone-count">{{ z.count }}</span>
-                </div>
-              }
-            </div>
-          </div>
-
-          <div class="bilan-col">
-            <h4 class="suivi-titre">Par gravité</h4>
-            <div class="gravite-tuiles">
-              <div class="tuile g-leger"><span class="tuile-val">{{ statsParGravite.leger }}</span><span class="tuile-lbl">Léger</span></div>
-              <div class="tuile g-modere"><span class="tuile-val">{{ statsParGravite.modere }}</span><span class="tuile-lbl">Modéré</span></div>
-              <div class="tuile g-grave"><span class="tuile-val">{{ statsParGravite.grave }}</span><span class="tuile-lbl">Grave</span></div>
-            </div>
-          </div>
-        </div>
-      }
-    </mat-card-content>
-  </mat-card>
 </div>

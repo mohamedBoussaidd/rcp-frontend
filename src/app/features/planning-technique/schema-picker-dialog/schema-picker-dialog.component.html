@@ -1,0 +1,32 @@
+<div class="picker">
+  <div class="picker__head">
+    <h2 class="picker__title">Importer un schéma</h2>
+    <button class="picker__close" (click)="annuler()" title="Fermer"><mat-icon>close</mat-icon></button>
+  </div>
+  <p class="picker__sub">Le schéma choisi est copié ici — le schéma de la bibliothèque reste intact.</p>
+
+  <div class="picker__body">
+    @if (loading()) {
+      <div class="picker__empty">Chargement…</div>
+    } @else if (schemas().length === 0) {
+      <div class="picker__empty"><mat-icon>sports_soccer</mat-icon><p>Aucun schéma dans la bibliothèque.</p></div>
+    } @else {
+      <div class="picker__grid">
+        @for (s of schemas(); track s.id) {
+          <button class="pick-card" (click)="choisir(s)">
+            <div class="pick-card__thumb">
+              @if (s.apercu) { <img [src]="s.apercu" [alt]="s.nom" /> }
+              @else { <div class="pick-card__noimg"><mat-icon>sports_soccer</mat-icon></div> }
+            </div>
+            <div class="pick-card__body">
+              <span class="pick-card__name">{{ s.nom }}</span>
+              <span class="pick-card__meta">
+                @if (s.categorie) { {{ label(s.categorie) }} · }{{ s.updatedAt | date:'dd/MM/yyyy' }}
+              </span>
+            </div>
+          </button>
+        }
+      </div>
+    }
+  </div>
+</div>

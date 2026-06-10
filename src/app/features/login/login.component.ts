@@ -17,6 +17,7 @@ export class LoginComponent {
   motDePasse = '';
   loading = signal(false);
   erreur = signal<string | null>(null);
+  showPwd = signal(false);
 
   constructor(private auth: AuthService, private router: Router) {
     // Déjà connecté : on saute directement à l'accueil du rôle

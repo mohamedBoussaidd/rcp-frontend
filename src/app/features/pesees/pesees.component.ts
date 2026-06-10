@@ -2,7 +2,6 @@ import { Component, OnInit } from '@angular/core';
 import { Router } from '@angular/router';
 import { PeseesService, PoidsFicheJoueur } from '../../core/services/pesees.service';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { MatToolbar } from '@angular/material/toolbar';
 import { MatCard, MatCardContent, MatCardHeader, MatCardTitle } from '@angular/material/card';
 import {
   MatTable, MatColumnDef, MatHeaderCellDef, MatHeaderCell,
@@ -25,7 +24,7 @@ interface LignePesee extends PoidsFicheJoueur {
   templateUrl: './pesees.component.html',
   styleUrl: './pesees.component.scss',
   imports: [
-    MatToolbar, MatCard, MatCardContent, MatCardHeader, MatCardTitle,
+    MatCard, MatCardContent, MatCardHeader, MatCardTitle,
     MatTable, MatColumnDef, MatHeaderCellDef, MatHeaderCell,
     MatCellDef, MatCell, MatHeaderRowDef, MatHeaderRow, MatRowDef, MatRow,
     MatPaginator, FormsModule, DecimalPipe, DatePipe

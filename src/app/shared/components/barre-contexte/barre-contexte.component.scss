@@ -1,75 +1,90 @@
-.barre-contexte {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 10px;
-  padding: 8px 16px;
-  margin-bottom: 14px;
-  border: 1px solid var(--border);
-  border-left: 3px solid var(--info);
-  border-radius: 10px;
-  background: var(--surface-2);
-  font-size: 0.9rem;
-}
+/* Context pills — rendus inline dans la navbar */
 
-.bc-pastille {
+.context-pill {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
+  padding: 6px 8px 6px 6px;
+  border-radius: var(--r-md);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  cursor: pointer;
+  transition: all 120ms var(--ease-out);
+  font-size: 13px;
+  font-weight: 500;
+  font-family: var(--font);
+  text-align: left;
+
+  &:hover { border-color: var(--border-strong); background: var(--surface-2); }
 }
 
-.bc-icon {
-  font-size: 18px;
-  width: 18px;
-  height: 18px;
-  opacity: 0.7;
-}
-
-.bc-label {
-  color: var(--text-muted);
-  text-transform: uppercase;
-  font-size: 0.72rem;
+.context-pill__crest {
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  background: var(--slate-700);
+  display: grid;
+  place-items: center;
+  font-weight: 700;
+  font-size: 9px;
+  color: white;
   letter-spacing: 0.04em;
+  flex-shrink: 0;
 }
 
-.bc-valeur {
+.context-pill__content {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.15;
+  gap: 1px;
+}
+
+.context-pill__label {
+  font-size: 10.5px;
+  color: var(--text-3);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.context-pill__value {
   color: var(--text);
+  white-space: nowrap;
+  max-width: 160px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 13px;
 }
 
-.bc-sep {
-  color: var(--text-muted);
-}
-
-.bc-select {
-  padding: 4px 8px;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  background: var(--surface);
+.context-pill__select {
+  border: none;
+  background: transparent;
   color: var(--text);
-  font-size: 0.88rem;
+  font-size: 13px;
+  font-weight: 500;
+  font-family: var(--font);
   cursor: pointer;
+  outline: none;
+  padding: 0;
+  max-width: 160px;
+
+  option { background: var(--surface); color: var(--text); }
 }
 
-.bc-retour {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  margin-left: auto;
-  padding: 5px 10px;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  background: var(--surface);
-  color: var(--text);
-  cursor: pointer;
-  font-size: 0.85rem;
+.context-pill__chev {
+  font-size: 14px !important;
+  width: 14px !important;
+  height: 14px !important;
+  color: var(--text-3);
+  flex-shrink: 0;
+}
 
-  mat-icon {
-    font-size: 16px;
-    width: 16px;
-    height: 16px;
-  }
-
-  &:hover {
-    background: var(--surface-2);
-  }
+/* Mobile : crest + label masqués, pill compacte */
+@media (max-width: 768px) {
+  .context-pill__crest { display: none; }
+  .context-pill__label { display: none; }
+  .context-pill        { padding: 5px 8px; gap: 4px; }
+  .context-pill__value,
+  .context-pill__select { max-width: 100px; font-size: 12px; }
 }

@@ -1,0 +1,510 @@
+@if (!detail()) {
+
+  <!-- ════════════════ LISTE ════════════════ -->
+  <div class="page-head">
+    <div>
+      <h1 class="page-head__title">Match</h1>
+      <p class="page-head__sub">{{ matchs().length }} match{{ matchs().length > 1 ? 's' : '' }} · préparation &amp; débrief</p>
+    </div>
+    @if (!pasDEquipe()) {
+      <div class="page-head__actions">
+        <button class="btn btn--secondary" (click)="basculerStats()">
+          <mat-icon>leaderboard</mat-icon>{{ showStats() ? 'Masquer les stats' : 'Stats compo' }}
+        </button>
+        <button class="btn btn--primary" (click)="basculerCreate()">
+          <mat-icon>add</mat-icon>{{ showCreate() ? 'Annuler' : 'Nouveau match' }}
+        </button>
+      </div>
+    }
+  </div>
+
+  @if (showStats()) {
+    <div class="card card--padded" style="margin-bottom:16px">
+      <h2 class="block__titre">Apparitions par statut · tous les matchs</h2>
+      @if (stats().length === 0) {
+        <p class="vide">Aucune compo enregistrée pour le moment.</p>
+      } @else {
+        <div class="table-wrap">
+          <table class="charge-table">
+            <thead>
+              <tr><th>Joueur</th><th>Poste</th><th>Titul.</th><th>Rempl.</th><th>Réserve</th><th>Repos</th><th>Susp.</th><th>Total</th></tr>
+            </thead>
+            <tbody>
+              @for (s of stats(); track s.joueurId) {
+                <tr>
+                  <td>{{ s.prenom }} {{ s.nom }}</td>
+                  <td>{{ s.postePrincipal || '—' }}</td>
+                  <td>{{ s.titulaire }}</td>
+                  <td>{{ s.remplacant }}</td>
+                  <td>{{ s.reserve }}</td>
+                  <td>{{ s.repos }}</td>
+                  <td>{{ s.suspendu }}</td>
+                  <td style="font-weight:700">{{ s.total }}</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+    </div>
+  }
+
+  @if (showCreate()) {
+    <div class="card card--padded" style="margin-bottom:16px">
+      <form (ngSubmit)="creer()">
+        <div class="form-grid">
+          <div class="field">
+            <label class="field__label">Adversaire *</label>
+            <input class="input" [(ngModel)]="createForm.adversaire" name="adv" placeholder="FC Exemple">
+          </div>
+          <div class="field">
+            <label class="field__label">Date</label>
+            <input class="input" type="date" [(ngModel)]="createForm.dateMatch" name="date">
+          </div>
+          <div class="field">
+            <label class="field__label">Compétition</label>
+            <input class="input" [(ngModel)]="createForm.competition" name="comp" placeholder="Championnat">
+          </div>
+          <div class="field">
+            <label class="field__label">Lieu</label>
+            <select class="input select" [(ngModel)]="createForm.domicile" name="dom">
+              <option [ngValue]="true">Domicile</option>
+              <option [ngValue]="false">Extérieur</option>
+            </select>
+          </div>
+        </div>
+        <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:12px">
+          <button type="button" class="btn btn--secondary btn--sm" (click)="basculerCreate()">Annuler</button>
+          <button type="submit" class="btn btn--primary btn--sm" [disabled]="saving() || !createForm.adversaire.trim()">
+            {{ saving() ? '…' : 'Créer' }}
+          </button>
+        </div>
+      </form>
+    </div>
+  }
+
+  @if (loading()) {
+    <div class="card card--padded"><div class="loading">Chargement…</div></div>
+  } @else if (pasDEquipe()) {
+    <div class="card card--padded"><div class="empty-state">Sélectionnez une équipe pour accéder à ses matchs.</div></div>
+  } @else if (matchs().length === 0) {
+    <div class="card card--padded"><div class="empty-state">Aucun match. Créez le premier.</div></div>
+  } @else {
+    <div class="matchs-grid">
+      @for (m of matchs(); track m.id) {
+        <div class="match-card" (click)="ouvrir(m.id)">
+          <div class="row row--between">
+            <span class="match-card__adv">{{ m.adversaire }}</span>
+            <span class="badge" [class.badge--info]="m.domicile" [class.badge--neutral]="!m.domicile">
+              {{ m.domicile ? 'Domicile' : 'Extérieur' }}
+            </span>
+          </div>
+          <p class="match-card__meta">
+            @if (m.dateMatch) { {{ m.dateMatch | date:'dd/MM/yyyy' }} }@else { Date à définir }
+            @if (m.competition) { · {{ m.competition }} }
+          </p>
+          <div class="row" style="gap:6px;flex-wrap:wrap;margin-top:6px">
+            @if (m.resultat) {
+              <span class="badge"
+                [class.badge--ok]="m.resultat === 'VICTOIRE'"
+                [class.badge--danger]="m.resultat === 'DEFAITE'"
+                [class.badge--neutral]="m.resultat === 'NUL'">
+                {{ resultatLabel(m.resultat) }}@if (m.score) { · {{ m.score }} }
+              </span>
+            } @else {
+              <span class="badge badge--neutral">À débriefer</span>
+            }
+            @if (m.gpsLie) { <span class="badge badge--ok"><mat-icon class="i14">monitoring</mat-icon> GPS lié</span> }
+          </div>
+        </div>
+      }
+    </div>
+  }
+
+} @else {
+
+  <!-- ════════════════ DÉTAIL ════════════════ -->
+  <div class="page-head">
+    <div class="row" style="gap:10px;align-items:center">
+      <button class="btn btn--secondary btn--icon" (click)="fermer()" title="Retour"><mat-icon>arrow_back</mat-icon></button>
+      <div>
+        <h1 class="page-head__title">{{ detail()!.adversaire }}</h1>
+        <p class="page-head__sub">
+          {{ detail()!.domicile ? 'Domicile' : 'Extérieur' }}
+          @if (detail()!.dateMatch) { · {{ detail()!.dateMatch | date:'dd/MM/yyyy' }} }
+          @if (detail()!.competition) { · {{ detail()!.competition }} }
+        </p>
+      </div>
+    </div>
+    @if (modifiable()) {
+      <div class="page-head__actions">
+        <button class="btn btn--danger btn--sm" (click)="supprimer()"><mat-icon>delete</mat-icon>Supprimer</button>
+      </div>
+    }
+  </div>
+
+  <!-- Segmented control -->
+  <div class="segmented">
+    <button class="segmented__btn" [class.on]="onglet() === 'avant'" (click)="onglet.set('avant')">Avant — préparation</button>
+    <button class="segmented__btn" [class.on]="onglet() === 'apres'" (click)="onglet.set('apres')">Après — débrief</button>
+  </div>
+
+  <!-- ─────────── ONGLET AVANT ─────────── -->
+  @if (onglet() === 'avant') {
+
+    <!-- Ligne haute : Infos + Schémas côte à côte -->
+    <div class="avant-top">
+
+      <!-- Infos / consignes -->
+      <div class="card block">
+        <div class="block__head">
+          <h2 class="block__titre">Informations &amp; consignes</h2>
+          <button class="btn btn--ghost btn--sm btn--icon" (click)="basculerPanneau('infos')">
+            <mat-icon>{{ estOuvert('infos') ? 'expand_less' : 'expand_more' }}</mat-icon>
+          </button>
+        </div>
+        @if (estOuvert('infos')) {
+          <div class="block__body">
+            <div class="form-grid">
+              <div class="field">
+                <label class="field__label">Adversaire *</label>
+                <input class="input" [(ngModel)]="infosBuf.adversaire" name="iadv" [disabled]="!modifiable()">
+              </div>
+              <div class="field">
+                <label class="field__label">Date</label>
+                <input class="input" type="date" [(ngModel)]="infosBuf.dateMatch" name="idate" [disabled]="!modifiable()">
+              </div>
+              <div class="field">
+                <label class="field__label">Compétition</label>
+                <input class="input" [(ngModel)]="infosBuf.competition" name="icomp" [disabled]="!modifiable()">
+              </div>
+              <div class="field">
+                <label class="field__label">Lieu</label>
+                <select class="input select" [(ngModel)]="infosBuf.domicile" name="idom" [disabled]="!modifiable()">
+                  <option [ngValue]="true">Domicile</option>
+                  <option [ngValue]="false">Extérieur</option>
+                </select>
+              </div>
+              <div class="field span2">
+                <label class="field__label">Consignes</label>
+                <textarea class="input" [(ngModel)]="infosBuf.consignes" name="icons" rows="4"
+                          placeholder="Plan de match, points clés…" [disabled]="!modifiable()"></textarea>
+              </div>
+            </div>
+            @if (modifiable()) {
+              <div style="display:flex;justify-content:flex-end;margin-top:12px">
+                <button class="btn btn--primary btn--sm" [disabled]="savingInfos() || !infosBuf.adversaire.trim()" (click)="enregistrerInfos()">
+                  {{ savingInfos() ? '…' : 'Enregistrer' }}
+                </button>
+              </div>
+            }
+          </div>
+        }
+      </div>
+
+      <!-- Schémas adverses -->
+      <div class="card block">
+        <div class="block__head">
+          <h2 class="block__titre">Schémas adverses</h2>
+          <div class="row" style="gap:6px">
+            @if (modifiable() && estOuvert('schemas')) {
+              <button class="btn btn--secondary btn--sm" (click)="ajouterSchema()"><mat-icon>add</mat-icon>Ajouter</button>
+            }
+            <button class="btn btn--ghost btn--sm btn--icon" (click)="basculerPanneau('schemas')">
+              <mat-icon>{{ estOuvert('schemas') ? 'expand_less' : 'expand_more' }}</mat-icon>
+            </button>
+          </div>
+        </div>
+        @if (estOuvert('schemas')) {
+          <div class="block__body">
+            @if (detail()!.schemas.length === 0) {
+              <p class="vide">Aucun schéma adverse.</p>
+            } @else {
+              <div class="schemas-grid">
+                @for (s of detail()!.schemas; track s.id) {
+                  <div class="schema-card">
+                    @if (s.apercu) {
+                      <img class="schema-card__img" [src]="s.apercu" alt="Schéma" (click)="modifiable() && editerSchema(s)">
+                    } @else {
+                      <div class="schema-card__vide">Schéma</div>
+                    }
+                    @if (s.titre) { <p class="schema-card__titre">{{ s.titre }}</p> }
+                    @if (modifiable()) {
+                      <div class="row" style="gap:4px;justify-content:flex-end">
+                        <button class="btn btn--secondary btn--sm btn--icon" (click)="editerSchema(s)" title="Éditer">✎</button>
+                        <button class="btn btn--danger btn--sm btn--icon" (click)="supprimerSchema(s)" title="Supprimer">✕</button>
+                      </div>
+                    }
+                  </div>
+                }
+              </div>
+            }
+          </div>
+        }
+      </div>
+    </div>
+
+    <!-- Joueurs à surveiller -->
+    <div class="card block">
+      <div class="block__head">
+        <h2 class="block__titre">Joueurs à surveiller</h2>
+        <button class="btn btn--ghost btn--sm btn--icon" (click)="basculerPanneau('surveille')">
+          <mat-icon>{{ estOuvert('surveille') ? 'expand_less' : 'expand_more' }}</mat-icon>
+        </button>
+      </div>
+      @if (estOuvert('surveille')) {
+        <div class="block__body">
+          <div class="surveille-cols">
+            <div class="surveille-col">
+              <p class="compo-col__titre">Adversaire ({{ surveillesAdverses().length }})</p>
+              @for (s of surveillesAdverses(); track s.id) {
+                <div class="surveille-row">
+                  <div class="surveille-row__txt">
+                    <span class="surveille-row__nom">{{ s.nom }}</span>
+                    @if (s.note) { <span class="surveille-row__note">{{ s.note }}</span> }
+                  </div>
+                  @if (modifiable()) {
+                    <button class="btn btn--danger btn--sm btn--icon" (click)="supprimerSurveille(s)" title="Retirer">✕</button>
+                  }
+                </div>
+              }
+              @if (surveillesAdverses().length === 0) { <p class="vide">Aucun joueur adverse ciblé.</p> }
+            </div>
+            <div class="surveille-col">
+              <p class="compo-col__titre">Mon équipe ({{ surveillesEquipe().length }})</p>
+              @for (s of surveillesEquipe(); track s.id) {
+                <div class="surveille-row">
+                  <div class="surveille-row__txt">
+                    <span class="surveille-row__nom">{{ s.nom }}</span>
+                    @if (s.note) { <span class="surveille-row__note">{{ s.note }}</span> }
+                  </div>
+                  @if (modifiable()) {
+                    <button class="btn btn--danger btn--sm btn--icon" (click)="supprimerSurveille(s)" title="Retirer">✕</button>
+                  }
+                </div>
+              }
+              @if (surveillesEquipe().length === 0) { <p class="vide">Aucun de mes joueurs ciblé.</p> }
+            </div>
+          </div>
+
+          @if (modifiable()) {
+            <div class="surveille-form">
+              <select class="input select" [(ngModel)]="surveilleForm.cible" name="scible" style="max-width:150px">
+                <option value="ADVERSE">Adversaire</option>
+                <option value="EQUIPE">Mon équipe</option>
+              </select>
+              @if (surveilleForm.cible === 'EQUIPE') {
+                <select class="input select" [(ngModel)]="surveilleForm.joueurId" name="sjoueur" style="max-width:200px">
+                  <option value="">— Choisir un joueur —</option>
+                  @for (j of joueurs(); track j.id) { <option [value]="j.id">{{ j.prenom }} {{ j.nom }}</option> }
+                </select>
+              } @else {
+                <input class="input" [(ngModel)]="surveilleForm.nom" name="snom" placeholder="Nom / n° adverse" style="max-width:200px">
+              }
+              <input class="input" [(ngModel)]="surveilleForm.note" name="snote" placeholder="Note (ex. dangereux sur CPA)" style="flex:1;min-width:160px">
+              <button class="btn btn--primary btn--sm" [disabled]="savingSurveille()" (click)="ajouterSurveille()">
+                <mat-icon>add</mat-icon>Ajouter
+              </button>
+            </div>
+          }
+        </div>
+      }
+    </div>
+
+    <!-- Compo -->
+    <div class="card block">
+      <div class="block__head">
+        <h2 class="block__titre">Composition</h2>
+        <div class="row" style="gap:6px">
+          @if (modifiable() && estOuvert('compo')) {
+            <button class="btn btn--primary btn--sm" [disabled]="savingCompo()" (click)="enregistrerCompo()">
+              {{ savingCompo() ? '…' : 'Enregistrer la compo' }}
+            </button>
+          }
+          <button class="btn btn--ghost btn--sm btn--icon" (click)="basculerPanneau('compo')">
+            <mat-icon>{{ estOuvert('compo') ? 'expand_less' : 'expand_more' }}</mat-icon>
+          </button>
+        </div>
+      </div>
+
+      @if (estOuvert('compo')) {
+      <div class="block__body compo">
+        <!-- Terrain -->
+        <div class="pitch" #pitch>
+          @for (c of titulaires(); track c.joueurId) {
+            <div class="token" cdkDrag [cdkDragDisabled]="!modifiable()"
+                 (cdkDragEnded)="onDragEnd(c, $event)"
+                 [style.left.%]="c.x * 100" [style.top.%]="c.y * 100"
+                 [title]="nomJoueur(c)">
+              <span class="token__ini">{{ initiales(c) }}</span>
+              <span class="token__nom">{{ c.nom }}</span>
+            </div>
+          }
+          @if (titulaires().length === 0) {
+            <div class="pitch__hint">Ajoutez des titulaires puis placez-les sur le terrain.</div>
+          }
+        </div>
+
+        <!-- Panneau latéral -->
+        <div class="compo-side">
+          <!-- Effectif convoqué, groupé par statut -->
+          <div class="compo-col">
+            <p class="compo-col__titre">Titulaires ({{ titulaires().length }})</p>
+            @for (c of titulaires(); track c.joueurId) {
+              <div class="compo-row">
+                <span class="compo-row__nom">
+                  {{ nomJoueur(c) }}@if (estBlesse(c.joueurId)) { <span class="badge badge--danger">blessé</span> }
+                </span>
+                @if (modifiable()) {
+                  <span class="row" style="gap:4px">
+                    <select class="input select select--mini" [ngModel]="c.statut" (ngModelChange)="changerStatut(c, $event)" [name]="'st-' + c.joueurId" [disabled]="estBlesse(c.joueurId)">
+                      @for (s of statuts; track s.code) { <option [value]="s.code">{{ s.label }}</option> }
+                    </select>
+                    <button class="btn btn--danger btn--sm btn--icon" (click)="retirerCompo(c.joueurId)" title="Retirer">✕</button>
+                  </span>
+                }
+              </div>
+            }
+            @if (titulaires().length === 0) { <p class="vide">Aucun titulaire.</p> }
+
+            @for (g of groupes(); track g.code) {
+              @if (g.joueurs.length > 0) {
+                <p class="compo-col__titre" style="margin-top:10px">{{ g.label }} ({{ g.joueurs.length }})</p>
+                @for (c of g.joueurs; track c.joueurId) {
+                  <div class="compo-row">
+                    <span class="compo-row__nom">
+                      {{ nomJoueur(c) }}@if (estBlesse(c.joueurId)) { <span class="badge badge--danger">blessé</span> }
+                    </span>
+                    @if (modifiable()) {
+                      <span class="row" style="gap:4px">
+                        <select class="input select select--mini" [ngModel]="c.statut" (ngModelChange)="changerStatut(c, $event)" [name]="'st-' + c.joueurId" [disabled]="estBlesse(c.joueurId)">
+                          @for (s of statuts; track s.code) { <option [value]="s.code">{{ s.label }}</option> }
+                        </select>
+                        <button class="btn btn--danger btn--sm btn--icon" (click)="retirerCompo(c.joueurId)" title="Retirer">✕</button>
+                      </span>
+                    }
+                  </div>
+                }
+              }
+            }
+          </div>
+
+          @if (modifiable()) {
+            <div class="compo-col">
+              <p class="compo-col__titre">Disponibles ({{ disponibles().length }})</p>
+              @for (j of disponibles(); track j.id) {
+                <div class="compo-row">
+                  <span class="compo-row__nom">
+                    {{ j.prenom }} {{ j.nom }}@if (estBlesse(j.id)) { <span class="badge badge--danger">blessé</span> }
+                  </span>
+                  @if (estBlesse(j.id)) {
+                    <button class="btn btn--secondary btn--sm" (click)="ajouterCompo(j, 'REPOS')" title="Au repos (blessé)">+ Repos</button>
+                  } @else {
+                    <select class="input select select--mini" [ngModel]="''" (ngModelChange)="ajouterCompo(j, $event)" [name]="'add-' + j.id">
+                      <option value="" disabled selected>+ Ajouter…</option>
+                      @for (s of statuts; track s.code) { <option [value]="s.code">{{ s.label }}</option> }
+                    </select>
+                  }
+                </div>
+              }
+              @if (disponibles().length === 0) { <p class="vide">Tous les joueurs sont placés.</p> }
+            </div>
+          }
+        </div>
+      </div>
+      }
+    </div>
+  }
+
+  <!-- ─────────── ONGLET APRÈS ─────────── -->
+  @if (onglet() === 'apres') {
+
+    <div class="card block">
+      <div class="block__head">
+        <h2 class="block__titre">Résultat &amp; débrief</h2>
+        <button class="btn btn--ghost btn--sm btn--icon" (click)="basculerPanneau('debrief')">
+          <mat-icon>{{ estOuvert('debrief') ? 'expand_less' : 'expand_more' }}</mat-icon>
+        </button>
+      </div>
+      @if (estOuvert('debrief')) {
+        <div class="block__body">
+          <div class="form-grid">
+            <div class="field">
+              <label class="field__label">Résultat</label>
+              <select class="input select" [(ngModel)]="debriefBuf.resultat" name="dres" [disabled]="!modifiable()">
+                <option value="">—</option>
+                @for (r of resultats; track r) { <option [value]="r">{{ resultatLabel(r) }}</option> }
+              </select>
+            </div>
+            <div class="field">
+              <label class="field__label">Score</label>
+              <input class="input" [(ngModel)]="debriefBuf.score" name="dscore" placeholder="2-1" [disabled]="!modifiable()">
+            </div>
+            <div class="field span2">
+              <label class="field__label">Notes de débrief</label>
+              <textarea class="input" [(ngModel)]="debriefBuf.notesDebrief" name="dnotes" rows="5"
+                        placeholder="Analyse, points forts, axes de travail…" [disabled]="!modifiable()"></textarea>
+            </div>
+          </div>
+          @if (modifiable()) {
+            <div style="display:flex;justify-content:flex-end;margin-top:12px">
+              <button class="btn btn--primary btn--sm" [disabled]="savingDebrief()" (click)="enregistrerDebrief()">
+                {{ savingDebrief() ? '…' : 'Enregistrer' }}
+              </button>
+            </div>
+          }
+        </div>
+      }
+    </div>
+
+    <!-- Session GPS -->
+    <div class="card block">
+      <div class="block__head">
+        <h2 class="block__titre">Session GPS liée</h2>
+        <button class="btn btn--ghost btn--sm btn--icon" (click)="basculerPanneau('gps')">
+          <mat-icon>{{ estOuvert('gps') ? 'expand_less' : 'expand_more' }}</mat-icon>
+        </button>
+      </div>
+      @if (estOuvert('gps')) {
+        <div class="block__body">
+          <div class="field" style="max-width:480px">
+            <label class="field__label">Séance GPS du match</label>
+            <select class="input select" [ngModel]="detail()!.sessionGpsId ?? ''" (ngModelChange)="changerSession($event)"
+                    name="sgps" [disabled]="!modifiable()">
+              <option value="">— Aucune session liée —</option>
+              @for (s of sessions(); track s.id) {
+                <option [value]="s.id">{{ s.date | date:'dd/MM/yyyy' }} · {{ s.libelle }}</option>
+              }
+            </select>
+          </div>
+
+          @if (detail()!.sessionGpsId) {
+            @if (charge().length === 0) {
+              <p class="vide" style="margin-top:12px">Aucune donnée GPS sur la session liée.</p>
+            } @else {
+              <div class="table-wrap" style="margin-top:14px">
+                <table class="charge-table">
+                  <thead>
+                    <tr><th>Joueur</th><th>Durée</th><th>Distance</th><th>Dist. sprint</th><th>Sprints</th><th>V. max</th></tr>
+                  </thead>
+                  <tbody>
+                    @for (c of charge(); track c.joueurId) {
+                      <tr>
+                        <td>{{ c.prenom }} {{ c.nom }}</td>
+                        <td>@if (c.dureeMinutes != null) { {{ c.dureeMinutes }} min } @else { — }</td>
+                        <td>@if (c.distanceTotaleM != null) { {{ c.distanceTotaleM | number:'1.0-0' }} m } @else { — }</td>
+                        <td>@if (c.distanceSprint24kmhM != null) { {{ c.distanceSprint24kmhM | number:'1.0-0' }} m } @else { — }</td>
+                        <td>{{ c.nbSprints24kmh ?? '—' }}</td>
+                        <td>@if (c.vitesseMaxKmh != null) { {{ c.vitesseMaxKmh | number:'1.1-1' }} km/h } @else { — }</td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+            }
+          }
+        </div>
+      }
+    </div>
+  }
+}

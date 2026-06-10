@@ -1,8 +1,12 @@
-<mat-toolbar color="primary">
-  <span>RCP — Paramètres</span>
-  <span style="flex:1"></span>
-  <button class="btn-reset-all" (click)="reinitialiserTout()">Réinitialiser tout</button>
-</mat-toolbar>
+<div class="page-head" style="padding:24px 24px 0;margin-bottom:0">
+  <div>
+    <h1 class="page-head__title">Paramètres</h1>
+    <p class="page-head__sub">Configuration des scores et objectifs</p>
+  </div>
+  <div class="page-head__actions">
+    <button class="btn btn--secondary" (click)="reinitialiserTout()">Réinitialiser tout</button>
+  </div>
+</div>
 
 @if (loading) {
   <div class="params-loading">Chargement des paramètres…</div>

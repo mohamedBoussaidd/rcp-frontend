@@ -1,18 +1,37 @@
 import { AfterViewInit, Component, ElementRef, Inject, OnDestroy, ViewChild, signal } from '@angular/core';
-import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
+import { MAT_DIALOG_DATA, MatDialog, MatDialogRef } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
+import { Observable } from 'rxjs';
 import Konva from 'konva';
-import { Exercice, FormationCustom, TechniqueService } from '../../../core/services/technique.service';
+import { FormationCustom, SchemaTactique, TechniqueService } from '../../../core/services/technique.service';
 import { Joueur, JoueurService, VitesseJoueur } from '../../../core/services/joueur.service';
+import { SchemaPickerDialogComponent } from '../schema-picker-dialog/schema-picker-dialog.component';
 import { MatIcon } from "@angular/material/icon";
 
-type Terrain = 'complet' | 'demi';
-type Outil = 'select' | 'deplacement' | 'conduite' | 'passe' | 'tir' | 'supprimer';
-type TraceType = 'deplacement' | 'conduite' | 'passe' | 'tir';
+/**
+ * Données du dialog : éditeur de schéma générique, agnostique de la source.
+ * - `titre`       : libellé affiché (nom d'exercice ou de schéma).
+ * - `schemaJson`  : contenu initial à charger (vide = terrain neuf).
+ * - `enregistrer` : action de sauvegarde fournie par l'appelant (exercice ou bibliothèque).
+ *                   Reçoit le JSON sérialisé, renvoie l'observable de persistance.
+ */
+export interface SchemaEditorData {
+  titre: string;
+  schemaJson?: string;
+  /** `apercu` = miniature PNG (data URL) du terrain, pour la grille de la bibliothèque. */
+  enregistrer: (schemaJson: string, apercu: string) => Observable<unknown>;
+}
 
-interface SchemaElement { id: string; type: string; couleur?: string; numero?: number; label?: string; joueurId?: string; x: number; y: number; }
+type Terrain = 'complet' | 'demi';
+type Outil = 'select' | 'deplacement' | 'conduite' | 'passe' | 'tir' | 'surveiller' | 'forme' | 'supprimer';
+type TraceType = 'deplacement' | 'conduite' | 'passe' | 'tir';
+type FormeType = 'rect' | 'ellipse' | 'losange' | 'triangle';
+
+interface SchemaElement { id: string; type: string; couleur?: string; numero?: number; label?: string; joueurId?: string; surveille?: boolean; surveilleCouleur?: string; x: number; y: number; }
 // elementId = jeton/ballon qui suit le tracé ; ballId = ballon entraîné par une conduite.
 interface SchemaTrace { id: string; type: TraceType; points: number[]; elementId?: string; ballId?: string; }
+// Forme d'annotation (zone à entourer/montrer), redimensionnable et déplaçable.
+interface SchemaForme { id: string; type: FormeType; x: number; y: number; w: number; h: number; couleur: string; texte?: string; texteTaille?: number; texteCouleur?: string; }
 interface Keyframe { t: number; positions: Record<string, { x: number; y: number }>; }
 
 const VIOLET = '#7c3aed', JAUNE = '#eab308', ROUGE = '#ef4444';
@@ -44,7 +63,8 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
 
   estPleinEcran = signal(false);
 
-  readonly exercice: Exercice;
+  readonly data: SchemaEditorData;
+  get titre(): string { return this.data.titre; }
 
   // utiliser pour le trace en cours : points, type, élément lié (jeton/ballon), etc. ; mis à jour au fur et à mesure du dessin. utilise pour activer et desactiver le trace du dessin 
   tracesVisibles = signal(true);
@@ -176,19 +196,44 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
   private dessinEnCours: Konva.Line | null = null;
   private pointsEnCours: number[] = [];
 
+  // ── Formes d'annotation (zones) ──
+  formeType = signal<FormeType>('rect');
+  readonly palette = [
+    { nom: 'Rouge', val: '#ef4444' },
+    { nom: 'Jaune', val: '#eab308' },
+    { nom: 'Bleu', val: '#2563eb' },
+  ];
+  couleurAnnot = signal<string>('#ef4444');
+  texteTaille = signal<number>(20);   // taille du texte écrit dans une forme (S=14 / M=20 / L=30)
+  private formes: SchemaForme[] = [];
+  private formeNodes = new Map<string, Konva.Group>();
+  private trForme!: Konva.Transformer;          // poignées de redimensionnement de la forme sélectionnée
+  private formeEnCours: Konva.Group | null = null;
+  private formeEnCoursModel: SchemaForme | null = null;
+  private formeStart: { x: number; y: number } | null = null;
+
+  // ── Sélection multiple (cadre / lasso) ──
+  modeSelection = signal<'cadre' | 'lasso'>('cadre');
+  private selection = new Set<string>();
+  private selShape: Konva.Rect | Konva.Line | null = null;   // tracé de la zone de sélection
+  private selStart: { x: number; y: number } | null = null;
+  private selLassoPts: number[] = [];
+  private dragBase = new Map<string, { x: number; y: number }>();
+
   private get W() { return this.terrain() === 'complet' ? 1040 : 600; }
   private get H() { return 680; }
 
   constructor(
     public dialogRef: MatDialogRef<SchemaEditorComponent>,
-    @Inject(MAT_DIALOG_DATA) data: { exercice: Exercice },
+    @Inject(MAT_DIALOG_DATA) data: SchemaEditorData,
     private service: TechniqueService,
     private joueurService: JoueurService,
     private snack: MatSnackBar,
+    private dialog: MatDialog,
   ) {
-    this.exercice = data.exercice;
-    if (this.exercice.schemaJson) {
-      try { const d = JSON.parse(this.exercice.schemaJson); if (d.terrain) this.terrain.set(d.terrain); } catch { }
+    this.data = data;
+    if (this.data.schemaJson) {
+      try { const d = JSON.parse(this.data.schemaJson); if (d.terrain) this.terrain.set(d.terrain); } catch { }
     }
   }
 
@@ -198,6 +243,9 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
     this.layer = new Konva.Layer();
     this.stage.add(this.fieldLayer);
     this.stage.add(this.layer);
+    // Transformer (poignées) pour redimensionner la forme d'annotation sélectionnée.
+    this.trForme = new Konva.Transformer({ rotateEnabled: false, ignoreStroke: true, padding: 4 });
+    this.layer.add(this.trForme);
     this.dessinerTerrain();
     this.chargerSchema();
     this.brancherDessin();
@@ -205,11 +253,33 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
     this.chargerEffectif();
     this.chargerVitesses();
     if (this.keyframes().length === 0) this.resetKeyframes();
-    this.onFs = () => this.estPleinEcran.set(!!document.fullscreenElement);
+    this.onFs = () => { this.estPleinEcran.set(!!document.fullscreenElement); setTimeout(() => this.ajusterAuConteneur(), 60); };
     document.addEventListener('fullscreenchange', this.onFs);
+    // Met le terrain à l'échelle du conteneur (tout visible, sans scroll) + suit les redimensionnements.
+    window.addEventListener('resize', this.onResize);
+    setTimeout(() => this.ajusterAuConteneur(), 0);
   }
 
   private onFs?: () => void;
+  private readonly onResize = () => this.ajusterAuConteneur();
+
+  /** Ajuste l'échelle de la scène pour que tout le terrain tienne dans la zone d'affichage. */
+  private ajusterAuConteneur(): void {
+    const body = this.containerRef.nativeElement.closest('.editor__pitch-body') as HTMLElement | null;
+    if (!body) return;
+    const dispoW = body.clientWidth - 32, dispoH = body.clientHeight - 32;   // padding 16px de chaque côté
+    if (dispoW <= 0 || dispoH <= 0) return;
+    this.appliquerEchelle(Math.max(0.2, Math.min(dispoW / this.W, dispoH / this.H)));
+  }
+
+  /** Applique une échelle à la scène et redimensionne le canvas en conséquence. */
+  private appliquerEchelle(s: number): void {
+    this.echelle.set(s);
+    this.stage.scale({ x: s, y: s });
+    this.stage.width(this.W * s);
+    this.stage.height(this.H * s);
+    this.stage.batchDraw();
+  }
 
   private chargerFormations(): void {
     this.service.listerFormations().subscribe({ next: f => this.formationsCustom.set(f), error: () => { } });
@@ -333,6 +403,7 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
   ngOnDestroy(): void {
     this.pause();
     if (this.onFs) document.removeEventListener('fullscreenchange', this.onFs);
+    window.removeEventListener('resize', this.onResize);
     if (document.fullscreenElement) document.exitFullscreen().catch(() => { });
     this.stage?.destroy();
   }
@@ -342,11 +413,17 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
 
   changerTerrain(t: Terrain): void {
     this.terrain.set(t);
-    this.stage.width(this.W);
     this.dessinerTerrain();
+    this.ajusterAuConteneur();
   }
 
-  choisirOutil(o: Outil): void { this.outil.set(o); }
+  choisirOutil(o: Outil): void {
+    this.outil.set(o);
+    if (o !== 'select') this.clearSelection();
+    if (o !== 'select' && o !== 'forme') this.detacherForme();
+  }
+  choisirForme(t: FormeType): void { this.formeType.set(t); this.outil.set('forme'); }
+  choisirCouleur(c: string): void { this.couleurAnnot.set(c); }
 
   // ── Ajout d'éléments ──
   ajouterJoueur(couleur: string, numero: number): void {
@@ -470,30 +547,29 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
     this.service.supprimerFormation(f.id).subscribe({ next: () => this.chargerFormations(), error: () => { } });
   }
 
-  // ── Zoom ──
+  // ── Zoom ── (manuel, par-dessus l'ajustement auto au conteneur)
   zoom(delta: number): void {
-    const s = Math.min(2, Math.max(0.5, this.echelle() + delta));
-    this.echelle.set(s);
-    this.stage.scale({ x: s, y: s });
-    this.stage.width(this.W * s);
-    this.stage.height(this.H * s);
-    this.stage.batchDraw();
+    this.appliquerEchelle(Math.min(3, Math.max(0.2, this.echelle() + delta)));
   }
 
   // ── Sauvegarde ──
   enregistrer(): void {
     this.pause();
+    this.detacherForme();   // retire les poignées de l'aperçu
     this.scrub(0);   // état de départ : positions cohérentes avec le début des flèches/keyframes
     const data = {
       terrain: this.terrain(),
       elements: this.elements,
       traces: this.traces,
+      formes: this.formes,
       dureeSecondes: this.dureeSecondes(),
       modeAnim: this.modeAnim(),
       metriqueVitesse: this.metriqueVitesse(),
       keyframes: this.keyframes(),
     };
-    this.service.sauverSchema(this.exercice.id, JSON.stringify(data)).subscribe({
+    // Miniature pour la grille de la bibliothèque (pixelRatio réduit = data URL légère).
+    const apercu = this.stage.toDataURL({ pixelRatio: 0.35 });
+    this.data.enregistrer(JSON.stringify(data), apercu).subscribe({
       next: () => { this.snack.open('Schéma enregistré', 'Fermer', { duration: 2000 }); this.dialogRef.close(true); },
       error: () => this.snack.open('Enregistrement impossible', 'Fermer', { duration: 3000 }),
     });
@@ -511,12 +587,17 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
 
   /** Vide tout le terrain (éléments + tracés). Le terrain dessiné reste. */
   viderTerrain(): void {
-    if (this.elements.length === 0 && this.traces.length === 0) return;
-    if (!confirm('Vider tout le terrain ? (joueurs, équipement et tracés)')) return;
-    this.layer.destroyChildren();
+    if (this.elements.length === 0 && this.traces.length === 0 && this.formes.length === 0) return;
+    if (!confirm('Vider tout le terrain ? (joueurs, équipement, tracés et formes)')) return;
+    this.layer.destroyChildren();   // détruit aussi le transformer → on le recrée
     this.elements = [];
     this.traces = [];
+    this.formes = [];
     this.nodesById.clear();
+    this.formeNodes.clear();
+    this.selection.clear();
+    this.trForme = new Konva.Transformer({ rotateEnabled: false, ignoreStroke: true, padding: 4 });
+    this.layer.add(this.trForme);
     this.resetKeyframes();
     this.layer.draw();
   }
@@ -524,67 +605,142 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
   capture(): void {
     const url = this.stage.toDataURL({ pixelRatio: 2 });
     const a = document.createElement('a');
-    a.href = url; a.download = `schema-${this.exercice.nom}.png`; a.click();
+    a.href = url; a.download = `schema-${this.data.titre}.png`; a.click();
   }
 
   // ══════════ Rendu ══════════
   private chargerSchema(): void {
-    if (!this.exercice.schemaJson) return;
-    try {
-      const d = JSON.parse(this.exercice.schemaJson);
-      (d.elements ?? []).forEach((el: SchemaElement) => { this.elements.push(el); this.dessinerElement(el); });
-      (d.traces ?? []).forEach((t: SchemaTrace) => { this.traces.push(t); this.dessinerTrace(t); });
-      if (d.modeAnim === 'temps' || d.modeAnim === 'vitesse') this.modeAnim.set(d.modeAnim);
-      if (d.metriqueVitesse === 'max' || d.metriqueVitesse === 'moyenne') this.metriqueVitesse.set(d.metriqueVitesse);
-      if (Array.isArray(d.keyframes) && d.keyframes.length) {
-        this.keyframes.set([...d.keyframes].sort((a: Keyframe, b: Keyframe) => a.t - b.t));
-        if (d.dureeSecondes) this.dureeSecondes.set(d.dureeSecondes);
-      } else {
+    if (!this.data.schemaJson) return;
+    try { this.chargerContenu(JSON.parse(this.data.schemaJson)); } catch { }
+  }
+
+  /** Charge le contenu d'un schéma (éléments, tracés, animation) sur le terrain courant. */
+  private chargerContenu(d: any): void {
+    (d.formes ?? []).forEach((f: SchemaForme) => { this.formes.push(f); this.dessinerForme(f); });
+    (d.elements ?? []).forEach((el: SchemaElement) => { this.elements.push(el); this.dessinerElement(el); });
+    (d.traces ?? []).forEach((t: SchemaTrace) => { this.traces.push(t); this.dessinerTrace(t); });
+    if (d.modeAnim === 'temps' || d.modeAnim === 'vitesse') this.modeAnim.set(d.modeAnim);
+    if (d.metriqueVitesse === 'max' || d.metriqueVitesse === 'moyenne') this.metriqueVitesse.set(d.metriqueVitesse);
+    if (Array.isArray(d.keyframes) && d.keyframes.length) {
+      this.keyframes.set([...d.keyframes].sort((a: Keyframe, b: Keyframe) => a.t - b.t));
+      if (d.dureeSecondes) this.dureeSecondes.set(d.dureeSecondes);
+    } else {
+      this.resetKeyframes();
+    }
+    this.majJoueursPlaces();
+    this.layer.draw();
+  }
+
+  /** Importe un schéma de la bibliothèque : COPIE son contenu dans l'éditeur (copy-on-attach).
+   *  Le schéma de base n'est jamais modifié ; seul l'enregistrement écrit dans la cible courante. */
+  importerDepuisBiblio(): void {
+    const ref = this.dialog.open(SchemaPickerDialogComponent, {
+      panelClass: 'dark-dialog', width: '760px', maxWidth: '95vw', autoFocus: false,
+    });
+    ref.afterClosed().subscribe((schema?: SchemaTactique) => {
+      if (!schema) return;
+      const occupe = this.elements.length > 0 || this.traces.length > 0;
+      if (occupe && !confirm('Remplacer le contenu actuel du terrain par ce schéma ?')) return;
+      this.pause();
+      // Vider le terrain courant (sans la confirmation de viderTerrain).
+      this.layer.destroyChildren();
+      this.elements = [];
+      this.traces = [];
+      this.nodesById.clear();
+      try {
+        const d = JSON.parse(schema.schemaJson);
+        if (d.terrain === 'complet' || d.terrain === 'demi') { this.terrain.set(d.terrain); this.dessinerTerrain(); }
+        this.chargerContenu(d);
+      } catch {
         this.resetKeyframes();
       }
-      this.majJoueursPlaces();
-      this.layer.draw();
-    } catch { }
+      this.ajusterAuConteneur();
+      this.snack.open(`Schéma « ${schema.nom} » importé`, 'Fermer', { duration: 2000 });
+    });
   }
+
+  // Rendu « propre » façon schema-tactique : gazon rayé + lignes blanches translucides.
+  private static readonly BLANC = 'rgba(255,255,255,0.85)';
 
   private dessinerTerrain(): void {
     this.fieldLayer.destroyChildren();
-    const W = this.W, H = this.H, m = 24;
-    const ligne = (pts: number[]) => new Konva.Line({ points: pts, stroke: '#ffffff', strokeWidth: 2 });
+    const W = this.W, H = this.H, m = 24, blanc = SchemaEditorComponent.BLANC;
+    const ligne = (pts: number[]) => new Konva.Line({ points: pts, stroke: blanc, strokeWidth: 2.5 });
+    const arc = (d: string) => new Konva.Path({ data: d, stroke: blanc, strokeWidth: 2.5 });
 
-    this.fieldLayer.add(new Konva.Rect({ x: 0, y: 0, width: W, height: H, fill: '#3f8f43' }));
-    this.fieldLayer.add(new Konva.Rect({ x: m, y: m, width: W - 2 * m, height: H - 2 * m, stroke: '#ffffff', strokeWidth: 2 }));
+    // Gazon rayé (bandes verticales dans le sens de la longueur)
+    const bande = 104;
+    for (let x = 0, i = 0; x < W; x += bande, i++) {
+      this.fieldLayer.add(new Konva.Rect({ x, y: 0, width: Math.min(bande, W - x), height: H, fill: i % 2 ? '#0F7E43' : '#118A4A' }));
+    }
+    // Contour
+    this.fieldLayer.add(new Konva.Rect({ x: m, y: m, width: W - 2 * m, height: H - 2 * m, stroke: blanc, strokeWidth: 2.5 }));
 
     if (this.terrain() === 'complet') {
       this.fieldLayer.add(ligne([W / 2, m, W / 2, H - m]));
-      this.fieldLayer.add(new Konva.Circle({ x: W / 2, y: H / 2, radius: 68, stroke: '#ffffff', strokeWidth: 2 }));
-      this.fieldLayer.add(new Konva.Circle({ x: W / 2, y: H / 2, radius: 3, fill: '#ffffff' }));
+      this.fieldLayer.add(new Konva.Circle({ x: W / 2, y: H / 2, radius: 80, stroke: blanc, strokeWidth: 2.5 }));
+      this.fieldLayer.add(new Konva.Circle({ x: W / 2, y: H / 2, radius: 3, fill: blanc }));
       this.surface(m, H, false);
       this.surface(W - m, H, true);
+      // Buts (en débord de la ligne de but)
+      this.fieldLayer.add(new Konva.Rect({ x: m - 14, y: H / 2 - 33, width: 14, height: 66, stroke: blanc, strokeWidth: 2.5 }));
+      this.fieldLayer.add(new Konva.Rect({ x: W - m, y: H / 2 - 33, width: 14, height: 66, stroke: blanc, strokeWidth: 2.5 }));
+      // Corners
+      this.fieldLayer.add(arc(`M ${m} ${m + 10} A 10 10 0 0 1 ${m + 10} ${m}`));
+      this.fieldLayer.add(arc(`M ${W - m - 10} ${m} A 10 10 0 0 1 ${W - m} ${m + 10}`));
+      this.fieldLayer.add(arc(`M ${m} ${H - m - 10} A 10 10 0 0 0 ${m + 10} ${H - m}`));
+      this.fieldLayer.add(arc(`M ${W - m - 10} ${H - m} A 10 10 0 0 0 ${W - m} ${H - m - 10}`));
     } else {
       // demi-terrain : but en haut, ligne médiane en bas
       this.fieldLayer.add(ligne([m, H - m, W - m, H - m]));
-      this.fieldLayer.add(new Konva.Arc({ x: W / 2, y: H - m, innerRadius: 0, outerRadius: 68, angle: 180, rotation: 180, stroke: '#ffffff', strokeWidth: 2 }));
+      this.fieldLayer.add(new Konva.Arc({ x: W / 2, y: H - m, innerRadius: 0, outerRadius: 80, angle: 180, rotation: 180, stroke: blanc, strokeWidth: 2.5 }));
       this.surfaceHaut(m, W);
+      this.fieldLayer.add(new Konva.Rect({ x: W / 2 - 33, y: m - 14, width: 66, height: 14, stroke: blanc, strokeWidth: 2.5 }));
     }
     this.fieldLayer.draw();
   }
 
   private surface(xBord: number, H: number, droite: boolean): void {
-    const dir = droite ? -1 : 1;
+    const dir = droite ? -1 : 1, blanc = SchemaEditorComponent.BLANC;
     const gW = 110, gH = 300, bW = 44, bH = 150;
-    this.fieldLayer.add(new Konva.Rect({ x: xBord, y: H / 2 - gH / 2, width: gW * dir, height: gH, stroke: '#fff', strokeWidth: 2 }));
-    this.fieldLayer.add(new Konva.Rect({ x: xBord, y: H / 2 - bH / 2, width: bW * dir, height: bH, stroke: '#fff', strokeWidth: 2 }));
+    this.fieldLayer.add(new Konva.Rect({ x: xBord, y: H / 2 - gH / 2, width: gW * dir, height: gH, stroke: blanc, strokeWidth: 2.5 }));
+    this.fieldLayer.add(new Konva.Rect({ x: xBord, y: H / 2 - bH / 2, width: bW * dir, height: bH, stroke: blanc, strokeWidth: 2.5 }));
+    // Point de penalty + arc en « D » (partie hors surface)
+    const psx = xBord + 80 * dir, xe = xBord + gW * dir;
+    const dy = Math.sqrt(80 * 80 - 30 * 30);   // intersection de l'arc r=80 avec le bord de surface
+    this.fieldLayer.add(new Konva.Circle({ x: psx, y: H / 2, radius: 3, fill: blanc }));
+    this.fieldLayer.add(new Konva.Path({
+      data: `M ${xe} ${H / 2 - dy} A 80 80 0 0 ${droite ? 0 : 1} ${xe} ${H / 2 + dy}`,
+      stroke: blanc, strokeWidth: 2.5,
+    }));
   }
 
   private surfaceHaut(m: number, W: number): void {
+    const blanc = SchemaEditorComponent.BLANC;
     const gW = 300, gH = 110, bW = 150, bH = 44;
-    this.fieldLayer.add(new Konva.Rect({ x: W / 2 - gW / 2, y: m, width: gW, height: gH, stroke: '#fff', strokeWidth: 2 }));
-    this.fieldLayer.add(new Konva.Rect({ x: W / 2 - bW / 2, y: m, width: bW, height: bH, stroke: '#fff', strokeWidth: 2 }));
+    this.fieldLayer.add(new Konva.Rect({ x: W / 2 - gW / 2, y: m, width: gW, height: gH, stroke: blanc, strokeWidth: 2.5 }));
+    this.fieldLayer.add(new Konva.Rect({ x: W / 2 - bW / 2, y: m, width: bW, height: bH, stroke: blanc, strokeWidth: 2.5 }));
+    // Point de penalty + arc en « D »
+    const psy = m + 80, ye = m + gH;
+    const dx = Math.sqrt(80 * 80 - 30 * 30);
+    this.fieldLayer.add(new Konva.Circle({ x: W / 2, y: psy, radius: 3, fill: blanc }));
+    this.fieldLayer.add(new Konva.Path({
+      data: `M ${W / 2 - dx} ${ye} A 80 80 0 0 1 ${W / 2 + dx} ${ye}`,
+      stroke: blanc, strokeWidth: 2.5,
+    }));
   }
 
   private dessinerElement(el: SchemaElement): void {
     const g = new Konva.Group({ x: el.x, y: el.y, draggable: true });
+    // Halo lumineux « joueur à surveiller » (dessiné en premier = derrière le jeton).
+    if (el.surveille) {
+      const c = el.surveilleCouleur || '#ef4444';
+      g.add(new Konva.Circle({   // disque flou = effet projecteur
+        radius: 24, fill: c, opacity: 0.28,
+        shadowColor: c, shadowBlur: 22, shadowOpacity: 1,
+      }));
+      g.add(new Konva.Circle({ radius: 22, stroke: c, strokeWidth: 3 }));
+    }
     if (el.type === 'joueur') {
       const texte = el.label ?? String(el.numero);
       const h = 22;
@@ -605,18 +761,63 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
       g.add(new Konva.Rect({ x: -7, y: -16, width: 14, height: 32, cornerRadius: 4, fill: el.couleur, stroke: '#fff', strokeWidth: 1.5 }));
     }
 
+    // Badge d'alerte « à surveiller » (au-dessus du jeton, coin haut-droit).
+    if (el.surveille) {
+      const badge = new Konva.Group({ x: 13, y: -13 });
+      badge.add(new Konva.Circle({ radius: 8, fill: '#ef4444', stroke: '#fff', strokeWidth: 1.5 }));
+      const bt = new Konva.Text({ text: '!', fontSize: 12, fontStyle: 'bold', fill: '#fff', width: 16, height: 16, align: 'center', verticalAlign: 'middle' });
+      bt.offsetX(8); bt.offsetY(8);
+      badge.add(bt);
+      g.add(badge);
+    }
+
+    // Surbrillance de sélection multiple : enfant nommé (suit le déplacement du groupe).
+    if (this.selection.has(el.id)) {
+      g.add(new Konva.Rect({ name: 'sel-hi', x: -22, y: -18, width: 44, height: 36, cornerRadius: 6, stroke: '#38bdf8', strokeWidth: 2, dash: [4, 3], listening: false }));
+    }
+
+    g.on('dragstart', () => {
+      if (this.selection.has(el.id) && this.selection.size > 1) {
+        this.dragBase.clear();
+        this.dragBase.set('_anchor', { x: g.x(), y: g.y() });
+        this.selection.forEach(id => { const n = this.nodesById.get(id); if (n) this.dragBase.set(id, { x: n.x(), y: n.y() }); });
+      }
+    });
+    g.on('dragmove', () => {
+      const anchor = this.dragBase.get('_anchor');
+      if (!anchor || !this.selection.has(el.id)) return;
+      const dx = g.x() - anchor.x, dy = g.y() - anchor.y;
+      this.selection.forEach(id => {
+        if (id === el.id) return;
+        const n = this.nodesById.get(id); const base = this.dragBase.get(id);
+        if (n && base) { n.x(base.x + dx); n.y(base.y + dy); }
+      });
+      this.layer.batchDraw();
+    });
     g.on('dragend', () => {
-      el.x = g.x(); el.y = g.y();
       const kf = this.keyframeAt(this.tempsCourant(), true)!;   // crée une keyframe si on est entre deux
-      kf.positions[el.id] = { x: el.x, y: el.y };
+      const maj = (id: string) => {
+        const n = this.nodesById.get(id); const e = this.elements.find(x => x.id === id);
+        if (n && e) { e.x = n.x(); e.y = n.y(); kf.positions[id] = { x: e.x, y: e.y }; }
+      };
+      if (this.selection.has(el.id) && this.selection.size > 1) { this.selection.forEach(maj); }
+      else { maj(el.id); }
+      this.dragBase.clear();
     });
     g.on('click tap', () => {
-      if (this.outil() === 'supprimer') {
+      const o = this.outil();
+      if (o === 'supprimer') {
         this.elements = this.elements.filter(e => e.id !== el.id);
         this.nodesById.delete(el.id);
         this.keyframes.update(ks => { ks.forEach(k => delete k.positions[el.id]); return [...ks]; });
         this.traces.forEach(t => { if (t.elementId === el.id) t.elementId = undefined; if (t.ballId === el.id) t.ballId = undefined; });
         g.destroy(); this.majJoueursPlaces(); this.layer.draw();
+      } else if (o === 'surveiller') {
+        el.surveille = !el.surveille;  // marque/démarque le jeton à surveiller
+        el.surveilleCouleur = el.surveille ? this.couleurAnnot() : undefined;
+        g.destroy(); this.nodesById.delete(el.id); this.dessinerElement(el); this.layer.draw();
+      } else if (o === 'select') {  // eslint pas de redraw lourd : sélection ciblée
+        this.definirSelection([el.id]);   // clic simple = sélectionner ce seul jeton
       }
     });
     // Jetons génériques (sans vrai joueur) : double-clic pour éditer le texte (Adversaire, etc.).
@@ -693,6 +894,149 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
   /** Garde les éléments (jetons, ballon, équipement) au premier plan, au-dessus des tracés. */
   private remonterElements(): void {
     this.nodesById.forEach(g => g.moveToTop());
+    this.trForme?.moveToTop();
+  }
+
+  // ══════════ Sélection multiple (cadre / lasso) ══════════
+  /** Vrai si le clic est sur un élément/forme déplaçable ou sur une poignée du transformer. */
+  private surInteractif(e: Konva.KonvaEventObject<any>): boolean {
+    if (this.surElement(e)) return true;
+    let p: Konva.Node | null = e.target.getParent();
+    while (p) { if (p === this.trForme) return true; p = p.getParent(); }
+    return false;
+  }
+
+  private definirSelection(ids: string[]): void {
+    this.selection = new Set(ids);
+    this.detacherForme();
+    this.majSurbrillance();
+  }
+  private clearSelection(): void {
+    if (this.selection.size) { this.selection.clear(); this.majSurbrillance(); }
+  }
+  /** Ajoute/retire le liseré de sélection (enfant nommé) sur chaque jeton. */
+  private majSurbrillance(): void {
+    this.nodesById.forEach((g, id) => {
+      const hi = g.findOne('.sel-hi');
+      if (this.selection.has(id) && !hi) {
+        const r = new Konva.Rect({ name: 'sel-hi', x: -22, y: -18, width: 44, height: 36, cornerRadius: 6, stroke: '#38bdf8', strokeWidth: 2, dash: [4, 3], listening: false });
+        g.add(r); r.moveToBottom();
+      } else if (!this.selection.has(id) && hi) {
+        hi.destroy();
+      }
+    });
+    this.layer.batchDraw();
+  }
+
+  private pointDansPolygone(x: number, y: number, poly: number[]): boolean {
+    let dedans = false;
+    for (let i = 0, j = poly.length - 2; i < poly.length; j = i, i += 2) {
+      const xi = poly[i], yi = poly[i + 1], xj = poly[j], yj = poly[j + 1];
+      if (((yi > y) !== (yj > y)) && (x < ((xj - xi) * (y - yi)) / (yj - yi) + xi)) dedans = !dedans;
+    }
+    return dedans;
+  }
+
+  // ══════════ Formes d'annotation ══════════
+  private formeShape(f: SchemaForme): Konva.Shape {
+    const fill = f.couleur + '22', stroke = f.couleur;
+    if (f.type === 'rect') return new Konva.Rect({ width: f.w, height: f.h, fill, stroke, strokeWidth: 3 });
+    if (f.type === 'ellipse') return new Konva.Ellipse({ x: f.w / 2, y: f.h / 2, radiusX: f.w / 2, radiusY: f.h / 2, fill, stroke, strokeWidth: 3 });
+    if (f.type === 'triangle') return new Konva.Line({ points: [f.w / 2, 0, f.w, f.h, 0, f.h], closed: true, fill, stroke, strokeWidth: 3 });
+    return new Konva.Line({ points: [f.w / 2, 0, f.w, f.h / 2, f.w / 2, f.h, 0, f.h / 2], closed: true, fill, stroke, strokeWidth: 3 });
+  }
+
+  /** (Re)construit le contenu d'une forme : la géométrie + le texte centré éventuel. */
+  private dessinerContenuForme(g: Konva.Group, f: SchemaForme): void {
+    g.destroyChildren();
+    g.add(this.formeShape(f));
+    if (f.texte) {
+      const t = new Konva.Text({
+        text: f.texte, width: f.w, height: f.h,
+        align: 'center', verticalAlign: 'middle', wrap: 'word', padding: 4,
+        fontSize: f.texteTaille ?? 20, fontStyle: 'bold',
+        fill: f.texteCouleur || f.couleur, listening: false,
+      });
+      g.add(t);
+    }
+  }
+
+  private dessinerForme(f: SchemaForme): Konva.Group {
+    const g = new Konva.Group({ x: f.x, y: f.y, draggable: true, name: 'forme' });
+    this.dessinerContenuForme(g, f);
+    g.on('dragend', () => { f.x = g.x(); f.y = g.y(); });
+    g.on('dblclick dbltap', (e) => { e.cancelBubble = true; this.editerTexteForme(f, g); });
+    g.on('click tap', (e) => {
+      const o = this.outil();
+      if (o === 'supprimer') {
+        e.cancelBubble = true;
+        this.formes = this.formes.filter(x => x.id !== f.id);
+        this.formeNodes.delete(f.id);
+        this.detacherForme();
+        g.destroy(); this.layer.draw();
+      } else if (o === 'select' || o === 'forme') {
+        e.cancelBubble = true;
+        this.selectionnerForme(g);
+      }
+    });
+    // Le Transformer agit par mise à l'échelle : on la « cuit » dans w/h au relâcher.
+    g.on('transformend', () => {
+      f.w = Math.max(12, f.w * g.scaleX());
+      f.h = Math.max(12, f.h * g.scaleY());
+      f.x = g.x(); f.y = g.y();
+      g.scale({ x: 1, y: 1 });
+      this.dessinerContenuForme(g, f);
+      this.layer.batchDraw();
+    });
+    this.formeNodes.set(f.id, g);
+    this.layer.add(g);
+    return g;
+  }
+
+  private selectionnerForme(g: Konva.Group): void {
+    this.clearSelection();
+    this.trForme.nodes([g]);
+    this.trForme.moveToTop();
+    this.layer.draw();
+  }
+  private detacherForme(): void {
+    if (this.trForme && this.trForme.nodes().length) { this.trForme.nodes([]); this.layer.batchDraw(); }
+  }
+
+  /** Édite le texte d'une forme : textarea HTML superposé (Entrée = valider, Maj+Entrée = saut de ligne). */
+  private editerTexteForme(f: SchemaForme, g: Konva.Group): void {
+    const pos = g.getAbsolutePosition();
+    const box = this.stage.container().getBoundingClientRect();
+    const s = this.echelle();
+    const ta = document.createElement('textarea');
+    ta.value = f.texte ?? '';
+    Object.assign(ta.style, {
+      position: 'fixed',
+      left: `${box.left + pos.x}px`, top: `${box.top + pos.y}px`,
+      width: `${Math.max(60, f.w * s)}px`, height: `${Math.max(28, f.h * s)}px`,
+      textAlign: 'center', font: `bold ${(f.texteTaille ?? this.texteTaille()) * s}px sans-serif`,
+      color: f.couleur, background: 'rgba(255,255,255,0.92)',
+      border: `2px solid ${f.couleur}`, borderRadius: '6px', outline: 'none',
+      resize: 'none', zIndex: '9999', padding: '2px', boxSizing: 'border-box',
+    } as CSSStyleDeclaration);
+    document.body.appendChild(ta);
+    ta.focus(); ta.select();
+    let fini = false;
+    const valider = () => {
+      if (fini) return; fini = true;
+      const v = ta.value.trim();
+      f.texte = v || undefined;
+      f.texteTaille = this.texteTaille();
+      f.texteCouleur = f.couleur;   // texte = couleur de la forme
+      this.dessinerContenuForme(g, f);
+      this.layer.draw();
+      ta.remove();
+    };
+    ta.addEventListener('blur', valider);
+    ta.addEventListener('keydown', e => {
+      if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); ta.blur(); }
+      else if (e.key === 'Escape') { fini = true; ta.remove(); }
+    });
   }
 
   // ══════════ Dessin des tracés à la souris ══════════
@@ -729,6 +1073,35 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
     // ── Modes "à main libre" et "assisté" : on presse puis on relâche (drag) ──
     this.stage.on('mousedown touchstart', (e) => {
       const o = this.outil();
+
+      // Outil Formes : dessiner une zone (rect/ellipse/losange) par glisser sur le vide.
+      if (o === 'forme' && !this.surInteractif(e)) {
+        const p = this.stage.getRelativePointerPosition();
+        if (!p) return;
+        this.formeStart = { x: p.x, y: p.y };
+        const f: SchemaForme = { id: this.uid(), type: this.formeType(), x: p.x, y: p.y, w: 1, h: 1, couleur: this.couleurAnnot() };
+        this.formeEnCoursModel = f;
+        this.formeEnCours = this.dessinerForme(f);
+        this.remonterElements();
+        return;
+      }
+
+      // Outil Sélection : tracer un cadre / lasso sur le vide pour sélectionner un groupe.
+      if (o === 'select' && !this.surInteractif(e)) {
+        const p = this.stage.getRelativePointerPosition();
+        if (!p) return;
+        this.clearSelection(); this.detacherForme();
+        this.selStart = { x: p.x, y: p.y };
+        if (this.modeSelection() === 'cadre') {
+          this.selShape = new Konva.Rect({ x: p.x, y: p.y, width: 0, height: 0, stroke: '#38bdf8', strokeWidth: 1.5, dash: [6, 4], fill: '#38bdf822' });
+        } else {
+          this.selLassoPts = [p.x, p.y];
+          this.selShape = new Konva.Line({ points: this.selLassoPts, stroke: '#38bdf8', strokeWidth: 1.5, dash: [6, 4], closed: false, fill: '#38bdf822' });
+        }
+        this.layer.add(this.selShape);
+        return;
+      }
+
       if (!this.estOutilTrace(o) || this.modeDessin() === 'semi') return; // semi = clics
       if (this.surElement(e)) return;
       const p = this.stage.getRelativePointerPosition();
@@ -740,6 +1113,34 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
     });
 
     this.stage.on('mousemove touchmove', () => {
+      // Forme en cours de tracé
+      if (this.formeEnCours && this.formeEnCoursModel && this.formeStart) {
+        const p = this.stage.getRelativePointerPosition();
+        if (!p) return;
+        const f = this.formeEnCoursModel, x0 = this.formeStart.x, y0 = this.formeStart.y;
+        f.x = Math.min(x0, p.x); f.y = Math.min(y0, p.y);
+        f.w = Math.max(1, Math.abs(p.x - x0)); f.h = Math.max(1, Math.abs(p.y - y0));
+        this.formeEnCours.position({ x: f.x, y: f.y });
+        this.dessinerContenuForme(this.formeEnCours, f);
+        this.layer.batchDraw();
+        return;
+      }
+      // Zone de sélection en cours
+      if (this.selShape && this.selStart) {
+        const p = this.stage.getRelativePointerPosition();
+        if (!p) return;
+        if (this.modeSelection() === 'cadre') {
+          const r = this.selShape as Konva.Rect;
+          r.position({ x: Math.min(this.selStart.x, p.x), y: Math.min(this.selStart.y, p.y) });
+          r.width(Math.abs(p.x - this.selStart.x)); r.height(Math.abs(p.y - this.selStart.y));
+        } else {
+          this.selLassoPts.push(p.x, p.y);
+          (this.selShape as Konva.Line).points(this.selLassoPts);
+        }
+        this.layer.batchDraw();
+        return;
+      }
+
       if (!this.dessinEnCours) return;
       const p = this.stage.getRelativePointerPosition();
       if (!p) return;
@@ -764,6 +1165,32 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
     });
 
     this.stage.on('mouseup touchend', () => {
+      // Fin de tracé d'une forme
+      if (this.formeEnCours && this.formeEnCoursModel) {
+        const f = this.formeEnCoursModel;
+        if (f.w < 12 || f.h < 12) { this.formeEnCours.destroy(); this.formeNodes.delete(f.id); }
+        else { this.formes.push(f); this.selectionnerForme(this.formeEnCours); }
+        this.formeEnCours = null; this.formeEnCoursModel = null; this.formeStart = null;
+        this.remonterElements();
+        this.layer.draw();
+        return;
+      }
+      // Fin de zone de sélection
+      if (this.selShape && this.selStart) {
+        const ids: string[] = [];
+        if (this.modeSelection() === 'cadre') {
+          const r = this.selShape as Konva.Rect;
+          const x1 = r.x(), y1 = r.y(), x2 = x1 + r.width(), y2 = y1 + r.height();
+          this.elements.forEach(el => { const n = this.nodesById.get(el.id); if (n) { const cx = n.x(), cy = n.y(); if (cx >= x1 && cx <= x2 && cy >= y1 && cy <= y2) ids.push(el.id); } });
+        } else {
+          const poly = this.selLassoPts;
+          this.elements.forEach(el => { const n = this.nodesById.get(el.id); if (n && this.pointDansPolygone(n.x(), n.y(), poly)) ids.push(el.id); });
+        }
+        this.selShape.destroy(); this.selShape = null; this.selStart = null; this.selLassoPts = [];
+        this.definirSelection(ids);
+        return;
+      }
+
       if (this.modeDessin() === 'semi' || !this.dessinEnCours) return;
       const p = this.stage.getRelativePointerPosition();
       let pts: number[];

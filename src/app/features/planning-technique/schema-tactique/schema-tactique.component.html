@@ -1,0 +1,75 @@
+<div class="screen">
+
+  <!-- En-tête -->
+  <div class="page-head">
+    <div>
+      <h1 class="page-head__title">Schémas tactiques</h1>
+      <p class="page-head__sub">Bibliothèque de phases de jeu réutilisables · {{ schemas().length }} schéma(s)</p>
+    </div>
+    <div class="page-head__actions">
+      <button class="btn btn--primary" (click)="nouveau()"><mat-icon>add</mat-icon>Nouveau schéma</button>
+    </div>
+  </div>
+
+  @if (loading()) {
+    <div class="lib-empty">Chargement…</div>
+  } @else if (schemas().length === 0) {
+    <div class="lib-empty">
+      <mat-icon>sports_soccer</mat-icon>
+      <p>Aucun schéma pour l'instant.</p>
+      <button class="btn btn--primary btn--sm" (click)="nouveau()"><mat-icon>add</mat-icon>Créer le premier</button>
+    </div>
+  } @else {
+    <div class="lib-grid">
+      @for (s of cartes(); track s.id) {
+        <div class="lib-card" (click)="ouvrir(s)">
+          <div class="lib-card__thumb">
+            @if (s.apercu) {
+              <img [src]="s.apercu" [alt]="s.nom" />
+            } @else {
+              <div class="lib-card__noimg"><mat-icon>sports_soccer</mat-icon></div>
+            }
+            @if (s.animee) {
+              <span class="lib-card__play" title="Schéma animé"><mat-icon>play_arrow</mat-icon></span>
+            }
+          </div>
+          <div class="lib-card__body">
+            <div class="lib-card__top">
+              <span class="lib-card__name">{{ s.nom }}</span>
+              @if (s.categorie) {
+                <span class="badge badge--neutral">{{ label(s.categorie) }}</span>
+              }
+            </div>
+            <div class="lib-card__meta">
+              @if (s.animee) {
+                <span class="lib-card__anim"><mat-icon>movie</mat-icon>animé · {{ s.frames }} frames</span>
+              } @else {
+                <span class="lib-card__anim lib-card__anim--static"><mat-icon>image</mat-icon>statique</span>
+              }
+              <span>· {{ s.updatedAt | date:'dd/MM/yyyy' }}</span>
+            </div>
+          </div>
+          <div class="lib-card__actions">
+            <button class="btn btn--ghost btn--icon btn--sm lib-card__attach" title="Ajouter à un exercice"
+                    (click)="ajouterAExercice(s, $event)">
+              <mat-icon>add_task</mat-icon>
+            </button>
+            <button class="btn btn--ghost btn--icon btn--sm" title="Ouvrir l'éditeur" (click)="ouvrir(s)">
+              <mat-icon>edit</mat-icon>
+            </button>
+            @if (s.modifiable) {
+              <button class="btn btn--ghost btn--icon btn--sm" title="Renommer / catégorie"
+                      (click)="renommer(s, $event)">
+                <mat-icon>drive_file_rename_outline</mat-icon>
+              </button>
+              <button class="btn btn--ghost btn--icon btn--sm lib-card__del" title="Supprimer"
+                      (click)="supprimer(s, $event)">
+                <mat-icon>delete_outline</mat-icon>
+              </button>
+            }
+          </div>
+        </div>
+      }
+    </div>
+  }
+</div>

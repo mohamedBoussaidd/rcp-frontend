@@ -1,867 +1,167 @@
-:host {
-  display: block;
-}
+:host { display: block; }
 
-.medical-content {
-  padding: 24px;
-}
+/* ── Titres de section ── */
+.section-title {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  color: var(--text-3);
+  margin: 0;
 
-.card-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
+  &.section-title--bad  { color: var(--bad); }
+  &.section-title--warn { color: var(--warn); }
 }
 
 /* ── Formulaire ── */
-.blessure-form {
+.form-panel {
   border: 1px solid var(--border);
-  border-radius: 12px;
+  border-radius: var(--r-lg);
   padding: 16px;
-  margin-bottom: 20px;
   background: var(--surface-2);
 }
 
 .form-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   gap: 12px;
-  margin-bottom: 12px;
+  .span2 { grid-column: span 2; }
 }
 
-.f {
+/* ── Alertes ── */
+.alerte-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 10px;
+}
+
+.alerte-card {
+  padding: 12px;
+  border-radius: var(--r-lg);
+  border: 1px solid var(--border);
+  background: var(--surface);
   display: flex;
   flex-direction: column;
-  gap: 5px;
+  gap: 4px;
 
-  span {
-    font-size: 0.72rem;
-    font-weight: 600;
-    color: var(--muted);
-  }
-
-  .wide {
-    width: 100%;
-    box-sizing: border-box;
-    text-align: left;
-  }
-
-  &.check {
-    flex-direction: row;
-    align-items: center;
-    gap: 8px;
-
-    span {
-      color: var(--text-2);
-      font-weight: 500;
-    }
-  }
+  &.alerte-card--bad  { border-left: 3px solid var(--bad);  background: var(--bad-bg);  }
+  &.alerte-card--warn { border-left: 3px solid var(--warn); background: var(--warn-bg); }
+  &.alerte-card--info { border-left: 3px solid var(--info); background: var(--info-bg); }
 }
 
-.form-actions {
-  display: flex;
-  justify-content: flex-end;
-  margin-top: 12px;
-}
+.alerte-card__joueur { font-size: 13.5px; font-weight: 700; }
+.alerte-card__corps  { font-size: 13px; color: var(--text-2); margin: 0; }
+.alerte-card__meta   { font-size: 11.5px; color: var(--text-3); margin: 0; }
 
-/* ── Liste ── */
+/* ── Infirmerie ── */
+.infirmerie-ligne {
+  display: grid;
+  grid-template-columns: 1fr auto auto auto;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+  &:last-child { border-bottom: 0; }
+}
+.infirmerie-ligne__joueur { font-weight: 600; font-size: 13.5px; }
+.infirmerie-ligne__zone   { font-size: 12.5px; color: var(--text-2); small { color: var(--text-3); } }
+.infirmerie-ligne__retour { font-size: 12px; color: var(--text-3); white-space: nowrap; }
+
+/* ── Blessures ── */
 .blessures-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
   gap: 14px;
 }
 
 .blessure-card {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
   padding: 14px;
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  background: var(--surface-2);
-
-  &.retabli {
-    opacity: .72;
-  }
-}
-
-.blessure-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.blessure-joueur {
-  font-size: 0.9rem;
-  font-weight: 700;
-  color: var(--text);
-}
-
-.statut-pill {
-  font-size: 0.68rem;
-  font-weight: 700;
-  padding: 2px 10px;
-  border-radius: 50px;
-  background: var(--success-bg);
-  color: var(--success);
-  border: 1px solid var(--success-border);
-
-  &.en-cours,
-  &.st-indispo {
-    background: var(--danger-bg);
-    color: var(--danger);
-    border-color: var(--danger-border);
-  }
-
-  &.st-reprise {
-    background: var(--warning-bg);
-    color: var(--warning);
-    border-color: var(--warning-border);
-  }
-
-  &.st-retabli {
-    background: var(--success-bg);
-    color: var(--success);
-    border-color: var(--success-border);
-  }
-}
-
-.blessure-tags {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-
-.tag {
-  font-size: 0.68rem;
-  padding: 2px 8px;
-  border-radius: 6px;
-  background: var(--surface-input);
-  color: var(--text-2);
-  border: 1px solid var(--border);
-}
-
-.tag-recidive {
-  color: var(--warning);
-  border-color: var(--warning-border);
-  background: var(--warning-bg);
-}
-
-.g-badge {
-  font-size: 0.68rem;
-  font-weight: 700;
-  padding: 2px 9px;
-  border-radius: 6px;
-  border: 1px solid transparent;
-}
-
-.g-leger {
-  background: var(--info-bg);
-  color: var(--info);
-  border-color: var(--info-border);
-}
-
-.g-modere {
-  background: var(--warning-bg);
-  color: var(--warning);
-  border-color: var(--warning-border);
-}
-
-.g-grave {
-  background: var(--danger-bg);
-  color: var(--danger);
-  border-color: var(--danger-border);
-}
-
-.blessure-info {
-  display: grid;
-  grid-template-columns: auto 1fr;
-  gap: 4px 10px;
-  font-size: 0.78rem;
-  color: var(--text-2);
-  align-items: center;
-}
-
-.blessure-comm {
-  margin: 0;
-  font-size: 0.78rem;
-  color: var(--text-2);
-  font-style: italic;
-}
-
-.blessure-actions {
-  display: flex;
-  gap: 8px;
-  margin-top: 2px;
-}
-
-.btn-mini {
-  padding: 4px 12px;
-  border-radius: 6px;
-  border: 1px solid var(--copper-border);
-  background: transparent;
-  color: var(--copper);
-  font-size: 0.75rem;
-  font-weight: 600;
-  font-family: inherit;
-  cursor: pointer;
-
-  &:hover {
-    background: var(--copper-soft);
-  }
-
-  &.danger {
-    border-color: var(--danger-border);
-    color: var(--danger);
-
-    &:hover {
-      background: var(--danger-bg);
-    }
-  }
-}
-
-/* ── Documents médicaux ── */
-.medical-content>mat-card+mat-card {
-  margin-top: 18px;
-}
-
-.docs-liste {
-  display: flex;
-  flex-direction: column;
-}
-
-.doc-ligne {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  padding: 11px 4px;
-  border-bottom: 1px solid var(--border);
-
-  &:last-child {
-    border-bottom: none;
-  }
-}
-
-.doc-principal {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-  min-width: 0;
-}
-
-.doc-joueur {
-  font-size: 0.72rem;
-  text-transform: uppercase;
-  letter-spacing: .04em;
-  color: var(--muted);
-}
-
-.doc-nom {
-  font-weight: 600;
-  color: var(--text);
-  font-size: 0.9rem;
-}
-
-.doc-meta {
-  font-size: 0.78rem;
-  color: var(--text-2);
-}
-
-.doc-desc {
-  font-size: 0.8rem;
-  color: var(--muted);
-  font-style: italic;
-}
-
-.doc-tags {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin-top: 3px;
-}
-
-.doc-actions {
-  display: flex;
-  gap: 8px;
-  margin-left: auto;
-  flex-shrink: 0;
-}
-
-/* ── Infirmerie ── */
-.infirmerie-compteurs {
-  display: flex;
-  gap: 8px;
-}
-
-.cpt {
-  font-size: 0.72rem;
-  font-weight: 700;
-  padding: 3px 10px;
-  border-radius: 50px;
-}
-
-.cpt-indispo {
-  background: var(--danger-bg);
-  color: var(--danger);
-  border: 1px solid var(--danger-border);
-}
-
-.cpt-reprise {
-  background: var(--warning-bg);
-  color: var(--warning);
-  border: 1px solid var(--warning-border);
-}
-
-.infirmerie-liste {
-  display: flex;
-  flex-direction: column;
-}
-
-.infirmerie-ligne {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 9px 4px;
-  border-bottom: 1px solid var(--border);
-  font-size: 0.85rem;
-
-  &:last-child {
-    border-bottom: none;
-  }
-}
-
-.inf-joueur {
-  font-weight: 600;
-  color: var(--text);
-  min-width: 140px;
-}
-
-.inf-zone {
-  color: var(--text-2);
-
-  small {
-    color: var(--muted);
-  }
-}
-
-.inf-retour {
-  margin-left: auto;
-  color: var(--text-2);
-  font-size: 0.8rem;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.inf-jours {
-  font-weight: 700;
-  font-size: 0.72rem;
-  padding: 2px 8px;
-  border-radius: 50px;
-  background: var(--surface-2);
-  border: 1px solid var(--border);
-  color: var(--text-2);
-
-  &.retard {
-    background: var(--danger-bg);
-    color: var(--danger);
-    border-color: var(--danger-border);
-  }
-}
-
-/* ── Suivi subjectif (wellness + RPE) ── */
-.suivi-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 24px;
-}
-
-.suivi-col {
-  min-width: 0;
-}
-
-.suivi-titre {
-  font-size: 0.85rem;
-  font-weight: 700;
-  color: var(--text-2);
-  margin: 0 0 8px;
-}
-
-.suivi-liste {
-  display: flex;
-  flex-direction: column;
-}
-
-.suivi-ligne {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 7px 2px;
-  border-bottom: 1px solid var(--border);
-  font-size: 0.82rem;
-
-  &:last-child {
-    border-bottom: none;
-  }
-}
-
-.suivi-joueur {
-  font-weight: 600;
-  color: var(--text);
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.suivi-detail {
-  display: flex;
-  gap: 6px;
-  margin-left: auto;
-  flex-wrap: wrap;
-}
-
-.mini {
-  font-size: 0.7rem;
-  color: var(--muted);
-}
-
-.tag-mini {
-  padding: 1px 6px;
-  border-radius: 4px;
-  background: var(--surface-2);
-  border: 1px solid var(--border);
-}
-
-.suivi-comm {
-  font-size: 0.8rem;
-}
-
-.score-badge {
-  min-width: 30px;
-  text-align: center;
-  font-weight: 700;
-  font-size: 0.78rem;
-  padding: 2px 8px;
-  border-radius: 50px;
-
-  &.score-ok {
-    background: var(--success-bg);
-    color: var(--success);
-    border: 1px solid var(--success-border);
-  }
-
-  &.score-moyen {
-    background: var(--warning-bg);
-    color: var(--warning);
-    border: 1px solid var(--warning-border);
-  }
-
-  &.score-bas {
-    background: var(--danger-bg);
-    color: var(--danger);
-    border: 1px solid var(--danger-border);
-  }
-}
-
-/* ── Suivi blessure : RTP + journal ── */
-.suivi-sous {
-  font-weight: 400;
-  font-size: 0.78rem;
-  color: var(--muted);
-  margin-left: 8px;
-}
-
-.btn-mini.actif {
-  background: var(--copper-soft);
-  border-color: var(--copper);
-}
-
-.lien {
-  background: none;
-  border: none;
-  padding: 0;
-  cursor: pointer;
-  font-size: 0.78rem;
-  color: var(--copper);
-
-  &:hover {
-    text-decoration: underline;
-  }
-
-  &.lien-danger {
-    color: var(--danger);
-  }
-}
-
-.rtp-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.rtp-progress {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin: 6px 0 12px;
-}
-
-.rtp-barre {
-  flex: 1;
-  height: 8px;
-  border-radius: 50px;
-  background: var(--surface-2);
-  border: 1px solid var(--border);
-  overflow: hidden;
-
-  span {
-    display: block;
-    height: 100%;
-    background: var(--success);
-    transition: width .25s;
-  }
-}
-
-.rtp-pct {
-  font-size: 0.78rem;
-  font-weight: 700;
-  color: var(--text-2);
-  min-width: 38px;
-  text-align: right;
-}
-
-.rtp-etapes {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-}
-
-.rtp-etape {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 7px 2px;
-  border-bottom: 1px solid var(--border);
-
-  &:last-child {
-    border-bottom: none;
-  }
-
-  &.et-validee .rtp-libelle {
-    color: var(--muted);
-    text-decoration: line-through;
-  }
-}
-
-.rtp-puce {
-  width: 22px;
-  height: 22px;
-  flex-shrink: 0;
-  border-radius: 50%;
-  border: 2px solid var(--border);
   background: var(--surface);
-  color: #fff;
-  cursor: pointer;
-  font-size: 0.8rem;
-  line-height: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-
-  &:disabled {
-    cursor: default;
-  }
-}
-
-.et-validee .rtp-puce {
-  background: var(--success);
-  border-color: var(--success);
-}
-
-.et-encours .rtp-puce {
-  background: var(--warning);
-  border-color: var(--warning);
-}
-
-.rtp-libelle {
-  font-size: 0.85rem;
-  color: var(--text);
-}
-
-.rtp-date {
-  margin-left: auto;
-  font-size: 0.72rem;
-  color: var(--muted);
-}
-
-.note-form {
-  display: flex;
-  gap: 8px;
-  margin-bottom: 10px;
-
-  .param-input {
-    flex: 1;
-  }
-}
-
-.note-liste {
   display: flex;
   flex-direction: column;
+  &.blessure-card--retabli { opacity: .7; }
 }
 
-.note-ligne {
-  display: flex;
-  align-items: baseline;
-  gap: 10px;
-  padding: 7px 2px;
-  border-bottom: 1px solid var(--border);
-  font-size: 0.83rem;
+.blessure-card__joueur { font-size: 13.5px; font-weight: 700; }
+.blessure-card__info   { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; font-size: 12.5px; color: var(--text-2); align-items: center; margin: 8px 0; }
+.blessure-card__comm   { font-size: 12px; color: var(--text-3); margin: 4px 0 0; font-style: italic; }
 
-  &:last-child {
-    border-bottom: none;
-  }
+.g-leger  { background: var(--ok-bg);   color: var(--ok);   border-color: var(--ok-bd); }
+.g-modere { background: var(--warn-bg); color: var(--warn); border-color: var(--warn-bd); }
+.g-grave  { background: var(--bad-bg);  color: var(--bad);  border-color: var(--bad-bd); }
+
+/* ── Suivi (protocole + journal) ── */
+.suivi-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+
+.rtp-progress { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+.rtp-barre {
+  flex: 1; height: 6px; background: var(--surface-3); border-radius: 999px; overflow: hidden;
+  span { display: block; height: 100%; background: var(--green-600); border-radius: 999px; transition: width 300ms; }
 }
+.rtp-pct { font-size: 12px; font-weight: 700; color: var(--green-700); font-variant-numeric: tabular-nums; }
 
-.note-texte {
-  color: var(--text);
-  flex: 1;
+.rtp-etapes { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.rtp-etape  { display: flex; align-items: center; gap: 10px; font-size: 13px; }
+.rtp-puce {
+  width: 22px; height: 22px; border-radius: 50%; border: 2px solid var(--border-strong);
+  background: var(--surface); cursor: pointer; display: grid; place-items: center;
+  font-size: 11px; font-weight: 700; flex-shrink: 0; transition: all 120ms var(--ease-out);
+  &:disabled { cursor: default; }
 }
+.et-validee .rtp-puce { background: var(--green-600); border-color: var(--green-600); color: white; }
+.et-encours .rtp-puce { background: var(--warn-bg); border-color: var(--warn); color: var(--warn); }
+.rtp-libelle { flex: 1; }
+.et-validee .rtp-libelle { color: var(--text-3); text-decoration: line-through; }
 
-/* ── Alertes ── */
-.carte-alertes {
-  border-left: 4px solid var(--warning);
+.notes-liste { display: flex; flex-direction: column; gap: 4px; }
+.note-ligne  { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 13px; &:last-child { border-bottom: 0; } }
+.note-ligne__date  { font-size: 11px; color: var(--text-3); white-space: nowrap; min-width: 64px; font-variant-numeric: tabular-nums; }
+.note-ligne__texte { flex: 1; color: var(--text-2); }
+
+/* ── Documents ── */
+.doc-ligne {
+  display: flex; align-items: center; gap: 16px; padding: 12px 16px; border-bottom: 1px solid var(--border);
+  &:last-child { border-bottom: 0; }
 }
+.doc-ligne__info   { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0; }
+.doc-ligne__joueur { font-size: 13px; font-weight: 600; }
+.doc-ligne__nom    { font-size: 13px; color: var(--text-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.doc-ligne__meta   { font-size: 11.5px; color: var(--text-3); }
+.doc-ligne__desc   { font-size: 12px; color: var(--text-3); font-style: italic; }
 
-.alerte-section {
-  margin-bottom: 18px;
+/* ── Suivi subjectif ── */
+.suivi-liste { display: flex; flex-direction: column; gap: 4px; }
+.suivi-ligne { display: flex; align-items: center; gap: 10px; padding: 6px 0; border-bottom: 1px solid var(--border); font-size: 12.5px; &:last-child { border-bottom: 0; } }
+.suivi-ligne__date   { font-size: 11px; color: var(--text-3); min-width: 38px; font-variant-numeric: tabular-nums; }
+.suivi-ligne__joueur { flex: 1; font-weight: 600; font-size: 12.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.suivi-detail { display: flex; gap: 4px; flex-wrap: wrap; }
+.mini { font-size: 10.5px; padding: 1px 5px; border-radius: 4px; background: var(--surface-3); color: var(--text-3); font-variant-numeric: tabular-nums; }
 
-  &:last-child {
-    margin-bottom: 0;
-  }
-}
-
-.alerte-titre {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 0.82rem;
-  font-weight: 700;
-  margin: 0 0 10px;
-
-  &.rouge {
-    color: var(--danger);
-  }
-
-  &.orange {
-    color: var(--warning);
-  }
-}
-
-.al-compte {
-  font-size: 0.7rem;
-  font-weight: 700;
-  min-width: 18px;
-  height: 18px;
-  padding: 0 5px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 50px;
-  background: var(--surface-2);
-  border: 1px solid var(--border);
-  color: var(--text-2);
-}
-
-.alerte-cards {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-  gap: 12px;
-}
-
-.alerte-card {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  padding: 12px;
-  border: 1px solid var(--border);
-  border-left: 3px solid var(--border);
-  border-radius: 10px;
-  background: var(--surface-2);
-
-  &.sev-rouge {
-    border-left-color: var(--danger);
-  }
-
-  &.sev-orange {
-    border-left-color: var(--warning);
-  }
-
-  &.sev-bleu {
-    border-left-color: var(--info);
-  }
-}
-
-.ac-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-}
-
-.ac-joueur {
-  font-weight: 700;
-  font-size: 0.85rem;
-  color: var(--text);
-}
-
-.ac-corps {
-  font-size: 0.83rem;
-  color: var(--text-2);
-}
-
-.ac-badges {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-
-.ac-meta {
-  font-size: 0.72rem;
-  color: var(--muted);
-}
-
-.ac-actions {
-  display: flex;
-  gap: 8px;
-  margin-top: 4px;
-}
+.score-badge { display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; border-radius: 6px; font-size: 11px; font-weight: 700; flex-shrink: 0; }
+.score-ok    { background: var(--ok-bg);   color: var(--ok); }
+.score-moyen { background: var(--warn-bg); color: var(--warn); }
+.score-bas   { background: var(--bad-bg);  color: var(--bad); }
 
 /* ── Bilan ── */
-.bilan-tuiles {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
-  gap: 12px;
-  margin-bottom: 18px;
+.bilan-kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+.bilan-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+.zone-barre { flex: 1; height: 8px; background: var(--surface-3); border-radius: 999px; overflow: hidden; span { display: block; height: 100%; background: var(--green-600); border-radius: 999px; } }
+
+/* ── Responsive ── */
+@media (max-width: 900px) {
+  .form-grid  { grid-template-columns: 1fr 1fr; }
+  .suivi-cols { grid-template-columns: 1fr; }
+  .bilan-cols { grid-template-columns: 1fr; }
+  .bilan-kpis { grid-template-columns: repeat(2, 1fr); }
 }
 
-.tuile {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 2px;
-  padding: 14px 10px;
-  border-radius: 10px;
-  background: var(--surface-2);
-  border: 1px solid var(--border);
-}
-
-.tuile-val {
-  font-size: 1.5rem;
-  font-weight: 800;
-  color: var(--text);
-}
-
-.tuile-lbl {
-  font-size: 0.72rem;
-  text-transform: uppercase;
-  letter-spacing: .04em;
-  color: var(--muted);
-}
-
-.tuile.g-leger .tuile-val {
-  color: var(--success);
-}
-
-.tuile.g-modere .tuile-val {
-  color: var(--warning);
-}
-
-.tuile.g-grave .tuile-val {
-  color: var(--danger);
-}
-
-.bilan-grid {
-  display: grid;
-  grid-template-columns: 2fr 1fr;
-  gap: 24px;
-}
-
-.zone-liste {
-  display: flex;
-  flex-direction: column;
-  gap: 7px;
-}
-
-.zone-ligne {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  font-size: 0.82rem;
-}
-
-.zone-nom {
-  min-width: 120px;
-  color: var(--text);
-}
-
-.zone-barre {
-  flex: 1;
-  height: 10px;
-  border-radius: 50px;
-  background: var(--surface-2);
-  border: 1px solid var(--border);
-  overflow: hidden;
-
-  span {
-    display: block;
-    height: 100%;
-    background: var(--copper, #b87333);
-  }
-}
-
-.zone-count {
-  min-width: 22px;
-  text-align: right;
-  font-weight: 700;
-  color: var(--text-2);
-}
-
-.gravite-tuiles {
-  display: flex;
-  gap: 12px;
-}
-
-.gravite-tuiles .tuile {
-  flex: 1;
-}
-
-@media (max-width: 700px) {
-  .medical-content {
-    padding: 12px 8px;
-  }
-
-  .form-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .doc-ligne {
-    flex-wrap: wrap;
-  }
-
-  .doc-actions {
-    margin-left: 0;
-  }
-
-  .suivi-grid {
-    grid-template-columns: 1fr;
-    gap: 16px;
-  }
-
-  .bilan-grid {
-    grid-template-columns: 1fr;
-    gap: 16px;
-  }
+@media (max-width: 600px) {
+  .form-grid        { grid-template-columns: 1fr; }
+  .form-grid .span2 { grid-column: span 1; }
+  .infirmerie-ligne { grid-template-columns: 1fr auto; }
+  .infirmerie-ligne__zone,
+  .infirmerie-ligne__retour { grid-column: span 2; }
+  .bilan-kpis { grid-template-columns: 1fr 1fr; }
 }

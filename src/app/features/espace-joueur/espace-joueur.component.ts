@@ -1,7 +1,6 @@
 import { Component, OnInit, computed, signal } from '@angular/core';
 import { DatePipe, DecimalPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { MatToolbar } from '@angular/material/toolbar';
 import { MatCard, MatCardContent, MatCardHeader, MatCardTitle } from '@angular/material/card';
 import { EspaceJoueurService, MaPesee, DocumentMedical, Wellness, Rpe, RtpEtape } from '../../core/services/espace-joueur.service';
 import { Joueur, GpsPoint } from '../../core/services/joueur.service';
@@ -34,7 +33,7 @@ interface SeanceANoter {
   standalone: true,
   templateUrl: './espace-joueur.component.html',
   styleUrl: './espace-joueur.component.scss',
-  imports: [DatePipe, DecimalPipe, FormsModule, MatToolbar, MatCard, MatCardContent, MatCardHeader, MatCardTitle],
+  imports: [DatePipe, DecimalPipe, FormsModule, MatCard, MatCardContent, MatCardHeader, MatCardTitle],
 })
 export class EspaceJoueurComponent implements OnInit {
 

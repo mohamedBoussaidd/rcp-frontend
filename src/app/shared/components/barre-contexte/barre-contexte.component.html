@@ -1,18 +1,18 @@
 @if (visible) {
-  <div class="barre-contexte">
-    <span class="bc-pastille">
-      <mat-icon class="bc-icon">apartment</mat-icon>
-      <span class="bc-label">Club actif</span>
-      <strong class="bc-valeur">{{ contexte.clubActif()!.nom }}</strong>
+  <button class="context-pill" (click)="estSuperAdmin && retourAdmin()" [title]="estSuperAdmin ? 'Retour administration' : 'Club actif'">
+    <span class="context-pill__crest">{{ contexte.clubActif()!.nom.substring(0, 3).toUpperCase() }}</span>
+    <span class="context-pill__content">
+      <span class="context-pill__label">Club</span>
+      <span class="context-pill__value">{{ contexte.clubActif()!.nom }}</span>
     </span>
+    <mat-icon class="context-pill__chev">expand_more</mat-icon>
+  </button>
 
-    <span class="bc-sep">·</span>
-
-    <span class="bc-pastille">
-      <mat-icon class="bc-icon">groups</mat-icon>
-      <span class="bc-label">Équipe</span>
+  <div class="context-pill">
+    <span class="context-pill__content">
+      <span class="context-pill__label">Équipe</span>
       @if (contexte.equipesDispo().length > 0) {
-        <select class="bc-select"
+        <select class="context-pill__select"
                 [value]="contexte.equipesActives().length ? contexte.equipesActives()[0] : ''"
                 (change)="onChangerEquipe($any($event.target).value)">
           <option value="">Toutes les équipes</option>
@@ -21,15 +21,9 @@
           }
         </select>
       } @else {
-        <strong class="bc-valeur">{{ contexte.libelleEquipe() }}</strong>
+        <span class="context-pill__value">{{ contexte.libelleEquipe() }}</span>
       }
     </span>
-
-    @if (estSuperAdmin) {
-      <button class="bc-retour" (click)="retourAdmin()">
-        <mat-icon>arrow_back</mat-icon>
-        <span>Retour administration</span>
-      </button>
-    }
+    <mat-icon class="context-pill__chev">expand_more</mat-icon>
   </div>
 }

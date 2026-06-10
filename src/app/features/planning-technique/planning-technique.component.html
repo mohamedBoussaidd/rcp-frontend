@@ -1,184 +1,246 @@
-<mat-toolbar color="primary">
-  <span>RCP — Planning technique</span>
-</mat-toolbar>
+<div class="screen">
 
-<div class="tech-content">
+  <!-- ════════════════════════════════
+       SECTION : EXERCICES
+       ════════════════════════════════ -->
+  @if (section() === 'exercices') {
+    <div class="page-head">
+      <div>
+        <h1 class="page-head__title">Bibliothèque d'exercices</h1>
+        <p class="page-head__sub">{{ exercicesFiltres().length }} exercice{{ exercicesFiltres().length > 1 ? 's' : '' }} · catalogue tactique &amp; physique</p>
+      </div>
+      <div class="page-head__actions">
+        <button class="btn btn--primary" (click)="showExoForm() ? annulerExo() : nouvelExo()">
+          <mat-icon>add</mat-icon>{{ showExoForm() ? 'Annuler' : 'Nouvel exercice' }}
+        </button>
+      </div>
+    </div>
 
-  <!-- ════════ Bibliothèque d'exercices ════════ -->
-  <mat-card>
-    <mat-card-header class="card-head">
-      <mat-card-title>Bibliothèque d'exercices</mat-card-title>
-      <button class="btn-dark-primary" (click)="showExoForm() ? annulerExo() : nouvelExo()">
-        {{ showExoForm() ? 'Annuler' : '+ Nouvel exercice' }}
-      </button>
-    </mat-card-header>
-    <mat-card-content>
-
-      @if (showExoForm()) {
-        <form class="exo-form" (ngSubmit)="enregistrerExo()">
+    <!-- Formulaire exercice -->
+    @if (showExoForm()) {
+      <div class="card card--padded" style="margin-bottom:16px">
+        <form (ngSubmit)="enregistrerExo()">
           <div class="form-grid">
-            <label class="f"><span>Nom *</span>
-              <input class="param-input wide" [(ngModel)]="exoForm.nom" name="nom" placeholder="Conservation 4v2"></label>
-            <label class="f"><span>Catégorie</span>
-              <select class="param-input wide" [(ngModel)]="exoForm.categorie" name="cat">
+            <div class="field">
+              <label class="field__label">Nom *</label>
+              <input class="input" [(ngModel)]="exoForm.nom" name="nom" placeholder="Conservation 4v2">
+            </div>
+            <div class="field">
+              <label class="field__label">Catégorie</label>
+              <select class="input select" [(ngModel)]="exoForm.categorie" name="cat">
                 <option value="">—</option>
                 @for (c of categories; track c) { <option [value]="c">{{ label(c) }}</option> }
-              </select></label>
-            <label class="f"><span>Durée (min)</span>
-              <input class="param-input wide" type="number" [(ngModel)]="exoForm.dureeMinutes" name="duree" min="1"></label>
-            <label class="f"><span>Intensité (1-5)</span>
-              <select class="param-input wide" [(ngModel)]="exoForm.intensite" name="int">
+              </select>
+            </div>
+            <div class="field">
+              <label class="field__label">Durée (min)</label>
+              <input class="input" type="number" [(ngModel)]="exoForm.dureeMinutes" name="duree" min="1">
+            </div>
+            <div class="field">
+              <label class="field__label">Intensité (1-5)</label>
+              <select class="input select" [(ngModel)]="exoForm.intensite" name="int">
                 <option [ngValue]="null">—</option>
                 @for (i of [1,2,3,4,5]; track i) { <option [ngValue]="i">{{ i }}</option> }
-              </select></label>
-            <label class="f span2"><span>Objectif</span>
-              <input class="param-input wide" [(ngModel)]="exoForm.objectif" name="obj" placeholder="vitesse de passe…"></label>
+              </select>
+            </div>
+            <div class="field span2">
+              <label class="field__label">Objectif</label>
+              <input class="input" [(ngModel)]="exoForm.objectif" name="obj" placeholder="vitesse de passe…">
+            </div>
+            <div class="field span2">
+              <label class="field__label">Description</label>
+              <input class="input" [(ngModel)]="exoForm.description" name="desc" placeholder="Consignes, dispositif…">
+            </div>
           </div>
-          <label class="f"><span>Description</span>
-            <input class="param-input wide" [(ngModel)]="exoForm.description" name="desc" placeholder="Consignes, dispositif…"></label>
-          <div class="form-actions">
-            <button type="submit" class="btn-dark-primary" [disabled]="savingExo() || !exoForm.nom">
+          <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:12px">
+            <button type="button" class="btn btn--secondary btn--sm" (click)="annulerExo()">Annuler</button>
+            <button type="submit" class="btn btn--primary btn--sm" [disabled]="savingExo() || !exoForm.nom">
               {{ savingExo() ? '…' : (editingExoId() ? 'Enregistrer' : 'Créer') }}
             </button>
           </div>
         </form>
-      }
+      </div>
+    }
 
-      <!-- Filtres -->
-      @if (exercices().length > 0) {
-        <div class="filtres">
-          <select class="param-input" [ngModel]="filtreCreateur()" (ngModelChange)="filtreCreateur.set($event)" name="fc">
+    <!-- Filtres -->
+    @if (exercices().length > 0) {
+      <div class="card" style="margin-bottom:16px">
+        <div style="padding:12px;display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+          <select class="input select" style="max-width:200px" [ngModel]="filtreCreateur()" (ngModelChange)="filtreCreateur.set($event)" name="fc">
             <option value="">Tous les créateurs</option>
             @for (c of createurs(); track c.id) { <option [value]="c.id">{{ c.nom }}</option> }
           </select>
-          <select class="param-input" [ngModel]="filtreEquipe()" (ngModelChange)="filtreEquipe.set($event)" name="fe">
+          <select class="input select" style="max-width:200px" [ngModel]="filtreEquipe()" (ngModelChange)="filtreEquipe.set($event)" name="fe">
             <option value="">Toutes les équipes</option>
             @for (e of equipesOrigine(); track e.id) { <option [value]="e.id">{{ e.nom }}</option> }
           </select>
-          <select class="param-input" [ngModel]="filtreCategorie()" (ngModelChange)="filtreCategorie.set($event)" name="fcat">
+          <select class="input select" style="max-width:200px" [ngModel]="filtreCategorie()" (ngModelChange)="filtreCategorie.set($event)" name="fcat">
             <option value="">Toutes les catégories</option>
             @for (c of categories; track c) { <option [value]="c">{{ label(c) }}</option> }
           </select>
         </div>
-      }
+      </div>
+    }
 
-      @if (loading()) {
-        <p class="empty-state">Chargement…</p>
-      } @else if (exercices().length === 0) {
-        <p class="empty-state">Aucun exercice. Créez le premier.</p>
-      } @else {
-        <div class="exos-grid">
-          @for (e of exercicesFiltres(); track e.id) {
-            <div class="exo-card">
-              <div class="exo-head">
-                <span class="exo-nom">{{ e.nom }}</span>
-                @if (e.intensite) { <span class="int-badge int-{{ e.intensite }}">int. {{ e.intensite }}</span> }
-              </div>
-              <div class="exo-tags">
-                @if (e.categorie) { <span class="tag">{{ label(e.categorie) }}</span> }
-                @if (e.dureeMinutes) { <span class="tag">{{ e.dureeMinutes }} min</span> }
-              </div>
-              @if (e.objectif) { <span class="exo-obj">🎯 {{ e.objectif }}</span> }
-              <div class="exo-foot">
-                <span class="exo-auteur">{{ e.creeParNom || '—' }}@if (e.equipeOrigineNom) { · {{ e.equipeOrigineNom }} }@if (e.schemaJson) { · <span class="schema-tag">schéma</span> }</span>
-                <span class="row-actions">
-                  @if (e.modifiable) {
-                    <button class="btn-mini" (click)="ouvrirSchema(e)" title="Éditer le schéma tactique">⬡ Schéma</button>
-                    <button class="btn-mini" (click)="editerExo(e)" title="Modifier">✎</button>
-                    <button class="btn-mini danger" (click)="supprimerExo(e)" title="Supprimer">✕</button>
-                  }
-                </span>
-              </div>
+    @if (loading()) {
+      <div class="card card--padded"><div class="loading">Chargement…</div></div>
+    } @else if (exercices().length === 0) {
+      <div class="card card--padded"><div class="empty-state">Aucun exercice. Créez le premier.</div></div>
+    } @else {
+      <div class="exos-grid">
+        @for (e of exercicesFiltres(); track e.id) {
+          <div class="exo-card">
+            <div class="exo-card__head">
+              <span class="exo-card__nom">{{ e.nom }}</span>
+              @if (e.intensite) { <span class="badge int-badge int-{{ e.intensite }}">int. {{ e.intensite }}</span> }
             </div>
-          }
-        </div>
-      }
-    </mat-card-content>
-  </mat-card>
-
-  <!-- ════════ Séances techniques ════════ -->
-  <mat-card>
-    <mat-card-header class="card-head">
-      <mat-card-title>Séances techniques</mat-card-title>
-      <button class="btn-dark-primary" (click)="showSeanceForm() ? annulerSeance() : nouvelleSeance()">
-        {{ showSeanceForm() ? 'Annuler' : '+ Composer une séance' }}
-      </button>
-    </mat-card-header>
-    <mat-card-content>
-
-      @if (showSeanceForm()) {
-        <div class="compose">
-          <div class="form-grid">
-            <label class="f"><span>Date *</span>
-              <input class="param-input wide" type="date" [(ngModel)]="seanceForm.date" name="sdate"></label>
-            <label class="f"><span>Titre</span>
-              <input class="param-input wide" [(ngModel)]="seanceForm.titre" name="stitre" placeholder="Séance mardi"></label>
-            <label class="f span2"><span>Objectif global</span>
-              <input class="param-input wide" [(ngModel)]="seanceForm.objectif" name="sobj"></label>
-            <label class="f span2"><span>Description</span>
-              <input class="param-input wide" [(ngModel)]="seanceForm.description" name="sdesc" placeholder="Consignes, contexte…"></label>
-          </div>
-
-          <div class="compose-cols">
-            <div class="compose-biblio">
-              <div class="compose-titre">Piochez dans la bibliothèque</div>
-              <div class="chips">
-                @for (e of exercices(); track e.id) {
-                  <button class="chip" [class.on]="estSelectionne(e)" (click)="toggleSelection(e)">
-                    {{ e.nom }} <small>{{ e.dureeMinutes || 0 }}'</small>
-                  </button>
-                }
-              </div>
+            <div class="row" style="gap:6px;flex-wrap:wrap">
+              @if (e.categorie) { <span class="badge badge--neutral">{{ label(e.categorie) }}</span> }
+              @if (e.dureeMinutes) { <span class="badge badge--neutral">{{ e.dureeMinutes }} min</span> }
             </div>
-            <div class="compose-selection">
-              <div class="compose-titre">Séance ({{ dureeSelection() }} min · int. {{ intensiteSelection() ?? '—' }})</div>
-              @if (selection().length === 0) {
-                <p class="muted">Aucun exercice sélectionné.</p>
-              } @else {
-                <ol class="sel-list">
-                  @for (e of selection(); track e.id) {
-                    <li><span>{{ e.nom }} <small>{{ e.dureeMinutes || 0 }}' · int. {{ e.intensite || '—' }}</small></span>
-                      <button class="btn-mini danger" (click)="retirerSelection(e)">✕</button></li>
-                  }
-                </ol>
+            @if (e.objectif) { <p class="exo-card__obj">{{ e.objectif }}</p> }
+            <div class="exo-card__foot">
+              <span class="exo-card__auteur">
+                {{ e.creeParNom || '—' }}@if (e.equipeOrigineNom) { · {{ e.equipeOrigineNom }} }@if (e.schemaJson) { · <span style="color:var(--green-600);font-weight:600">schéma</span> }
+              </span>
+              @if (e.modifiable) {
+                <div class="row" style="gap:4px">
+                  <button class="btn btn--secondary btn--sm btn--icon" (click)="ouvrirSchema(e)" title="Schéma tactique">⬡</button>
+                  <button class="btn btn--secondary btn--sm btn--icon" (click)="editerExo(e)" title="Modifier">✎</button>
+                  <button class="btn btn--danger btn--sm btn--icon" (click)="supprimerExo(e)" title="Supprimer">✕</button>
+                </div>
               }
-              <button class="btn-dark-primary" [disabled]="savingSeance() || selection().length === 0" (click)="enregistrerSeance()">
+            </div>
+          </div>
+        }
+      </div>
+    }
+  }
+
+  <!-- ════════════════════════════════
+       SECTION : CRÉER UNE SÉANCE
+       ════════════════════════════════ -->
+  @if (section() === 'creer') {
+    <div class="page-head">
+      <div>
+        <h1 class="page-head__title">Créer une séance</h1>
+        <p class="page-head__sub">{{ seances().length }} séance{{ seances().length > 1 ? 's' : '' }} technique{{ seances().length > 1 ? 's' : '' }}</p>
+      </div>
+      <div class="page-head__actions">
+        <button class="btn btn--primary" (click)="showSeanceForm() ? annulerSeance() : nouvelleSeance()">
+          <mat-icon>add</mat-icon>{{ showSeanceForm() ? 'Annuler' : 'Composer une séance' }}
+        </button>
+      </div>
+    </div>
+
+    <!-- Formulaire composition -->
+    @if (showSeanceForm()) {
+      <div class="card card--padded" style="margin-bottom:16px">
+        <div class="form-grid" style="margin-bottom:16px">
+          <div class="field">
+            <label class="field__label">Date *</label>
+            <input class="input" type="date" [(ngModel)]="seanceForm.date" name="sdate">
+          </div>
+          <div class="field">
+            <label class="field__label">Titre</label>
+            <input class="input" [(ngModel)]="seanceForm.titre" name="stitre" placeholder="Séance mardi">
+          </div>
+          <div class="field span2">
+            <label class="field__label">Objectif global</label>
+            <input class="input" [(ngModel)]="seanceForm.objectif" name="sobj">
+          </div>
+        </div>
+
+        <div class="compose-cols">
+          <div>
+            <p class="compose-titre">Bibliothèque</p>
+            <div class="chips">
+              @for (e of exercices(); track e.id) {
+                <button type="button" class="chip" [class.on]="estSelectionne(e)" (click)="toggleSelection(e)">
+                  {{ e.nom }} <small>{{ e.dureeMinutes || 0 }}'</small>
+                </button>
+              }
+            </div>
+          </div>
+          <div>
+            <p class="compose-titre">Séance — {{ dureeSelection() }} min · int. {{ intensiteSelection() ?? '—' }}</p>
+            @if (selection().length === 0) {
+              <p style="font-size:13px;color:var(--text-3)">Aucun exercice sélectionné.</p>
+            } @else {
+              <ol class="sel-list">
+                @for (e of selection(); track e.id) {
+                  <li>
+                    <span>{{ e.nom }} <small>{{ e.dureeMinutes || 0 }}' · int. {{ e.intensite || '—' }}</small></span>
+                    <button class="btn btn--danger btn--sm btn--icon" (click)="retirerSelection(e)">✕</button>
+                  </li>
+                }
+              </ol>
+            }
+            <div style="display:flex;gap:8px;margin-top:12px">
+              <button class="btn btn--secondary btn--sm" (click)="annulerSeance()">Annuler</button>
+              <button class="btn btn--primary btn--sm" [disabled]="savingSeance() || selection().length === 0" (click)="enregistrerSeance()">
                 {{ savingSeance() ? '…' : (editingSeanceId() ? 'Enregistrer' : 'Créer la séance') }}
               </button>
             </div>
           </div>
         </div>
-      }
+      </div>
+    }
 
-      @if (seances().length === 0) {
-        <p class="empty-state">Aucune séance technique planifiée.</p>
-      } @else {
-        <div class="seances-grid">
-          @for (s of seances(); track s.id) {
-            <div class="seance-card" [class.realisee]="s.statut === 'REALISEE'">
-              <div class="seance-head">
-                <span class="seance-date">{{ s.date | date:'dd/MM/yyyy' }}</span>
-                <span class="statut-pill" [class.realisee]="s.statut === 'REALISEE'">{{ s.statut === 'REALISEE' ? 'Réalisée' : 'Planifiée' }}</span>
-              </div>
-              <span class="seance-titre">{{ s.titre || 'Séance technique' }}</span>
-              <div class="seance-meta">{{ s.dureeTotaleMinutes }} min · int. {{ s.intensiteMoyenne ?? '—' }} · {{ s.exercices.length }} exo.</div>
-              @if (s.objectif) { <span class="seance-obj">🎯 {{ s.objectif }}</span> }
-              <ul class="seance-exos">
-                @for (ex of s.exercices; track ex.exerciceId) { <li>{{ ex.nom }} <small>{{ ex.dureeMinutes || 0 }}'</small></li> }
-              </ul>
-              <div class="seance-actions">
-                <button class="btn-mini" (click)="ouvrirDetail(s)">👁 Détail</button>
-                @if (s.statut !== 'REALISEE') {
-                  <button class="btn-mini" (click)="editerSeance(s)">✎ Modifier</button>
-                  <button class="btn-mini" (click)="realiserSeance(s)">✓ Réalisée</button>
-                }
-                <button class="btn-mini danger" (click)="supprimerSeance(s)">Supprimer</button>
-              </div>
+    <!-- Liste séances techniques -->
+    @if (seances().length === 0) {
+      <div class="card card--padded"><div class="empty-state">Aucune séance technique planifiée.</div></div>
+    } @else {
+      <div class="seances-grid">
+        @for (s of seances(); track s.id) {
+          <div class="seance-card" [class.seance-card--realisee]="s.statut === 'REALISEE'">
+            <div class="row row--between">
+              <span class="num" style="font-weight:700;font-size:14px">{{ s.date | date:'dd/MM/yyyy' }}</span>
+              <span class="badge" [class.badge--ok]="s.statut === 'REALISEE'" [class.badge--info]="s.statut !== 'REALISEE'">
+                {{ s.statut === 'REALISEE' ? 'Réalisée' : 'Planifiée' }}
+              </span>
             </div>
-          }
-        </div>
-      }
-    </mat-card-content>
-  </mat-card>
+            <p class="seance-card__titre">{{ s.titre || 'Séance technique' }}</p>
+            <p class="seance-card__meta">{{ s.dureeTotaleMinutes }} min · int. {{ s.intensiteMoyenne ?? '—' }} · {{ s.exercices.length }} exercice{{ s.exercices.length > 1 ? 's' : '' }}</p>
+            @if (s.objectif) { <p class="seance-card__obj">{{ s.objectif }}</p> }
+            <ul class="seance-card__exos">
+              @for (ex of s.exercices; track ex.exerciceId) {
+                <li>{{ ex.nom }} <small>{{ ex.dureeMinutes || 0 }}'</small></li>
+              }
+            </ul>
+            <div class="row" style="gap:6px;margin-top:8px;flex-wrap:wrap">
+              <button class="btn btn--secondary btn--sm" (click)="ouvrirDetail(s)">Détail</button>
+              @if (s.statut !== 'REALISEE') {
+                <button class="btn btn--secondary btn--sm" (click)="editerSeance(s)">Modifier</button>
+                <button class="btn btn--primary btn--sm" (click)="realiserSeance(s)">✓ Réalisée</button>
+              }
+              <button class="btn btn--danger btn--sm" (click)="supprimerSeance(s)">Supprimer</button>
+            </div>
+          </div>
+        }
+      </div>
+    }
+  }
+
+  <!-- ════════════════════════════════
+       SECTION : SCHÉMAS (à venir)
+       ════════════════════════════════ -->
+  @if (section() === 'schemas') {
+    <app-schema-tactique />
+  }
+
+  <!-- ════════════════════════════════
+       SECTION : PLAN DE JEU
+       ════════════════════════════════ -->
+  @if (section() === 'planjeu') {
+    <app-plan-de-jeu />
+  }
+
+  <!-- ════════════════════════════════
+       SECTION : MATCH
+       ════════════════════════════════ -->
+  @if (section() === 'match') {
+    <app-match />
+  }
 
 </div>

@@ -6,7 +6,6 @@ import { CdkDragDrop } from '@angular/cdk/drag-drop';
 import { SeanceService, Seance, TypeSeance, SeanceCreate } from '../../core/services/seance.service';
 import { EspaceJoueurService } from '../../core/services/espace-joueur.service';
 import { SeanceFormDialogComponent } from './seance-form-dialog/seance-form-dialog.component';
-import { MatToolbar } from '@angular/material/toolbar';
 import { MatTooltip } from '@angular/material/tooltip';
 import { DragDropModule } from '@angular/cdk/drag-drop';
 import { DatePipe, LowerCasePipe } from '@angular/common';
@@ -41,7 +40,7 @@ const JOURS = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dim
   standalone: true,
   templateUrl: './calendrier.component.html',
   styleUrl: './calendrier.component.scss',
-  imports: [MatToolbar, MatTooltip, DragDropModule, DatePipe, LowerCasePipe]
+  imports: [MatTooltip, DragDropModule, DatePipe, LowerCasePipe]
 })
 export class CalendrierComponent implements OnInit {
 

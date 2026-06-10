@@ -1,9 +1,7 @@
 import { Component } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
-import { MatIcon } from '@angular/material/icon';
 import { ThemeService } from './core/services/theme.service';
 import { NavSidebarComponent } from './shared/components/nav-sidebar/nav-sidebar.component';
-import { BarreContexteComponent } from './shared/components/barre-contexte/barre-contexte.component';
 import { SidebarService } from './core/services/sidebar.service';
 import { AuthService } from './core/services/auth.service';
 
@@ -12,7 +10,7 @@ import { AuthService } from './core/services/auth.service';
     standalone: true,
     templateUrl: './app.component.html',
     styleUrl: './app.component.scss',
-    imports: [RouterOutlet, NavSidebarComponent, BarreContexteComponent, MatIcon]
+    imports: [RouterOutlet, NavSidebarComponent]
 })
 export class AppComponent {
   title = 'RCP - Préparateur physique';

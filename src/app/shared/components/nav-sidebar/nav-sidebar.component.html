@@ -1,52 +1,149 @@
-<nav class="sidebar">
+<!-- Scrim mobile (drawer) -->
+<div class="drawer-scrim"
+     [class.is-open]="sidebarService.isOpen()"
+     (click)="sidebarService.close()">
+</div>
 
-  <!-- ── Marque ── -->
-  <div class="sidebar-brand">
-    <mat-icon class="brand-icon">sports_soccer</mat-icon>
-    <div class="brand-text">
-      <span class="brand-title">RCP</span>
-      <span class="brand-sub">Préparateur physique</span>
+<!-- Scrim dropdown profil (sous la navbar, capte les clics extérieurs) -->
+@if (profileOpen()) {
+  <div class="profile-scrim" (click)="closeProfile()"></div>
+}
+
+<!-- ═══════════════════════════════════
+     NAVBAR TOP
+     ═══════════════════════════════════ -->
+<header class="navbar">
+
+  <button class="hamburger" (click)="sidebarService.toggle()" aria-label="Ouvrir le menu">
+    <mat-icon>menu</mat-icon>
+  </button>
+
+  <a class="navbar__brand" routerLink="/dashboard">
+    <span class="navbar__brand-mark"><mat-icon>sports_soccer</mat-icon></span>
+    <div>
+      <div class="navbar__brand-title">GESTION <span class="navbar__brand-dot">·</span> CLUB</div>
+      <div class="navbar__brand-sub">Performance staff suite</div>
     </div>
-  </div>
+  </a>
 
-  <!-- ── Navigation ── -->
-  <ul class="sidebar-nav" (click)="sidebarService.close()">
-    @for (item of navItems(); track item.route) {
-      <li>
-        <a class="nav-item"
-           [routerLink]="item.route"
-           routerLinkActive="active"
-           [routerLinkActiveOptions]="{ exact: item.route === '/dashboard' }">
-          <mat-icon class="nav-icon">{{ item.icon }}</mat-icon>
-          <span class="nav-label">{{ item.label }}</span>
-        </a>
-      </li>
+  <nav class="navbar__nav" aria-label="Modules">
+    @for (m of navModules(); track m.key) {
+      <a class="nav-item"
+         [routerLink]="moduleLink(m)"
+         [queryParams]="moduleQuery(m)"
+         [class.is-active]="isModuleActive(m)">
+        <mat-icon class="nav-icon">{{ m.icon }}</mat-icon>
+        <span>{{ m.label }}</span>
+      </a>
     }
-  </ul>
+  </nav>
 
-  <!-- ── Pied de sidebar ── -->
-  <div class="sidebar-footer">
+  <div class="navbar__spacer"></div>
+
+  <div class="navbar__right">
+    <app-barre-contexte></app-barre-contexte>
 
     @if (user(); as u) {
-      <div class="sidebar-user">
-        <div class="user-avatar">{{ (u.prenom || u.email).charAt(0).toUpperCase() }}</div>
-        <div class="user-meta">
-          <span class="user-name">{{ u.prenom }} {{ u.nom }}</span>
-          <span class="user-role">{{ roleLabel(u.role) }}</span>
-        </div>
+      <div class="profile-wrap">
+        <button class="avatar-btn" (click)="toggleProfile()" [attr.aria-expanded]="profileOpen()">
+          <span class="avatar">{{ (u.prenom || u.email).charAt(0).toUpperCase() }}</span>
+          <span class="avatar-name">{{ u.prenom }}</span>
+          <mat-icon class="avatar-chev">expand_more</mat-icon>
+        </button>
+
+        @if (profileOpen()) {
+          <div class="profile-dropdown">
+            <div class="profile-dropdown__head">
+              <div class="avatar avatar--md">{{ (u.prenom || u.email).charAt(0).toUpperCase() }}</div>
+              <div>
+                <div style="font-weight:600;font-size:13px">{{ u.prenom }} {{ u.nom }}</div>
+                <div style="font-size:11.5px;color:var(--text-3)">{{ roleLabel(u.role) }}</div>
+              </div>
+            </div>
+            <div class="profile-dropdown__sep"></div>
+            <button class="profile-dropdown__item profile-dropdown__item--danger" (click)="deconnexion()">
+              <mat-icon>logout</mat-icon>
+              Déconnexion
+            </button>
+          </div>
+        }
       </div>
     }
+  </div>
+</header>
 
-    <button class="btn-theme" (click)="themeService.toggle()">
-      <mat-icon>{{ themeService.isDark() ? 'light_mode' : 'dark_mode' }}</mat-icon>
-      <span>{{ themeService.isDark() ? 'Thème clair' : 'Thème sombre' }}</span>
+<!-- ═══════════════════════════════════
+     SOUS-NAV (contextuel par module)
+     ═══════════════════════════════════ -->
+@if (activeSubnav().length > 1) {
+  <div class="subnav">
+    <div class="subnav__items">
+      @for (s of activeSubnav(); track s.label) {
+        <a class="subnav__item"
+           [class.is-active]="isSubActive(s)"
+           [class.is-disabled]="s.disabled"
+           [routerLink]="s.disabled ? null : s.link"
+           [queryParams]="subQuery(s)">
+          {{ s.label }}
+          @if (s.disabled) { <span class="subnav__soon">Bientôt</span> }
+        </a>
+      }
+    </div>
+  </div>
+}
+
+<!-- ═══════════════════════════════════
+     DRAWER MOBILE
+     ═══════════════════════════════════ -->
+<aside class="drawer" [class.is-open]="sidebarService.isOpen()" aria-hidden="true">
+
+  <div class="drawer__head">
+    <div class="navbar__brand">
+      <span class="navbar__brand-mark"><mat-icon>sports_soccer</mat-icon></span>
+      <div class="navbar__brand-title">Rémi C · Préparateur</div>
+    </div>
+    <button class="btn btn--ghost btn--icon" (click)="sidebarService.close()" aria-label="Fermer">
+      <mat-icon>close</mat-icon>
     </button>
-
-    <button class="btn-logout" (click)="deconnexion()">
-      <mat-icon>logout</mat-icon>
-      <span>Déconnexion</span>
-    </button>
-
   </div>
 
-</nav>
+  <nav class="drawer__nav" (click)="sidebarService.close()">
+    @for (m of navModules(); track m.key) {
+      <a class="nav-item"
+         [routerLink]="moduleLink(m)"
+         [queryParams]="moduleQuery(m)"
+         [class.is-active]="isModuleActive(m)">
+        <mat-icon class="nav-icon">{{ m.icon }}</mat-icon>
+        <span>{{ m.label }}</span>
+      </a>
+
+      @if (isModuleActive(m) && activeSubnav().length > 1) {
+        @for (s of activeSubnav(); track s.label) {
+          <a class="nav-item nav-item--sub"
+             [class.is-active]="isSubActive(s)"
+             [routerLink]="s.disabled ? null : s.link"
+             [queryParams]="subQuery(s)">
+            {{ s.label }}
+          </a>
+        }
+      }
+    }
+  </nav>
+
+  @if (user(); as u) {
+    <div class="drawer__footer">
+      <div class="drawer-user">
+        <span class="avatar">{{ (u.prenom || u.email).charAt(0).toUpperCase() }}</span>
+        <div>
+          <div class="user-name">{{ u.prenom }} {{ u.nom }}</div>
+          <div class="user-role">{{ roleLabel(u.role) }}</div>
+        </div>
+      </div>
+      <button class="btn-logout" (click)="deconnexion()">
+        <mat-icon>logout</mat-icon>
+        <span>Déconnexion</span>
+      </button>
+    </div>
+  }
+
+</aside>

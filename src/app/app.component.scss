@@ -1,48 +1,10 @@
 .app-shell {
   display: flex;
-  height: 100vh;
-  overflow: hidden;
+  flex-direction: column;
+  min-height: 100vh;
 }
 
 .app-main {
   flex: 1;
-  overflow-y: auto;
   background: var(--bg);
-  position: relative;
-}
-
-/* ── Overlay mobile (derrière la sidebar ouverte) ── */
-.sidebar-overlay {
-  display: none;
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, .5);
-  backdrop-filter: blur(2px);
-  z-index: 999;
-}
-
-/* ── Bouton hamburger (mobile uniquement) ── */
-.hamburger-btn {
-  display: none;
-  position: fixed;
-  top: 10px;
-  left: 12px;
-  z-index: 1001;
-  width: 36px;
-  height: 36px;
-  border-radius: 8px;
-  border: 1px solid var(--copper-border);
-  background: var(--toolbar-bg);
-  color: var(--copper);
-  cursor: pointer;
-  align-items: center;
-  justify-content: center;
-
-  mat-icon { font-size: 1.2rem !important; width: 20px !important; height: 20px !important; }
-}
-
-@media (max-width: 768px) {
-  .hamburger-btn { display: flex; }
-
-  .app-shell.sidebar-open .sidebar-overlay { display: block; }
 }

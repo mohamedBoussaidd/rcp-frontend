@@ -1,8 +1,6 @@
 import { Component, OnInit, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { DatePipe } from '@angular/common';
-import { MatToolbar } from '@angular/material/toolbar';
-import { MatCard, MatCardContent, MatCardHeader, MatCardTitle } from '@angular/material/card';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { Router } from '@angular/router';
 import { Club, ClubCreateRequest, ClubService } from '../../core/services/club.service';
@@ -13,19 +11,19 @@ import { ContexteService } from '../../core/services/contexte.service';
   standalone: true,
   templateUrl: './admin-clubs.component.html',
   styleUrl: './admin-clubs.component.scss',
-  imports: [FormsModule, DatePipe, MatToolbar, MatCard, MatCardContent, MatCardHeader, MatCardTitle],
+  imports: [FormsModule, DatePipe],
 })
 export class AdminClubsComponent implements OnInit {
 
-  clubs = signal<Club[]>([]);
+  clubs   = signal<Club[]>([]);
   loading = signal(true);
   showForm = signal(false);
-  saving = signal(false);
+  saving  = signal(false);
 
   form: ClubCreateRequest = this.formVide();
 
   editingId = signal<string | null>(null);
-  editForm = { nom: '', logo: '' };
+  editForm  = { nom: '', logo: '' };
 
   constructor(
     private clubService: ClubService,
@@ -34,41 +32,28 @@ export class AdminClubsComponent implements OnInit {
     private snack: MatSnackBar,
   ) {}
 
-  /** Entre dans le contexte du club (charge ses équipes) et bascule sur le tableau de bord. */
   entrer(c: Club): void {
     this.clubService.getEquipes(c.id).subscribe({
-      next: equipes => {
-        this.contexte.entrerClub({ id: c.id, nom: c.nom }, equipes);
-        this.router.navigate(['/dashboard']);
-      },
-      error: () => {
-        // Repli : on entre quand même dans le club (toutes équipes), sans sélecteur.
-        this.contexte.entrerClub({ id: c.id, nom: c.nom });
-        this.router.navigate(['/dashboard']);
-      },
+      next: equipes => { this.contexte.entrerClub({ id: c.id, nom: c.nom }, equipes); this.router.navigate(['/dashboard']); },
+      error: ()     => { this.contexte.entrerClub({ id: c.id, nom: c.nom }); this.router.navigate(['/dashboard']); },
     });
   }
 
-  /** Active / archive un club. */
   basculerActif(c: Club): void {
     this.clubService.definirActif(c.id, !c.actif).subscribe({
       next: maj => this.clubs.update(list => list.map(x => x.id === c.id ? maj : x)),
-      error: () => this.snack.open('Action impossible', 'Fermer', { duration: 3000 }),
+      error: ()  => this.snack.open('Action impossible', 'Fermer', { duration: 3000 }),
     });
   }
 
-  editer(c: Club): void {
-    this.editingId.set(c.id);
-    this.editForm = { nom: c.nom, logo: c.logo ?? '' };
-  }
-
-  annulerEdit(): void { this.editingId.set(null); }
+  editer(c: Club): void { this.editingId.set(c.id); this.editForm = { nom: c.nom, logo: c.logo ?? '' }; }
+  annulerEdit(): void   { this.editingId.set(null); }
 
   enregistrerEdit(c: Club): void {
     if (!this.editForm.nom) return;
     this.clubService.modifier(c.id, { nom: this.editForm.nom, logo: this.editForm.logo || null }).subscribe({
       next: () => { this.editingId.set(null); this.snack.open('Club modifié', 'Fermer', { duration: 2500 }); this.charger(); },
-      error: () => this.snack.open('Modification impossible', 'Fermer', { duration: 3000 }),
+      error: ()  => this.snack.open('Modification impossible', 'Fermer', { duration: 3000 }),
     });
   }
 
@@ -78,7 +63,7 @@ export class AdminClubsComponent implements OnInit {
     this.loading.set(true);
     this.clubService.lister().subscribe({
       next: data => { this.clubs.set(data); this.loading.set(false); },
-      error: () => { this.loading.set(false); this.snack.open('Erreur de chargement', 'Fermer', { duration: 3000 }); },
+      error: ()   => { this.loading.set(false); this.snack.open('Erreur de chargement', 'Fermer', { duration: 3000 }); },
     });
   }
 
@@ -92,17 +77,8 @@ export class AdminClubsComponent implements OnInit {
     if (!f.nom || !f.president.email || !f.president.nom || !f.president.prenom || !f.president.motDePasse) return;
     this.saving.set(true);
     this.clubService.creer(f).subscribe({
-      next: () => {
-        this.saving.set(false);
-        this.showForm.set(false);
-        this.form = this.formVide();
-        this.snack.open('Club créé', 'Fermer', { duration: 2500 });
-        this.charger();
-      },
-      error: (err) => {
-        this.saving.set(false);
-        this.snack.open(err.status === 409 ? 'Cet email est déjà utilisé' : 'Erreur lors de la création', 'Fermer', { duration: 3500 });
-      },
+      next: () => { this.saving.set(false); this.showForm.set(false); this.form = this.formVide(); this.snack.open('Club créé', 'Fermer', { duration: 2500 }); this.charger(); },
+      error: (err) => { this.saving.set(false); this.snack.open(err.status === 409 ? 'Cet email est déjà utilisé' : 'Erreur lors de la création', 'Fermer', { duration: 3500 }); },
     });
   }
 
@@ -110,7 +86,7 @@ export class AdminClubsComponent implements OnInit {
     if (!confirm(`Supprimer le club « ${club.nom} » ?\nCela supprime aussi ses équipes, membres et données.`)) return;
     this.clubService.supprimer(club.id).subscribe({
       next: () => { this.snack.open('Club supprimé', 'Fermer', { duration: 2500 }); this.charger(); },
-      error: () => this.snack.open('Suppression impossible', 'Fermer', { duration: 3000 }),
+      error: ()  => this.snack.open('Suppression impossible', 'Fermer', { duration: 3000 }),
     });
   }
 

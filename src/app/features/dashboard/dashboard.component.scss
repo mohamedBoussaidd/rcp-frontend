@@ -1,44 +1,26 @@
 :host { display: block; }
 
-.spanTitre { margin-left: 8px; }
-button { margin-right: 0 !important; }
+/* Statut badges (mapping anciens noms → nouveaux) */
+.badge--statut-actif    { background: var(--ok-bg);   color: var(--ok);   border: 1px solid var(--ok-bd); }
+.badge--statut-blesse   { background: var(--bad-bg);  color: var(--bad);  border: 1px solid var(--bad-bd); }
+.badge--statut-suspendu { background: var(--warn-bg); color: var(--warn); border: 1px solid var(--warn-bd); }
+.badge--statut-prete    { background: var(--info-bg); color: var(--info); border: 1px solid var(--info-bd); }
 
-.toolbar-actions {
-  display: flex;
-  gap: 6px;
-  flex-shrink: 0;
+/* Lien joueur dans la table */
+.player-link {
+  font-weight: 600;
+  color: var(--green-700);
+  text-decoration: none;
+  &:hover { text-decoration: underline; }
 }
 
-@media (max-width: 768px) {
-  .toolbar-actions {
-    flex: 1 0 100%;
-    gap: 8px;
-
-    button { flex: 1; justify-content: center; }
-  }
+/* Progress bar label */
+.progress-label {
+  display: block;
+  font-size: 11px;
+  color: var(--text-3);
+  margin-top: 3px;
 }
-
-@media (max-width: 400px) {
-  .toolbar-actions button { padding: 8px 10px; font-size: 0.8rem; }
-}
-
-.dashboard-content {
-  padding: 28px 24px;
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-  max-width: 1400px;
-  margin: 0 auto;
-  width: 100%;
-  box-sizing: border-box;
-}
-
-.chart-card, .table-card { width: 100%; }
-
-.search-field { flex: 1; min-width: 200px; max-width: 360px; }
-.sort-buttons  { display: flex; gap: 8px; }
-
-::ng-deep mat-progress-bar { margin-bottom: 4px; }
 
 /* ── Bascule table / cards ── */
 .view-table { display: block; }
@@ -50,69 +32,53 @@ button { margin-right: 0 !important; }
   flex-direction: column;
   gap: 10px;
   padding: 14px;
-  border-radius: 12px;
-  background: var(--surface-2);
+  border-radius: var(--r-lg);
+  background: var(--surface);
   border: 1px solid var(--border);
   text-decoration: none;
   color: var(--text);
-  transition: border-color .15s, background .15s;
+  transition: border-color 120ms var(--ease-out), box-shadow 120ms var(--ease-out);
   cursor: pointer;
 
-  &:hover { border-color: var(--copper-border); background: var(--copper-soft); }
+  &:hover {
+    border-color: var(--border-strong);
+    box-shadow: var(--shadow-sm);
+  }
 }
 
-.joueur-card-nom {
+.joueur-card__nom {
   font-size: 0.9rem;
   font-weight: 700;
-  color: var(--text);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-.joueur-card-meta {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 6px;
-
-  .badge-statut-joueur { width: auto; flex-shrink: 0; }
+.joueur-card__poste {
+  font-size: 0.75rem;
+  color: var(--text-3);
 }
 
-.joueur-card-poste { font-size: 0.75rem; color: var(--muted); flex: 1; }
-
-.joueur-card-badges {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  flex-wrap: wrap;
-
-  .badge-poids { width: auto; }
-}
-
-.joueur-card-fatigue {
+.joueur-card__fatigue {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-
-  small { font-size: 0.68rem; color: var(--muted); }
+  gap: 3px;
+  small { font-size: 0.68rem; color: var(--text-3); }
 }
 
-@media (max-width: 1024px) {
-  .dashboard-content { padding: 16px 12px; }
-}
-
+/* ── Responsive ── */
 @media (max-width: 768px) {
-  .dashboard-content { padding: 12px 8px; }
   .view-table { display: none; }
   .view-cards {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 10px;
-    padding: 4px 0 8px;
+    padding: 12px;
   }
 }
 
 @media (max-width: 480px) {
   .view-cards { grid-template-columns: 1fr; }
 }
+
+::ng-deep mat-progress-bar { margin-bottom: 2px; }

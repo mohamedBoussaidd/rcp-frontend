@@ -1,36 +1,84 @@
-<div class="login-page">
-  <form class="login-card" (ngSubmit)="soumettre()">
+<div class="login">
 
-    <div class="login-brand">
-      <mat-icon class="login-logo">sports_soccer</mat-icon>
+  <!-- ── Panneau formulaire ── -->
+  <div class="login__panel">
+    <div class="login__brand">
+      <span class="login__brand-mark"><mat-icon>sports_soccer</mat-icon></span>
       <div>
-        <div class="login-title">RCP</div>
-        <div class="login-sub">Préparateur physique</div>
+        <div class="login__brand-title">Rémi C · Préparateur</div>
+        <div class="login__brand-sub">Plateforme de préparation physique</div>
       </div>
     </div>
 
-    <h1 class="login-heading">Connexion</h1>
+    <form class="login__form" (ngSubmit)="soumettre()">
+      <h1 class="login__title">Bon retour.</h1>
+      <p class="login__sub">Connectez-vous pour accéder à votre staff technique.</p>
 
-    <label class="login-field">
-      <span>Email</span>
-      <input type="email" name="email" [(ngModel)]="email"
-             autocomplete="username" placeholder="vous@club.fr" required>
-    </label>
+      <div class="stack stack--md" style="gap:14px">
+        <div class="field">
+          <label class="field__label" for="lg-email">Adresse e-mail</label>
+          <div class="input__wrap">
+            <span class="input__icon"><mat-icon style="font-size:16px;width:16px;height:16px">mail</mat-icon></span>
+            <input id="lg-email" class="input input--lg" type="email" name="email"
+                   [(ngModel)]="email" autocomplete="username" placeholder="vous@club.fr" required>
+          </div>
+        </div>
 
-    <label class="login-field">
-      <span>Mot de passe</span>
-      <input type="password" name="motDePasse" [(ngModel)]="motDePasse"
-             autocomplete="current-password" placeholder="••••••••" required>
-    </label>
+        <div class="field">
+          <label class="field__label" for="lg-pwd">Mot de passe</label>
+          <div class="input__wrap">
+            <span class="input__icon"><mat-icon style="font-size:16px;width:16px;height:16px">lock</mat-icon></span>
+            <input id="lg-pwd" class="input input--lg" [type]="showPwd() ? 'text' : 'password'" name="motDePasse"
+                   [(ngModel)]="motDePasse" autocomplete="current-password" placeholder="••••••••" required
+                   style="padding-right:40px">
+            <button type="button" class="login__pwd-toggle" (click)="showPwd.set(!showPwd())" aria-label="Afficher le mot de passe">
+              <mat-icon style="font-size:18px;width:18px;height:18px">{{ showPwd() ? 'visibility_off' : 'visibility' }}</mat-icon>
+            </button>
+          </div>
+        </div>
 
-    @if (erreur()) {
-      <div class="login-error">{{ erreur() }}</div>
-    }
+        @if (erreur()) {
+          <div class="login__error">{{ erreur() }}</div>
+        }
 
-    <button type="submit" class="btn-dark-primary login-submit"
-            [disabled]="loading() || !email || !motDePasse">
-      {{ loading() ? 'Connexion…' : 'Se connecter' }}
-    </button>
+        <button type="submit" class="btn btn--primary btn--lg btn--full"
+                [disabled]="loading() || !email || !motDePasse">
+          {{ loading() ? 'Connexion…' : 'Se connecter' }}
+          @if (!loading()) { <mat-icon style="font-size:16px;width:16px;height:16px">arrow_forward</mat-icon> }
+        </button>
+      </div>
+    </form>
 
-  </form>
+    <div class="login__footer">© 2026 Rémi C Préparateur · Plateforme staff technique</div>
+  </div>
+
+  <!-- ── Hero ── -->
+  <div class="login__hero">
+    <svg class="login__pitch" viewBox="0 0 800 600" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+      <defs>
+        <pattern id="grass" width="48" height="48" patternUnits="userSpaceOnUse">
+          <rect width="48" height="48" fill="#0E5837"/>
+          <rect width="24" height="48" fill="#0F633E"/>
+        </pattern>
+      </defs>
+      <rect width="800" height="600" fill="url(#grass)"/>
+      <g stroke="rgba(255,255,255,0.45)" stroke-width="2.5" fill="none">
+        <rect x="40" y="40" width="720" height="520"/>
+        <line x1="400" y1="40" x2="400" y2="560"/>
+        <circle cx="400" cy="300" r="70"/>
+        <circle cx="400" cy="300" r="2" fill="rgba(255,255,255,0.45)"/>
+        <rect x="40" y="160" width="120" height="280"/>
+        <rect x="640" y="160" width="120" height="280"/>
+      </g>
+    </svg>
+    <div class="login__hero-content">
+      <div class="login__hero-badge">
+        <span class="login__hero-dot"></span>
+        Performance staff suite
+      </div>
+      <div class="login__hero-quote">« Le travail invisible se voit dans les chiffres. »</div>
+      <div class="login__hero-author">— Manifeste préparateur</div>
+    </div>
+  </div>
+
 </div>

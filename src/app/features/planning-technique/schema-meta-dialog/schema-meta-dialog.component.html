@@ -1,0 +1,29 @@
+<div class="meta">
+  <h2 class="meta__title">{{ titre }}</h2>
+
+  <label class="meta__field">
+    <span class="meta__label">Nom <span class="meta__req">*</span></span>
+    <input class="meta__input" type="text" [(ngModel)]="nom" name="nom"
+           placeholder="Ex. Pressing haut 4-3-3" maxlength="120"
+           (keydown.enter)="valider()" autofocus />
+  </label>
+
+  <label class="meta__field">
+    <span class="meta__label">Catégorie</span>
+    <input class="meta__input" type="text" [(ngModel)]="categorie" name="categorie"
+           list="schema-categories" placeholder="Choisir ou saisir…" maxlength="40"
+           (keydown.enter)="valider()" />
+    <datalist id="schema-categories">
+      @for (c of categories; track c) {
+        <option [value]="c">{{ label(c) }}</option>
+      }
+    </datalist>
+  </label>
+
+  <div class="meta__actions">
+    <button class="btn btn--secondary" (click)="annuler()">Annuler</button>
+    <button class="btn btn--primary" [disabled]="!nom.trim()" (click)="valider()">
+      <mat-icon>check</mat-icon>Continuer
+    </button>
+  </div>
+</div>
