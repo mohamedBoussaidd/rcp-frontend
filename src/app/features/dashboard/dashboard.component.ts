@@ -3,13 +3,14 @@ import { PredictionService, ResumeJoueur } from '@core/services/prediction.servi
 import { PeseesService, PoidsFicheJoueur } from '@core/services/pesees.service';
 import { JoueurService, Joueur } from '@core/services/joueur.service';
 import { TechniqueService, JoueurCompoStats } from '@core/services/technique.service';
-import { DecimalPipe, DatePipe, SlicePipe } from '@angular/common';
+import { DecimalPipe, DatePipe, SlicePipe, NgTemplateOutlet } from '@angular/common';
 import { SeanceService, Seance } from '@core/services/seance.service';
 import { Router } from '@angular/router';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatDialog } from '@angular/material/dialog';
 import { JoueurFormDialogComponent } from '../joueur/joueur-form-dialog/joueur-form-dialog.component';
 import { JoueurSupprimerDialogComponent } from '../joueur/joueur-supprimer-dialog/joueur-supprimer-dialog.component';
+import { PresenceDialogComponent } from '../performance/presence-dialog/presence-dialog.component';
 import { ApexChart, ApexAxisChartSeries, ApexXAxis, ApexStroke, ApexDataLabels, ApexTitleSubtitle, ApexTheme, ApexGrid, ApexYAxis, ChartComponent } from 'ng-apexcharts';
 import { MatIcon } from '@angular/material/icon';
 import { FormsModule } from '@angular/forms';
@@ -26,7 +27,7 @@ import { AuthService } from '@core/services/auth.service';
   standalone: true,
   styleUrl: './dashboard.component.scss',
   imports: [
-    MatIcon, ChartComponent, FormsModule, DecimalPipe, DatePipe, SlicePipe, RouterLink,
+    MatIcon, ChartComponent, FormsModule, DecimalPipe, DatePipe, SlicePipe, RouterLink, NgTemplateOutlet,
     BadgeRisqueComponent, MatProgressBar,
     MatTable, MatColumnDef, MatHeaderCellDef, MatHeaderCell,
     MatCellDef, MatCell, MatHeaderRowDef, MatHeaderRow, MatRowDef, MatRow,
@@ -40,9 +41,13 @@ export class DashboardComponent implements OnInit {
   statutMap = new Map<string, string>();
   loading   = true;
 
-  // ── Séances du jour ──
+  // ── Séances du jour / semaine ──
   seancesAujourdhui: Seance[] = [];
-  readonly aujourdhui = new Date().toISOString().slice(0, 10);
+  seancesAVenir: Seance[] = [];
+  readonly aujourdhui = (() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  })();
 
   // ── Panel joueur ──
   panelJoueur: Joueur | null = null;
@@ -200,18 +205,28 @@ export class DashboardComponent implements OnInit {
     return ({ actif: 'Actif', blesse: 'Blessé', suspendu: 'Suspendu', prete: 'Prêté' } as Record<string,string>)[s] ?? s;
   }
 
+  // Séances du jour + les 7 prochaines séances planifiées (peu importe leur éloignement,
+  // pas une fenêtre de 7 jours). Données scopées par l'équipe/contexte actif.
   loadSeancesAujourdhui(): void {
-    this.seanceService.getSemaine(this.aujourdhui, this.aujourdhui).subscribe({
+    this.seanceService.getAll().subscribe({
       next: data => {
-        this.seancesAujourdhui = data.sort((a, b) =>
-          (a.heureDebut ?? '').localeCompare(b.heureDebut ?? ''));
+        const aVenir = data
+          .filter(s => s.date >= this.aujourdhui && s.statut !== 'ANNULEE')
+          .sort((a, b) =>
+            a.date.localeCompare(b.date) || (a.heureDebut ?? '').localeCompare(b.heureDebut ?? ''));
+        this.seancesAujourdhui = aVenir.filter(s => s.date === this.aujourdhui);
+        this.seancesAVenir = aVenir.filter(s => s.date > this.aujourdhui).slice(0, 7);
       },
       error: () => {}
     });
   }
 
   allerPresence(seance: Seance): void {
-    this.router.navigate(['/seances', seance.id], { queryParams: { onglet: 'presence' } });
+    this.dialog.open(PresenceDialogComponent, {
+      data: { seance },
+      panelClass: 'dark-dialog',
+      maxWidth: '95vw',
+    });
   }
 
   loadStatuts(): void {

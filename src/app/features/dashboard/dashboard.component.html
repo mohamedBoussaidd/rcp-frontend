@@ -74,52 +74,74 @@
       </div>
     </div>
     <div class="card__body">
-      @if (!seancesAujourdhui.length) {
+      @if (!seancesAujourdhui.length && !seancesAVenir.length) {
         <div class="seance-jour__vide">
           <mat-icon>event_busy</mat-icon>
-          <span>Aucune séance prévue aujourd'hui</span>
+          <span>Aucune séance à venir</span>
         </div>
       }
-      @for (s of seancesAujourdhui; track s.id) {
-        <div class="seance-jour__item">
-          <div class="seance-jour__meta">
-            <span class="seance-jour__type"
-              [style.background]="'#' + (s.typeSeance?.code === 'MATCH' ? 'ef444420' : s.typeSeance?.code === 'INTENSIF' ? '6366f120' : '0ea5a020')"
-              [style.color]="s.typeSeance?.code === 'MATCH' ? '#ef4444' : s.typeSeance?.code === 'INTENSIF' ? '#6366f1' : '#0ea5a0'">
-              {{ s.typeSeance?.libelle ?? 'Séance' }}
-            </span>
-            @if (s.heureDebut) {
-              <span class="seance-jour__heure">
-                <mat-icon style="font-size:14px;width:14px;height:14px">schedule</mat-icon>
-                {{ s.heureDebut | slice:0:5 }}
-              </span>
-            }
-            @if (s.dureeMinutes) {
-              <span class="seance-jour__duree">{{ s.dureeMinutes }} min</span>
-            }
-            @if (s.terrain) {
-              <span class="seance-jour__terrain muted">
-                <mat-icon style="font-size:14px;width:14px;height:14px">place</mat-icon>{{ s.terrain }}
-              </span>
-            }
-          </div>
-          @if (s.titre) {
-            <div class="seance-jour__titre">{{ s.titre }}</div>
-          }
-          <div class="seance-jour__actions">
-            <button class="btn btn--primary btn--sm" (click)="allerPresence(s)">
-              <mat-icon>how_to_reg</mat-icon>Appel
-            </button>
-            <span class="badge" [class.badge--ok]="s.statut === 'REALISEE'"
-              [class.badge--neutral]="s.statut === 'PLANIFIEE'"
-              [class.badge--bad]="s.statut === 'ANNULEE'">
-              {{ s.statut === 'REALISEE' ? 'Réalisée' : s.statut === 'ANNULEE' ? 'Annulée' : 'Planifiée' }}
-            </span>
-          </div>
+
+      @if (!seancesAujourdhui.length && seancesAVenir.length) {
+        <div class="seance-jour__vide seance-jour__vide--info">
+          <mat-icon>event_note</mat-icon>
+          <span>Pas de séance aujourd'hui — prochaine séance le {{ seancesAVenir[0].date | date:'EEEE d MMMM':'':'fr' }}</span>
         </div>
+      }
+
+      @for (s of seancesAujourdhui; track s.id) {
+        <ng-container *ngTemplateOutlet="seanceItem; context: { $implicit: s }"></ng-container>
+      }
+
+      @if (seancesAVenir.length && seancesAujourdhui.length) {
+        <div class="seance-jour__avenir-titre">Prochaines séances</div>
+      }
+      @for (s of seancesAVenir; track s.id) {
+        <ng-container *ngTemplateOutlet="seanceItem; context: { $implicit: s }"></ng-container>
       }
     </div>
   </div>
+
+  <ng-template #seanceItem let-s>
+    <div class="seance-jour__item">
+      <div class="seance-jour__meta">
+        <span class="seance-jour__type"
+          [style.background]="'#' + (s.typeSeance?.code === 'MATCH' ? 'ef444420' : s.typeSeance?.code === 'INTENSIF' ? '6366f120' : '0ea5a020')"
+          [style.color]="s.typeSeance?.code === 'MATCH' ? '#ef4444' : s.typeSeance?.code === 'INTENSIF' ? '#6366f1' : '#0ea5a0'">
+          {{ s.typeSeance?.libelle ?? 'Séance' }}
+        </span>
+        <span class="seance-jour__date muted">{{ s.date | date:'EEE d MMM':'':'fr' }}</span>
+        @if (s.heureDebut) {
+          <span class="seance-jour__heure">
+            <mat-icon style="font-size:14px;width:14px;height:14px">schedule</mat-icon>
+            {{ s.heureDebut | slice:0:5 }}
+          </span>
+        }
+        @if (s.dureeMinutes) {
+          <span class="seance-jour__duree">{{ s.dureeMinutes }} min</span>
+        }
+        @if (s.terrain) {
+          <span class="seance-jour__terrain muted">
+            <mat-icon style="font-size:14px;width:14px;height:14px">place</mat-icon>{{ s.terrain }}
+          </span>
+        }
+      </div>
+      @if (s.titre) {
+        <div class="seance-jour__titre">{{ s.titre }}</div>
+      }
+      <div class="seance-jour__actions">
+        @if (s.date === aujourdhui) {
+          <button class="btn btn--primary btn--sm" (click)="allerPresence(s)">
+            <mat-icon>how_to_reg</mat-icon>Appel
+          </button>
+        }
+        <span class="badge" [class.badge--ok]="s.statut === 'REALISEE'"
+          [class.badge--neutral]="s.statut === 'PLANIFIEE'"
+          [class.badge--bad]="s.statut === 'ANNULEE'">
+          {{ s.statut === 'REALISEE' ? 'Réalisée' : s.statut === 'ANNULEE' ? 'Annulée' : 'Planifiée' }}
+        </span>
+      </div>
+    </div>
+  </ng-template>
 
   <!-- ══ Charge collective ══ -->
   <div class="card" style="margin-bottom:16px">
@@ -328,11 +350,15 @@
         <div class="panel-drawer__avatar">
           {{ panelJoueur?.prenom?.[0] ?? '' }}{{ panelJoueur?.nom?.[0] ?? '' }}
         </div>
-        <div>
+        <div class="panel-drawer__meta">
           <div class="panel-drawer__nom">{{ panelJoueur?.prenom }} {{ panelJoueur?.nom }}</div>
-          <div class="panel-drawer__poste">{{ panelJoueur?.postePrincipal ?? '—' }}</div>
+          <div class="panel-drawer__poste">
+            {{ panelJoueur?.postePrincipal ?? '—' }}
+            @let s = panelJoueur ? (statutMap.get(panelJoueur.id) ?? 'actif') : 'actif';
+            <span [class]="'badge badge--statut-' + s" style="margin-left:8px">{{ statutLibelle(s) }}</span>
+          </div>
         </div>
-        <button class="btn btn--ghost btn--icon btn--sm" style="margin-left:auto" (click)="fermerPanel()">
+        <button class="panel-drawer__close" (click)="fermerPanel()">
           <mat-icon>close</mat-icon>
         </button>
       </div>
@@ -411,10 +437,32 @@
             </div>
             @let poids = poidsMap.get(panelJoueur.id);
             @if (poids) {
-              <div class="panel-section-title">Poids</div>
+              <div class="panel-section-title">Poids & Composition</div>
+
+              @if (poids.ecartKg != null && poids.ecartKg > 3) {
+                <div class="panel-alert panel-alert--danger">
+                  <mat-icon>warning</mat-icon>
+                  <div>
+                    <strong>Surpoids significatif</strong>
+                    <span>+{{ poids.ecartKg | number:'1.1-1' }} kg vs poids de forme — objectifs GPS ajustés à la baisse.</span>
+                  </div>
+                </div>
+              } @else if (poids.ecartKg != null && poids.ecartKg > 1) {
+                <div class="panel-alert panel-alert--warn">
+                  <mat-icon>info</mat-icon>
+                  <div>
+                    <strong>Léger surpoids</strong>
+                    <span>+{{ poids.ecartKg | number:'1.1-1' }} kg vs poids de forme — à surveiller.</span>
+                  </div>
+                </div>
+              }
+
               <dl class="panel-dl">
                 @if (poids.dernierPoids) {
                   <dt>Dernier relevé</dt><dd>{{ poids.dernierPoids }} kg</dd>
+                }
+                @if (panelJoueur.poidsFormeCible) {
+                  <dt>Poids de forme</dt><dd>{{ panelJoueur.poidsFormeCible }} kg</dd>
                 }
                 @if (poids.ecartKg != null) {
                   <dt>Écart vs forme</dt>

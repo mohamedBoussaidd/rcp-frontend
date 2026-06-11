@@ -1,0 +1,95 @@
+<div class="pd-wrap">
+
+  <!-- Header -->
+  <div class="pd-header">
+    <div class="pd-header__info">
+      <mat-icon class="pd-header__icon">how_to_reg</mat-icon>
+      <div>
+        <h2 class="pd-header__title">Feuille de présence</h2>
+        @if (seance.typeSeance) {
+          <p class="pd-header__sub">{{ seance.typeSeance.libelle }} · {{ seance.date | date:'dd/MM/yyyy' }}
+            @if (seance.heureDebut) { · {{ seance.heureDebut | slice:0:5 }} }
+          </p>
+        }
+      </div>
+    </div>
+    <button class="pd-close" (click)="fermer()">
+      <mat-icon>close</mat-icon>
+    </button>
+  </div>
+
+  <!-- KPIs -->
+  @if (!loading) {
+    <div class="pd-kpis">
+      <div class="pd-kpi pd-kpi--present">
+        <span class="pd-kpi__val">{{ nbPresents }}</span>
+        <span class="pd-kpi__lbl">Présents</span>
+      </div>
+      <div class="pd-kpi pd-kpi--retard">
+        <span class="pd-kpi__val">{{ nbRetards }}</span>
+        <span class="pd-kpi__lbl">Retards</span>
+      </div>
+      <div class="pd-kpi pd-kpi--excuse">
+        <span class="pd-kpi__val">{{ nbExcuses }}</span>
+        <span class="pd-kpi__lbl">Excusés</span>
+      </div>
+      <div class="pd-kpi pd-kpi--absent">
+        <span class="pd-kpi__val">{{ nbAbsents }}</span>
+        <span class="pd-kpi__lbl">Absents</span>
+      </div>
+      @if (nbNonRens > 0) {
+        <div class="pd-kpi">
+          <span class="pd-kpi__val">{{ nbNonRens }}</span>
+          <span class="pd-kpi__lbl">Non rens.</span>
+        </div>
+      }
+    </div>
+
+    @if (nbNonRens > 0) {
+      <div class="pd-bulk">
+        <button class="btn btn--sm" (click)="marquerTousPresents()">
+          <mat-icon>done_all</mat-icon>
+          Marquer les {{ nbNonRens }} restants présents
+        </button>
+      </div>
+    }
+  }
+
+  <!-- Liste joueurs -->
+  <div class="pd-body">
+    @if (loading) {
+      <div class="pd-loading">Chargement…</div>
+    } @else if (!lignes.length) {
+      <div class="pd-empty">Aucun joueur dans l'effectif.</div>
+    } @else {
+      <ul class="pd-list">
+        @for (ligne of lignes; track ligne.joueurId) {
+          <li class="pd-item" [class.pd-item--saving]="saving.has(ligne.joueurId)">
+            <div class="pd-item__info">
+              <span class="pd-item__nom">{{ ligne.prenom }} {{ ligne.nom }}</span>
+              <span class="pd-item__poste">{{ ligne.poste || '—' }}</span>
+            </div>
+            <div class="pd-item__btns">
+              @for (s of statuts; track s.val) {
+                <button class="pd-btn"
+                  [class]="'pd-btn--' + s.val.toLowerCase()"
+                  [class.is-active]="ligne.statut === s.val"
+                  [title]="s.label"
+                  (click)="setStatut(ligne, s.val)">
+                  <mat-icon>{{ s.icon }}</mat-icon>
+                  <span>{{ s.label }}</span>
+                </button>
+              }
+            </div>
+          </li>
+        }
+      </ul>
+    }
+  </div>
+
+  <!-- Footer -->
+  <div class="pd-footer">
+    <button class="btn btn--ghost" (click)="fermer()">Fermer</button>
+  </div>
+
+</div>
