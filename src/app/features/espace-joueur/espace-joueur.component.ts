@@ -6,12 +6,10 @@ import { EspaceJoueurService, MaPesee, DocumentMedical, Wellness, Rpe, RtpEtape 
 import { Joueur, GpsPoint } from '@core/services/joueur.service';
 import { Blessure } from '@core/services/blessure.service';
 import { Seance } from '@core/services/seance.service';
-import { SeanceTechnique } from '@core/services/technique.service';
 
-/** Ligne unifiée pour la liste « Séances prévues » (physique + technique). */
+/** Ligne pour la liste « Séances prévues ». */
 interface SeancePrevue {
   id: string;
-  type: 'physique' | 'technique';
   date: string;
   heureDebut?: string;
   titre: string;
@@ -22,7 +20,6 @@ interface SeancePrevue {
 /** Séance passée que le joueur peut noter (RPE pas encore saisi). */
 interface SeanceANoter {
   id: string;
-  type: 'PHYSIQUE' | 'TECHNIQUE';
   date: string;
   titre: string;
   duree?: number;
@@ -43,7 +40,6 @@ export class EspaceJoueurComponent implements OnInit {
   rtpEtapes = signal<RtpEtape[]>([]);
   gps = signal<GpsPoint[]>([]);
   seances = signal<Seance[]>([]);
-  seancesTech = signal<SeanceTechnique[]>([]);
   documents = signal<DocumentMedical[]>([]);
   wellness = signal<Wellness[]>([]);
   rpe = signal<Rpe[]>([]);
@@ -92,15 +88,10 @@ export class EspaceJoueurComponent implements OnInit {
     const limite = new Date(Date.now() - 14 * 86400000).toISOString().slice(0, 10);
     const notes = this.rpeNotes();
 
-    const phys: SeanceANoter[] = this.seances()
+    return this.seances()
       .filter(s => s.statut !== 'ANNULEE' && s.date <= auj && s.date >= limite && !notes.has(s.id))
-      .map(s => ({ id: s.id, type: 'PHYSIQUE', date: s.date, titre: s.titre || s.typeSeance?.libelle || 'Séance', duree: s.dureeMinutes }));
-
-    const tech: SeanceANoter[] = this.seancesTech()
-      .filter(s => s.statut !== 'ANNULEE' && s.date <= auj && s.date >= limite && !notes.has(s.id))
-      .map(s => ({ id: s.id, type: 'TECHNIQUE', date: s.date, titre: s.titre || 'Séance technique', duree: s.dureeTotaleMinutes }));
-
-    return [...phys, ...tech].sort((a, b) => b.date.localeCompare(a.date));
+      .map(s => ({ id: s.id, date: s.date, titre: s.titre || s.typeSeance?.libelle || 'Séance', duree: s.dureeMinutes }))
+      .sort((a, b) => b.date.localeCompare(a.date));
   });
 
   /** Valeur RPE sélectionnée (avant validation) par séance. */
@@ -156,42 +147,21 @@ export class EspaceJoueurComponent implements OnInit {
     ?? this.rtpEtapes().find(e => e.statut === 'A_FAIRE')
     ?? null);
 
-  /**
-   * Séances non annulées à partir d'aujourd'hui, triées chronologiquement (vue « prévues »).
-   * Fusionne les séances physiques (préparateur) et techniques (entraîneur).
-   */
+  /** Séances non annulées à partir d'aujourd'hui, triées chronologiquement (vue « prévues »). */
   readonly seancesAVenir = computed<SeancePrevue[]>(() => {
     const auj = new Date().toISOString().slice(0, 10);
 
-    const physiques: SeancePrevue[] = this.seances()
+    return this.seances()
       .filter(s => s.statut !== 'ANNULEE' && s.date >= auj)
       .map(s => ({
         id: s.id,
-        type: 'physique',
         date: s.date,
         heureDebut: s.heureDebut,
         titre: s.titre || s.typeSeance?.libelle || 'Séance',
-        sousTitre: s.adversaire ? `vs ${s.adversaire}` : undefined,
+        sousTitre: s.adversaire ? `vs ${s.adversaire}` : (s.objectif || undefined),
         meta: [s.typeSeance?.libelle, s.terrain, s.dureeMinutes ? `${s.dureeMinutes} min` : null]
           .filter(Boolean).join(' · '),
-      }));
-
-    const techniques: SeancePrevue[] = this.seancesTech()
-      .filter(s => s.statut !== 'ANNULEE' && s.date >= auj)
-      .map(s => ({
-        id: s.id,
-        type: 'technique',
-        date: s.date,
-        heureDebut: s.heureDebut,
-        titre: s.titre || 'Séance technique',
-        sousTitre: s.objectif || undefined,
-        meta: [
-          s.exercices?.length ? `${s.exercices.length} exercice${s.exercices.length > 1 ? 's' : ''}` : null,
-          s.dureeTotaleMinutes ? `${s.dureeTotaleMinutes} min` : null,
-        ].filter(Boolean).join(' · '),
-      }));
-
-    return [...physiques, ...techniques]
+      }))
       .sort((a, b) => (a.date + (a.heureDebut ?? '')).localeCompare(b.date + (b.heureDebut ?? '')));
   });
 
@@ -252,7 +222,6 @@ export class EspaceJoueurComponent implements OnInit {
     });
     this.service.getGps().subscribe({ next: d => this.gps.set(d), error: () => {} });
     this.service.getSeances().subscribe({ next: d => this.seances.set(d), error: () => {} });
-    this.service.getSeancesTechniques().subscribe({ next: d => this.seancesTech.set(d), error: () => {} });
     this.service.getWellness().subscribe({ next: d => this.wellness.set(d), error: () => {} });
     this.service.getRpe().subscribe({ next: d => this.rpe.set(d), error: () => {} });
     this.chargerDocuments();
@@ -314,7 +283,7 @@ export class EspaceJoueurComponent implements OnInit {
   noterSeance(s: SeanceANoter): void {
     const note = this.rpeBrouillon()[s.id];
     if (!note) return;
-    this.service.saisirRpe({ seanceId: s.id, seanceType: s.type, rpe: note, dureeMinutes: s.duree }).subscribe({
+    this.service.saisirRpe({ seanceId: s.id, seanceType: 'PHYSIQUE', rpe: note, dureeMinutes: s.duree }).subscribe({
       next: r => {
         this.rpe.update(list => [r, ...list]);
         this.rpeBrouillon.update(m => { const c = { ...m }; delete c[s.id]; return c; });

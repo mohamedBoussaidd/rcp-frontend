@@ -3,8 +3,7 @@ import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { Joueur, GpsPoint } from './joueur.service';
 import { Blessure } from './blessure.service';
-import { Seance } from './seance.service';
-import { SeanceTechnique } from './technique.service';
+import { Seance, ContenuSeance } from './seance.service';
 
 export interface MaPesee {
   date: string;
@@ -123,10 +122,9 @@ export class EspaceJoueurService {
     return this.http.get<Seance[]>(`${this.base}/seances${q}`);
   }
 
-  /** Séances techniques de mon équipe (lecture seule). */
-  getSeancesTechniques(debut?: string, fin?: string): Observable<SeanceTechnique[]> {
-    const q = debut && fin ? `?debut=${debut}&fin=${fin}` : '';
-    return this.http.get<SeanceTechnique[]>(`${this.base}/seances-techniques${q}`);
+  /** Contenu (exercices + schémas) d'une séance de mon équipe (lecture seule). */
+  getContenuSeance(seanceId: string): Observable<ContenuSeance> {
+    return this.http.get<ContenuSeance>(`${this.base}/seances/${seanceId}/exercices`);
   }
 
   // ── Wellness (ressenti quotidien) ──

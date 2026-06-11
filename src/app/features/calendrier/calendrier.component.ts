@@ -2,16 +2,13 @@ import { Component, OnInit } from '@angular/core';
 import { Router } from '@angular/router';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { CdkDragDrop } from '@angular/cdk/drag-drop';
-import { SeanceService, Seance, TypeSeance, SeanceCreate } from '@core/services/seance.service';
+import { SeanceService, Seance, TypeSeance } from '@core/services/seance.service';
 import { EspaceJoueurService } from '@core/services/espace-joueur.service';
-import { SeanceFormDialogComponent } from './seance-form-dialog/seance-form-dialog.component';
+import { SeanceFormDialogComponent, SeanceFormResult } from './seance-form-dialog/seance-form-dialog.component';
+import { SeanceContenuDialogComponent } from './seance-contenu-dialog/seance-contenu-dialog.component';
 import { MatTooltip } from '@angular/material/tooltip';
-import { DragDropModule } from '@angular/cdk/drag-drop';
 import { DatePipe, LowerCasePipe } from '@angular/common';
 import { AuthService } from '@core/services/auth.service';
-import { TechniqueService, SeanceTechnique } from '@core/services/technique.service';
-import { SeanceDetailComponent } from '../tactical/seance-detail/seance-detail.component';
 
 export const COULEURS_TYPE: Record<string, string> = {
   MATCH:        '#ef4444',
@@ -40,23 +37,18 @@ const JOURS = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dim
   standalone: true,
   templateUrl: './calendrier.component.html',
   styleUrl: './calendrier.component.scss',
-  imports: [MatTooltip, DragDropModule, DatePipe, LowerCasePipe]
+  imports: [MatTooltip, DatePipe, LowerCasePipe]
 })
 export class CalendrierComponent implements OnInit {
 
   typeSeances: TypeSeance[] = [];
   seancesSemaine: Seance[] = [];
-  seancesTechSemaine: SeanceTechnique[] = [];
   joursGrid: { label: string; date: Date; dateStr: string }[] = [];
   lundiSemaine: Date = this.getLundiCourant();
   readonly today = this.toDateStr(new Date());
   readonly jours = JOURS;
   readonly couleursType = COULEURS_TYPE;
   readonly infosType = INFOS_TYPE;
-
-  get joursIds(): string[] {
-    return this.joursGrid.map(j => j.dateStr);
-  }
 
   get estSemainePassee(): boolean {
     const lundiAuj = this.getLundiCourant();
@@ -76,7 +68,6 @@ export class CalendrierComponent implements OnInit {
     private snackBar: MatSnackBar,
     private router: Router,
     public auth: AuthService,
-    private techniqueService: TechniqueService,
     private espaceJoueur: EspaceJoueurService
   ) {}
 
@@ -97,14 +88,6 @@ export class CalendrierComponent implements OnInit {
       ? this.espaceJoueur.getSeances(debut, fin)   // joueur : ses séances d'équipe (scopé)
       : this.seanceService.getSemaine(debut, fin);
     seances$.subscribe(s => this.seancesSemaine = s);
-    // Séances techniques : joueur via /api/moi (scopé, lecture seule), staff via le module dédié.
-    const tech$ = this.lectureSeule
-      ? this.espaceJoueur.getSeancesTechniques(debut, fin)
-      : this.techniqueService.listerSeances(debut, fin);
-    tech$.subscribe({
-      next: s => this.seancesTechSemaine = s,
-      error: () => this.seancesTechSemaine = [],
-    });
   }
 
   buildGrid(): void {
@@ -131,32 +114,27 @@ export class CalendrierComponent implements OnInit {
     return this.seancesSemaine.filter(s => s.date === dateStr);
   }
 
-  seancesTechDuJour(dateStr: string): SeanceTechnique[] {
-    return this.seancesTechSemaine.filter(s => s.date === dateStr);
-  }
-
-  ouvrirDetailTech(st: SeanceTechnique): void {
-    this.dialog.open(SeanceDetailComponent, {
-      width: '900px', maxWidth: '96vw', panelClass: 'dark-dialog',
-      data: { seance: st },
-    });
-  }
-
-  onDrop(event: CdkDragDrop<any>, dateStr: string): void {
-    const typeSeance: TypeSeance = event.item.data;
-    this.ouvrirFormulaire(typeSeance, dateStr);
-  }
-
-  ouvrirFormulaire(typeSeance: TypeSeance, dateStr: string): void {
+  /** Ouvre le formulaire de création (type choisi dans le formulaire). */
+  ouvrirCreation(dateStr?: string): void {
+    if (!this.typeSeances.length) return;
     const ref = this.dialog.open(SeanceFormDialogComponent, {
-      width: '480px',
-      maxWidth: '95vw',
+      width: '760px',
+      maxWidth: '96vw',
       panelClass: 'dark-dialog',
-      data: { typeSeance, date: dateStr }
+      data: { typeSeances: this.typeSeances, date: dateStr ?? this.today }
     });
-    ref.afterClosed().subscribe((seance: SeanceCreate | null) => {
-      if (seance) {
-        this.seanceService.create(seance).subscribe(() => this.chargerSemaine());
+    ref.afterClosed().subscribe((result: SeanceFormResult | null) => {
+      if (result) {
+        const { exercices, ...seance } = result;
+        this.seanceService.create(seance).subscribe(creee => {
+          if (exercices.length) {
+            this.seanceService.remplacerExercices(creee.id, exercices).subscribe({
+              next: () => this.chargerSemaine(), error: () => this.chargerSemaine(),
+            });
+          } else {
+            this.chargerSemaine();
+          }
+        });
       }
     });
   }
@@ -164,18 +142,44 @@ export class CalendrierComponent implements OnInit {
   editerSeance(seance: Seance, event: MouseEvent): void {
     event.stopPropagation();
     const ref = this.dialog.open(SeanceFormDialogComponent, {
-      width: '480px',
-      maxWidth: '95vw',
+      width: '760px',
+      maxWidth: '96vw',
       panelClass: 'dark-dialog',
-      data: { typeSeance: seance.typeSeance, date: seance.date, seance }
+      data: { typeSeances: this.typeSeances, date: seance.date, seance }
     });
-    ref.afterClosed().subscribe((payload: SeanceCreate | null) => {
-      if (payload) {
+    ref.afterClosed().subscribe((result: SeanceFormResult | null) => {
+      if (result) {
+        const { exercices, ...payload } = result;
         this.seanceService.update(seance.id, payload as Partial<Seance>).subscribe({
-          next: () => { this.chargerSemaine(); this.snackBar.open('Séance modifiée', 'OK', { duration: 2500 }); },
+          next: () => {
+            this.seanceService.remplacerExercices(seance.id, exercices).subscribe({
+              next: () => { this.chargerSemaine(); this.snackBar.open('Séance modifiée', 'OK', { duration: 2500 }); },
+              error: () => { this.chargerSemaine(); this.snackBar.open('Séance modifiée', 'OK', { duration: 2500 }); },
+            });
+          },
           error: () => this.snackBar.open('Modification impossible', 'OK', { duration: 3000 }),
         });
       }
+    });
+  }
+
+  /** Détail séance : staff → page complète (contenu + GPS) ; joueur → dialog contenu seul. */
+  ouvrirDetail(seance: Seance): void {
+    if (!this.lectureSeule) {
+      this.router.navigate(['/seances', seance.id]);
+      return;
+    }
+    const titre = seance.titre || seance.typeSeance?.libelle || 'Séance';
+    this.espaceJoueur.getContenuSeance(seance.id).subscribe({
+      next: contenu => this.ouvrirContenuDialog(titre, seance.date, contenu),
+      error: () => this.ouvrirContenuDialog(titre, seance.date, null),
+    });
+  }
+
+  private ouvrirContenuDialog(titre: string, date: string, contenu: any): void {
+    this.dialog.open(SeanceContenuDialogComponent, {
+      width: '900px', maxWidth: '96vw', panelClass: 'dark-dialog',
+      data: { titre, date, contenu },
     });
   }
 

@@ -43,6 +43,28 @@
                 @for (i of [1,2,3,4,5]; track i) { <option [ngValue]="i">{{ i }}</option> }
               </select>
             </div>
+            <div class="field">
+              <label class="field__label">Type</label>
+              <select class="input select" [(ngModel)]="exoForm.type" name="type">
+                <option value="TECHNIQUE">Technique</option>
+                <option value="PHYSIQUE">Physique</option>
+                <option value="MIXTE">Mixte</option>
+              </select>
+            </div>
+            @if (exoForm.type === 'PHYSIQUE' || exoForm.type === 'MIXTE') {
+              <div class="field">
+                <label class="field__label">Distance attendue (m)</label>
+                <input class="input" type="number" [(ngModel)]="exoForm.distanceAttendueM" name="dist" min="0">
+              </div>
+              <div class="field">
+                <label class="field__label">Dont haute intensité (m)</label>
+                <input class="input" type="number" [(ngModel)]="exoForm.distanceHauteIntensiteM" name="distHi" min="0">
+              </div>
+              <div class="field">
+                <label class="field__label">Nb sprints</label>
+                <input class="input" type="number" [(ngModel)]="exoForm.nbSprints" name="nbSpr" min="0">
+              </div>
+            }
             <div class="field span2">
               <label class="field__label">Objectif</label>
               <input class="input" [(ngModel)]="exoForm.objectif" name="obj" placeholder="vitesse de passe…">
@@ -110,111 +132,6 @@
                   <button class="btn btn--danger btn--sm btn--icon" (click)="supprimerExo(e)" title="Supprimer">✕</button>
                 </div>
               }
-            </div>
-          </div>
-        }
-      </div>
-    }
-  }
-
-  <!-- ════════════════════════════════
-       SECTION : CRÉER UNE SÉANCE
-       ════════════════════════════════ -->
-  @if (section() === 'creer') {
-    <div class="page-head">
-      <div>
-        <h1 class="page-head__title">Créer une séance</h1>
-        <p class="page-head__sub">{{ seances().length }} séance{{ seances().length > 1 ? 's' : '' }} technique{{ seances().length > 1 ? 's' : '' }}</p>
-      </div>
-      <div class="page-head__actions">
-        <button class="btn btn--primary" (click)="showSeanceForm() ? annulerSeance() : nouvelleSeance()">
-          <mat-icon>add</mat-icon>{{ showSeanceForm() ? 'Annuler' : 'Composer une séance' }}
-        </button>
-      </div>
-    </div>
-
-    <!-- Formulaire composition -->
-    @if (showSeanceForm()) {
-      <div class="card card--padded" style="margin-bottom:16px">
-        <div class="form-grid" style="margin-bottom:16px">
-          <div class="field">
-            <label class="field__label">Date *</label>
-            <input class="input" type="date" [(ngModel)]="seanceForm.date" name="sdate">
-          </div>
-          <div class="field">
-            <label class="field__label">Titre</label>
-            <input class="input" [(ngModel)]="seanceForm.titre" name="stitre" placeholder="Séance mardi">
-          </div>
-          <div class="field span2">
-            <label class="field__label">Objectif global</label>
-            <input class="input" [(ngModel)]="seanceForm.objectif" name="sobj">
-          </div>
-        </div>
-
-        <div class="compose-cols">
-          <div>
-            <p class="compose-titre">Bibliothèque</p>
-            <div class="chips">
-              @for (e of exercices(); track e.id) {
-                <button type="button" class="chip" [class.on]="estSelectionne(e)" (click)="toggleSelection(e)">
-                  {{ e.nom }} <small>{{ e.dureeMinutes || 0 }}'</small>
-                </button>
-              }
-            </div>
-          </div>
-          <div>
-            <p class="compose-titre">Séance — {{ dureeSelection() }} min · int. {{ intensiteSelection() ?? '—' }}</p>
-            @if (selection().length === 0) {
-              <p style="font-size:13px;color:var(--text-3)">Aucun exercice sélectionné.</p>
-            } @else {
-              <ol class="sel-list">
-                @for (e of selection(); track e.id) {
-                  <li>
-                    <span>{{ e.nom }} <small>{{ e.dureeMinutes || 0 }}' · int. {{ e.intensite || '—' }}</small></span>
-                    <button class="btn btn--danger btn--sm btn--icon" (click)="retirerSelection(e)">✕</button>
-                  </li>
-                }
-              </ol>
-            }
-            <div style="display:flex;gap:8px;margin-top:12px">
-              <button class="btn btn--secondary btn--sm" (click)="annulerSeance()">Annuler</button>
-              <button class="btn btn--primary btn--sm" [disabled]="savingSeance() || selection().length === 0" (click)="enregistrerSeance()">
-                {{ savingSeance() ? '…' : (editingSeanceId() ? 'Enregistrer' : 'Créer la séance') }}
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    }
-
-    <!-- Liste séances techniques -->
-    @if (seances().length === 0) {
-      <div class="card card--padded"><div class="empty-state">Aucune séance technique planifiée.</div></div>
-    } @else {
-      <div class="seances-grid">
-        @for (s of seances(); track s.id) {
-          <div class="seance-card" [class.seance-card--realisee]="s.statut === 'REALISEE'">
-            <div class="row row--between">
-              <span class="num" style="font-weight:700;font-size:14px">{{ s.date | date:'dd/MM/yyyy' }}</span>
-              <span class="badge" [class.badge--ok]="s.statut === 'REALISEE'" [class.badge--info]="s.statut !== 'REALISEE'">
-                {{ s.statut === 'REALISEE' ? 'Réalisée' : 'Planifiée' }}
-              </span>
-            </div>
-            <p class="seance-card__titre">{{ s.titre || 'Séance technique' }}</p>
-            <p class="seance-card__meta">{{ s.dureeTotaleMinutes }} min · int. {{ s.intensiteMoyenne ?? '—' }} · {{ s.exercices.length }} exercice{{ s.exercices.length > 1 ? 's' : '' }}</p>
-            @if (s.objectif) { <p class="seance-card__obj">{{ s.objectif }}</p> }
-            <ul class="seance-card__exos">
-              @for (ex of s.exercices; track ex.exerciceId) {
-                <li>{{ ex.nom }} <small>{{ ex.dureeMinutes || 0 }}'</small></li>
-              }
-            </ul>
-            <div class="row" style="gap:6px;margin-top:8px;flex-wrap:wrap">
-              <button class="btn btn--secondary btn--sm" (click)="ouvrirDetail(s)">Détail</button>
-              @if (s.statut !== 'REALISEE') {
-                <button class="btn btn--secondary btn--sm" (click)="editerSeance(s)">Modifier</button>
-                <button class="btn btn--primary btn--sm" (click)="realiserSeance(s)">✓ Réalisée</button>
-              }
-              <button class="btn btn--danger btn--sm" (click)="supprimerSeance(s)">Supprimer</button>
             </div>
           </div>
         }

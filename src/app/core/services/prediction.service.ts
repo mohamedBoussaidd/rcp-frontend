@@ -55,6 +55,9 @@ export interface LigneRapport {
   correction_poids_pct: number | null;
   ecart_poids_kg: number | null;
   atteint_objectif: boolean | null;
+  // Objectif d'équipe au prorata du temps joué (tous types)
+  objectif_seance_m: number | null;
+  atteint_objectif_seance: boolean | null;
 }
 
 export interface RapportSeance {
@@ -63,6 +66,12 @@ export interface RapportSeance {
   type_code: string;
   type_libelle: string;
   nb_joueurs: number;
+  // Objectif d'équipe de la séance (préparation)
+  objectif: string | null;
+  objectif_distance_m: number | null;
+  objectif_intensite: number | null;
+  objectif_distance_haute_intensite_m: number | null;
+  duree_reference_minutes: number | null;
   lignes: LigneRapport[];
 }
 

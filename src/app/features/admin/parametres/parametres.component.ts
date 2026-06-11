@@ -2,6 +2,7 @@ import { Component, OnInit } from '@angular/core';
 import { Router } from '@angular/router';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { ConfigurationService } from '@core/services/configuration.service';
+import { SeanceService, TypeSeance } from '@core/services/seance.service';
 import { MatCard, MatCardHeader, MatCardTitle, MatCardContent, MatCardActions } from '@angular/material/card';
 import { MatTooltip } from '@angular/material/tooltip';
 import { FormsModule } from '@angular/forms';
@@ -298,6 +299,11 @@ export class ParametresComponent implements OnInit {
   loading  = true;
   saving   = false;
 
+  // ── Cibles d'équipe par type de séance (propres au club actif) ──
+  typesSeance: TypeSeance[] = [];
+  ciblesOuvert = false;
+  cibleSaving: string | null = null;
+
   readonly groupes: GroupeParams[] = [
     {
       id: 'charge_poids',
@@ -382,6 +388,7 @@ export class ParametresComponent implements OnInit {
 
   constructor(
     private configService: ConfigurationService,
+    private seanceService: SeanceService,
     private snackBar: MatSnackBar,
     private router: Router
   ) {}
@@ -393,6 +400,29 @@ export class ParametresComponent implements OnInit {
     this.configService.getAll().subscribe({
       next: data => { this.valeurs = { ...this.valeurs, ...data }; this.loading = false; },
       error: () => { this.loading = false; }
+    });
+    this.seanceService.getTypeSeances().subscribe({
+      next: types => this.typesSeance = types,
+      error: () => {},
+    });
+  }
+
+  sauvegarderCible(type: TypeSeance): void {
+    this.cibleSaving = type.id;
+    this.seanceService.setCiblesType(type.id, {
+      objectifDistanceM: type.objectifDistanceM ?? null,
+      objectifDistanceHauteIntensiteM: type.objectifDistanceHauteIntensiteM ?? null,
+      objectifIntensite: type.objectifIntensite ?? null,
+    }).subscribe({
+      next: maj => {
+        this.cibleSaving = null;
+        this.typesSeance = this.typesSeance.map(t => t.id === maj.id ? maj : t);
+        this.snackBar.open(`Cibles "${type.libelle}" enregistrées`, 'OK', { duration: 2500 });
+      },
+      error: () => {
+        this.cibleSaving = null;
+        this.snackBar.open('Enregistrement impossible', 'Fermer', { duration: 3500 });
+      },
     });
   }
 

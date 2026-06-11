@@ -9,6 +9,17 @@ export interface TypeSeance {
   intensiteTheorique?: number;
   dureeTheoriqueMin?: number;
   objectifPrincipal?: string;
+  // Cibles d'équipe par défaut (propres au club actif) — pré-remplissent le formulaire
+  objectifDistanceM?: number;
+  objectifDistanceHauteIntensiteM?: number;
+  objectifIntensite?: number;
+}
+
+/** Cibles paramétrables d'un type de séance (club actif). */
+export interface CiblesTypeRequest {
+  objectifDistanceM?: number | null;
+  objectifDistanceHauteIntensiteM?: number | null;
+  objectifIntensite?: number | null;
 }
 
 export interface Seance {
@@ -27,6 +38,51 @@ export interface Seance {
   domicileExterieur?: 'DOMICILE' | 'EXTERIEUR';
   scoreMatch?: string;
   description?: string;
+  // Objectif d'équipe (préparation) — pré-rempli par Σ exercices physiques, modifiable
+  objectif?: string;
+  objectifDistanceM?: number;
+  objectifIntensite?: number;
+  objectifDistanceHauteIntensiteM?: number;
+}
+
+// ── Préparation : exercices de la séance (référence + overrides) ──
+
+/** Override d'une ligne d'exercice envoyé au serveur (null = valeur par défaut de l'exercice). */
+export interface LigneExerciceRequest {
+  exerciceId: string;
+  dureeMinutes?: number | null;
+  intensite?: number | null;
+  distanceAttendueM?: number | null;
+  distanceHauteIntensiteM?: number | null;
+  nbSprints?: number | null;
+}
+
+/** Ligne d'exercice telle qu'affichée : valeurs effectives (override sinon défaut) + libellés. */
+export interface ExerciceLigneSeance {
+  exerciceId: string;
+  nom: string;
+  categorie?: string;
+  type?: string;
+  ordre: number;
+  dureeMinutes?: number;
+  intensite?: number;
+  objectif?: string;
+  description?: string;
+  schemaJson?: string;
+  distanceAttendueM?: number;
+  distanceHauteIntensiteM?: number;
+  nbSprints?: number;
+}
+
+/** Contenu d'une séance : exercices + agrégats (servent à pré-remplir l'objectif d'équipe). */
+export interface ContenuSeance {
+  seanceId: string;
+  exercices: ExerciceLigneSeance[];
+  dureeTotaleMinutes: number;
+  intensiteMoyenne?: number;
+  distanceTotaleAttendueM?: number;
+  distanceHauteIntensiteTotaleM?: number;
+  nbSprintsTotal?: number;
 }
 
 // ── Présence ──
@@ -61,6 +117,11 @@ export interface SeanceCreate {
   domicileExterieur?: string;
   description?: string;
   raisonEcartDuree?: string;
+  // Objectif d'équipe (préparation)
+  objectif?: string;
+  objectifDistanceM?: number;
+  objectifIntensite?: number;
+  objectifDistanceHauteIntensiteM?: number;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -97,6 +158,20 @@ export class SeanceService {
 
   getTypeSeances(): Observable<TypeSeance[]> {
     return this.http.get<TypeSeance[]>(this.baseTypes);
+  }
+
+  /** Paramètre les cibles d'un type de séance pour le club actif. */
+  setCiblesType(typeId: string, req: CiblesTypeRequest): Observable<TypeSeance> {
+    return this.http.put<TypeSeance>(`${this.baseTypes}/${typeId}/cibles`, req);
+  }
+
+  // ── Préparation : exercices de la séance ──
+  getContenu(seanceId: string): Observable<ContenuSeance> {
+    return this.http.get<ContenuSeance>(`${this.base}/${seanceId}/exercices`);
+  }
+
+  remplacerExercices(seanceId: string, exercices: LigneExerciceRequest[]): Observable<ContenuSeance> {
+    return this.http.put<ContenuSeance>(`${this.base}/${seanceId}/exercices`, { exercices });
   }
 
   // ── Présence ──

@@ -3,46 +3,12 @@
     <h1 class="page-head__title">Calendrier</h1>
     <p class="page-head__sub">Planification des séances</p>
   </div>
+  @if (auth.canEcrireSeances()) {
+    <button class="btn-creer-seance" (click)="ouvrirCreation()">＋ Créer une séance</button>
+  }
 </div>
 
 <div class="cal-layout">
-
-  <!-- ── Palette gauche (édition séances) ── -->
-  @if (auth.canEcrireSeances()) {
-  <aside class="palette" cdkDropList id="palette" [cdkDropListData]="typeSeances" [cdkDropListConnectedTo]="joursIds">
-    <h3 class="palette-titre">Types de séance</h3>
-    <div class="palette-info">Glissez un type sur un jour</div>
-
-    @for (type of typeSeances; track type.id) {
-    @let info = infosType[type.code];
-    <div class="palette-item" cdkDrag [cdkDragData]="type" [style.border-left-color]="couleur(type.code)">
-      <div class="palette-item-header">
-        <span class="palette-dot" [style.background]="couleur(type.code)"></span>
-        <span class="palette-label">{{ type.libelle }}</span>
-        @if (info) {
-        <span class="palette-duree">{{ info.duree }}</span>
-        }
-      </div>
-      @if (info) {
-      <p class="palette-desc">{{ info.description }}</p>
-      <div class="palette-intensite-wrap">
-        <span class="palette-intensite-label">Intensité {{ info.intensite }}%</span>
-        <div class="palette-intensite-bar">
-          <div class="palette-intensite-fill" [style.width.%]="info.intensite" [style.background]="couleur(type.code)">
-          </div>
-        </div>
-      </div>
-      <ul class="palette-objectifs">
-        @for (obj of info.objectifs; track obj) {
-        <li>{{ obj }}</li>
-        }
-      </ul>
-      }
-      <div *cdkDragPlaceholder class="drag-placeholder"></div>
-    </div>
-    }
-  </aside>
-  }
 
   <!-- ── Zone calendrier ── -->
   <div class="cal-zone">
@@ -63,17 +29,19 @@
         <div class="jour-header" [class.today]="jour.dateStr === today">
           <span class="jour-nom">{{ jour.label }}</span>
           <span class="jour-date">{{ jour.date | date:'d MMM' }}</span>
+          @if (auth.canEcrireSeances()) {
+            <button class="jour-add" (click)="ouvrirCreation(jour.dateStr)" matTooltip="Ajouter une séance ce jour">＋</button>
+          }
         </div>
 
-        <!-- Zone de drop -->
-        <div class="jour-body" cdkDropList [id]="jour.dateStr" [cdkDropListData]="seancesDuJour(jour.dateStr)"
-          [cdkDropListConnectedTo]="['palette']" (cdkDropListDropped)="onDrop($event, jour.dateStr)"
-          [class.dropzone-active]="true">
+        <!-- Séances du jour -->
+        <div class="jour-body">
 
           @for (seance of seancesDuJour(jour.dateStr); track seance.id) {
           @let info = infosType[seance.typeSeance.code];
-          <div class="seance-bloc" [style.border-left-color]="couleur(seance.typeSeance.code)"
-            [class.realisee]="seance.statut === 'REALISEE'" [class.annulee]="seance.statut === 'ANNULEE'">
+          <div class="seance-bloc clickable" [style.border-left-color]="couleur(seance.typeSeance.code)"
+            [class.realisee]="seance.statut === 'REALISEE'" [class.annulee]="seance.statut === 'ANNULEE'"
+            (click)="ouvrirDetail(seance)" matTooltip="Voir le détail de la séance">
 
             @if (auth.canEcrireSeances()) {
             <div class="seance-actions">
@@ -122,28 +90,7 @@
           </div>
           }
 
-          <!-- ── Séances techniques (lecture, gérées dans Planning technique) ── -->
-          @for (st of seancesTechDuJour(jour.dateStr); track st.id) {
-          <div class="seance-tech clickable" [class.realisee]="st.statut === 'REALISEE'" (click)="ouvrirDetailTech(st)" title="Voir le détail">
-            <div class="tech-head">
-              <span class="tech-badge">Technique</span>
-              <span class="tech-duree">{{ st.dureeTotaleMinutes }} min · int. {{ st.intensiteMoyenne ?? '—' }}</span>
-            </div>
-            <span class="tech-titre">{{ st.titre || 'Séance technique' }}</span>
-            @if (st.objectif) { <span class="tech-obj">🎯 {{ st.objectif }}</span> }
-            @if (st.description) { <span class="tech-desc">{{ st.description }}</span> }
-            @if (st.exercices.length) {
-            <ul class="tech-exos">
-              @for (ex of st.exercices; track ex.exerciceId) {
-              <li><span class="tech-exo-nom">{{ ex.nom }}</span><span class="tech-exo-duree">{{ ex.dureeMinutes || 0
-                  }}'</span></li>
-              }
-            </ul>
-            }
-          </div>
-          }
-
-          @if (seancesDuJour(jour.dateStr).length === 0 && seancesTechDuJour(jour.dateStr).length === 0) {
+          @if (seancesDuJour(jour.dateStr).length === 0) {
           <div class="jour-vide">—</div>
           }
         </div>

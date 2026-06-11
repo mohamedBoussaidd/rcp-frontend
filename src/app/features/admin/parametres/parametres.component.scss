@@ -122,3 +122,26 @@ mat-card-actions { padding: 8px 16px 12px; display: flex; gap: 8px; flex-wrap: w
   transition: background .15s;
   &:hover { background: rgba(255,255,255,.12); }
 }
+
+.cibles-table {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.cibles-head,
+.cible-row {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr 1fr 0.8fr auto;
+  gap: 10px;
+  align-items: center;
+}
+.cibles-head {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  color: var(--muted, #64748b);
+  padding: 0 2px 4px;
+}
+.cible-type { font-weight: 600; }
+.btn-save--sm { padding: 5px 12px; font-size: 0.78rem; }

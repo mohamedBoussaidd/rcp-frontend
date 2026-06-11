@@ -1,6 +1,8 @@
 import { Component, OnInit } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { PredictionService, RapportSeance, LigneRapport } from '@core/services/prediction.service';
+import { SeanceService, ContenuSeance } from '@core/services/seance.service';
+import { SchemaViewerComponent } from '../../tactical/schema-viewer/schema-viewer.component';
 import { MatTable, MatColumnDef, MatHeaderCellDef, MatHeaderCell, MatCellDef, MatCell, MatHeaderRowDef, MatHeaderRow, MatRowDef, MatRow } from '@angular/material/table';
 import { DecimalPipe, DatePipe } from '@angular/common';
 
@@ -22,16 +24,17 @@ const COULEURS_TYPE: Record<string, string> = {
   imports: [
     MatTable, MatColumnDef, MatHeaderCellDef, MatHeaderCell,
     MatCellDef, MatCell, MatHeaderRowDef, MatHeaderRow, MatRowDef, MatRow,
-    DecimalPipe, DatePipe,
+    DecimalPipe, DatePipe, SchemaViewerComponent,
   ]
 })
 export class SeanceDetailComponent implements OnInit {
 
   rapport: RapportSeance | null = null;
+  contenu: ContenuSeance | null = null;
   loading = true;
   error   = false;
 
-  readonly colonnesBase  = ['joueur', 'poste', 'duree', 'dist_reelle', 'ratio_reel', 'dist_attendue', 'delta', 'statut', 'vitesse', 'sprints'];
+  readonly colonnesBase  = ['joueur', 'poste', 'duree', 'dist_reelle', 'ratio_reel', 'objectif_seance', 'dist_attendue', 'delta', 'statut', 'vitesse', 'sprints'];
   readonly colonnesMatch = [...this.colonnesBase, 'objectif'];
 
   get displayedColumns(): string[] {
@@ -43,6 +46,7 @@ export class SeanceDetailComponent implements OnInit {
     private route: ActivatedRoute,
     private router: Router,
     private predictionService: PredictionService,
+    private seanceService: SeanceService,
   ) {}
 
   ngOnInit(): void {
@@ -51,9 +55,16 @@ export class SeanceDetailComponent implements OnInit {
       next: data => { this.rapport = data; this.loading = false; },
       error: () => { this.loading = false; this.error = true; }
     });
+    // Contenu de préparation (exercices + schémas) — indépendant du GPS.
+    this.seanceService.getContenu(id).subscribe({
+      next: c => this.contenu = c,
+      error: () => {},
+    });
   }
 
   retourSeances(): void { this.router.navigate(['/seances']); }
+
+  joli(v?: string): string { return v ? v.replace(/_/g, ' ') : ''; }
 
   couleurType(code: string): string { return COULEURS_TYPE[code] ?? '#6366f1'; }
 

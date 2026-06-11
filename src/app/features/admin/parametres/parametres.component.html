@@ -20,6 +20,45 @@
       À configurer une fois en début de saison selon votre niveau de championnat et votre style de jeu.
     </div>
 
+    <!-- ── Cibles d'équipe par type de séance (pré-remplissent le formulaire) ── -->
+    <mat-card class="groupe-card" [class.collapsed]="!ciblesOuvert">
+      <mat-card-header class="groupe-header" (click)="ciblesOuvert = !ciblesOuvert">
+        <mat-card-title>Cibles par type de séance</mat-card-title>
+        <span class="groupe-toggle">{{ ciblesOuvert ? '▲' : '▼' }}</span>
+      </mat-card-header>
+
+      @if (ciblesOuvert) {
+        <mat-card-content>
+          <p class="groupe-desc">
+            Distance cible, dont haute intensité (&gt;19 km/h) et intensité (1–5) par type de séance.
+            Ces valeurs pré-remplissent automatiquement le formulaire quand on choisit le type, et restent
+            modifiables séance par séance. Propres à votre club.
+          </p>
+
+          <div class="cibles-table">
+            <div class="cibles-head">
+              <span>Type</span>
+              <span>Distance (m)</span>
+              <span>Dont HI (m)</span>
+              <span>Intensité</span>
+              <span></span>
+            </div>
+            @for (type of typesSeance; track type.id) {
+              <div class="cible-row">
+                <span class="cible-type">{{ type.libelle }}</span>
+                <input type="number" class="param-input" min="0" step="100" [(ngModel)]="type.objectifDistanceM" />
+                <input type="number" class="param-input" min="0" step="100" [(ngModel)]="type.objectifDistanceHauteIntensiteM" />
+                <input type="number" class="param-input" min="1" max="5" step="1" [(ngModel)]="type.objectifIntensite" />
+                <button class="btn-save btn-save--sm" (click)="sauvegarderCible(type)" [disabled]="cibleSaving === type.id">
+                  {{ cibleSaving === type.id ? '…' : 'Enregistrer' }}
+                </button>
+              </div>
+            }
+          </div>
+        </mat-card-content>
+      }
+    </mat-card>
+
     @for (groupe of groupes; track groupe.id) {
       <mat-card class="groupe-card" [class.collapsed]="!groupe.expanded">
 

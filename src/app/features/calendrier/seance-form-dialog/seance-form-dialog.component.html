@@ -2,142 +2,260 @@
 
   <div class="dark-modal-title-row">
     <div>
-      <h2 class="dark-modal-title">Nouvelle séance</h2>
-      <span class="seance-subtitle">{{ dialogData.typeSeance.libelle }} · {{ dialogData.date }}</span>
+      <h2 class="dark-modal-title">{{ editMode ? 'Modifier la séance' : 'Nouvelle séance' }}</h2>
+      <span class="seance-subtitle">{{ selectedType?.libelle || 'Choisir un type' }} · {{ form?.get('date')?.value }}</span>
     </div>
     <button class="dark-modal-close" (click)="annuler()">✕</button>
   </div>
 
   <form [formGroup]="form">
-    <div class="dark-field-grid">
+    <mat-tab-group class="seance-tabs" animationDuration="0ms" mat-stretch-tabs="false">
 
-      <!-- Titre -->
-      <div class="dark-field full-width">
-        <label>Titre</label>
-        <input formControlName="titre" [placeholder]="dialogData.typeSeance.libelle">
-      </div>
+      <!-- ══════════ Onglet 1 : Séance (cadre + contenu) ══════════ -->
+      <mat-tab label="Séance">
+        <div class="dark-field-grid tab-grid">
 
-      <!-- Heure + Durée -->
-      <div class="dark-field">
-        <label>Heure de début</label>
-        <input type="time" formControlName="heureDebut">
-      </div>
-
-      <div class="dark-field">
-        <label>Durée (min) *</label>
-        <input type="number" formControlName="dureeMinutes" min="1"
-               [class.field-error]="form.get('dureeMinutes')?.invalid && form.get('dureeMinutes')?.touched">
-        @if (form.get('dureeMinutes')?.invalid && form.get('dureeMinutes')?.touched) {
-          <span class="msg-erreur">Durée obligatoire</span>
-        }
-      </div>
-
-      <!-- Alerte écart durée -->
-      @if (alerteEcart) {
-        <div class="alerte-ecart full-width" [class.alerte-long]="alerteEcart === 'long'">
-          <span class="alerte-icon">⚠</span>
-          <span class="alerte-texte">
-            @if (alerteEcart === 'court') {
-              Séance écourtée (théorique : {{ dureeTheorique }} min) — pourquoi ?
-            } @else {
-              Séance prolongée (théorique : {{ dureeTheorique }} min) — pourquoi ?
-            }
-          </span>
-        </div>
-
-        <div class="dark-field full-width">
-          <div class="suggestions">
-            @for (s of (alerteEcart === 'court' ? suggestionsEcourt : suggestionsLong); track s) {
-              <button type="button" class="suggestion-chip"
-                      [class.active]="form.get('raisonEcartDuree')?.value === s"
-                      (click)="appliquerSuggestion(s)">{{ s }}</button>
+          <!-- Type de séance + Date -->
+          <div class="dark-field">
+            <label>Type de séance *</label>
+            <mat-select formControlName="typeSeanceId" panelClass="dark-select-panel"
+                        [class.field-error]="form.get('typeSeanceId')?.invalid && form.get('typeSeanceId')?.touched">
+              @for (t of typeSeances; track t.id) {
+                <mat-option [value]="t.id">{{ t.libelle }}</mat-option>
+              }
+            </mat-select>
+            @if (form.get('typeSeanceId')?.invalid && form.get('typeSeanceId')?.touched) {
+              <span class="msg-erreur">Type obligatoire</span>
             }
           </div>
-          <input formControlName="raisonEcartDuree" placeholder="Autre raison…">
-        </div>
-      }
 
-      <!-- Météo + Température -->
-      <div class="dark-field full-width">
-        <label>Météo</label>
-        <mat-select formControlName="conditionsMeteo" panelClass="dark-select-panel">
-          <mat-option value="">— Non défini</mat-option>
-          <mat-option value="beau">☀️ Soleil — aucune correction</mat-option>
-          <mat-option value="nuageux">⛅ Nuageux — aucune correction</mat-option>
-          <mat-option value="pluie">🌧️ Pluie — −3% sur la distance attendue</mat-option>
-          <mat-option value="vent_fort">💨 Vent fort — −3% sur la distance attendue</mat-option>
-          <mat-option value="neige">❄️ Neige — −12% sur la distance attendue</mat-option>
-          <mat-option value="ARRET_INTEMPERIE">🛑 Arrêt cause intempérie — séance exclue de la baseline</mat-option>
-        </mat-select>
-      </div>
+          <div class="dark-field">
+            <label>Date *</label>
+            <input type="date" formControlName="date"
+                   [class.field-error]="form.get('date')?.invalid && form.get('date')?.touched">
+          </div>
 
-      <!-- Terrain -->
-      <div class="dark-field">
-        <label>Terrain</label>
-        <mat-select formControlName="terrain" panelClass="dark-select-panel">
-          <mat-option value="">— Non défini</mat-option>
-          <mat-option value="SYNTHETIQUE">Synthétique</mat-option>
-          <mat-option value="HERBE">Herbe</mat-option>
-          <mat-option value="HERBE_GRASSE">Herbe grasse</mat-option>
-          <mat-option value="PARQUET">Parquet</mat-option>
-          <mat-option value="GOUDRON">Goudron</mat-option>
-          <mat-option value="FORET">Forêt</mat-option>
-        </mat-select>
-      </div>
+          <div class="dark-field">
+            <label>Heure de début</label>
+            <input type="time" formControlName="heureDebut">
+          </div>
 
+          <!-- Titre -->
+          <div class="dark-field full-width">
+            <label>Titre</label>
+            <input formControlName="titre" [placeholder]="selectedType?.libelle || 'Séance'">
+          </div>
 
+          <!-- Durée (calculée depuis les exercices, modifiable) -->
+          <div class="dark-field">
+            <label>Durée (min) *</label>
+            <input type="number" formControlName="dureeMinutes" min="1"
+                   [class.field-error]="form.get('dureeMinutes')?.invalid && form.get('dureeMinutes')?.touched">
+            @if (dureeSelection > 0) {
+              <span class="field-hint">= Σ exercices ({{ dureeSelection }} min) · modifiable</span>
+            } @else if (form.get('dureeMinutes')?.invalid && form.get('dureeMinutes')?.touched) {
+              <span class="msg-erreur">Durée obligatoire</span>
+            }
+          </div>
 
-      <div class="dark-field">
-        <label>Température (°C)</label>
-        <input type="number" formControlName="temperature" min="-20" max="50" placeholder="ex : 22">
-        <span class="field-hint">&gt; 28°C : −5%&nbsp;&nbsp;·&nbsp;&nbsp;&gt; 32°C : −10% sur la distance attendue</span>
-      </div>
+          <!-- Alerte écart durée -->
+          @if (alerteEcart) {
+            <div class="alerte-ecart full-width" [class.alerte-long]="alerteEcart === 'long'">
+              <span class="alerte-icon">⚠</span>
+              <span class="alerte-texte">
+                @if (alerteEcart === 'court') {
+                  Séance écourtée (théorique : {{ dureeTheorique }} min) — pourquoi ?
+                } @else {
+                  Séance prolongée (théorique : {{ dureeTheorique }} min) — pourquoi ?
+                }
+              </span>
+            </div>
 
-      <!-- Champs MATCH -->
-      @if (estMatch) {
-        <div class="dark-field full-width">
-          <div class="section-label">Informations match</div>
-        </div>
-
-        <div class="dark-field">
-          <label>Adversaire *</label>
-          <input formControlName="adversaire" placeholder="ex : US Clermont"
-                 [class.field-error]="form.get('adversaire')?.invalid && form.get('adversaire')?.touched">
-          @if (form.get('adversaire')?.invalid && form.get('adversaire')?.touched) {
-            <span class="msg-erreur">Adversaire obligatoire</span>
+            <div class="dark-field full-width">
+              <div class="suggestions">
+                @for (s of (alerteEcart === 'court' ? suggestionsEcourt : suggestionsLong); track s) {
+                  <button type="button" class="suggestion-chip"
+                          [class.active]="form.get('raisonEcartDuree')?.value === s"
+                          (click)="appliquerSuggestion(s)">{{ s }}</button>
+                }
+              </div>
+              <input formControlName="raisonEcartDuree" placeholder="Autre raison…">
+            </div>
           }
-        </div>
 
-        <div class="dark-field">
-          <label>Compétition</label>
-          <input formControlName="competition" placeholder="ex : Championnat N3">
-        </div>
+          <!-- Champs MATCH -->
+          @if (estMatch) {
+            <div class="dark-field full-width">
+              <div class="section-label">Informations match</div>
+            </div>
 
-        <div class="dark-field full-width">
-          <label>Domicile / Extérieur *</label>
-          <mat-select formControlName="domicileExterieur" panelClass="dark-select-panel"
-                      [class.field-error]="form.get('domicileExterieur')?.invalid && form.get('domicileExterieur')?.touched">
-            <mat-option value="">— Choisir</mat-option>
-            <mat-option value="DOMICILE">Domicile</mat-option>
-            <mat-option value="EXTERIEUR">Extérieur</mat-option>
-          </mat-select>
-          @if (form.get('domicileExterieur')?.invalid && form.get('domicileExterieur')?.touched) {
-            <span class="msg-erreur">Champ obligatoire</span>
+            <div class="dark-field">
+              <label>Adversaire *</label>
+              <input formControlName="adversaire" placeholder="ex : US Clermont"
+                     [class.field-error]="form.get('adversaire')?.invalid && form.get('adversaire')?.touched">
+              @if (form.get('adversaire')?.invalid && form.get('adversaire')?.touched) {
+                <span class="msg-erreur">Adversaire obligatoire</span>
+              }
+            </div>
+
+            <div class="dark-field">
+              <label>Compétition</label>
+              <input formControlName="competition" placeholder="ex : Championnat N3">
+            </div>
+
+            <div class="dark-field">
+              <label>Domicile / Extérieur *</label>
+              <mat-select formControlName="domicileExterieur" panelClass="dark-select-panel"
+                          [class.field-error]="form.get('domicileExterieur')?.invalid && form.get('domicileExterieur')?.touched">
+                <mat-option value="">— Choisir</mat-option>
+                <mat-option value="DOMICILE">Domicile</mat-option>
+                <mat-option value="EXTERIEUR">Extérieur</mat-option>
+              </mat-select>
+              @if (form.get('domicileExterieur')?.invalid && form.get('domicileExterieur')?.touched) {
+                <span class="msg-erreur">Champ obligatoire</span>
+              }
+            </div>
           }
+
+          <!-- Exercices (bibliothèque) -->
+          <div class="dark-field full-width">
+            <div class="section-label-row">
+              <span class="section-label">Exercices ({{ dureeSelection }} min)</span>
+              <button type="button" class="btn-ajout-exo" (click)="toggleExoListe()">
+                {{ exoListeOuverte ? '✕ Fermer la bibliothèque' : '＋ Ajouter un exercice' }}
+              </button>
+            </div>
+          </div>
+
+          <!-- Exercices sélectionnés -->
+          <div class="dark-field full-width">
+            @if (selection.length === 0) {
+              <span class="field-hint">Aucun exercice. Cliquez sur « Ajouter un exercice ».</span>
+            } @else {
+              <div class="exo-chips">
+                @for (e of selection; track e.id) {
+                  <button type="button" class="exo-chip on" (click)="toggleSelection(e)" title="Retirer">
+                    {{ e.nom }}
+                    @if (e.dureeMinutes) { <small>{{ e.dureeMinutes }}'</small> }
+                    @if (e.type === 'PHYSIQUE') { <small class="tag-phys">phys</small> }
+                    @else if (e.type === 'MIXTE') { <small class="tag-mixte">mixte</small> }
+                    <small class="exo-remove">✕</small>
+                  </button>
+                }
+              </div>
+            }
+          </div>
+
+          <!-- Bibliothèque (révélée par le bouton) -->
+          @if (exoListeOuverte) {
+            <div class="dark-field full-width">
+              @if (exercices.length === 0) {
+                <span class="field-hint">Aucun exercice dans la bibliothèque.</span>
+              } @else {
+                <div class="exo-biblio">
+                  @for (e of exercices; track e.id) {
+                    <button type="button" class="exo-chip" [class.on]="estSelectionne(e)" (click)="toggleSelection(e)">
+                      {{ e.nom }}
+                      @if (e.dureeMinutes) { <small>{{ e.dureeMinutes }}'</small> }
+                      @if (e.type === 'PHYSIQUE') { <small class="tag-phys">phys</small> }
+                      @else if (e.type === 'MIXTE') { <small class="tag-mixte">mixte</small> }
+                    </button>
+                  }
+                </div>
+              }
+            </div>
+          }
+
+          <!-- Objectif texte -->
+          <div class="dark-field full-width">
+            <label>Objectif de la séance (texte)</label>
+            <input formControlName="objectif" placeholder="ex : travail de conservation haute intensité">
+          </div>
+
         </div>
-      }
+      </mat-tab>
 
-      <!-- Notes -->
-      <div class="dark-field full-width">
-        <label>Notes</label>
-        <textarea formControlName="description" rows="2" placeholder="Objectifs, consignes…"></textarea>
-      </div>
+      <!-- ══════════ Onglet 2 : Charge & conditions (préparateur) ══════════ -->
+      <mat-tab label="Charge & conditions">
+        <div class="dark-field-grid tab-grid">
 
-    </div>
+          <!-- Cibles physiques d'équipe -->
+          <div class="dark-field full-width">
+            <div class="section-label-row">
+              <span class="section-label">Cibles physiques d'équipe</span>
+              @if (selectedType) {
+                <button type="button" class="btn-ajout-exo" (click)="appliquerCiblesType()">↻ Cibles du type</button>
+              }
+            </div>
+          </div>
+
+          <div class="dark-field">
+            <label>Distance cible (m)</label>
+            <input type="number" formControlName="objectifDistanceM" min="0" placeholder="ex : 6000">
+            @if (suggestionDistanceM > 0) {
+              <span class="field-hint">Σ exercices physiques : {{ suggestionDistanceM }} m</span>
+            }
+          </div>
+          <div class="dark-field">
+            <label>Dont haute intensité (m)</label>
+            <input type="number" formControlName="objectifDistanceHauteIntensiteM" min="0" placeholder="ex : 1000">
+          </div>
+          <div class="dark-field">
+            <label>Intensité cible (1–5)</label>
+            <input type="number" formControlName="objectifIntensite" min="1" max="5" placeholder="ex : 4">
+          </div>
+
+          <!-- Conditions -->
+          <div class="dark-field full-width">
+            <div class="section-label">Conditions</div>
+          </div>
+
+          <div class="dark-field full-width">
+            <label>Météo</label>
+            <mat-select formControlName="conditionsMeteo" panelClass="dark-select-panel">
+              <mat-option value="">— Non défini</mat-option>
+              <mat-option value="beau">☀️ Soleil — aucune correction</mat-option>
+              <mat-option value="nuageux">⛅ Nuageux — aucune correction</mat-option>
+              <mat-option value="pluie">🌧️ Pluie — −3% sur la distance attendue</mat-option>
+              <mat-option value="vent_fort">💨 Vent fort — −3% sur la distance attendue</mat-option>
+              <mat-option value="neige">❄️ Neige — −12% sur la distance attendue</mat-option>
+              <mat-option value="ARRET_INTEMPERIE">🛑 Arrêt cause intempérie — séance exclue de la baseline</mat-option>
+            </mat-select>
+          </div>
+
+          <div class="dark-field">
+            <label>Terrain</label>
+            <mat-select formControlName="terrain" panelClass="dark-select-panel">
+              <mat-option value="">— Non défini</mat-option>
+              <mat-option value="SYNTHETIQUE">Synthétique</mat-option>
+              <mat-option value="HERBE">Herbe</mat-option>
+              <mat-option value="HERBE_GRASSE">Herbe grasse</mat-option>
+              <mat-option value="PARQUET">Parquet</mat-option>
+              <mat-option value="GOUDRON">Goudron</mat-option>
+              <mat-option value="FORET">Forêt</mat-option>
+            </mat-select>
+          </div>
+
+          <div class="dark-field">
+            <label>Température (°C)</label>
+            <input type="number" formControlName="temperature" min="-20" max="50" placeholder="ex : 22">
+            <span class="field-hint">&gt; 28°C : −5%&nbsp;·&nbsp;&gt; 32°C : −10%</span>
+          </div>
+
+          <!-- Notes -->
+          <div class="dark-field full-width">
+            <label>Notes</label>
+            <textarea formControlName="description" rows="2" placeholder="Consignes, remarques…"></textarea>
+          </div>
+
+        </div>
+      </mat-tab>
+
+    </mat-tab-group>
   </form>
 
   <div class="dark-actions">
-    <button class="btn-dark-primary" (click)="valider()">Créer la séance</button>
+    <button class="btn-dark-primary" (click)="valider()">{{ editMode ? 'Enregistrer' : 'Créer la séance' }}</button>
     <button class="btn-dark-outline" (click)="annuler()">Annuler</button>
   </div>
 

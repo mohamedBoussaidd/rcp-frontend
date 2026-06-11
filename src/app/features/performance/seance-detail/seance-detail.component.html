@@ -33,6 +33,56 @@
 
   @if (!loading && !error && rapport) {
 
+    @if (rapport.objectif || rapport.objectif_distance_m) {
+      <div class="card card--padded objectif-equipe">
+        <span class="objectif-equipe__label">🎯 Objectif d'équipe</span>
+        @if (rapport.objectif) { <span class="objectif-equipe__texte">{{ rapport.objectif }}</span> }
+        <span class="objectif-equipe__chiffres">
+          @if (rapport.objectif_distance_m) {
+            <span>{{ (rapport.objectif_distance_m / 1000) | number:'1.2-2' }} km</span>
+          }
+          @if (rapport.objectif_distance_haute_intensite_m) {
+            <span>· dont HI {{ (rapport.objectif_distance_haute_intensite_m / 1000) | number:'1.2-2' }} km</span>
+          }
+          @if (rapport.objectif_intensite) { <span>· int. {{ rapport.objectif_intensite }}/5</span> }
+          @if (rapport.duree_reference_minutes) { <span class="muted">· réf. {{ rapport.duree_reference_minutes }} min</span> }
+        </span>
+      </div>
+    }
+
+    <!-- ── Contenu de la séance (préparation : exercices + schémas) ── -->
+    @if (contenu && contenu.exercices.length > 0) {
+      <div class="card">
+        <div class="card__header">
+          <h3 class="card__title">Contenu de la séance</h3>
+          <span class="badge badge--neutral">{{ contenu.exercices.length }} exercice{{ contenu.exercices.length > 1 ? 's' : '' }} · {{ contenu.dureeTotaleMinutes }} min</span>
+        </div>
+        <div class="contenu-exos">
+          @for (ex of contenu.exercices; track ex.exerciceId) {
+            <div class="contenu-exo">
+              <div class="contenu-exo__info">
+                <div class="contenu-exo__titre">{{ ex.nom }}</div>
+                <div class="contenu-exo__meta">
+                  @if (ex.categorie) { <span class="badge badge--neutral">{{ joli(ex.categorie) }}</span> }
+                  @if (ex.type) { <span class="badge badge--neutral">{{ joli(ex.type) }}</span> }
+                  @if (ex.dureeMinutes) { <span class="badge badge--neutral">{{ ex.dureeMinutes }} min</span> }
+                  @if (ex.intensite) { <span class="badge badge--info">int. {{ ex.intensite }}</span> }
+                  @if (ex.distanceAttendueM) { <span class="badge badge--neutral">{{ ex.distanceAttendueM }} m</span> }
+                </div>
+                @if (ex.objectif) { <div class="contenu-exo__obj">🎯 {{ ex.objectif }}</div> }
+                @if (ex.description) { <div class="contenu-exo__desc">{{ ex.description }}</div> }
+              </div>
+              @if (ex.schemaJson) {
+                <app-schema-viewer [schemaJson]="ex.schemaJson" [largeur]="460"></app-schema-viewer>
+              } @else {
+                <div class="contenu-exo__no-schema">Pas de schéma.</div>
+              }
+            </div>
+          }
+        </div>
+      </div>
+    }
+
     <div class="legende-row">
       <span class="badge badge--bad">Sous la norme (&lt; −20%)</span>
       <span class="badge badge--ok">Dans la norme (±20%)</span>
@@ -81,6 +131,18 @@
             <th mat-header-cell *matHeaderCellDef class="num">Ratio réel</th>
             <td mat-cell *matCellDef="let l" class="num muted">
               {{ l.ratio_reel ? (l.ratio_reel | number:'1.0-0') + ' m/min' : '—' }}
+            </td>
+          </ng-container>
+
+          <ng-container matColumnDef="objectif_seance">
+            <th mat-header-cell *matHeaderCellDef class="num">Objectif séance</th>
+            <td mat-cell *matCellDef="let l" class="num">
+              @if (l.objectif_seance_m) {
+                <span [class.delta-pos]="l.atteint_objectif_seance" [class.delta-neg]="l.atteint_objectif_seance === false">
+                  {{ l.atteint_objectif_seance ? '✓' : (l.atteint_objectif_seance === false ? '✗' : '') }}
+                  {{ (l.objectif_seance_m / 1000) | number:'1.2-2' }} km
+                </span>
+              } @else { <span class="muted">—</span> }
             </td>
           </ng-container>
 

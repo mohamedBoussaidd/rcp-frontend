@@ -150,3 +150,40 @@
 /* Coloration des lignes selon statut */
 .row-statut-sous td { background: linear-gradient(90deg, var(--bad-bg) 0%, transparent 60%); }
 .row-statut-sur  td { background: linear-gradient(90deg, var(--info-bg) 0%, transparent 60%); }
+
+.objectif-equipe {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 10px;
+  margin-bottom: 12px;
+
+  &__label { font-weight: 700; }
+  &__texte { font-style: italic; color: var(--text-2); }
+  &__chiffres { display: flex; gap: 6px; flex-wrap: wrap; font-weight: 600; }
+  .muted { color: var(--text-3); font-weight: 400; }
+}
+
+.contenu-exos {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 14px 16px;
+}
+.contenu-exo {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--border, #e5e9ef);
+
+  &:last-child { border-bottom: none; padding-bottom: 0; }
+
+  &__info { flex: 1 1 240px; min-width: 220px; }
+  &__titre { font-weight: 700; font-size: 0.95rem; margin-bottom: 6px; }
+  &__meta { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 6px; }
+  &__obj { font-size: 0.85rem; color: var(--text-2, #475569); margin-bottom: 4px; }
+  &__desc { font-size: 0.82rem; color: var(--text-3, #64748b); }
+  &__no-schema { font-size: 0.8rem; color: var(--text-3, #94a3b8); font-style: italic; align-self: center; }
+}

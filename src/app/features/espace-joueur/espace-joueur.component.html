@@ -44,13 +44,12 @@
           <p class="empty-state">Aucune séance prévue.</p>
         } @else {
           <div class="liste">
-            @for (s of seancesAVenir(); track s.type + s.id) {
+            @for (s of seancesAVenir(); track s.id) {
               <div class="ligne">
                 <span class="ligne-date">
                   {{ s.date | date:'EEE dd/MM' }}@if (s.heureDebut) { · {{ s.heureDebut }} }
                 </span>
                 <span class="ligne-titre">
-                  <span class="pill-type" [class.tech]="s.type === 'technique'">{{ s.type === 'technique' ? 'Tech' : 'Phys' }}</span>
                   {{ s.titre }}
                   @if (s.sousTitre) { <small>{{ s.sousTitre }}</small> }
                 </span>
@@ -372,11 +371,10 @@
         @if (seancesANoter().length > 0) {
           <div class="rpe-anoter">
             <p class="rpe-consigne">Note l'intensité ressentie (1 = très facile, 10 = maximal) :</p>
-            @for (s of seancesANoter(); track s.type + s.id) {
+            @for (s of seancesANoter(); track s.id) {
               <div class="rpe-ligne">
                 <span class="ligne-date">{{ s.date | date:'dd/MM' }}</span>
                 <span class="ligne-titre">
-                  <span class="pill-type" [class.tech]="s.type === 'TECHNIQUE'">{{ s.type === 'TECHNIQUE' ? 'Tech' : 'Phys' }}</span>
                   {{ s.titre }}
                 </span>
                 <select class="rpe-select" [ngModel]="rpeBrouillon()[s.id]" (ngModelChange)="setRpeBrouillon(s.id, $event)">

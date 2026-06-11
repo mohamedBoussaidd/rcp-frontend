@@ -64,7 +64,7 @@ export class AuthService {
 
   /** Droits d'écriture par module (miroir du cloisonnement backend). */
   canEcrireJoueurs(): boolean { return this.hasRole('ENTRAINEUR', 'PREPARATEUR', 'SUPER_ADMIN'); }
-  canEcrireSeances(): boolean { return this.hasRole('PREPARATEUR', 'SUPER_ADMIN'); }
+  canEcrireSeances(): boolean { return this.hasRole('ENTRAINEUR', 'PREPARATEUR', 'PRESIDENT', 'SUPER_ADMIN'); }
   canEcrirePesees(): boolean { return this.hasRole('PREPARATEUR', 'SUPER_ADMIN'); }
   canEcrireBlessures(): boolean { return this.hasRole('MEDICAL', 'SUPER_ADMIN'); }
 

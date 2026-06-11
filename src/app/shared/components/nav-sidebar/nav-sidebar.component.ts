@@ -52,7 +52,6 @@ const ALL_MODULES: NavModule[] = [
     roles: ['SUPER_ADMIN', 'PRESIDENT', 'ENTRAINEUR', 'PREPARATEUR', 'MEDICAL', 'JOUEUR'],
     subnav: [
       { label: 'Séances',          link: '/calendrier' },
-      { label: 'Créer une séance', link: '/planning-technique', section: 'creer',     roles: ['SUPER_ADMIN', 'ENTRAINEUR'] },
       { label: 'Schémas',          link: '/planning-technique', section: 'schemas',   roles: ['SUPER_ADMIN', 'ENTRAINEUR'] },
       { label: 'Exercices',        link: '/planning-technique', section: 'exercices', default: true, roles: ['SUPER_ADMIN', 'ENTRAINEUR'] },
       { label: 'Plan de jeu',      link: '/planning-technique', section: 'planjeu',   roles: ['SUPER_ADMIN', 'ENTRAINEUR'] },

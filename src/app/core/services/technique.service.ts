@@ -1,16 +1,24 @@
 import { Injectable } from '@angular/core';
-import { HttpClient, HttpParams } from '@angular/common/http';
+import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
+
+/** Type de contenu d'un exercice (porte ou non des attentes physiques). */
+export type TypeExercice = 'PHYSIQUE' | 'TECHNIQUE' | 'MIXTE';
 
 export interface Exercice {
   id: string;
   nom: string;
   categorie?: string;
+  type?: TypeExercice;
   dureeMinutes?: number;
   objectif?: string;
   intensite?: number;
   description?: string;
   schemaJson?: string;
+  // Attentes physiques (optionnelles, PHYSIQUE/MIXTE)
+  distanceAttendueM?: number;
+  distanceHauteIntensiteM?: number;
+  nbSprints?: number;
   creeParId?: string;
   creeParNom?: string;
   equipeOrigineId?: string;
@@ -21,10 +29,14 @@ export interface Exercice {
 export interface ExerciceRequest {
   nom: string;
   categorie?: string;
+  type?: TypeExercice;
   dureeMinutes?: number | null;
   objectif?: string;
   intensite?: number | null;
   description?: string;
+  distanceAttendueM?: number | null;
+  distanceHauteIntensiteM?: number | null;
+  nbSprints?: number | null;
 }
 
 export interface ExerciceLigne {
@@ -37,30 +49,6 @@ export interface ExerciceLigne {
   description?: string;
   schemaJson?: string;
   ordre: number;
-}
-
-export interface SeanceTechnique {
-  id: string;
-  equipeId: string;
-  date: string;
-  heureDebut?: string;
-  titre?: string;
-  objectif?: string;
-  description?: string;
-  statut: string;
-  creeParNom?: string;
-  dureeTotaleMinutes: number;
-  intensiteMoyenne?: number;
-  exercices: ExerciceLigne[];
-}
-
-export interface SeanceTechniqueRequest {
-  date: string;
-  heureDebut?: string | null;
-  titre?: string;
-  objectif?: string;
-  description?: string;
-  exerciceIds: string[];
 }
 
 export interface FormationCustom {
@@ -359,25 +347,5 @@ export class TechniqueService {
   }
   supprimerSurveille(surveilleId: string): Observable<MatchDetail> {
     return this.http.delete<MatchDetail>(`/api/matchs/surveilles/${surveilleId}`);
-  }
-
-  // ── Seances techniques ──
-  listerSeances(debut?: string, fin?: string): Observable<SeanceTechnique[]> {
-    let params = new HttpParams();
-    if (debut) params = params.set('debut', debut);
-    if (fin) params = params.set('fin', fin);
-    return this.http.get<SeanceTechnique[]>('/api/seances-techniques', { params });
-  }
-  creerSeance(req: SeanceTechniqueRequest): Observable<SeanceTechnique> {
-    return this.http.post<SeanceTechnique>('/api/seances-techniques', req);
-  }
-  modifierSeance(id: string, req: SeanceTechniqueRequest): Observable<SeanceTechnique> {
-    return this.http.put<SeanceTechnique>(`/api/seances-techniques/${id}`, req);
-  }
-  realiserSeance(id: string): Observable<SeanceTechnique> {
-    return this.http.patch<SeanceTechnique>(`/api/seances-techniques/${id}/realiser`, {});
-  }
-  supprimerSeance(id: string): Observable<void> {
-    return this.http.delete<void>(`/api/seances-techniques/${id}`);
   }
 }
