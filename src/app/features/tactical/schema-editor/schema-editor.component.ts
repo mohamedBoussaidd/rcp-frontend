@@ -7,6 +7,11 @@ import { FormationCustom, SchemaTactique, TechniqueService } from '@core/service
 import { Joueur, JoueurService, VitesseJoueur } from '@core/services/joueur.service';
 import { SchemaPickerDialogComponent } from '../schema-picker-dialog/schema-picker-dialog.component';
 import { MatIcon } from "@angular/material/icon";
+import {
+  TENSION_TRACE, cheminRendu, longueurChemin, pointLeLongDe, pointDansPolygone,
+} from './schema-geometrie';
+import { FORMATIONS, COUPS_DE_PIED_ARRETES } from './schema-formations.data';
+import { SchemaTerrainRenderer } from './schema-terrain.renderer';
 
 /**
  * Données du dialog : éditeur de schéma générique, agnostique de la source.
@@ -45,9 +50,7 @@ const BALLE_KMH = 60;            // une passe va plus vite qu'une course
 const RAYON_LIEN = 60;
 // Longueur réelle (m) représentée par la largeur du terrain, pour convertir km/h → px/s.
 const LONGUEUR_TERRAIN_M = { complet: 105, demi: 52.5 };
-// Tension de la spline Konva des tracés. DOIT rester identique côté rendu et côté
-// échantillonnage de trajectoire (cheminRendu), sinon le jeton ne suit pas la courbe dessinée.
-const TENSION_TRACE = 0.5;
+// TENSION_TRACE est importé de ./schema-geometrie (partagé rendu + échantillonnage).
 
 @Component({
   selector: 'app-schema-editor',
@@ -113,78 +116,16 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
 
   // Quelle équipe on place : violet = nous (gauche), jaune = adverse (droite, en miroir)
   equipeFormation = signal<string>(VIOLET);
-  // Positions normalisées (x = profondeur 0=notre but → 1=but adverse ; y = largeur 0→1)
-  readonly formations: { nom: string; positions: { x: number; y: number }[] }[] = [
-    {
-      nom: '4-3-3', positions: [
-        { x: .06, y: .5 }, { x: .20, y: .16 }, { x: .20, y: .39 }, { x: .20, y: .61 }, { x: .20, y: .84 },
-        { x: .35, y: .27 }, { x: .35, y: .5 }, { x: .35, y: .73 }, { x: .47, y: .22 }, { x: .47, y: .5 }, { x: .47, y: .78 }]
-    },
-    {
-      nom: '4-4-2', positions: [
-        { x: .06, y: .5 }, { x: .20, y: .16 }, { x: .20, y: .39 }, { x: .20, y: .61 }, { x: .20, y: .84 },
-        { x: .35, y: .16 }, { x: .35, y: .39 }, { x: .35, y: .61 }, { x: .35, y: .84 }, { x: .47, y: .4 }, { x: .47, y: .6 }]
-    },
-    {
-      nom: '4-2-3-1', positions: [
-        { x: .06, y: .5 }, { x: .20, y: .16 }, { x: .20, y: .39 }, { x: .20, y: .61 }, { x: .20, y: .84 },
-        { x: .30, y: .38 }, { x: .30, y: .62 }, { x: .42, y: .22 }, { x: .42, y: .5 }, { x: .42, y: .78 }, { x: .5, y: .5 }]
-    },
-    {
-      nom: '3-5-2', positions: [
-        { x: .06, y: .5 }, { x: .20, y: .27 }, { x: .20, y: .5 }, { x: .20, y: .73 },
-        { x: .34, y: .1 }, { x: .34, y: .32 }, { x: .34, y: .5 }, { x: .34, y: .68 }, { x: .34, y: .9 }, { x: .47, y: .4 }, { x: .47, y: .6 }]
-    },
-    {
-      nom: '3-4-3', positions: [
-        { x: .06, y: .5 }, { x: .20, y: .27 }, { x: .20, y: .5 }, { x: .20, y: .73 },
-        { x: .35, y: .16 }, { x: .35, y: .39 }, { x: .35, y: .61 }, { x: .35, y: .84 }, { x: .47, y: .22 }, { x: .47, y: .5 }, { x: .47, y: .78 }]
-    },
-    {
-      nom: '5-3-2', positions: [
-        { x: .06, y: .5 }, { x: .20, y: .1 }, { x: .20, y: .3 }, { x: .20, y: .5 }, { x: .20, y: .7 }, { x: .20, y: .9 },
-        { x: .35, y: .27 }, { x: .35, y: .5 }, { x: .35, y: .73 }, { x: .47, y: .4 }, { x: .47, y: .6 }]
-    },
-  ];
+  // Positions normalisées (cf. ./schema-formations.data).
+  readonly formations = FORMATIONS;
   formationsCustom = signal<FormationCustom[]>([]);
 
   // ── Effectif réel (Brique 1) : joueurs de l'équipe de l'utilisateur connecté ──
   effectif = signal<Joueur[]>([]);
 
-  // ── Coups de pied arrêtés ──
+  // ── Coups de pied arrêtés ── (données : ./schema-formations.data)
   modeArret = signal<'offensif' | 'defensif'>('offensif');
-  // Base : on attaque le but DROIT, corner/CF côté "D" (y haut). Le ballon est dans l'angle.
-  // Pour défensif, on retourne x (on défend le but gauche) ; pour le côté G, on retourne y.
-  private readonly arret: Record<'corner' | 'cf', {
-    ball: { x: number; y: number };
-    attaquants: { x: number; y: number }[];
-    defenseurs: { x: number; y: number }[];
-    mur?: { x: number; y: number }[];
-  }> = {
-      corner: {
-        ball: { x: .992, y: .965 },              // dans l'angle
-        attaquants: [
-          { x: .96, y: .92 },                    // tireur du corner
-          { x: .93, y: .85 }, { x: .9, y: .7 }, { x: .92, y: .5 }, { x: .9, y: .3 },
-          { x: .84, y: .5 }, { x: .77, y: .4 }, { x: .77, y: .6 }, { x: .55, y: .45 }, { x: .55, y: .6 }, { x: .07, y: .5 }],
-        defenseurs: [
-          { x: .965, y: .5 },                    // gardien adverse
-          { x: .93, y: .44 }, { x: .93, y: .56 }, { x: .88, y: .38 }, { x: .88, y: .5 }, { x: .88, y: .62 },
-          { x: .85, y: .46 }, { x: .85, y: .58 }, { x: .78, y: .5 }, { x: .9, y: .82 }, { x: .6, y: .5 }],
-      },
-      cf: {
-        ball: { x: .72, y: .6 },                 // entrée de la surface, côté droit
-        attaquants: [
-          { x: .71, y: .57 }, { x: .69, y: .66 },           // tireurs
-          { x: .86, y: .4 }, { x: .86, y: .5 }, { x: .86, y: .6 }, { x: .82, y: .32 }, { x: .82, y: .68 },
-          { x: .6, y: .45 }, { x: .6, y: .6 }, { x: .42, y: .5 }, { x: .07, y: .5 }],
-        defenseurs: [
-          { x: .965, y: .5 },                    // gardien adverse
-          { x: .9, y: .4 }, { x: .9, y: .6 }, { x: .87, y: .45 }, { x: .87, y: .5 }, { x: .87, y: .55 },
-          { x: .7, y: .42 }, { x: .7, y: .58 }, { x: .55, y: .5 }, { x: .5, y: .4 }, { x: .5, y: .6 }],
-        mur: [{ x: .8, y: .47 }, { x: .8, y: .51 }, { x: .8, y: .55 }, { x: .8, y: .59 }],  // mannequins
-      },
-    };
+  private readonly arret = COUPS_DE_PIED_ARRETES;
 
   private stage!: Konva.Stage;
   private fieldLayer!: Konva.Layer;
@@ -238,6 +179,7 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
     private joueurService: JoueurService,
     private snack: MatSnackBar,
     private dialog: MatDialog,
+    private terrainRenderer: SchemaTerrainRenderer,
   ) {
     this.data = data;
     if (this.data.schemaJson) {
@@ -667,75 +609,9 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
     });
   }
 
-  // Rendu « propre » façon schema-tactique : gazon rayé + lignes blanches translucides.
-  private static readonly BLANC = 'rgba(255,255,255,0.85)';
-
+  // Rendu du terrain délégué à SchemaTerrainRenderer (./schema-terrain.renderer).
   private dessinerTerrain(): void {
-    this.fieldLayer.destroyChildren();
-    const W = this.W, H = this.H, m = 24, blanc = SchemaEditorComponent.BLANC;
-    const ligne = (pts: number[]) => new Konva.Line({ points: pts, stroke: blanc, strokeWidth: 2.5 });
-    const arc = (d: string) => new Konva.Path({ data: d, stroke: blanc, strokeWidth: 2.5 });
-
-    // Gazon rayé (bandes verticales dans le sens de la longueur)
-    const bande = 104;
-    for (let x = 0, i = 0; x < W; x += bande, i++) {
-      this.fieldLayer.add(new Konva.Rect({ x, y: 0, width: Math.min(bande, W - x), height: H, fill: i % 2 ? '#0F7E43' : '#118A4A' }));
-    }
-    // Contour
-    this.fieldLayer.add(new Konva.Rect({ x: m, y: m, width: W - 2 * m, height: H - 2 * m, stroke: blanc, strokeWidth: 2.5 }));
-
-    if (this.terrain() === 'complet') {
-      this.fieldLayer.add(ligne([W / 2, m, W / 2, H - m]));
-      this.fieldLayer.add(new Konva.Circle({ x: W / 2, y: H / 2, radius: 80, stroke: blanc, strokeWidth: 2.5 }));
-      this.fieldLayer.add(new Konva.Circle({ x: W / 2, y: H / 2, radius: 3, fill: blanc }));
-      this.surface(m, H, false);
-      this.surface(W - m, H, true);
-      // Buts (en débord de la ligne de but)
-      this.fieldLayer.add(new Konva.Rect({ x: m - 14, y: H / 2 - 33, width: 14, height: 66, stroke: blanc, strokeWidth: 2.5 }));
-      this.fieldLayer.add(new Konva.Rect({ x: W - m, y: H / 2 - 33, width: 14, height: 66, stroke: blanc, strokeWidth: 2.5 }));
-      // Corners
-      this.fieldLayer.add(arc(`M ${m} ${m + 10} A 10 10 0 0 1 ${m + 10} ${m}`));
-      this.fieldLayer.add(arc(`M ${W - m - 10} ${m} A 10 10 0 0 1 ${W - m} ${m + 10}`));
-      this.fieldLayer.add(arc(`M ${m} ${H - m - 10} A 10 10 0 0 0 ${m + 10} ${H - m}`));
-      this.fieldLayer.add(arc(`M ${W - m - 10} ${H - m} A 10 10 0 0 0 ${W - m} ${H - m - 10}`));
-    } else {
-      // demi-terrain : but en haut, ligne médiane en bas
-      this.fieldLayer.add(ligne([m, H - m, W - m, H - m]));
-      this.fieldLayer.add(new Konva.Arc({ x: W / 2, y: H - m, innerRadius: 0, outerRadius: 80, angle: 180, rotation: 180, stroke: blanc, strokeWidth: 2.5 }));
-      this.surfaceHaut(m, W);
-      this.fieldLayer.add(new Konva.Rect({ x: W / 2 - 33, y: m - 14, width: 66, height: 14, stroke: blanc, strokeWidth: 2.5 }));
-    }
-    this.fieldLayer.draw();
-  }
-
-  private surface(xBord: number, H: number, droite: boolean): void {
-    const dir = droite ? -1 : 1, blanc = SchemaEditorComponent.BLANC;
-    const gW = 110, gH = 300, bW = 44, bH = 150;
-    this.fieldLayer.add(new Konva.Rect({ x: xBord, y: H / 2 - gH / 2, width: gW * dir, height: gH, stroke: blanc, strokeWidth: 2.5 }));
-    this.fieldLayer.add(new Konva.Rect({ x: xBord, y: H / 2 - bH / 2, width: bW * dir, height: bH, stroke: blanc, strokeWidth: 2.5 }));
-    // Point de penalty + arc en « D » (partie hors surface)
-    const psx = xBord + 80 * dir, xe = xBord + gW * dir;
-    const dy = Math.sqrt(80 * 80 - 30 * 30);   // intersection de l'arc r=80 avec le bord de surface
-    this.fieldLayer.add(new Konva.Circle({ x: psx, y: H / 2, radius: 3, fill: blanc }));
-    this.fieldLayer.add(new Konva.Path({
-      data: `M ${xe} ${H / 2 - dy} A 80 80 0 0 ${droite ? 0 : 1} ${xe} ${H / 2 + dy}`,
-      stroke: blanc, strokeWidth: 2.5,
-    }));
-  }
-
-  private surfaceHaut(m: number, W: number): void {
-    const blanc = SchemaEditorComponent.BLANC;
-    const gW = 300, gH = 110, bW = 150, bH = 44;
-    this.fieldLayer.add(new Konva.Rect({ x: W / 2 - gW / 2, y: m, width: gW, height: gH, stroke: blanc, strokeWidth: 2.5 }));
-    this.fieldLayer.add(new Konva.Rect({ x: W / 2 - bW / 2, y: m, width: bW, height: bH, stroke: blanc, strokeWidth: 2.5 }));
-    // Point de penalty + arc en « D »
-    const psy = m + 80, ye = m + gH;
-    const dx = Math.sqrt(80 * 80 - 30 * 30);
-    this.fieldLayer.add(new Konva.Circle({ x: W / 2, y: psy, radius: 3, fill: blanc }));
-    this.fieldLayer.add(new Konva.Path({
-      data: `M ${W / 2 - dx} ${ye} A 80 80 0 0 1 ${W / 2 + dx} ${ye}`,
-      stroke: blanc, strokeWidth: 2.5,
-    }));
+    this.terrainRenderer.dessiner(this.fieldLayer, this.terrain(), this.W, this.H);
   }
 
   private dessinerElement(el: SchemaElement): void {
@@ -934,15 +810,6 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
       }
     });
     this.layer.batchDraw();
-  }
-
-  private pointDansPolygone(x: number, y: number, poly: number[]): boolean {
-    let dedans = false;
-    for (let i = 0, j = poly.length - 2; i < poly.length; j = i, i += 2) {
-      const xi = poly[i], yi = poly[i + 1], xj = poly[j], yj = poly[j + 1];
-      if (((yi > y) !== (yj > y)) && (x < ((xj - xi) * (y - yi)) / (yj - yi) + xi)) dedans = !dedans;
-    }
-    return dedans;
   }
 
   // ══════════ Formes d'annotation ══════════
@@ -1192,7 +1059,7 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
           this.elements.forEach(el => { const n = this.nodesById.get(el.id); if (n) { const cx = n.x(), cy = n.y(); if (cx >= x1 && cx <= x2 && cy >= y1 && cy <= y2) ids.push(el.id); } });
         } else {
           const poly = this.selLassoPts;
-          this.elements.forEach(el => { const n = this.nodesById.get(el.id); if (n && this.pointDansPolygone(n.x(), n.y(), poly)) ids.push(el.id); });
+          this.elements.forEach(el => { const n = this.nodesById.get(el.id); if (n && pointDansPolygone(n.x(), n.y(), poly)) ids.push(el.id); });
         }
         this.selShape.destroy(); this.selShape = null; this.selStart = null; this.selLassoPts = [];
         this.definirSelection(ids);
@@ -1316,7 +1183,7 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
     // Le rendu Konva courbe les tracés (tension). On échantillonne la MÊME courbe pour que
     // le jeton suive la flèche dessinée, pas la polyligne droite entre les points cliqués.
     const rendu = new Map<string, number[]>();
-    fleches.forEach(a => rendu.set(a.id, this.cheminRendu(a.points)));
+    fleches.forEach(a => rendu.set(a.id, cheminRendu(a.points)));
 
     const debut = (a: SchemaTrace) => ({ x: a.points[0], y: a.points[1] });
     const fin = (a: SchemaTrace) => ({ x: a.points[a.points.length - 2], y: a.points[a.points.length - 1] });
@@ -1379,11 +1246,11 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
     const enCalcul = new Set<string>();
     const calc = (a: SchemaTrace): number => {
       if (t1.has(a.id)) return t1.get(a.id)!;
-      if (enCalcul.has(a.id)) { t0.set(a.id, 0); t1.set(a.id, this.longueurChemin(rendu.get(a.id)!) / vitLeg(a)); return t1.get(a.id)!; }
+      if (enCalcul.has(a.id)) { t0.set(a.id, 0); t1.set(a.id, longueurChemin(rendu.get(a.id)!) / vitLeg(a)); return t1.get(a.id)!; }
       enCalcul.add(a.id);
       const inc = arrivants(a);
       const dep = inc.length ? Math.max(...inc.map(calc)) : 0;
-      t0.set(a.id, dep); t1.set(a.id, dep + this.longueurChemin(rendu.get(a.id)!) / vitLeg(a));
+      t0.set(a.id, dep); t1.set(a.id, dep + longueurChemin(rendu.get(a.id)!) / vitLeg(a));
       enCalcul.delete(a.id);
       return t1.get(a.id)!;
     };
@@ -1414,7 +1281,7 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
       if (t <= lg.t1) {
         if (t < lg.t0) { const pv = legs[i - 1].pts; return { x: pv[pv.length - 2], y: pv[pv.length - 1] }; }
         const r = lg.t1 > lg.t0 ? (t - lg.t0) / (lg.t1 - lg.t0) : 1;
-        return this.pointLeLongDe(lg.pts, Math.max(0, Math.min(1, r)));
+        return pointLeLongDe(lg.pts, Math.max(0, Math.min(1, r)));
       }
     }
     const last = legs[legs.length - 1].pts;
@@ -1429,81 +1296,8 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
     return max;
   }
 
-  /**
-   * Développe une polyligne en la courbe réellement rendue par Konva (Line/Arrow avec
-   * tension), pour que l'animation suive la flèche dessinée et non les segments droits.
-   * Réplique l'algorithme Konva : points de contrôle cardinaux → quadratique aux extrémités
-   * + cubiques au milieu, échantillonnés en une polyligne dense.
-   */
-  private cheminRendu(pts: number[]): number[] {
-    const len = pts.length;
-    if (len <= 4) return pts;   // 2 points = ligne droite, pas de courbe
-    const tp = this.pointsTension(pts, TENSION_TRACE);
-    const PAS = 16;
-    const out = [pts[0], pts[1]];
-    // 1er segment : quadratique p0 → 1er point intérieur, contrôle tp[0..1]
-    this.echQuad(out, pts[0], pts[1], tp[0], tp[1], tp[2], tp[3], PAS);
-    // segments intérieurs : cubiques d'un point intérieur au suivant
-    for (let n = 4; n < tp.length - 2; n += 6) {
-      const x0 = out[out.length - 2], y0 = out[out.length - 1];
-      this.echCubic(out, x0, y0, tp[n], tp[n + 1], tp[n + 2], tp[n + 3], tp[n + 4], tp[n + 5], PAS);
-    }
-    // dernier segment : quadratique → dernier point, contrôle tp[len-2..len-1]
-    const x0 = out[out.length - 2], y0 = out[out.length - 1];
-    this.echQuad(out, x0, y0, tp[tp.length - 2], tp[tp.length - 1], pts[len - 2], pts[len - 1], PAS);
-    return out;
-  }
-
-  /** Points de contrôle de la spline cardinale (équivalent Konva Util._expandPoints). */
-  private pointsTension(p: number[], t: number): number[] {
-    const out: number[] = [];
-    for (let n = 2; n < p.length - 2; n += 2) {
-      const x0 = p[n - 2], y0 = p[n - 1], x1 = p[n], y1 = p[n + 1], x2 = p[n + 2], y2 = p[n + 3];
-      const d01 = Math.hypot(x1 - x0, y1 - y0), d12 = Math.hypot(x2 - x1, y2 - y1);
-      const fa = (t * d01) / (d01 + d12) || 0, fb = (t * d12) / (d01 + d12) || 0;
-      out.push(x1 - fa * (x2 - x0), y1 - fa * (y2 - y0), x1, y1, x1 + fb * (x2 - x0), y1 + fb * (y2 - y0));
-    }
-    return out;
-  }
-
-  /** Échantillonne une courbe de Bézier quadratique (hors point de départ déjà présent). */
-  private echQuad(out: number[], x0: number, y0: number, cx: number, cy: number, x1: number, y1: number, pas: number): void {
-    for (let i = 1; i <= pas; i++) {
-      const s = i / pas, u = 1 - s;
-      out.push(u * u * x0 + 2 * u * s * cx + s * s * x1, u * u * y0 + 2 * u * s * cy + s * s * y1);
-    }
-  }
-
-  /** Échantillonne une courbe de Bézier cubique (hors point de départ déjà présent). */
-  private echCubic(out: number[], x0: number, y0: number, c1x: number, c1y: number, c2x: number, c2y: number, x1: number, y1: number, pas: number): void {
-    for (let i = 1; i <= pas; i++) {
-      const s = i / pas, u = 1 - s;
-      const a = u * u * u, b = 3 * u * u * s, c = 3 * u * s * s, d = s * s * s;
-      out.push(a * x0 + b * c1x + c * c2x + d * x1, a * y0 + b * c1y + c * c2y + d * y1);
-    }
-  }
-
-  private longueurChemin(pts: number[]): number {
-    let L = 0;
-    for (let i = 2; i < pts.length; i += 2) L += Math.hypot(pts[i] - pts[i - 2], pts[i + 1] - pts[i - 1]);
-    return L;
-  }
-
-  /** Point à la fraction p (0→1) de la polyligne. */
-  private pointLeLongDe(pts: number[], p: number): { x: number; y: number } {
-    if (pts.length < 4) return { x: pts[0], y: pts[1] };
-    const cible = p * this.longueurChemin(pts);
-    let acc = 0;
-    for (let i = 2; i < pts.length; i += 2) {
-      const seg = Math.hypot(pts[i] - pts[i - 2], pts[i + 1] - pts[i - 1]);
-      if (acc + seg >= cible) {
-        const r = seg ? (cible - acc) / seg : 0;
-        return { x: pts[i - 2] + (pts[i] - pts[i - 2]) * r, y: pts[i - 1] + (pts[i + 1] - pts[i - 1]) * r };
-      }
-      acc += seg;
-    }
-    return { x: pts[pts.length - 2], y: pts[pts.length - 1] };
-  }
+  // Géométrie (cheminRendu, pointsTension, echQuad, echCubic, longueurChemin,
+  // pointLeLongDe) importée de ./schema-geometrie.
 
   private aDesTracesAnimees(): boolean { return this.construireTrajectoires().size > 0; }
 
@@ -1585,18 +1379,6 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
   }
 
   private uid(): string { return Math.random().toString(36).slice(2, 10); }
-  private simplifierPoints(points: number[]): number[] {
-
-    if (points.length <= 6) return points;
-
-    const resultat: number[] = [];
-
-    for (let i = 0; i < points.length; i += 4) {
-      resultat.push(points[i], points[i + 1]);
-    }
-
-    return resultat;
-  }
   // Affiche ou masque tous les tracés selon l'état de la palette (case à cocher). Les éléments restent visibles.
   private updateTracesVisibility(): void {
     this.layer.find('.trace').forEach((node: any) => {
