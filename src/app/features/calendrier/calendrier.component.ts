@@ -2,12 +2,14 @@ import { Component, OnInit } from '@angular/core';
 import { Router } from '@angular/router';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
+import { FormsModule } from '@angular/forms';
 import { SeanceService, Seance, TypeSeance } from '@core/services/seance.service';
 import { EspaceJoueurService } from '@core/services/espace-joueur.service';
+import { ContexteService } from '@core/services/contexte.service';
 import { SeanceFormDialogComponent, SeanceFormResult } from './seance-form-dialog/seance-form-dialog.component';
 import { SeanceContenuDialogComponent } from './seance-contenu-dialog/seance-contenu-dialog.component';
 import { MatTooltip } from '@angular/material/tooltip';
-import { DatePipe, LowerCasePipe } from '@angular/common';
+import { DatePipe, LowerCasePipe, SlicePipe, NgTemplateOutlet } from '@angular/common';
 import { AuthService } from '@core/services/auth.service';
 
 export const COULEURS_TYPE: Record<string, string> = {
@@ -31,36 +33,49 @@ export const INFOS_TYPE: Record<string, { intensite: number; duree: string; desc
 };
 
 const JOURS = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'];
+const JOURS_COURTS = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
+
+/** Une cellule de jour (grille semaine ou mois). */
+interface JourCell {
+  label: string;        // 'Lundi'
+  labelCourt: string;   // 'Lun'
+  date: Date;
+  dateStr: string;      // 'yyyy-MM-dd'
+  numero: number;       // quantième du mois
+  inMonth: boolean;     // dans le mois affiché (grille mensuelle)
+}
+
+type Vue = 'liste' | 'calendrier';
+type SousVue = 'jour' | 'semaine' | 'mois';
 
 @Component({
   selector: 'app-calendrier',
   standalone: true,
   templateUrl: './calendrier.component.html',
   styleUrl: './calendrier.component.scss',
-  imports: [MatTooltip, DatePipe, LowerCasePipe]
+  imports: [MatTooltip, DatePipe, LowerCasePipe, SlicePipe, NgTemplateOutlet, FormsModule]
 })
 export class CalendrierComponent implements OnInit {
 
   typeSeances: TypeSeance[] = [];
-  seancesSemaine: Seance[] = [];
-  joursGrid: { label: string; date: Date; dateStr: string }[] = [];
-  lundiSemaine: Date = this.getLundiCourant();
+  seances: Seance[] = [];
+
+  // Mode d'affichage : Liste (défaut) ou Calendrier (Jour / Semaine / Mois).
+  vue: Vue = 'liste';
+  sousVue: SousVue = 'semaine';
+  /** Filtre par type (code) ; null = Tous. */
+  typeFiltre: string | null = null;
+  /** Date de référence de la période affichée. */
+  ancre: Date = new Date();
+
+  joursGrid: JourCell[] = [];   // semaine de l'ancre (Liste + Calendrier/Semaine)
+  moisGrid: JourCell[] = [];    // grille mensuelle complète (Calendrier/Mois)
+
   readonly today = this.toDateStr(new Date());
   readonly jours = JOURS;
+  readonly joursCourts = JOURS_COURTS;
   readonly couleursType = COULEURS_TYPE;
   readonly infosType = INFOS_TYPE;
-
-  get estSemainePassee(): boolean {
-    const lundiAuj = this.getLundiCourant();
-    return this.lundiSemaine < lundiAuj;
-  }
-
-  get titreSemaine(): string {
-    const fin = new Date(this.lundiSemaine);
-    fin.setDate(fin.getDate() + 6);
-    const opts: Intl.DateTimeFormatOptions = { day: 'numeric', month: 'long' };
-    return `Semaine du ${this.lundiSemaine.toLocaleDateString('fr-FR', opts)} au ${fin.toLocaleDateString('fr-FR', opts)} ${fin.getFullYear()}`;
-  }
 
   constructor(
     private seanceService: SeanceService,
@@ -68,6 +83,7 @@ export class CalendrierComponent implements OnInit {
     private snackBar: MatSnackBar,
     private router: Router,
     public auth: AuthService,
+    public contexte: ContexteService,
     private espaceJoueur: EspaceJoueurService
   ) {}
 
@@ -75,53 +91,171 @@ export class CalendrierComponent implements OnInit {
   get lectureSeule(): boolean { return this.auth.hasRole('JOUEUR'); }
 
   ngOnInit(): void {
-    // Le catalogue des types n'est utile qu'à la palette d'édition (staff) et est bloqué au joueur.
     if (!this.lectureSeule) this.seanceService.getTypeSeances().subscribe(t => this.typeSeances = t);
-    this.chargerSemaine();
+    this.charger();
   }
 
-  chargerSemaine(): void {
-    this.buildGrid();
-    const debut = this.toDateStr(this.lundiSemaine);
-    const fin = this.toDateStr(this.getFinSemaine());
+  // ══════════ Chargement / période ══════════
+
+  charger(): void {
+    this.buildGrids();
+    const [debut, fin] = this.periode();
     const seances$ = this.lectureSeule
-      ? this.espaceJoueur.getSeances(debut, fin)   // joueur : ses séances d'équipe (scopé)
-      : this.seanceService.getSemaine(debut, fin);
-    seances$.subscribe(s => this.seancesSemaine = s);
+      ? this.espaceJoueur.getSeances(this.toDateStr(debut), this.toDateStr(fin))
+      : this.seanceService.getSemaine(this.toDateStr(debut), this.toDateStr(fin));
+    seances$.subscribe(s => this.seances = s);
   }
 
-  buildGrid(): void {
-    this.joursGrid = JOURS.map((label, i) => {
-      const d = new Date(this.lundiSemaine);
-      d.setDate(d.getDate() + i);
-      return { label, date: d, dateStr: this.toDateStr(d) };
-    });
+  /** Plage [début, fin] à charger selon la vue active. */
+  private periode(): [Date, Date] {
+    if (this.vue === 'calendrier' && this.sousVue === 'jour') {
+      const d = this.startOfDay(this.ancre);
+      return [d, d];
+    }
+    if (this.vue === 'calendrier' && this.sousVue === 'mois') {
+      return [this.debutGrilleMois(), this.finGrilleMois()];
+    }
+    // Liste + Calendrier/Semaine : semaine de l'ancre (lundi → dimanche).
+    const lundi = this.lundiDe(this.ancre);
+    return [lundi, this.addDays(lundi, 6)];
   }
 
-  semainePrecedente(): void {
-    this.lundiSemaine = new Date(this.lundiSemaine);
-    this.lundiSemaine.setDate(this.lundiSemaine.getDate() - 7);
-    this.chargerSemaine();
+  private buildGrids(): void {
+    const lundi = this.lundiDe(this.ancre);
+    this.joursGrid = JOURS.map((label, i) => this.cell(this.addDays(lundi, i), label, JOURS_COURTS[i], this.ancre.getMonth()));
+
+    if (this.vue === 'calendrier' && this.sousVue === 'mois') {
+      const debut = this.debutGrilleMois();
+      const mois = this.ancre.getMonth();
+      this.moisGrid = Array.from({ length: 42 }, (_, i) => {
+        const d = this.addDays(debut, i);
+        const idx = (d.getDay() + 6) % 7;
+        return this.cell(d, JOURS[idx], JOURS_COURTS[idx], mois);
+      });
+    }
   }
 
-  semaineSuivante(): void {
-    this.lundiSemaine = new Date(this.lundiSemaine);
-    this.lundiSemaine.setDate(this.lundiSemaine.getDate() + 7);
-    this.chargerSemaine();
+  private cell(d: Date, label: string, labelCourt: string, moisRef: number): JourCell {
+    return {
+      label, labelCourt, date: d, dateStr: this.toDateStr(d),
+      numero: d.getDate(), inMonth: d.getMonth() === moisRef,
+    };
+  }
+
+  // ══════════ Navigation ══════════
+
+  precedent(): void { this.decaler(-1); }
+  suivant(): void { this.decaler(1); }
+  aujourdhui(): void { this.ancre = new Date(); this.charger(); }
+
+  private decaler(sens: number): void {
+    const d = new Date(this.ancre);
+    if (this.vue === 'calendrier' && this.sousVue === 'mois')      d.setMonth(d.getMonth() + sens);
+    else if (this.vue === 'calendrier' && this.sousVue === 'jour') d.setDate(d.getDate() + sens);
+    else                                                          d.setDate(d.getDate() + 7 * sens);
+    this.ancre = d;
+    this.charger();
+  }
+
+  choisirVue(v: Vue): void {
+    if (this.vue === v) return;
+    this.vue = v;
+    this.charger();
+  }
+
+  choisirSousVue(sv: SousVue): void {
+    if (this.sousVue === sv) return;
+    this.sousVue = sv;
+    this.charger();
+  }
+
+  // ══════════ Filtres ══════════
+
+  toggleTypeFiltre(code: string | null): void {
+    this.typeFiltre = code;
+  }
+
+  /** Séances de la période filtrées par type. */
+  get seancesVisibles(): Seance[] {
+    return this.typeFiltre
+      ? this.seances.filter(s => s.typeSeance?.code === this.typeFiltre)
+      : this.seances;
   }
 
   seancesDuJour(dateStr: string): Seance[] {
-    return this.seancesSemaine.filter(s => s.date === dateStr);
+    return this.seancesVisibles
+      .filter(s => s.date === dateStr)
+      .sort((a, b) => (a.heureDebut ?? '').localeCompare(b.heureDebut ?? ''));
   }
 
-  /** Ouvre le formulaire de création (type choisi dans le formulaire). */
+  /** Couleurs distinctes des séances d'un jour (pastilles d'en-tête en vue Liste). */
+  couleursJour(dateStr: string): string[] {
+    const vues = new Set<string>();
+    const res: string[] = [];
+    for (const s of this.seancesDuJour(dateStr)) {
+      const c = this.couleur(s.typeSeance?.code);
+      if (!vues.has(c)) { vues.add(c); res.push(c); }
+    }
+    return res;
+  }
+
+  /** Jours de la semaine courante qui portent au moins une séance (vue Liste). */
+  get joursAvecSeances(): JourCell[] {
+    return this.joursGrid.filter(j => this.seancesDuJour(j.dateStr).length > 0);
+  }
+
+  // ══════════ Contexte équipe ══════════
+
+  get equipesDispo() { return this.contexte.equipesDispo(); }
+
+  equipeActiveId(): string | null {
+    const ids = this.contexte.equipesActives();
+    return ids.length === 1 ? ids[0] : null;
+  }
+
+  changerEquipe(id: string | null): void {
+    this.contexte.choisirEquipe(id);
+    this.charger();
+  }
+
+  // ══════════ Libellés ══════════
+
+  /** Sous-titre de l'en-tête : équipe · semaine ISO · plage. */
+  get sousTitre(): string {
+    const semaine = this.numeroSemaineIso(this.lundiDe(this.ancre));
+    return `${this.contexte.libelleEquipe()} · Semaine ${semaine} · ${this.plageTexte()}`;
+  }
+
+  /** Libellé de la zone de navigation (dépend de la sous-vue). */
+  get titreNav(): string {
+    if (this.vue === 'calendrier' && this.sousVue === 'mois') {
+      return this.cap(this.ancre.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' }));
+    }
+    if (this.vue === 'calendrier' && this.sousVue === 'jour') {
+      return this.cap(this.ancre.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }));
+    }
+    return this.plageTexte();
+  }
+
+  private plageTexte(): string {
+    const lundi = this.lundiDe(this.ancre);
+    const dim = this.addDays(lundi, 6);
+    const opts: Intl.DateTimeFormatOptions = { day: 'numeric', month: 'long' };
+    return `${lundi.toLocaleDateString('fr-FR', opts)} → ${dim.toLocaleDateString('fr-FR', opts)} ${dim.getFullYear()}`;
+  }
+
+  get jourAncre(): JourCell | undefined {
+    const ds = this.toDateStr(this.ancre);
+    return this.joursGrid.find(j => j.dateStr === ds);
+  }
+
+  // ══════════ Actions séance (inchangées) ══════════
+
   ouvrirCreation(dateStr?: string): void {
     if (!this.typeSeances.length) return;
     const ref = this.dialog.open(SeanceFormDialogComponent, {
-      width: '760px',
-      maxWidth: '96vw',
-      panelClass: 'dark-dialog',
-      data: { typeSeances: this.typeSeances, date: dateStr ?? this.today }
+      width: '760px', maxWidth: '96vw', panelClass: 'dark-dialog',
+      data: { typeSeances: this.typeSeances, date: dateStr ?? this.toDateStr(this.ancre) }
     });
     ref.afterClosed().subscribe((result: SeanceFormResult | null) => {
       if (result) {
@@ -129,10 +263,10 @@ export class CalendrierComponent implements OnInit {
         this.seanceService.create(seance).subscribe(creee => {
           if (exercices.length) {
             this.seanceService.remplacerExercices(creee.id, exercices).subscribe({
-              next: () => this.chargerSemaine(), error: () => this.chargerSemaine(),
+              next: () => this.charger(), error: () => this.charger(),
             });
           } else {
-            this.chargerSemaine();
+            this.charger();
           }
         });
       }
@@ -142,9 +276,7 @@ export class CalendrierComponent implements OnInit {
   editerSeance(seance: Seance, event: MouseEvent): void {
     event.stopPropagation();
     const ref = this.dialog.open(SeanceFormDialogComponent, {
-      width: '760px',
-      maxWidth: '96vw',
-      panelClass: 'dark-dialog',
+      width: '760px', maxWidth: '96vw', panelClass: 'dark-dialog',
       data: { typeSeances: this.typeSeances, date: seance.date, seance }
     });
     ref.afterClosed().subscribe((result: SeanceFormResult | null) => {
@@ -153,8 +285,8 @@ export class CalendrierComponent implements OnInit {
         this.seanceService.update(seance.id, payload as Partial<Seance>).subscribe({
           next: () => {
             this.seanceService.remplacerExercices(seance.id, exercices).subscribe({
-              next: () => { this.chargerSemaine(); this.snackBar.open('Séance modifiée', 'OK', { duration: 2500 }); },
-              error: () => { this.chargerSemaine(); this.snackBar.open('Séance modifiée', 'OK', { duration: 2500 }); },
+              next: () => { this.charger(); this.snackBar.open('Séance modifiée', 'OK', { duration: 2500 }); },
+              error: () => { this.charger(); this.snackBar.open('Séance modifiée', 'OK', { duration: 2500 }); },
             });
           },
           error: () => this.snackBar.open('Modification impossible', 'OK', { duration: 3000 }),
@@ -186,7 +318,7 @@ export class CalendrierComponent implements OnInit {
   marquerRealisee(seance: Seance, event: MouseEvent): void {
     event.stopPropagation();
     this.seanceService.marquerRealisee(seance.id).subscribe(() => {
-      this.chargerSemaine();
+      this.charger();
       this.snackBar.open('Séance marquée comme réalisée', 'OK', { duration: 3000 });
     });
   }
@@ -198,31 +330,61 @@ export class CalendrierComponent implements OnInit {
       ? `⚠️ ATTENTION — Supprimer "${nom}" ?\n\nCette séance est réalisée. Sa suppression entraîne la perte DÉFINITIVE et IRRÉVERSIBLE de toutes les données GPS associées.\n\nConfirmer ?`
       : `Supprimer "${nom}" ?`;
     if (!confirm(message)) return;
-    this.seanceService.delete(seance.id).subscribe(() => this.chargerSemaine());
+    this.seanceService.delete(seance.id).subscribe(() => this.charger());
   }
 
-  couleur(code: string): string {
-    return COULEURS_TYPE[code] ?? '#6366f1';
+  libelleStatut(statut: string): string {
+    return statut === 'REALISEE' ? 'Réalisée' : statut === 'ANNULEE' ? 'Annulée' : 'Planifiée';
+  }
+
+  couleur(code?: string): string {
+    return (code && COULEURS_TYPE[code]) || '#6366f1';
   }
 
   retourDashboard(): void {
     this.router.navigate(['/dashboard']);
   }
 
-  private getLundiCourant(): Date {
-    const today = new Date();
-    const day = today.getDay();
-    const diff = day === 0 ? -6 : 1 - day;
-    const lundi = new Date(today);
-    lundi.setDate(today.getDate() + diff);
-    lundi.setHours(0, 0, 0, 0);
-    return lundi;
+  // ══════════ Utilitaires dates ══════════
+
+  private startOfDay(d: Date): Date {
+    const r = new Date(d); r.setHours(0, 0, 0, 0); return r;
   }
 
-  private getFinSemaine(): Date {
-    const fin = new Date(this.lundiSemaine);
-    fin.setDate(fin.getDate() + 6);
-    return fin;
+  private addDays(d: Date, n: number): Date {
+    const r = new Date(d); r.setDate(r.getDate() + n); r.setHours(0, 0, 0, 0); return r;
+  }
+
+  private lundiDe(d: Date): Date {
+    const r = this.startOfDay(d);
+    const day = r.getDay();
+    r.setDate(r.getDate() + (day === 0 ? -6 : 1 - day));
+    return r;
+  }
+
+  private debutGrilleMois(): Date {
+    const premier = new Date(this.ancre.getFullYear(), this.ancre.getMonth(), 1);
+    return this.lundiDe(premier);
+  }
+
+  private finGrilleMois(): Date {
+    return this.addDays(this.debutGrilleMois(), 41);
+  }
+
+  private numeroSemaineIso(d: Date): number {
+    const target = this.startOfDay(d);
+    const dayNr = (target.getDay() + 6) % 7;
+    target.setDate(target.getDate() - dayNr + 3);
+    const firstThursday = target.getTime();
+    target.setMonth(0, 1);
+    if (target.getDay() !== 4) {
+      target.setMonth(0, 1 + ((4 - target.getDay()) + 7) % 7);
+    }
+    return 1 + Math.round((firstThursday - target.getTime()) / 604800000);
+  }
+
+  private cap(s: string): string {
+    return s.charAt(0).toUpperCase() + s.slice(1);
   }
 
   private toDateStr(d: Date): string {

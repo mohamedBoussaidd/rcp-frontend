@@ -1,31 +1,171 @@
-<div class="page-head" style="padding:24px 24px 0;margin-bottom:0">
-  <div>
-    <h1 class="page-head__title">Calendrier</h1>
-    <p class="page-head__sub">Planification des séances</p>
+<!-- ══════════ En-tête ══════════ -->
+<div class="plan-head">
+  <div class="plan-head__titre">
+    <h1>Planning des séances</h1>
+    <p>{{ sousTitre }}</p>
   </div>
-  @if (auth.canEcrireSeances()) {
-    <button class="btn-creer-seance" (click)="ouvrirCreation()">＋ Créer une séance</button>
-  }
+
+  <div class="plan-head__actions">
+    <div class="seg seg--vue">
+      <button [class.actif]="vue === 'calendrier'" (click)="choisirVue('calendrier')">▦ Calendrier</button>
+      <button [class.actif]="vue === 'liste'" (click)="choisirVue('liste')">☰ Liste</button>
+    </div>
+    @if (auth.canEcrireSeances()) {
+      <button class="btn-nouvelle" (click)="ouvrirCreation()">＋ Nouvelle séance</button>
+    }
+  </div>
 </div>
 
-<div class="cal-layout">
-
-  <!-- ── Zone calendrier ── -->
-  <div class="cal-zone">
-
-    <!-- Navigation semaine -->
-    <div class="nav-semaine">
-      <button class="btn-nav" (click)="semainePrecedente()">‹</button>
-      <span class="titre-semaine">{{ titreSemaine }}</span>
-      <button class="btn-nav" (click)="semaineSuivante()">›</button>
+<!-- ══════════ Barre de filtres ══════════ -->
+<div class="filtres">
+  @if (!lectureSeule && equipesDispo.length) {
+    <div class="filtre-equipe">
+      <span class="filtre-lbl">ÉQUIPE</span>
+      <select [ngModel]="equipeActiveId()" (ngModelChange)="changerEquipe($event)">
+        <option [ngValue]="null">Toutes les équipes</option>
+        @for (eq of equipesDispo; track eq.id) {
+          <option [ngValue]="eq.id">{{ eq.nom }}</option>
+        }
+      </select>
     </div>
+  }
 
-    <!-- Grille 7 jours -->
-    <div class="grille">
-      @for (jour of joursGrid; track jour.dateStr) {
+  <div class="filtre-types">
+    <span class="filtre-lbl">TYPE</span>
+    <button class="pill" [class.actif]="typeFiltre === null" (click)="toggleTypeFiltre(null)">Tous</button>
+    @for (t of typeSeances; track t.id) {
+      <button class="pill" [class.actif]="typeFiltre === t.code" (click)="toggleTypeFiltre(t.code)">
+        <span class="pill-dot" [style.background]="couleur(t.code)"></span>{{ t.libelle }}
+      </button>
+    }
+  </div>
+
+  <span class="filtre-compteur">{{ seancesVisibles.length }} séance{{ seancesVisibles.length > 1 ? 's' : '' }} affichée{{ seancesVisibles.length > 1 ? 's' : '' }}</span>
+</div>
+
+<!-- ══════════ Barre de navigation période ══════════ -->
+<div class="nav-bar">
+  <div class="nav-curseur">
+    <button class="btn-nav" (click)="precedent()">‹</button>
+    <span class="nav-titre">{{ titreNav }}</span>
+    <button class="btn-nav" (click)="suivant()">›</button>
+  </div>
+
+  <div class="nav-droite">
+    <button class="btn-aujourdhui" (click)="aujourdhui()">Aujourd'hui</button>
+    @if (vue === 'calendrier') {
+      <div class="seg seg--sousvue">
+        <button [class.actif]="sousVue === 'jour'" (click)="choisirSousVue('jour')">Jour</button>
+        <button [class.actif]="sousVue === 'semaine'" (click)="choisirSousVue('semaine')">Semaine</button>
+        <button [class.actif]="sousVue === 'mois'" (click)="choisirSousVue('mois')">Mois</button>
+      </div>
+    }
+  </div>
+</div>
+
+<!-- ══════════ VUE LISTE ══════════ -->
+@if (vue === 'liste') {
+  <div class="liste">
+    @for (jour of joursAvecSeances; track jour.dateStr) {
+      <div class="liste-jour">
+        <div class="liste-jour-head" [class.today]="jour.dateStr === today">
+          <div class="liste-jour-date">
+            <span class="lj-nom">{{ jour.labelCourt }}</span>
+            <span class="lj-num">{{ jour.date | date:'dd/MM' }}</span>
+          </div>
+          <div class="liste-jour-resume">
+            <span class="lj-dots">
+              @for (c of couleursJour(jour.dateStr); track c) {
+                <span class="lj-dot" [style.background]="c"></span>
+              }
+            </span>
+            <span class="lj-count">{{ seancesDuJour(jour.dateStr).length }} session{{ seancesDuJour(jour.dateStr).length > 1 ? 's' : '' }}</span>
+          </div>
+        </div>
+
+        @for (seance of seancesDuJour(jour.dateStr); track seance.id) {
+          <div class="liste-carte clickable" [class.realisee]="seance.statut === 'REALISEE'"
+            [class.annulee]="seance.statut === 'ANNULEE'"
+            (click)="ouvrirDetail(seance)" matTooltip="Voir le détail de la séance">
+
+            <div class="lc-heure">
+              <span class="lc-h">{{ seance.heureDebut ? (seance.heureDebut | slice:0:5) : '—' }}</span>
+              @if (seance.dureeMinutes) { <span class="lc-duree">{{ seance.dureeMinutes }} min</span> }
+            </div>
+
+            <div class="lc-centre">
+              <span class="lc-titre">{{ seance.titre || seance.typeSeance.libelle }}</span>
+              <span class="lc-type">
+                <span class="lc-dot" [style.background]="couleur(seance.typeSeance.code)"></span>
+                {{ seance.typeSeance.libelle }}
+                @if (seance.objectif) { <span class="lc-cible">· {{ seance.objectif }}</span> }
+                @else if (seance.adversaire) { <span class="lc-cible">· vs {{ seance.adversaire }}</span> }
+              </span>
+            </div>
+
+            <div class="lc-droite">
+              @if (seance.responsable) {
+                <span class="lc-resp" matTooltip="Responsable">⌂ {{ seance.responsable }}</span>
+              }
+              <span class="lc-statut statut-{{ seance.statut | lowercase }}">{{ libelleStatut(seance.statut) }}</span>
+              @if (auth.canEcrireSeances()) {
+                <div class="lc-actions">
+                  @if (seance.statut === 'PLANIFIEE') {
+                    <button class="btn-edit" (click)="editerSeance(seance, $event)" matTooltip="Modifier">✎</button>
+                    <button class="btn-realise" (click)="marquerRealisee(seance, $event)" matTooltip="Marquer comme réalisée">✓</button>
+                  }
+                  <button class="btn-suppr" (click)="supprimerSeance(seance, $event)" matTooltip="Supprimer">✕</button>
+                </div>
+              }
+            </div>
+          </div>
+        }
+      </div>
+    }
+
+    @if (joursAvecSeances.length === 0) {
+      <div class="liste-vide">Aucune séance sur cette période.</div>
+    }
+  </div>
+}
+
+<!-- ══════════ VUE CALENDRIER — MOIS ══════════ -->
+@if (vue === 'calendrier' && sousVue === 'mois') {
+  <div class="mois">
+    <div class="mois-entete">
+      @for (j of joursCourts; track j) { <div class="mois-col-titre">{{ j }}</div> }
+    </div>
+    <div class="mois-grille">
+      @for (jour of moisGrid; track jour.dateStr) {
+        <div class="mois-cell" [class.hors-mois]="!jour.inMonth" [class.today]="jour.dateStr === today">
+          <div class="mois-cell-head">
+            <span class="mois-num" [class.pastille]="jour.dateStr === today">{{ jour.numero }}</span>
+            @if (auth.canEcrireSeances()) {
+              <button class="mois-add" (click)="ouvrirCreation(jour.dateStr)" matTooltip="Ajouter une séance">＋</button>
+            }
+          </div>
+          <div class="mois-cell-body">
+            @for (seance of seancesDuJour(jour.dateStr); track seance.id) {
+              <div class="mois-event clickable" [style.background]="couleur(seance.typeSeance.code)"
+                [class.realisee]="seance.statut === 'REALISEE'" [class.annulee]="seance.statut === 'ANNULEE'"
+                (click)="ouvrirDetail(seance)"
+                matTooltip="{{ (seance.heureDebut ? (seance.heureDebut | slice:0:5) + ' · ' : '') + (seance.titre || seance.typeSeance.libelle) }}">
+                @if (seance.heureDebut) { <span class="me-h">{{ seance.heureDebut | slice:0:5 }}</span> }
+                <span class="me-titre">{{ seance.titre || seance.typeSeance.libelle }}</span>
+              </div>
+            }
+          </div>
+        </div>
+      }
+    </div>
+  </div>
+}
+
+<!-- ══════════ VUE CALENDRIER — SEMAINE ══════════ -->
+@if (vue === 'calendrier' && sousVue === 'semaine') {
+  <div class="grille">
+    @for (jour of joursGrid; track jour.dateStr) {
       <div class="jour-col">
-
-        <!-- En-tête du jour -->
         <div class="jour-header" [class.today]="jour.dateStr === today">
           <span class="jour-nom">{{ jour.label }}</span>
           <span class="jour-date">{{ jour.date | date:'d MMM' }}</span>
@@ -33,70 +173,81 @@
             <button class="jour-add" (click)="ouvrirCreation(jour.dateStr)" matTooltip="Ajouter une séance ce jour">＋</button>
           }
         </div>
-
-        <!-- Séances du jour -->
         <div class="jour-body">
-
           @for (seance of seancesDuJour(jour.dateStr); track seance.id) {
-          @let info = infosType[seance.typeSeance.code];
-          <div class="seance-bloc clickable" [style.border-left-color]="couleur(seance.typeSeance.code)"
-            [class.realisee]="seance.statut === 'REALISEE'" [class.annulee]="seance.statut === 'ANNULEE'"
-            (click)="ouvrirDetail(seance)" matTooltip="Voir le détail de la séance">
-
-            @if (auth.canEcrireSeances()) {
-            <div class="seance-actions">
-              @if (seance.statut === 'PLANIFIEE') {
-              <button class="btn-edit" (click)="editerSeance(seance, $event)" matTooltip="Modifier">✎</button>
-              <button class="btn-realise" (click)="marquerRealisee(seance, $event)"
-                matTooltip="Marquer comme réalisée">✓</button>
-              }
-              <button class="btn-suppr" (click)="supprimerSeance(seance, $event)" matTooltip="Supprimer">✕</button>
-            </div>
-            }
-
-            <span class="seance-titre">{{ seance.titre || seance.typeSeance.libelle }}</span>
-
-            <div class="seance-meta">
-              @if (seance.dureeMinutes) {
-              <span class="seance-duree">{{ seance.dureeMinutes }} min</span>
-              }
-              <span class="seance-statut-badge statut-{{ seance.statut | lowercase }}">
-                {{ seance.statut === 'REALISEE' ? 'Réalisée' : seance.statut === 'ANNULEE' ? 'Annulée' : 'Planifiée' }}
-              </span>
-            </div>
-
-            @if (seance.adversaire) {
-            <span class="seance-adversaire">vs {{ seance.adversaire }}</span>
-            }
-            @if (info) {
-            <div class="seance-intensite-wrap">
-              <span class="seance-intensite-label">{{ info.intensite }}%</span>
-              <div class="seance-intensite-bar">
-                <div class="seance-intensite-fill" [style.width.%]="info.intensite"
-                  [style.background]="couleur(seance.typeSeance.code)"></div>
-              </div>
-            </div>
-            @if (info.description) {
-            <span class="seance-desc">{{ info.description }}</span>
-            }
-            @if (info.objectifs && info.objectifs.length > 0) {
-            <ul class="seance-objectifs">
-              @for (obj of info.objectifs; track obj) {
-              <li>{{ obj }}</li>
-              }
-            </ul>
-            }
-            }
-          </div>
+            <ng-container *ngTemplateOutlet="blocSemaine; context: { $implicit: seance }"></ng-container>
           }
-
-          @if (seancesDuJour(jour.dateStr).length === 0) {
-          <div class="jour-vide">—</div>
-          }
+          @if (seancesDuJour(jour.dateStr).length === 0) { <div class="jour-vide">—</div> }
         </div>
-
       </div>
-      }
+    }
+  </div>
+}
+
+<!-- ══════════ VUE CALENDRIER — JOUR ══════════ -->
+@if (vue === 'calendrier' && sousVue === 'jour') {
+  <div class="jour-unique">
+    <div class="jour-col">
+      <div class="jour-header today">
+        <span class="jour-nom">{{ jourAncre?.label }}</span>
+        <span class="jour-date">{{ ancre | date:'d MMMM yyyy' }}</span>
+        @if (auth.canEcrireSeances()) {
+          <button class="jour-add" (click)="ouvrirCreation(jourAncre?.dateStr)" matTooltip="Ajouter une séance ce jour">＋</button>
+        }
+      </div>
+      <div class="jour-body">
+        @for (seance of seancesDuJour(jourAncre?.dateStr ?? today); track seance.id) {
+          <ng-container *ngTemplateOutlet="blocSemaine; context: { $implicit: seance }"></ng-container>
+        }
+        @if (seancesDuJour(jourAncre?.dateStr ?? today).length === 0) {
+          <div class="jour-vide">Aucune séance ce jour.</div>
+        }
+      </div>
     </div>
   </div>
-</div>
+}
+
+<!-- ══════════ Bloc séance enrichi (Semaine / Jour) ══════════ -->
+<ng-template #blocSemaine let-seance>
+  @let info = infosType[seance.typeSeance.code];
+  <div class="seance-bloc clickable" [style.border-left-color]="couleur(seance.typeSeance.code)"
+    [class.realisee]="seance.statut === 'REALISEE'" [class.annulee]="seance.statut === 'ANNULEE'"
+    (click)="ouvrirDetail(seance)" matTooltip="Voir le détail de la séance">
+
+    @if (auth.canEcrireSeances()) {
+      <div class="seance-actions">
+        @if (seance.statut === 'PLANIFIEE') {
+          <button class="btn-edit" (click)="editerSeance(seance, $event)" matTooltip="Modifier">✎</button>
+          <button class="btn-realise" (click)="marquerRealisee(seance, $event)" matTooltip="Marquer comme réalisée">✓</button>
+        }
+        <button class="btn-suppr" (click)="supprimerSeance(seance, $event)" matTooltip="Supprimer">✕</button>
+      </div>
+    }
+
+    <span class="seance-titre">{{ seance.titre || seance.typeSeance.libelle }}</span>
+
+    <div class="seance-meta">
+      @if (seance.heureDebut) { <span class="seance-duree">{{ seance.heureDebut | slice:0:5 }}</span> }
+      @if (seance.dureeMinutes) { <span class="seance-duree">{{ seance.dureeMinutes }} min</span> }
+      <span class="seance-statut-badge statut-{{ seance.statut | lowercase }}">{{ libelleStatut(seance.statut) }}</span>
+    </div>
+
+    @if (seance.responsable) { <span class="seance-adversaire">⌂ {{ seance.responsable }}</span> }
+    @if (seance.adversaire) { <span class="seance-adversaire">vs {{ seance.adversaire }}</span> }
+
+    @if (info) {
+      <div class="seance-intensite-wrap">
+        <span class="seance-intensite-label">{{ info.intensite }}%</span>
+        <div class="seance-intensite-bar">
+          <div class="seance-intensite-fill" [style.width.%]="info.intensite" [style.background]="couleur(seance.typeSeance.code)"></div>
+        </div>
+      </div>
+      @if (info.description) { <span class="seance-desc">{{ info.description }}</span> }
+      @if (info.objectifs && info.objectifs.length > 0) {
+        <ul class="seance-objectifs">
+          @for (obj of info.objectifs; track obj) { <li>{{ obj }}</li> }
+        </ul>
+      }
+    }
+  </div>
+</ng-template>

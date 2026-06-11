@@ -122,6 +122,7 @@ export class SeanceFormDialogComponent implements OnInit, OnDestroy {
       typeSeanceId: [typeInitId, Validators.required],
       date: [this.dialogData.date, Validators.required],
       titre: [''],
+      responsable: [''],
       heureDebut: [''],
       dureeMinutes: [null, [Validators.required, Validators.min(1)]],
       terrain: [''],
@@ -141,7 +142,7 @@ export class SeanceFormDialogComponent implements OnInit, OnDestroy {
 
     if (s) {
       this.form.patchValue({
-        titre: s.titre ?? '', heureDebut: s.heureDebut ?? '',
+        titre: s.titre ?? '', responsable: s.responsable ?? '', heureDebut: s.heureDebut ?? '',
         dureeMinutes: s.dureeMinutes ?? this.dureeTheorique,
         terrain: s.terrain ?? '', conditionsMeteo: s.conditionsMeteo ?? '',
         temperature: s.temperature ?? null, description: s.description ?? '',
@@ -245,6 +246,7 @@ export class SeanceFormDialogComponent implements OnInit, OnDestroy {
       typeSeance: { id: v.typeSeanceId },
       dureeMinutes: v.dureeMinutes,
       titre: v.titre || undefined,
+      responsable: v.responsable || undefined,
       heureDebut: v.heureDebut || undefined,
       terrain: v.terrain || undefined,
       conditionsMeteo: v.conditionsMeteo

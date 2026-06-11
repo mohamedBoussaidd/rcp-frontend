@@ -38,6 +38,8 @@ export interface Seance {
   domicileExterieur?: 'DOMICILE' | 'EXTERIEUR';
   scoreMatch?: string;
   description?: string;
+  // Nom de l'encadrant en charge (affiché en vue Liste)
+  responsable?: string;
   // Objectif d'équipe (préparation) — pré-rempli par Σ exercices physiques, modifiable
   objectif?: string;
   objectifDistanceM?: number;
@@ -117,6 +119,7 @@ export interface SeanceCreate {
   domicileExterieur?: string;
   description?: string;
   raisonEcartDuree?: string;
+  responsable?: string;
   // Objectif d'équipe (préparation)
   objectif?: string;
   objectifDistanceM?: number;

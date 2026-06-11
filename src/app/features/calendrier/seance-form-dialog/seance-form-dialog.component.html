@@ -46,6 +46,12 @@
             <input formControlName="titre" [placeholder]="selectedType?.libelle || 'Séance'">
           </div>
 
+          <!-- Responsable (encadrant) -->
+          <div class="dark-field full-width">
+            <label>Responsable</label>
+            <input formControlName="responsable" placeholder="ex : Rémi C.">
+          </div>
+
           <!-- Durée (calculée depuis les exercices, modifiable) -->
           <div class="dark-field">
             <label>Durée (min) *</label>
