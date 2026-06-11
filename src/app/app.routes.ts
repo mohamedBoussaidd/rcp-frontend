@@ -1,49 +1,51 @@
 import { Routes } from '@angular/router';
-import { DashboardComponent } from './features/dashboard/dashboard.component';
-import { JoueurDetailComponent } from './features/joueur-detail/joueur-detail.component';
-import { ImportComponent } from './features/import/import.component';
-import { SeancesComponent } from './features/seances/seances.component';
-import { SeanceDetailComponent } from './features/seance-detail/seance-detail.component';
-import { CalendrierComponent } from './features/calendrier/calendrier.component';
-import { PeseesComponent } from './features/pesees/pesees.component';
-import { ParametresComponent } from './features/parametres/parametres.component';
-import { MethodologieComponent } from './features/methodologie/methodologie.component';
-import { LoginComponent } from './features/login/login.component';
-import { AdminClubsComponent } from './features/admin-clubs/admin-clubs.component';
-import { MonClubComponent } from './features/mon-club/mon-club.component';
-import { MedicalComponent } from './features/medical/medical.component';
-import { EspaceJoueurComponent } from './features/espace-joueur/espace-joueur.component';
-import { PlanningTechniqueComponent } from './features/planning-technique/planning-technique.component';
-import { RechargementComponent } from './shared/components/rechargement/rechargement.component';
-import { authGuard } from './core/guards/auth.guard';
-import { roleGuard } from './core/guards/role.guard';
-import { contexteGuard } from './core/guards/contexte.guard';
-import { Role } from './core/services/auth.service';
+import { authGuard } from '@core/guards/auth.guard';
+import { roleGuard } from '@core/guards/role.guard';
+import { contexteGuard } from '@core/guards/contexte.guard';
+import { Role } from '@core/services/auth.service';
 
 // Groupes de rôles alignés sur la sidebar (nav-sidebar.component.ts) et la
 // matrice serveur (SecurityConfig.java). Le staff exclut JOUEUR et ADMINISTRATIF.
 const STAFF: Role[]        = ['SUPER_ADMIN', 'PRESIDENT', 'ENTRAINEUR', 'PREPARATEUR', 'MEDICAL'];
 const STAFF_PHYSIQUE: Role[] = ['SUPER_ADMIN', 'PRESIDENT', 'PREPARATEUR', 'MEDICAL'];
 
+// Lazy loading : chaque écran est chargé à la demande (un chunk par feature)
+// plutôt que dans le bundle initial. Gain de perf au démarrage.
 export const routes: Routes = [
-  { path: 'login',        component: LoginComponent },
+  { path: 'login', loadComponent: () => import('./features/login/login.component').then(m => m.LoginComponent) },
 
-  { path: '',             redirectTo: 'dashboard', pathMatch: 'full' },
-  { path: 'admin/clubs',  component: AdminClubsComponent,   canActivate: [authGuard, roleGuard], data: { roles: ['SUPER_ADMIN'] } },
-  { path: 'mon-club',     component: MonClubComponent,      canActivate: [authGuard, roleGuard], data: { roles: ['PRESIDENT'] } },
-  { path: 'medical',      component: MedicalComponent,      canActivate: [authGuard, roleGuard, contexteGuard], data: { roles: ['ENTRAINEUR', 'PREPARATEUR', 'MEDICAL', 'PRESIDENT', 'SUPER_ADMIN'] } },
-  { path: 'mon-espace',   component: EspaceJoueurComponent, canActivate: [authGuard, roleGuard], data: { roles: ['JOUEUR'] } },
-  { path: 'rechargement', component: RechargementComponent, canActivate: [authGuard] },
-  { path: 'planning-technique', component: PlanningTechniqueComponent, canActivate: [authGuard, roleGuard, contexteGuard], data: { roles: ['ENTRAINEUR', 'SUPER_ADMIN'] } },
-  { path: 'dashboard',    component: DashboardComponent,    canActivate: [authGuard, roleGuard, contexteGuard], data: { roles: STAFF } },
-  { path: 'joueurs/:id',  component: JoueurDetailComponent, canActivate: [authGuard, roleGuard, contexteGuard], data: { roles: STAFF } },
-  { path: 'import',       component: ImportComponent,       canActivate: [authGuard, roleGuard, contexteGuard], data: { roles: ['SUPER_ADMIN', 'PREPARATEUR'] } },
-  { path: 'seances',      component: SeancesComponent,      canActivate: [authGuard, roleGuard, contexteGuard], data: { roles: STAFF } },
-  { path: 'seances/:id',  component: SeanceDetailComponent, canActivate: [authGuard, roleGuard, contexteGuard], data: { roles: STAFF } },
-  { path: 'calendrier',   component: CalendrierComponent,   canActivate: [authGuard, roleGuard, contexteGuard], data: { roles: [...STAFF, 'JOUEUR'] } },
-  { path: 'pesees',       component: PeseesComponent,       canActivate: [authGuard, roleGuard, contexteGuard], data: { roles: STAFF_PHYSIQUE } },
-  { path: 'parametres',   component: ParametresComponent,   canActivate: [authGuard, roleGuard, contexteGuard], data: { roles: ['SUPER_ADMIN', 'PRESIDENT'] } },
-  { path: 'methodologie', component: MethodologieComponent, canActivate: [authGuard, roleGuard, contexteGuard], data: { roles: STAFF } },
+  { path: '', redirectTo: 'dashboard', pathMatch: 'full' },
+
+  { path: 'admin/clubs', canActivate: [authGuard, roleGuard], data: { roles: ['SUPER_ADMIN'] },
+    loadComponent: () => import('./features/admin/admin-clubs/admin-clubs.component').then(m => m.AdminClubsComponent) },
+  { path: 'mon-club', canActivate: [authGuard, roleGuard], data: { roles: ['PRESIDENT'] },
+    loadComponent: () => import('./features/admin/mon-club/mon-club.component').then(m => m.MonClubComponent) },
+  { path: 'medical', canActivate: [authGuard, roleGuard, contexteGuard], data: { roles: ['ENTRAINEUR', 'PREPARATEUR', 'MEDICAL', 'PRESIDENT', 'SUPER_ADMIN'] },
+    loadComponent: () => import('./features/medical/medical.component').then(m => m.MedicalComponent) },
+  { path: 'mon-espace', canActivate: [authGuard, roleGuard], data: { roles: ['JOUEUR'] },
+    loadComponent: () => import('./features/espace-joueur/espace-joueur.component').then(m => m.EspaceJoueurComponent) },
+  { path: 'rechargement', canActivate: [authGuard],
+    loadComponent: () => import('@shared/components/rechargement/rechargement.component').then(m => m.RechargementComponent) },
+  { path: 'planning-technique', canActivate: [authGuard, roleGuard, contexteGuard], data: { roles: ['ENTRAINEUR', 'SUPER_ADMIN'] },
+    loadComponent: () => import('./features/tactical/planning-technique.component').then(m => m.PlanningTechniqueComponent) },
+  { path: 'dashboard', canActivate: [authGuard, roleGuard, contexteGuard], data: { roles: STAFF },
+    loadComponent: () => import('./features/dashboard/dashboard.component').then(m => m.DashboardComponent) },
+  { path: 'joueurs/:id', canActivate: [authGuard, roleGuard, contexteGuard], data: { roles: STAFF },
+    loadComponent: () => import('./features/joueur/joueur-detail/joueur-detail.component').then(m => m.JoueurDetailComponent) },
+  { path: 'import', canActivate: [authGuard, roleGuard, contexteGuard], data: { roles: ['SUPER_ADMIN', 'PREPARATEUR'] },
+    loadComponent: () => import('./features/performance/import/import.component').then(m => m.ImportComponent) },
+  { path: 'seances', canActivate: [authGuard, roleGuard, contexteGuard], data: { roles: STAFF },
+    loadComponent: () => import('./features/performance/seances/seances.component').then(m => m.SeancesComponent) },
+  { path: 'seances/:id', canActivate: [authGuard, roleGuard, contexteGuard], data: { roles: STAFF },
+    loadComponent: () => import('./features/performance/seance-detail/seance-detail.component').then(m => m.SeanceDetailComponent) },
+  { path: 'calendrier', canActivate: [authGuard, roleGuard, contexteGuard], data: { roles: [...STAFF, 'JOUEUR'] },
+    loadComponent: () => import('./features/calendrier/calendrier.component').then(m => m.CalendrierComponent) },
+  { path: 'pesees', canActivate: [authGuard, roleGuard, contexteGuard], data: { roles: STAFF_PHYSIQUE },
+    loadComponent: () => import('./features/performance/pesees/pesees.component').then(m => m.PeseesComponent) },
+  { path: 'parametres', canActivate: [authGuard, roleGuard, contexteGuard], data: { roles: ['SUPER_ADMIN', 'PRESIDENT'] },
+    loadComponent: () => import('./features/admin/parametres/parametres.component').then(m => m.ParametresComponent) },
+  { path: 'methodologie', canActivate: [authGuard, roleGuard, contexteGuard], data: { roles: STAFF },
+    loadComponent: () => import('./features/admin/methodologie/methodologie.component').then(m => m.MethodologieComponent) },
 
   { path: '**', redirectTo: 'dashboard' },
 ];

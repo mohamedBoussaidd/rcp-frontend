@@ -1,0 +1,369 @@
+<div class="editor-root" #editorRoot>
+
+  <!-- ── En-tête ── -->
+  <div class="page-head">
+    <div>
+      <h1 class="page-head__title">Éditeur de schéma — {{ titre }}</h1>
+      <p class="page-head__sub">Terrain {{ terrain() }} · {{ keyframes().length }} keyframes · {{ dureeSecondes() }}s</p>
+    </div>
+    <div class="page-head__actions">
+      <button class="btn btn--secondary" (click)="importerDepuisBiblio()" title="Importer un schéma de la bibliothèque (copié ici)">
+        <mat-icon>library_add</mat-icon>Importer
+      </button>
+      <button class="btn btn--secondary" (click)="capture()" title="Exporter en image"><mat-icon>photo_camera</mat-icon>Capture</button>
+      <button class="btn btn--secondary" [class.is-active]="estPleinEcran()" (click)="pleinEcran()"
+              [title]="estPleinEcran() ? 'Quitter le plein écran' : 'Plein écran'">
+        <mat-icon>{{ estPleinEcran() ? 'fullscreen_exit' : 'fullscreen' }}</mat-icon>Plein écran
+      </button>
+      <button class="btn btn--primary" (click)="enregistrer()"><mat-icon>save</mat-icon>Enregistrer</button>
+      <button class="btn btn--ghost btn--icon" (click)="fermer()" title="Fermer"><mat-icon>close</mat-icon></button>
+    </div>
+  </div>
+
+  <div class="editor">
+
+    <!-- ── Barre d'outils verticale ── -->
+    <div class="editor__toolbar">
+      <button class="editor__tool" [class.is-active]="outil() === 'select'" (click)="choisirOutil('select')" title="Sélection / déplacer">
+        <mat-icon>near_me</mat-icon>
+      </button>
+      <button class="editor__tool" [class.is-active]="outil() === 'deplacement'" (click)="choisirOutil('deplacement')" title="Déplacement sans ballon (pointillé)">
+        <mat-icon>directions_run</mat-icon>
+      </button>
+      <button class="editor__tool" [class.is-active]="outil() === 'conduite'" (click)="choisirOutil('conduite')" title="Conduite de balle (trait)">
+        <mat-icon>sports_soccer</mat-icon>
+      </button>
+      <button class="editor__tool" [class.is-active]="outil() === 'passe'" (click)="choisirOutil('passe')" title="Passe (flèche)">
+        <mat-icon>arrow_forward</mat-icon>
+      </button>
+      <button class="editor__tool" [class.is-active]="outil() === 'tir'" (click)="choisirOutil('tir')" title="Tir (bout rond)">
+        <mat-icon>bolt</mat-icon>
+      </button>
+      <button class="editor__tool" [class.is-active]="outil() === 'surveiller'" (click)="choisirOutil('surveiller')" title="Joueur à surveiller (cliquer un jeton)">
+        <mat-icon>visibility</mat-icon>
+      </button>
+      <button class="editor__tool" [class.is-active]="outil() === 'forme'" (click)="choisirOutil('forme')" title="Formes (entourer une zone / un groupe)">
+        <mat-icon>category</mat-icon>
+      </button>
+      <button class="editor__tool danger" [class.is-active]="outil() === 'supprimer'" (click)="choisirOutil('supprimer')" title="Supprimer (cliquer un élément/tracé/forme)">
+        <mat-icon>delete_outline</mat-icon>
+      </button>
+      <button class="editor__tool danger" (click)="viderTerrain()" title="Vider tout le terrain">
+        <mat-icon>restart_alt</mat-icon>
+      </button>
+
+      <div class="editor__div"></div>
+
+      <button class="editor__tool" (click)="zoom(0.1)" title="Zoom +"><mat-icon>zoom_in</mat-icon></button>
+      <button class="editor__tool" (click)="zoom(-0.1)" title="Zoom −"><mat-icon>zoom_out</mat-icon></button>
+      <button class="editor__tool" [class.is-active]="!tracesVisibles()" (click)="visibiliteTraces()"
+              [title]="tracesVisibles() ? 'Masquer les tracés' : 'Afficher les tracés'">
+        <mat-icon>{{ tracesVisibles() ? 'visibility' : 'visibility_off' }}</mat-icon>
+      </button>
+    </div>
+
+    <!-- ── Terrain (Konva) ── -->
+    <div class="editor__pitch">
+      <div class="editor__pitch-head">
+        <div class="row" style="gap:12px;flex-wrap:wrap">
+          <div class="row" style="gap:6px">
+            <span class="head-label">Terrain</span>
+            <div class="segmented">
+              <button [class.is-active]="terrain() === 'complet'" (click)="changerTerrain('complet')">Complet</button>
+              <button [class.is-active]="terrain() === 'demi'" (click)="changerTerrain('demi')">Demi</button>
+            </div>
+          </div>
+          <div class="vdiv"></div>
+          <div class="row" style="gap:6px">
+            <span class="head-label">Tracé</span>
+            <div class="segmented">
+              <button [class.is-active]="modeDessin() === 'libre'" (click)="modeDessin.set('libre')"
+                title="À main libre : trace à la souris, la flèche suit ta main.">Main</button>
+              <button [class.is-active]="modeDessin() === 'semi'" (click)="modeDessin.set('semi')"
+                title="Semi-assisté : clique des points, double-clic pour terminer.">Semi</button>
+              <button [class.is-active]="modeDessin() === 'assiste'" (click)="modeDessin.set('assiste')"
+                title="Assisté : départ → arrivée, flèche droite automatique.">Assisté</button>
+            </div>
+          </div>
+
+          <!-- Contrôles contextuels selon l'outil -->
+          @if (outil() === 'select') {
+            <div class="vdiv"></div>
+            <div class="row" style="gap:6px">
+              <span class="head-label">Sélection</span>
+              <div class="segmented">
+                <button [class.is-active]="modeSelection() === 'cadre'" (click)="modeSelection.set('cadre')"
+                  title="Cadre rectangulaire">Cadre</button>
+                <button [class.is-active]="modeSelection() === 'lasso'" (click)="modeSelection.set('lasso')"
+                  title="Lasso à main levée">Lasso</button>
+              </div>
+            </div>
+          }
+          @if (outil() === 'forme') {
+            <div class="vdiv"></div>
+            <div class="row" style="gap:6px">
+              <span class="head-label">Forme</span>
+              <div class="segmented">
+                <button [class.is-active]="formeType() === 'rect'" (click)="choisirForme('rect')">Rectangle</button>
+                <button [class.is-active]="formeType() === 'ellipse'" (click)="choisirForme('ellipse')">Cercle</button>
+                <button [class.is-active]="formeType() === 'triangle'" (click)="choisirForme('triangle')">Triangle</button>
+                <button [class.is-active]="formeType() === 'losange'" (click)="choisirForme('losange')">Losange</button>
+              </div>
+            </div>
+            <div class="vdiv"></div>
+            <div class="row" style="gap:6px">
+              <span class="head-label">Texte</span>
+              <div class="segmented">
+                <button [class.is-active]="texteTaille() === 14" (click)="texteTaille.set(14)" title="Petit">S</button>
+                <button [class.is-active]="texteTaille() === 20" (click)="texteTaille.set(20)" title="Moyen">M</button>
+                <button [class.is-active]="texteTaille() === 30" (click)="texteTaille.set(30)" title="Grand">L</button>
+              </div>
+              @for (c of paletteTexte; track c.val) {
+                <button class="swatch swatch--texte" [class.is-active]="couleurTexteAnnot() === c.val"
+                  [style.background]="c.val" [title]="'Texte ' + c.nom"
+                  (click)="couleurTexteAnnot.set(c.val)"></button>
+              }
+            </div>
+          }
+          @if (outil() === 'forme' || outil() === 'surveiller') {
+            <div class="vdiv"></div>
+            <div class="row" style="gap:6px">
+              <span class="head-label">Couleur</span>
+              @for (c of palette; track c.val) {
+                <button class="swatch" [class.is-active]="couleurAnnot() === c.val"
+                  [style.background]="c.val" [title]="c.nom" (click)="choisirCouleur(c.val)"></button>
+              }
+            </div>
+          }
+        </div>
+        <div class="row" style="gap:6px">
+          <span class="badge badge--neutral">Outil : <strong>
+            @switch (outil()) {
+              @case ('select') { Sélection }
+              @case ('deplacement') { Déplacement }
+              @case ('conduite') { Conduite }
+              @case ('passe') { Passe }
+              @case ('tir') { Tir }
+              @case ('surveiller') { Surveiller }
+              @case ('forme') { Forme }
+              @case ('supprimer') { Supprimer }
+            }
+          </strong></span>
+        </div>
+      </div>
+
+      <div class="editor__pitch-body">
+        <div #stageContainer class="stage-host"></div>
+      </div>
+    </div>
+
+    <!-- ── Palette (panneau droit) ── -->
+    <div class="editor__right">
+      <div class="pal-section">
+        <button class="pal-head" (click)="basculer('formations')">Formations <mat-icon>{{ ouvert() === 'formations' ? 'expand_more' : 'chevron_right' }}</mat-icon></button>
+        @if (ouvert() === 'formations') {
+        <div class="form-bloc">
+          <div class="form-equipe">
+            <button class="form-eq" [class.on]="equipeFormation() === equipeEffectif.couleur"
+              [style.--c]="equipeEffectif.couleur" (click)="equipeFormation.set(equipeEffectif.couleur)">Mon équipe</button>
+            <button class="form-eq" [class.on]="equipeFormation() === adversaire.couleur"
+              [style.--c]="adversaire.couleur" (click)="equipeFormation.set(adversaire.couleur)">Adversaire</button>
+          </div>
+          <div class="form-grid">
+            @for (f of formations; track f.nom) {
+            <button class="form-btn" (click)="appliquerFormation(f)">{{ f.nom }}</button>
+            }
+          </div>
+
+          <button class="form-save" (click)="enregistrerFormation()"><mat-icon>save</mat-icon> Enregistrer la dispo actuelle</button>
+
+          @if (formationsCustom().length > 0) {
+          <div class="form-custom-titre">Mes tactiques</div>
+          <div class="form-custom-list">
+            @for (f of formationsCustom(); track f.id) {
+            <div class="form-custom">
+              <button class="form-custom-btn" (click)="appliquerFormationCustom(f)"
+                [title]="'Par ' + (f.creeParNom || '—')">{{ f.nom }}</button>
+              @if (f.modifiable) { <button class="form-custom-del" (click)="supprimerFormation(f, $event)" title="Supprimer">✕</button> }
+            </div>
+            }
+          </div>
+          }
+
+          <p class="pal-aide">Place 11 joueurs d'un clic. L'adverse est posé en miroir. (Terrain complet)<br>« Enregistrer » sauve la dispo de l'équipe sélectionnée comme tactique réutilisable.</p>
+        </div>
+        }
+      </div>
+
+      <div class="pal-section">
+        <button class="pal-head" (click)="basculer('cpa')">Coups de pied arrêtés <mat-icon>{{ ouvert() === 'cpa' ? 'expand_more' : 'chevron_right' }}</mat-icon></button>
+        @if (ouvert() === 'cpa') {
+        <div class="form-bloc">
+          <div class="form-equipe">
+            <button class="form-eq" [class.on]="modeArret() === 'offensif'" [style.--c]="'#22c55e'"
+              (click)="modeArret.set('offensif')">Offensif</button>
+            <button class="form-eq" [class.on]="modeArret() === 'defensif'" [style.--c]="'#ef4444'"
+              (click)="modeArret.set('defensif')">Défensif</button>
+          </div>
+          <div class="form-grid">
+            <button class="form-btn" (click)="placerArret('corner', 'G')">Corner G</button>
+            <button class="form-btn" (click)="placerArret('corner', 'D')">Corner D</button>
+            <button class="form-btn" (click)="placerArret('cf', 'G')">CF Gauche</button>
+            <button class="form-btn" (click)="placerArret('cf', 'D')">CF Droit</button>
+          </div>
+          <p class="pal-aide">Place le ballon + notre équipe (vrais joueurs, violet) et l'adversaire (noir) selon la situation. CF = coup franc à l'entrée de la surface.</p>
+        </div>
+        }
+      </div>
+
+      <div class="pal-section">
+        <button class="pal-head" (click)="basculer('effectif')">Mon équipe <mat-icon>{{ ouvert() === 'effectif' ? 'expand_more' : 'chevron_right' }}</mat-icon></button>
+        @if (ouvert() === 'effectif') {
+        @if (effectif().length === 0) {
+        <p class="pal-aide">Aucun joueur dans l'effectif de ton équipe.</p>
+        } @else {
+        <div class="pal-list">
+          @for (j of effectif(); track j.id) {
+          <button class="pal-item" [class.pal-item--pose]="estPose(j)" [disabled]="estPose(j)"
+            (click)="ajouterJoueurReel(j, equipeEffectif.couleur)"
+            [title]="estPose(j) ? (j.prenom + ' ' + j.nom + ' — déjà sur le terrain') : (j.prenom + ' ' + j.nom + (j.postePrincipal ? ' — ' + j.postePrincipal : ''))">
+            <span class="pal-pastille" [style.background]="equipeEffectif.couleur"></span>
+            <span class="pal-nom">{{ j.prenom }} {{ j.nom }}</span>
+            @if (j.postePrincipal) { <span class="pal-poste">{{ j.postePrincipal }}</span> }
+          </button>
+          }
+        </div>
+        }
+        }
+      </div>
+
+      <div class="pal-section">
+        <button class="pal-head" (click)="basculer('violet')">Équipe 1 <mat-icon>{{ ouvert() === 'violet' ? 'expand_more' : 'chevron_right' }}</mat-icon></button>
+        @if (ouvert() === 'violet') {
+        @if (effectif().length === 0) {
+        <p class="pal-aide">Aucun joueur dans l'effectif de ton équipe.</p>
+        } @else {
+        <div class="pal-list">
+          @for (j of effectif(); track j.id) {
+          <button class="pal-item" [class.pal-item--pose]="estPose(j)" [disabled]="estPose(j)"
+            (click)="ajouterJoueurReel(j, equipeRouge.couleur)"
+            [title]="estPose(j) ? (j.prenom + ' ' + j.nom + ' — déjà sur le terrain') : (j.prenom + ' ' + j.nom + (j.postePrincipal ? ' — ' + j.postePrincipal : ''))">
+            <span class="pal-pastille" [style.background]="equipeRouge.couleur"></span>
+            <span class="pal-nom">{{ j.prenom }} {{ j.nom }}</span>
+            @if (j.postePrincipal) { <span class="pal-poste">{{ j.postePrincipal }}</span> }
+          </button>
+          }
+        </div>
+        }
+        }
+      </div>
+
+      <div class="pal-section">
+        <button class="pal-head" (click)="basculer('jaune')">Équipe 2 <mat-icon>{{ ouvert() === 'jaune' ? 'expand_more' : 'chevron_right' }}</mat-icon></button>
+        @if (ouvert() === 'jaune') {
+        @if (effectif().length === 0) {
+        <p class="pal-aide">Aucun joueur dans l'effectif de ton équipe.</p>
+        } @else {
+        <div class="pal-list">
+          @for (j of effectif(); track j.id) {
+          <button class="pal-item" [class.pal-item--pose]="estPose(j)" [disabled]="estPose(j)"
+            (click)="ajouterJoueurReel(j, equipeJaune.couleur)"
+            [title]="estPose(j) ? (j.prenom + ' ' + j.nom + ' — déjà sur le terrain') : (j.prenom + ' ' + j.nom + (j.postePrincipal ? ' — ' + j.postePrincipal : ''))">
+            <span class="pal-pastille" [style.background]="equipeJaune.couleur"></span>
+            <span class="pal-nom">{{ j.prenom }} {{ j.nom }}</span>
+            @if (j.postePrincipal) { <span class="pal-poste">{{ j.postePrincipal }}</span> }
+          </button>
+          }
+        </div>
+        }
+        }
+      </div>
+
+      <div class="pal-section">
+        <button class="pal-head" (click)="basculer('adversaire')">Adversaire <mat-icon>{{ ouvert() === 'adversaire' ? 'expand_more' : 'chevron_right' }}</mat-icon></button>
+        @if (ouvert() === 'adversaire') {
+        <div class="pal-grid">
+          @for (n of adversaire.nums; track n) {
+          <button class="jeton" [style.background]="adversaire.couleur"
+            (click)="ajouterJoueur(adversaire.couleur, n)">{{ n }}</button>
+          }
+        </div>
+        <p class="pal-aide">Jetons génériques. Double-clic sur un jeton posé pour saisir un texte (ou garder le numéro).</p>
+        }
+      </div>
+
+      <div class="pal-section">
+        <button class="pal-head" (click)="basculer('jokers')">Jokers <mat-icon>{{ ouvert() === 'jokers' ? 'expand_more' : 'chevron_right' }}</mat-icon></button>
+        @if (ouvert() === 'jokers') {
+        <div class="pal-grid">
+          @for (n of jokers.nums; track n) {
+          <button class="jeton" [style.background]="jokers.couleur" (click)="ajouterJoueur(jokers.couleur, n)">{{ n }}</button>
+          }
+        </div>
+        }
+      </div>
+
+      <div class="pal-section">
+        <button class="pal-head" (click)="basculer('equip')">Équipement <mat-icon>{{ ouvert() === 'equip' ? 'expand_more' : 'chevron_right' }}</mat-icon></button>
+        @if (ouvert() === 'equip') {
+        <div class="pal-list">
+          @for (e of equipement; track e.label) {
+          <button class="pal-item" (click)="ajouterEquipement(e.type, e.couleur)">
+            <span class="pal-pastille" [style.background]="e.couleur"></span>{{ e.label }}
+          </button>
+          }
+        </div>
+        }
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Timeline (animation) ── -->
+  <div class="timeline-band">
+    <div class="tl-controls">
+      <button class="tl-btn" (click)="scrub(0)" title="Début"><mat-icon>skip_previous</mat-icon></button>
+      <button class="tl-btn play" (click)="basculerLecture()" title="Lecture / Pause"><mat-icon>{{ enLecture() ? 'pause' : 'play_arrow' }}</mat-icon></button>
+      <button class="tl-btn" (click)="keyframeSuivante()" title="Keyframe suivante"><mat-icon>skip_next</mat-icon></button>
+      <button class="tl-btn" [class.on]="boucle()" (click)="boucle.set(!boucle())" title="Lecture en boucle"><mat-icon>repeat</mat-icon></button>
+
+      <span class="segmented"
+        title="Temps : tout le monde arrive ensemble. Vitesse : chacun à son allure réelle le long de sa flèche.">
+        <button [class.is-active]="modeAnim() === 'temps'" (click)="modeAnim.set('temps')">Temps</button>
+        <button [class.is-active]="modeAnim() === 'vitesse'" (click)="modeAnim.set('vitesse')">Vitesse</button>
+      </span>
+
+      @if (modeAnim() === 'vitesse') {
+      <span class="segmented"
+        title="Vitesse utilisée par joueur : son record GPS (Max) ou sa moyenne des vitesses max (Moyenne).">
+        <button [class.is-active]="metriqueVitesse() === 'moyenne'" (click)="metriqueVitesse.set('moyenne')">Moy.</button>
+        <button [class.is-active]="metriqueVitesse() === 'max'" (click)="metriqueVitesse.set('max')">Max</button>
+      </span>
+      }
+
+      <button class="tl-kf-add" (click)="ajouterKeyframe()" title="Ajouter une keyframe au temps courant"><mat-icon>add</mat-icon> Keyframe</button>
+      @if (estSurKeyframe() && tempsCourant() > 0) {
+      <button class="tl-btn danger" (click)="supprimerKeyframeCourante()" title="Supprimer cette keyframe"><mat-icon>delete_outline</mat-icon></button>
+      }
+
+      <label class="tl-vit">Vitesse
+        <input type="range" min="0.5" max="3" step="0.5" [value]="vitesse()"
+          (input)="vitesse.set(+$any($event.target).value)">
+        <b>{{ vitesse() }}×</b>
+      </label>
+
+      <span class="tl-duree">
+        <button class="tl-btn sm" (click)="etendreDuree(-5)">−5s</button>
+        <button class="tl-btn sm" (click)="etendreDuree(5)">+5s</button>
+      </span>
+      <span class="tl-temps">{{ tempsCourant().toFixed(1) }}s / {{ dureeSecondes() }}s</span>
+    </div>
+
+    <div class="tl-bar" (click)="scrubBarre($event)">
+      <div class="tl-fill" [style.width.%]="pct(tempsCourant())"></div>
+      @for (kf of keyframes(); track kf.t) {
+      <div class="tl-kf" [style.left.%]="pct(kf.t)" (click)="allerKeyframe(kf, $event)" [title]="kf.t.toFixed(1) + 's'"></div>
+      }
+      <div class="tl-playhead" [style.left.%]="pct(tempsCourant())"></div>
+    </div>
+  </div>
+</div>

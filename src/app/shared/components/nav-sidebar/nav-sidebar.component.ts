@@ -3,9 +3,9 @@ import { toSignal } from '@angular/core/rxjs-interop';
 import { NavigationEnd, Params, Router, RouterLink } from '@angular/router';
 import { filter, map, startWith } from 'rxjs';
 import { MatIcon } from '@angular/material/icon';
-import { ThemeService } from '../../../core/services/theme.service';
-import { SidebarService } from '../../../core/services/sidebar.service';
-import { AuthService, Role } from '../../../core/services/auth.service';
+import { ThemeService } from '@core/services/theme.service';
+import { SidebarService } from '@core/services/sidebar.service';
+import { AuthService, Role } from '@core/services/auth.service';
 import { BarreContexteComponent } from '../barre-contexte/barre-contexte.component';
 
 const ROLE_LABELS: Record<Role, string> = {
@@ -52,11 +52,11 @@ const ALL_MODULES: NavModule[] = [
     roles: ['SUPER_ADMIN', 'PRESIDENT', 'ENTRAINEUR', 'PREPARATEUR', 'MEDICAL', 'JOUEUR'],
     subnav: [
       { label: 'Séances',          link: '/calendrier' },
+      { label: 'Créer une séance', link: '/planning-technique', section: 'creer',     roles: ['SUPER_ADMIN', 'ENTRAINEUR'] },
       { label: 'Schémas',          link: '/planning-technique', section: 'schemas',   roles: ['SUPER_ADMIN', 'ENTRAINEUR'] },
+      { label: 'Exercices',        link: '/planning-technique', section: 'exercices', default: true, roles: ['SUPER_ADMIN', 'ENTRAINEUR'] },
       { label: 'Plan de jeu',      link: '/planning-technique', section: 'planjeu',   roles: ['SUPER_ADMIN', 'ENTRAINEUR'] },
       { label: 'Match',            link: '/planning-technique', section: 'match',     roles: ['SUPER_ADMIN', 'ENTRAINEUR'] },
-      { label: 'Exercices',        link: '/planning-technique', section: 'exercices', default: true, roles: ['SUPER_ADMIN', 'ENTRAINEUR'] },
-      { label: 'Créer une séance', link: '/planning-technique', section: 'creer',     roles: ['SUPER_ADMIN', 'ENTRAINEUR'] },
     ],
   },
   {

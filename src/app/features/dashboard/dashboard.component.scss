@@ -82,3 +82,170 @@
 }
 
 ::ng-deep mat-progress-bar { margin-bottom: 2px; }
+
+/* ── Grille cards joueurs ── */
+.joueurs-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 8px;
+  padding: 12px 16px 16px;
+}
+.joueur-card-btn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: var(--r);
+  border: 1px solid var(--border);
+  background: var(--bg-2);
+  cursor: pointer;
+  text-align: left;
+  transition: background .15s, border-color .15s;
+  &:hover { background: var(--hover-bg); border-color: var(--primary); }
+  &__avatar {
+    width: 36px; height: 36px; border-radius: 50%;
+    background: var(--primary);
+    color: #fff;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px; font-weight: 700;
+    flex-shrink: 0;
+  }
+  &__info { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1; }
+  &__nom  { font-weight: 600; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  &__poste { font-size: 11px; color: var(--text-3); }
+}
+
+/* ── Panel latéral joueur ── */
+.panel-overlay {
+  position: fixed; inset: 0; z-index: 900;
+  background: rgba(0,0,0,.35);
+  animation: fadeIn .15s ease;
+}
+@keyframes fadeIn { from { opacity: 0 } to { opacity: 1 } }
+
+.panel-drawer {
+  position: fixed; top: 0; right: 0; bottom: 0; z-index: 901;
+  width: min(400px, 95vw);
+  background: var(--card-bg);
+  border-left: 1px solid var(--border);
+  display: flex; flex-direction: column;
+  animation: slideIn .2s ease;
+  overflow: hidden;
+
+  &__header {
+    display: flex; align-items: center; gap: 12px;
+    padding: 16px;
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+  &__avatar {
+    width: 44px; height: 44px; border-radius: 50%;
+    background: var(--primary); color: #fff;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px; font-weight: 700; flex-shrink: 0;
+  }
+  &__nom   { font-weight: 700; font-size: 15px; }
+  &__poste { font-size: 12px; color: var(--text-3); margin-top: 2px; }
+
+  &__tabs {
+    display: flex;
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+  &__body {
+    flex: 1; overflow-y: auto; padding: 16px;
+  }
+}
+@keyframes slideIn { from { transform: translateX(100%) } to { transform: translateX(0) } }
+
+.panel-tab {
+  flex: 1; padding: 10px 8px;
+  border: none; border-bottom: 2px solid transparent;
+  background: none; cursor: pointer;
+  font-size: 13px; font-weight: 500; color: var(--text-3);
+  transition: color .15s, border-color .15s;
+  &:hover { color: var(--text); }
+  &--active { color: var(--primary); border-bottom-color: var(--primary); }
+}
+
+.panel-kpis {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 16px;
+}
+.panel-kpi {
+  background: var(--bg-2); border-radius: var(--r); padding: 12px;
+  display: flex; flex-direction: column; gap: 4px;
+  &__val   { font-size: 26px; font-weight: 700; line-height: 1; }
+  &__label { font-size: 11px; color: var(--text-3); }
+}
+.panel-section-title {
+  font-size: 12px; font-weight: 600; color: var(--text-3);
+  text-transform: uppercase; letter-spacing: .5px;
+  margin: 16px 0 8px;
+}
+.panel-dl {
+  display: grid; grid-template-columns: auto 1fr; gap: 6px 16px;
+  dt { font-size: 12px; color: var(--text-3); display: flex; align-items: center; }
+  dd { font-size: 13px; font-weight: 500; margin: 0; }
+}
+.text-bad  { color: var(--bad); }
+.text-warn { color: var(--warn); }
+
+/* ── Widget séance du jour ── */
+.seance-jour {
+  &__vide {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--text-3);
+    font-size: 14px;
+    padding: 8px 0;
+    mat-icon { font-size: 20px; width: 20px; height: 20px; }
+  }
+  &__item {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--border);
+    &:last-child { border-bottom: none; }
+  }
+  &__meta {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  &__type {
+    display: inline-flex;
+    align-items: center;
+    padding: 3px 10px;
+    border-radius: var(--r-pill);
+    font-size: 12px;
+    font-weight: 600;
+  }
+  &__heure, &__terrain {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    font-size: 13px;
+    color: var(--text-2);
+  }
+  &__duree {
+    font-size: 12px;
+    color: var(--text-3);
+    background: var(--bg-2);
+    border-radius: var(--r-pill);
+    padding: 2px 8px;
+  }
+  &__titre {
+    font-weight: 600;
+    font-size: 14px;
+    color: var(--text);
+  }
+  &__actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+}
+

@@ -29,6 +29,23 @@ export interface Seance {
   description?: string;
 }
 
+// ── Présence ──
+export type StatutPresence = 'PRESENT' | 'ABSENT' | 'EXCUSE' | 'RETARD';
+
+export interface LignePresence {
+  joueurId: string;
+  prenom: string;
+  nom: string;
+  poste?: string;
+  statut: StatutPresence | null;
+  note?: string;
+}
+
+export interface FeuillePresence {
+  seanceId: string;
+  lignes: LignePresence[];
+}
+
 export interface SeanceCreate {
   date: string;
   titre?: string;
@@ -80,6 +97,19 @@ export class SeanceService {
 
   getTypeSeances(): Observable<TypeSeance[]> {
     return this.http.get<TypeSeance[]>(this.baseTypes);
+  }
+
+  // ── Présence ──
+  getFeuille(seanceId: string): Observable<FeuillePresence> {
+    return this.http.get<FeuillePresence>(`${this.base}/${seanceId}/presence`);
+  }
+
+  savePresenceJoueur(seanceId: string, joueurId: string, statut: StatutPresence, note?: string): Observable<LignePresence> {
+    return this.http.put<LignePresence>(`${this.base}/${seanceId}/presence/${joueurId}`, { statut, note });
+  }
+
+  saveFeuille(seanceId: string, lignes: { joueurId: string; statut: StatutPresence; note?: string }[]): Observable<FeuillePresence> {
+    return this.http.put<FeuillePresence>(`${this.base}/${seanceId}/presence`, { lignes });
   }
 
   getDonneesGps(seanceId: string): Observable<any[]> {

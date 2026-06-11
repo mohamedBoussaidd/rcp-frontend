@@ -65,6 +65,62 @@
 
   </div>
 
+  <!-- ══ Séance(s) du jour ══ -->
+  <div class="card seance-jour" style="margin-bottom:16px">
+    <div class="card__header">
+      <div>
+        <h3 class="card__title">Séance du jour</h3>
+        <div class="card__sub">{{ aujourdhui | date:'EEEE d MMMM':'':'fr' }}</div>
+      </div>
+    </div>
+    <div class="card__body">
+      @if (!seancesAujourdhui.length) {
+        <div class="seance-jour__vide">
+          <mat-icon>event_busy</mat-icon>
+          <span>Aucune séance prévue aujourd'hui</span>
+        </div>
+      }
+      @for (s of seancesAujourdhui; track s.id) {
+        <div class="seance-jour__item">
+          <div class="seance-jour__meta">
+            <span class="seance-jour__type"
+              [style.background]="'#' + (s.typeSeance?.code === 'MATCH' ? 'ef444420' : s.typeSeance?.code === 'INTENSIF' ? '6366f120' : '0ea5a020')"
+              [style.color]="s.typeSeance?.code === 'MATCH' ? '#ef4444' : s.typeSeance?.code === 'INTENSIF' ? '#6366f1' : '#0ea5a0'">
+              {{ s.typeSeance?.libelle ?? 'Séance' }}
+            </span>
+            @if (s.heureDebut) {
+              <span class="seance-jour__heure">
+                <mat-icon style="font-size:14px;width:14px;height:14px">schedule</mat-icon>
+                {{ s.heureDebut | slice:0:5 }}
+              </span>
+            }
+            @if (s.dureeMinutes) {
+              <span class="seance-jour__duree">{{ s.dureeMinutes }} min</span>
+            }
+            @if (s.terrain) {
+              <span class="seance-jour__terrain muted">
+                <mat-icon style="font-size:14px;width:14px;height:14px">place</mat-icon>{{ s.terrain }}
+              </span>
+            }
+          </div>
+          @if (s.titre) {
+            <div class="seance-jour__titre">{{ s.titre }}</div>
+          }
+          <div class="seance-jour__actions">
+            <button class="btn btn--primary btn--sm" (click)="allerPresence(s)">
+              <mat-icon>how_to_reg</mat-icon>Appel
+            </button>
+            <span class="badge" [class.badge--ok]="s.statut === 'REALISEE'"
+              [class.badge--neutral]="s.statut === 'PLANIFIEE'"
+              [class.badge--bad]="s.statut === 'ANNULEE'">
+              {{ s.statut === 'REALISEE' ? 'Réalisée' : s.statut === 'ANNULEE' ? 'Annulée' : 'Planifiée' }}
+            </span>
+          </div>
+        </div>
+      }
+    </div>
+  </div>
+
   <!-- ══ Charge collective ══ -->
   <div class="card" style="margin-bottom:16px">
     <div class="card__header">
@@ -94,7 +150,8 @@
     }
   </div>
 
-  <!-- ══ État de l'effectif ══ -->
+  <!-- ══ État de l'effectif (préparateur / admin uniquement) ══ -->
+  @if (auth.hasRole('PREPARATEUR', 'SUPER_ADMIN')) {
   <div class="card">
     <div class="card__header">
       <h3 class="card__title">État de l'effectif</h3>
@@ -231,5 +288,177 @@
 
     }
   </div>
+  } <!-- /if PREPARATEUR -->
+
+  <!-- ══ Grille joueurs (entraîneur / autres rôles) ══ -->
+  @if (!auth.hasRole('PREPARATEUR', 'SUPER_ADMIN')) {
+  <div class="card" style="margin-bottom:16px">
+    <div class="card__header">
+      <h3 class="card__title">Effectif</h3>
+      <span class="badge badge--neutral">{{ joueurs.length }} joueurs</span>
+    </div>
+    <div class="joueurs-grid">
+      @for (j of joueurs; track j.joueur_id) {
+        @let statut = statutMap.get(j.joueur_id) ?? 'actif';
+        <button class="joueur-card-btn" (click)="ouvrirPanel(j)">
+          <div class="joueur-card-btn__avatar">
+            {{ j.prenom[0] ?? '' }}{{ j.nom[0] ?? '' }}
+          </div>
+          <div class="joueur-card-btn__info">
+            <span class="joueur-card-btn__nom">{{ j.prenom }} {{ j.nom }}</span>
+            <span class="joueur-card-btn__poste">{{ j.poste ?? '—' }}</span>
+          </div>
+          <span [class]="'badge badge--statut-' + statut" style="margin-left:auto;font-size:11px">
+            {{ statutLibelle(statut) }}
+          </span>
+        </button>
+      }
+      @if (!joueurs.length && !loading) {
+        <div class="empty-state" style="padding:24px">Aucun joueur dans l'effectif.</div>
+      }
+    </div>
+  </div>
+  } <!-- /if non-PREPARATEUR -->
+
+  <!-- ══ Panel latéral joueur ══ -->
+  @if (panelJoueur || panelLoading) {
+    <div class="panel-overlay" (click)="fermerPanel()"></div>
+    <div class="panel-drawer">
+      <div class="panel-drawer__header">
+        <div class="panel-drawer__avatar">
+          {{ panelJoueur?.prenom?.[0] ?? '' }}{{ panelJoueur?.nom?.[0] ?? '' }}
+        </div>
+        <div>
+          <div class="panel-drawer__nom">{{ panelJoueur?.prenom }} {{ panelJoueur?.nom }}</div>
+          <div class="panel-drawer__poste">{{ panelJoueur?.postePrincipal ?? '—' }}</div>
+        </div>
+        <button class="btn btn--ghost btn--icon btn--sm" style="margin-left:auto" (click)="fermerPanel()">
+          <mat-icon>close</mat-icon>
+        </button>
+      </div>
+
+      <div class="panel-drawer__tabs">
+        <button class="panel-tab" [class.panel-tab--active]="panelOnglet === 'profil'" (click)="panelOnglet = 'profil'">Profil</button>
+        <button class="panel-tab" [class.panel-tab--active]="panelOnglet === 'gps'" (click)="panelOnglet = 'gps'">GPS & Charge</button>
+        <button class="panel-tab" [class.panel-tab--active]="panelOnglet === 'performances'" (click)="panelOnglet = 'performances'">Performances</button>
+      </div>
+
+      <div class="panel-drawer__body">
+
+        @if (panelLoading) {
+          <div class="loading">Chargement…</div>
+        }
+
+        @if (!panelLoading && panelJoueur) {
+
+          <!-- Profil -->
+          @if (panelOnglet === 'profil') {
+            <dl class="panel-dl">
+              <dt>Statut</dt>
+              <dd>
+                @let s = statutMap.get(panelJoueur.id) ?? 'actif';
+                <span [class]="'badge badge--statut-' + s">{{ statutLibelle(s) }}</span>
+              </dd>
+              @if (panelJoueur.dateNaissance) {
+                <dt>Date de naissance</dt>
+                <dd>{{ panelJoueur.dateNaissance | date:'dd/MM/yyyy' }}</dd>
+              }
+              @if (panelJoueur.taille) {
+                <dt>Taille</dt><dd>{{ panelJoueur.taille }} cm</dd>
+              }
+              @if (panelJoueur.poidsActuel) {
+                <dt>Poids actuel</dt><dd>{{ panelJoueur.poidsActuel }} kg</dd>
+              }
+              @if (panelJoueur.poidsFormeCible) {
+                <dt>Poids de forme</dt><dd>{{ panelJoueur.poidsFormeCible }} kg</dd>
+              }
+              @if (panelJoueur.piedFort) {
+                <dt>Pied fort</dt><dd>{{ panelJoueur.piedFort }}</dd>
+              }
+              @if (panelJoueur.postePrincipal) {
+                <dt>Poste principal</dt><dd>{{ panelJoueur.postePrincipal }}</dd>
+              }
+              @if (panelJoueur.posteSecondaire) {
+                <dt>Poste secondaire</dt><dd>{{ panelJoueur.posteSecondaire }}</dd>
+              }
+              @if (panelJoueur.dateArriveeClub) {
+                <dt>Arrivée au club</dt><dd>{{ panelJoueur.dateArriveeClub | date:'dd/MM/yyyy' }}</dd>
+              }
+            </dl>
+          }
+
+          <!-- GPS & Charge -->
+          @if (panelOnglet === 'gps' && panelResume) {
+            <div class="panel-kpis">
+              <div class="panel-kpi">
+                <span class="panel-kpi__val">{{ panelResume.score_fatigue | number:'1.0-0' }}<span style="font-size:14px">%</span></span>
+                <span class="panel-kpi__label">Fatigue</span>
+                <span class="badge" [class.badge--ok]="panelResume.niveau_fatigue === 'NOMINAL'"
+                  [class.badge--warn]="panelResume.niveau_fatigue === 'VIGILANCE'"
+                  [class.badge--bad]="panelResume.niveau_fatigue === 'ALERTE'">
+                  {{ panelResume.niveau_fatigue }}
+                </span>
+              </div>
+              <div class="panel-kpi">
+                <span class="panel-kpi__val">{{ panelResume.score_risque | number:'1.0-0' }}<span style="font-size:14px">%</span></span>
+                <span class="panel-kpi__label">Risque blessure</span>
+                <span class="badge" [class.badge--ok]="panelResume.niveau_risque === 'FAIBLE'"
+                  [class.badge--warn]="panelResume.niveau_risque === 'MODERE'"
+                  [class.badge--bad]="panelResume.niveau_risque === 'ELEVE'">
+                  {{ panelResume.niveau_risque }}
+                </span>
+              </div>
+            </div>
+            @let poids = poidsMap.get(panelJoueur.id);
+            @if (poids) {
+              <div class="panel-section-title">Poids</div>
+              <dl class="panel-dl">
+                @if (poids.dernierPoids) {
+                  <dt>Dernier relevé</dt><dd>{{ poids.dernierPoids }} kg</dd>
+                }
+                @if (poids.ecartKg != null) {
+                  <dt>Écart vs forme</dt>
+                  <dd [class.text-bad]="poids.ecartKg > 3" [class.text-warn]="poids.ecartKg > 1 && poids.ecartKg <= 3">
+                    {{ poids.ecartKg > 0 ? '+' : '' }}{{ poids.ecartKg | number:'1.1-1' }} kg
+                  </dd>
+                }
+              </dl>
+            }
+          }
+
+          <!-- Performances -->
+          @if (panelOnglet === 'performances') {
+            @if (panelStats) {
+              <div class="panel-kpis">
+                <div class="panel-kpi">
+                  <span class="panel-kpi__val">{{ panelStats.total }}</span>
+                  <span class="panel-kpi__label">Convocations</span>
+                </div>
+                <div class="panel-kpi">
+                  <span class="panel-kpi__val">{{ panelStats.titulaire }}</span>
+                  <span class="panel-kpi__label">Titulaire</span>
+                </div>
+                <div class="panel-kpi">
+                  <span class="panel-kpi__val">{{ panelStats.remplacant }}</span>
+                  <span class="panel-kpi__label">Remplaçant</span>
+                </div>
+                <div class="panel-kpi">
+                  <span class="panel-kpi__val">{{ panelStats.suspendu }}</span>
+                  <span class="panel-kpi__label">Suspendu</span>
+                </div>
+              </div>
+              <div class="panel-section-title">Détail des convocations</div>
+              <dl class="panel-dl">
+                <dt>Réserve</dt><dd>{{ panelStats.reserve }}</dd>
+                <dt>Repos</dt><dd>{{ panelStats.repos }}</dd>
+              </dl>
+            } @else {
+              <div class="empty-state" style="padding:24px">Aucune donnée de match disponible.</div>
+            }
+          }
+        }
+      </div>
+    </div>
+  }
 
 </div>

@@ -4,7 +4,7 @@ import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { MatSelectModule } from '@angular/material/select';
 import { CommonModule } from '@angular/common';
 import { Subscription } from 'rxjs';
-import { TypeSeance, SeanceCreate } from '../../../core/services/seance.service';
+import { TypeSeance, SeanceCreate } from '@core/services/seance.service';
 
 export interface DialogData {
   typeSeance: TypeSeance;

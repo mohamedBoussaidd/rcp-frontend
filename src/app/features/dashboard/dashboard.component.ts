@@ -1,21 +1,24 @@
 import { Component, OnInit } from '@angular/core';
-import { PredictionService, ResumeJoueur } from '../../core/services/prediction.service';
-import { PeseesService, PoidsFicheJoueur } from '../../core/services/pesees.service';
-import { JoueurService } from '../../core/services/joueur.service';
-import { DecimalPipe } from '@angular/common';
+import { PredictionService, ResumeJoueur } from '@core/services/prediction.service';
+import { PeseesService, PoidsFicheJoueur } from '@core/services/pesees.service';
+import { JoueurService, Joueur } from '@core/services/joueur.service';
+import { TechniqueService, JoueurCompoStats } from '@core/services/technique.service';
+import { DecimalPipe, DatePipe, SlicePipe } from '@angular/common';
+import { SeanceService, Seance } from '@core/services/seance.service';
+import { Router } from '@angular/router';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatDialog } from '@angular/material/dialog';
-import { JoueurFormDialogComponent } from '../joueur-form-dialog/joueur-form-dialog.component';
-import { JoueurSupprimerDialogComponent } from '../joueur-supprimer-dialog/joueur-supprimer-dialog.component';
+import { JoueurFormDialogComponent } from '../joueur/joueur-form-dialog/joueur-form-dialog.component';
+import { JoueurSupprimerDialogComponent } from '../joueur/joueur-supprimer-dialog/joueur-supprimer-dialog.component';
 import { ApexChart, ApexAxisChartSeries, ApexXAxis, ApexStroke, ApexDataLabels, ApexTitleSubtitle, ApexTheme, ApexGrid, ApexYAxis, ChartComponent } from 'ng-apexcharts';
 import { MatIcon } from '@angular/material/icon';
 import { FormsModule } from '@angular/forms';
 import { MatTable, MatColumnDef, MatHeaderCellDef, MatHeaderCell, MatCellDef, MatCell, MatHeaderRowDef, MatHeaderRow, MatRowDef, MatRow } from '@angular/material/table';
 import { MatPaginator, PageEvent } from '@angular/material/paginator';
 import { RouterLink } from '@angular/router';
-import { BadgeRisqueComponent } from '../../shared/components/badge-risque/badge-risque.component';
+import { BadgeRisqueComponent } from '@shared/components/badge-risque/badge-risque.component';
 import { MatProgressBar } from '@angular/material/progress-bar';
-import { AuthService } from '../../core/services/auth.service';
+import { AuthService } from '@core/services/auth.service';
 
 @Component({
   selector: 'app-dashboard',
@@ -23,7 +26,7 @@ import { AuthService } from '../../core/services/auth.service';
   standalone: true,
   styleUrl: './dashboard.component.scss',
   imports: [
-    MatIcon, ChartComponent, FormsModule, DecimalPipe, RouterLink,
+    MatIcon, ChartComponent, FormsModule, DecimalPipe, DatePipe, SlicePipe, RouterLink,
     BadgeRisqueComponent, MatProgressBar,
     MatTable, MatColumnDef, MatHeaderCellDef, MatHeaderCell,
     MatCellDef, MatCell, MatHeaderRowDef, MatHeaderRow, MatRowDef, MatRow,
@@ -36,6 +39,19 @@ export class DashboardComponent implements OnInit {
   poidsMap  = new Map<string, PoidsFicheJoueur>();
   statutMap = new Map<string, string>();
   loading   = true;
+
+  // ── Séances du jour ──
+  seancesAujourdhui: Seance[] = [];
+  readonly aujourdhui = new Date().toISOString().slice(0, 10);
+
+  // ── Panel joueur ──
+  panelJoueur: Joueur | null = null;
+  panelResume: ResumeJoueur | null = null;
+  panelStats: JoueurCompoStats | null = null;
+  panelOnglet: 'profil' | 'gps' | 'performances' = 'profil';
+  panelLoading = false;
+  statsCompo: JoueurCompoStats[] = [];
+  joueursComplets: Joueur[] = [];
 
   displayedColumns = ['joueur', 'poste', 'statut', 'risque', 'fatigue', 'poids'];
 
@@ -133,8 +149,11 @@ export class DashboardComponent implements OnInit {
     private predictionService: PredictionService,
     private peseesService: PeseesService,
     private joueurService: JoueurService,
+    private seanceService: SeanceService,
+    private techniqueService: TechniqueService,
     private snackBar: MatSnackBar,
     private dialog: MatDialog,
+    private router: Router,
     public auth: AuthService,
   ) {}
 
@@ -143,6 +162,56 @@ export class DashboardComponent implements OnInit {
     this.loadChargeGraph();
     this.loadPoids();
     this.loadStatuts();
+    this.loadSeancesAujourdhui();
+    this.loadJoueursComplets();
+    this.loadStatsCompo();
+  }
+
+  loadJoueursComplets(): void {
+    this.joueurService.getAll().subscribe({
+      next: data => { this.joueursComplets = data; },
+      error: () => {}
+    });
+  }
+
+  loadStatsCompo(): void {
+    this.techniqueService.statsCompo().subscribe({
+      next: data => { this.statsCompo = data; },
+      error: () => {}
+    });
+  }
+
+  ouvrirPanel(resume: ResumeJoueur): void {
+    this.panelLoading = true;
+    this.panelResume = resume;
+    this.panelOnglet = 'profil';
+    this.panelStats = this.statsCompo.find(s => s.joueurId === resume.joueur_id) ?? null;
+    const deja = this.joueursComplets.find(j => j.id === resume.joueur_id);
+    if (deja) { this.panelJoueur = deja; this.panelLoading = false; return; }
+    this.joueurService.getById(resume.joueur_id).subscribe({
+      next: j => { this.panelJoueur = j; this.panelLoading = false; },
+      error: () => { this.panelLoading = false; }
+    });
+  }
+
+  fermerPanel(): void { this.panelJoueur = null; this.panelResume = null; }
+
+  statutLibelle(s: string): string {
+    return ({ actif: 'Actif', blesse: 'Blessé', suspendu: 'Suspendu', prete: 'Prêté' } as Record<string,string>)[s] ?? s;
+  }
+
+  loadSeancesAujourdhui(): void {
+    this.seanceService.getSemaine(this.aujourdhui, this.aujourdhui).subscribe({
+      next: data => {
+        this.seancesAujourdhui = data.sort((a, b) =>
+          (a.heureDebut ?? '').localeCompare(b.heureDebut ?? ''));
+      },
+      error: () => {}
+    });
+  }
+
+  allerPresence(seance: Seance): void {
+    this.router.navigate(['/seances', seance.id], { queryParams: { onglet: 'presence' } });
   }
 
   loadStatuts(): void {

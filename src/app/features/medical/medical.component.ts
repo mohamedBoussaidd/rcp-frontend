@@ -5,13 +5,13 @@ import { map } from 'rxjs';
 import { FormsModule } from '@angular/forms';
 import { DatePipe } from '@angular/common';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { Blessure, BlessureRequest, BlessureService, StatutBlessure } from '../../core/services/blessure.service';
-import { BlessureNote, RtpEtape, StatutEtape, BlessureSuiviService } from '../../core/services/blessure-suivi.service';
-import { DocumentMedical, DocumentMedicalService } from '../../core/services/document-medical.service';
-import { Wellness, Rpe, SuiviSubjectifService } from '../../core/services/suivi-subjectif.service';
-import { PredictionService, ResumeJoueur } from '../../core/services/prediction.service';
-import { Joueur, JoueurService } from '../../core/services/joueur.service';
-import { AuthService } from '../../core/services/auth.service';
+import { Blessure, BlessureRequest, BlessureService, StatutBlessure } from '@core/services/blessure.service';
+import { BlessureNote, RtpEtape, StatutEtape, BlessureSuiviService } from '@core/services/blessure-suivi.service';
+import { DocumentMedical, DocumentMedicalService } from '@core/services/document-medical.service';
+import { Wellness, Rpe, SuiviSubjectifService } from '@core/services/suivi-subjectif.service';
+import { PredictionService, ResumeJoueur } from '@core/services/prediction.service';
+import { Joueur, JoueurService } from '@core/services/joueur.service';
+import { AuthService } from '@core/services/auth.service';
 
 @Component({
   selector: 'app-medical',

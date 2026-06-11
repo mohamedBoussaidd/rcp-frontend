@@ -2,11 +2,11 @@ import { Component, OnInit, computed, signal } from '@angular/core';
 import { DatePipe, DecimalPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatCard, MatCardContent, MatCardHeader, MatCardTitle } from '@angular/material/card';
-import { EspaceJoueurService, MaPesee, DocumentMedical, Wellness, Rpe, RtpEtape } from '../../core/services/espace-joueur.service';
-import { Joueur, GpsPoint } from '../../core/services/joueur.service';
-import { Blessure } from '../../core/services/blessure.service';
-import { Seance } from '../../core/services/seance.service';
-import { SeanceTechnique } from '../../core/services/technique.service';
+import { EspaceJoueurService, MaPesee, DocumentMedical, Wellness, Rpe, RtpEtape } from '@core/services/espace-joueur.service';
+import { Joueur, GpsPoint } from '@core/services/joueur.service';
+import { Blessure } from '@core/services/blessure.service';
+import { Seance } from '@core/services/seance.service';
+import { SeanceTechnique } from '@core/services/technique.service';
 
 /** Ligne unifiée pour la liste « Séances prévues » (physique + technique). */
 interface SeancePrevue {

@@ -1,9 +1,9 @@
 import { Component } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
-import { ThemeService } from './core/services/theme.service';
-import { NavSidebarComponent } from './shared/components/nav-sidebar/nav-sidebar.component';
-import { SidebarService } from './core/services/sidebar.service';
-import { AuthService } from './core/services/auth.service';
+import { ThemeService } from '@core/services/theme.service';
+import { NavSidebarComponent } from '@shared/components/nav-sidebar/nav-sidebar.component';
+import { SidebarService } from '@core/services/sidebar.service';
+import { AuthService } from '@core/services/auth.service';
 
 @Component({
     selector: 'app-root',

@@ -3,15 +3,15 @@ import { Router } from '@angular/router';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { CdkDragDrop } from '@angular/cdk/drag-drop';
-import { SeanceService, Seance, TypeSeance, SeanceCreate } from '../../core/services/seance.service';
-import { EspaceJoueurService } from '../../core/services/espace-joueur.service';
+import { SeanceService, Seance, TypeSeance, SeanceCreate } from '@core/services/seance.service';
+import { EspaceJoueurService } from '@core/services/espace-joueur.service';
 import { SeanceFormDialogComponent } from './seance-form-dialog/seance-form-dialog.component';
 import { MatTooltip } from '@angular/material/tooltip';
 import { DragDropModule } from '@angular/cdk/drag-drop';
 import { DatePipe, LowerCasePipe } from '@angular/common';
-import { AuthService } from '../../core/services/auth.service';
-import { TechniqueService, SeanceTechnique } from '../../core/services/technique.service';
-import { SeanceDetailComponent } from '../planning-technique/seance-detail/seance-detail.component';
+import { AuthService } from '@core/services/auth.service';
+import { TechniqueService, SeanceTechnique } from '@core/services/technique.service';
+import { SeanceDetailComponent } from '../tactical/seance-detail/seance-detail.component';
 
 export const COULEURS_TYPE: Record<string, string> = {
   MATCH:        '#ef4444',

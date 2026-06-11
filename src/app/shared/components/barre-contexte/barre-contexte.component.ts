@@ -1,9 +1,9 @@
 import { Component, OnInit } from '@angular/core';
 import { Router } from '@angular/router';
 import { MatIcon } from '@angular/material/icon';
-import { AuthService } from '../../../core/services/auth.service';
-import { ContexteService } from '../../../core/services/contexte.service';
-import { MonClubService } from '../../../core/services/mon-club.service';
+import { AuthService } from '@core/services/auth.service';
+import { ContexteService } from '@core/services/contexte.service';
+import { MonClubService } from '@core/services/mon-club.service';
 
 /**
  * Bandeau « contexte actif » (Club · Équipe) affiché dans le shell pour les rôles
