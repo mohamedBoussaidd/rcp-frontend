@@ -1,0 +1,232 @@
+<div class="screen vue-seance">
+
+  <!-- ── En-tête ── -->
+  <div class="vs-head">
+    <div>
+      <h1 class="vs-head__title">GPS — Vue séance</h1>
+      @if (rapport(); as r) {
+        <p class="vs-head__sub">
+          <span class="type-badge"
+            [style.background]="couleurType(r.type_code) + '20'"
+            [style.color]="couleurType(r.type_code)"
+            [style.border-color]="couleurType(r.type_code) + '50'">{{ r.type_libelle }}</span>
+          · {{ r.date | date:'dd MMM yyyy' }} · {{ r.nb_joueurs }} joueurs
+        </p>
+      }
+    </div>
+    <div class="vs-head__actions">
+      <button class="btn btn--ghost btn--sm" [disabled]="!rapport()" (click)="exporterCsv()">⤓ Export CSV</button>
+      <button class="btn btn--ghost btn--sm" disabled title="À venir">⇄ Comparer une séance</button>
+    </div>
+  </div>
+
+  <!-- ── Barre de filtres ── -->
+  <div class="vs-filters card card--tight">
+    <label class="vs-filters__group">
+      <span class="vs-filters__label">SÉANCE</span>
+      <select [ngModel]="seanceIdSel()" (ngModelChange)="choisirSeance($event)">
+        @for (s of seances(); track s.id) {
+          <option [value]="s.id">{{ s.typeSeance.libelle }} — {{ s.titre || (s.date | date:'dd/MM') }} ({{ s.date | date:'dd/MM' }})</option>
+        }
+      </select>
+    </label>
+
+    <div class="vs-filters__group">
+      <span class="vs-filters__label">POSTE</span>
+      <div class="vs-postes">
+        @for (g of ['TOUS', 'DF', 'ML', 'ATT']; track g) {
+          <button class="vs-poste" [class.is-active]="groupePoste() === g" (click)="setGroupe($any(g))">
+            {{ g === 'TOUS' ? 'Tous' : g }}
+          </button>
+        }
+      </div>
+    </div>
+
+    @if (rapport()) {
+      <span class="badge badge--ok vs-filters__count">● {{ lignesFiltrees().length }} unités</span>
+    }
+  </div>
+
+  @if (loading()) {
+    <div class="card card--padded"><div class="loading">Chargement de la séance…</div></div>
+  }
+  @if (error()) {
+    <div class="card card--padded"><div class="empty-state">Impossible de charger cette séance.</div></div>
+  }
+
+  @if (!loading() && !error() && rapport()) {
+
+    <!-- ── KPI ── -->
+    <div class="vs-kpis">
+      <div class="kpi">
+        <div class="kpi__label">Distance totale</div>
+        <div class="kpi__value">{{ kpis().distanceTotaleKm | number:'1.1-1' }} <span class="unit">km</span></div>
+        <div class="kpi__sub">moyenne / joueur {{ kpis().distanceMoyM | number:'1.0-0' }} m</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi__label">Vitesse max</div>
+        <div class="kpi__value">{{ kpis().vitesseMax | number:'1.1-1' }} <span class="unit">km/h</span></div>
+        <div class="kpi__sub">{{ kpis().vitesseMaxJoueur || '—' }}</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi__label">Sprints (&gt; 24 km/h)</div>
+        <div class="kpi__value">{{ kpis().sprintsTotal }}</div>
+        <div class="kpi__sub">moyenne {{ kpis().sprintsMoy | number:'1.1-1' }} / joueur</div>
+      </div>
+      @if (chargeDispo()) {
+        <div class="kpi">
+          <div class="kpi__label">Charge moyenne</div>
+          <div class="kpi__value">{{ kpis().chargeMoy | number:'1.0-0' }} <span class="unit">UA</span></div>
+          <div class="kpi__sub">d'après le RPE saisi</div>
+        </div>
+      }
+    </div>
+
+    <!-- ── Objectif d'équipe (si défini) ── -->
+    @if (rapport()!.objectif || rapport()!.objectif_distance_m) {
+      <div class="card card--padded objectif-equipe">
+        <span class="objectif-equipe__label">🎯 Objectif d'équipe</span>
+        @if (rapport()!.objectif) { <span class="objectif-equipe__texte">{{ rapport()!.objectif }}</span> }
+        <span class="objectif-equipe__chiffres">
+          @if (rapport()!.objectif_distance_m) { <span>{{ (rapport()!.objectif_distance_m! / 1000) | number:'1.2-2' }} km</span> }
+          @if (rapport()!.objectif_distance_haute_intensite_m) { <span>· dont HI {{ (rapport()!.objectif_distance_haute_intensite_m! / 1000) | number:'1.2-2' }} km</span> }
+          @if (rapport()!.objectif_intensite) { <span>· int. {{ rapport()!.objectif_intensite }}/5</span> }
+          @if (rapport()!.duree_reference_minutes) { <span class="muted">· réf. {{ rapport()!.duree_reference_minutes }} min</span> }
+        </span>
+      </div>
+    }
+
+    <div class="vs-grid">
+
+      <!-- ── Colonne gauche : performances joueurs ── -->
+      <div class="card vs-table-card">
+        <div class="card__header">
+          <h3 class="card__title">Performances joueurs</h3>
+          <div class="vs-legende">
+            <span class="badge badge--bad">Sous norme</span>
+            <span class="badge badge--ok">Dans norme</span>
+            <span class="badge badge--info">Sur norme</span>
+            <span class="muted">· clic = détail</span>
+          </div>
+        </div>
+
+        <div class="vs-table">
+          <div class="vs-row vs-row--head">
+            <span class="c-joueur">Joueur</span>
+            <span class="c-poste">Poste</span>
+            <span class="c-num">Distance</span>
+            <span class="c-num">V max</span>
+            <span class="c-num">Sprints</span>
+            @if (chargeDispo()) { <span class="c-num">Charge</span> }
+            <span class="c-zones">Zones de vitesse</span>
+            <span class="c-statut">Statut</span>
+          </div>
+
+          @for (l of lignesFiltrees(); track l.joueur_id) {
+            <div class="vs-row vs-row--data" [class]="statutClass(l.statut)" (click)="toggle(l.joueur_id)">
+              <span class="c-joueur"><strong>{{ l.prenom[0] }}. {{ l.nom }}</strong></span>
+              <span class="c-poste"><span class="badge badge--neutral">{{ l.poste || '—' }}</span></span>
+              <span class="c-num">{{ l.distance_reelle ? (l.distance_reelle | number:'1.0-0') : '—' }}</span>
+              <span class="c-num">{{ l.vitesse_max ? (l.vitesse_max | number:'1.1-1') : '—' }}</span>
+              <span class="c-num">{{ l.nb_sprints ?? '—' }}</span>
+              @if (chargeDispo()) { <span class="c-num">{{ l.charge_ua ?? '—' }}</span> }
+              <span class="c-zones">
+                <span class="zbar" [title]="'Total ' + (l.zones_total_m | number:'1.0-0') + ' m'">
+                  @for (z of ZONES; track z.key; let i = $index) {
+                    @if (l.zones_total_m > 0) {
+                      <span class="zbar__seg" [style.width.%]="(l.zones[i] / l.zones_total_m) * 100" [style.background]="z.couleur"></span>
+                    }
+                  }
+                </span>
+              </span>
+              <span class="c-statut">
+                <span class="badge" [class]="statutBadgeClass(l.statut)">{{ statutLibelle(l.statut) }}</span>
+                <span class="chevron" [class.open]="estDeplie(l.joueur_id)">⌄</span>
+              </span>
+            </div>
+
+            <!-- Détail dépliable : tout l'étage analytique de l'ancien seance-detail -->
+            @if (estDeplie(l.joueur_id)) {
+              <div class="vs-detail">
+                <div class="vs-detail__grid">
+                  <div><span class="k">Durée</span><span class="v">{{ l.duree_minutes ?? '—' }} min</span></div>
+                  <div><span class="k">Distance réelle</span><span class="v">{{ l.distance_reelle ? ((l.distance_reelle / 1000) | number:'1.2-2') + ' km' : '—' }}</span></div>
+                  <div><span class="k">Ratio réel</span><span class="v">{{ l.ratio_reel ? (l.ratio_reel | number:'1.0-0') + ' m/min' : '—' }}</span></div>
+                  <div><span class="k">Dist. attendue</span><span class="v">{{ l.distance_attendue ? ((l.distance_attendue / 1000) | number:'1.2-2') + ' km' : '—' }}</span></div>
+                  <div><span class="k">Objectif séance</span><span class="v">
+                    @if (l.objectif_seance_m) {
+                      <span [class.delta-pos]="l.atteint_objectif_seance" [class.delta-neg]="l.atteint_objectif_seance === false">
+                        {{ l.atteint_objectif_seance ? '✓' : (l.atteint_objectif_seance === false ? '✗' : '') }}
+                        {{ (l.objectif_seance_m / 1000) | number:'1.2-2' }} km
+                      </span>
+                    } @else { — }
+                  </span></div>
+                  <div><span class="k">Écart vs historique</span><span class="v">
+                    @if (l.delta_m !== null && l.delta_pct !== null) {
+                      <span [class]="deltaClass(l.delta_m)">
+                        {{ l.delta_m > 0 ? '+' : '' }}{{ l.delta_m | number:'1.0-0' }} m ({{ l.delta_pct > 0 ? '+' : '' }}{{ l.delta_pct | number:'1.1-1' }}%)
+                      </span>
+                    } @else { — }
+                  </span></div>
+                  <div><span class="k">Accélérations</span><span class="v">{{ l.nb_accelerations ?? '—' }}</span></div>
+                  <div><span class="k">Freinages</span><span class="v">{{ l.nb_freinages ?? '—' }}</span></div>
+                  @if (estMatch() && l.objectif_m !== null && l.ratio_objectif !== null) {
+                    <div class="vs-detail__wide" [class.delta-pos]="l.atteint_objectif" [class.delta-neg]="!l.atteint_objectif">
+                      <span class="k">Obj. poste</span>
+                      <span class="v">
+                        {{ l.atteint_objectif ? '✓' : '✗' }} {{ (l.objectif_m / 1000) | number:'1.2-2' }} km ({{ l.ratio_objectif }} m/min)
+                        @if (l.correction_poids_pct) {
+                          <span class="muted">· ⚖️ corrigé −{{ l.correction_poids_pct }}% (surpoids +{{ l.ecart_poids_kg }} kg) · cible poids de forme {{ ((l.ratio_objectif_original! * l.duree_minutes!) / 1000) | number:'1.2-2' }} km</span>
+                        }
+                      </span>
+                    </div>
+                  }
+                </div>
+                <!-- Détail des zones de vitesse (km par bande) -->
+                <div class="vs-detail__zones">
+                  @for (z of ZONES; track z.key; let i = $index) {
+                    <span class="zchip"><i [style.background]="z.couleur"></i>{{ z.court }} {{ (l.zones[i] / 1000) | number:'1.2-2' }} km</span>
+                  }
+                </div>
+              </div>
+            }
+          }
+        </div>
+      </div>
+
+      <!-- ── Colonne droite : heatmap (placeholder) + donut zones ── -->
+      <div class="vs-side">
+        <div class="card vs-heatmap">
+          <div class="card__header"><h3 class="card__title">Heatmap d'occupation</h3></div>
+          <div class="vs-heatmap__ph">
+            <span class="vs-heatmap__icon">🗺️</span>
+            <p>À venir</p>
+            <small>Nécessite l'import de positions GPS (x/y) — non disponibles aujourd'hui.</small>
+          </div>
+        </div>
+
+        <div class="card vs-zones">
+          <div class="card__header"><h3 class="card__title">Répartition zones de vitesse</h3></div>
+          <div class="vs-zones__body">
+            <div class="vs-donut" [style.background]="donutGradient()">
+              <div class="vs-donut__hole">
+                <span class="vs-donut__val">{{ (kpis().distanceTotaleKm) | number:'1.1-1' }}</span>
+                <span class="vs-donut__unit">km</span>
+              </div>
+            </div>
+            <ul class="vs-zones__legend">
+              @for (z of zonesGlobales(); track z.key) {
+                <li>
+                  <i [style.background]="z.couleur"></i>
+                  <span class="vs-zones__lbl">{{ z.label }}</span>
+                  <span class="vs-zones__km">{{ z.km | number:'1.1-1' }} km</span>
+                </li>
+              }
+            </ul>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  }
+</div>

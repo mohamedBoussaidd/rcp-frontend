@@ -60,13 +60,12 @@ const ALL_MODULES: NavModule[] = [
   },
   {
     key: 'gps', label: 'GPS', icon: 'fitness_center',
-    link: '/seances', matches: ['/seances', '/pesees', '/import', '/methodologie', '/parametres'],
+    link: '/vue-seance', matches: ['/vue-seance', '/pesees', '/import', '/methodologie', '/parametres'],
     roles: ['SUPER_ADMIN', 'PRESIDENT', 'ENTRAINEUR', 'PREPARATEUR', 'MEDICAL'],
     subnav: [
-      { label: 'Liste des séances', link: '/seances' },
-      { label: 'Vue session',       link: '/seances', section: 'vue' },
-      { label: 'Comparaison',       link: '/seances', section: 'comparaison' },
-      { label: 'Historique joueur', link: '/seances', section: 'historique' },
+      { label: 'Vue séance',        link: '/vue-seance' },
+      { label: 'Comparaison',       link: '/vue-seance', section: 'comparaison', disabled: true },
+      { label: 'Historique joueur', link: '/vue-seance', section: 'historique', disabled: true },
       { label: 'Pesées',            link: '/pesees',       roles: ['SUPER_ADMIN', 'PRESIDENT', 'PREPARATEUR', 'MEDICAL'] },
       { label: 'Paramètres',        link: '/parametres',   roles: ['SUPER_ADMIN', 'PRESIDENT'] },
       { label: 'Import Excel',      link: '/import',       roles: ['SUPER_ADMIN', 'PREPARATEUR'] },

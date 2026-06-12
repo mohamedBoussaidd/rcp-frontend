@@ -295,14 +295,14 @@ export class CalendrierComponent implements OnInit {
     });
   }
 
-  /** Détail séance : staff → page complète (contenu + GPS) ; joueur → dialog contenu seul. */
+  /** Détail séance : contenu (schéma + exercices) pour tous. L'analyse GPS par joueur
+   *  vit dans la Vue séance (menu GPS), pas ici. */
   ouvrirDetail(seance: Seance): void {
-    if (!this.lectureSeule) {
-      this.router.navigate(['/seances', seance.id]);
-      return;
-    }
     const titre = seance.titre || seance.typeSeance?.libelle || 'Séance';
-    this.espaceJoueur.getContenuSeance(seance.id).subscribe({
+    const contenu$ = this.lectureSeule
+      ? this.espaceJoueur.getContenuSeance(seance.id)
+      : this.seanceService.getContenu(seance.id);
+    contenu$.subscribe({
       next: contenu => this.ouvrirContenuDialog(titre, seance.date, contenu),
       error: () => this.ouvrirContenuDialog(titre, seance.date, null),
     });

@@ -1,0 +1,134 @@
+.vue-seance { display: flex; flex-direction: column; gap: 16px; }
+
+/* ── En-tête ── */
+.vs-head {
+  display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap;
+  &__title { font-size: 20px; font-weight: 700; margin: 0; color: var(--text); }
+  &__sub { margin: 4px 0 0; font-size: 13px; color: var(--text-3); display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+  &__actions { display: flex; gap: 8px; }
+}
+.type-badge {
+  display: inline-block; padding: 2px 10px; border-radius: 999px;
+  font-size: 12px; font-weight: 600; border: 1px solid;
+}
+
+/* ── Filtres ── */
+.vs-filters {
+  display: flex; align-items: center; gap: 20px; flex-wrap: wrap;
+  &__group { display: flex; align-items: center; gap: 8px; }
+  &__label { font-size: 11px; font-weight: 700; letter-spacing: .04em; color: var(--text-3); }
+  &__count { margin-left: auto; }
+  select {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
+    padding: 6px 10px; font-size: 13px; color: var(--text); min-width: 220px;
+  }
+}
+.vs-postes { display: inline-flex; gap: 4px; background: var(--border); padding: 3px; border-radius: 8px; }
+.vs-poste {
+  border: none; background: transparent; padding: 5px 12px; border-radius: 6px;
+  font-size: 12px; font-weight: 600; color: var(--text-3); cursor: pointer;
+  &.is-active { background: var(--surface); color: var(--text); box-shadow: var(--shadow-xs); }
+}
+
+/* ── KPI ── */
+.vs-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; }
+
+/* ── Objectif équipe ── */
+.objectif-equipe {
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  &__label { font-weight: 700; font-size: 13px; }
+  &__texte { font-size: 13px; color: var(--text); }
+  &__chiffres { display: flex; gap: 6px; flex-wrap: wrap; font-size: 13px; font-weight: 600; color: var(--text); }
+  .muted { color: var(--text-3); font-weight: 500; }
+}
+
+/* ── Grille principale ── */
+.vs-grid { display: grid; grid-template-columns: 1fr 320px; gap: 16px; align-items: start; }
+@media (max-width: 1100px) { .vs-grid { grid-template-columns: 1fr; } }
+
+.vs-legende { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+
+/* ── Table joueurs (grille flex, lignes dépliables) ── */
+.vs-table { display: flex; flex-direction: column; }
+.vs-row {
+  display: grid;
+  grid-template-columns: 1.6fr .7fr .9fr .7fr .7fr 1.4fr 1.2fr;
+  align-items: center; gap: 8px; padding: 9px 16px; font-size: 13px;
+  &--head {
+    font-size: 11px; font-weight: 700; letter-spacing: .03em; text-transform: uppercase;
+    color: var(--text-3); border-bottom: 1px solid var(--border);
+  }
+  &--data {
+    border-bottom: 1px solid var(--border); cursor: pointer;
+    &:hover { background: color-mix(in srgb, var(--text) 4%, transparent); }
+  }
+  .c-num { text-align: right; font-variant-numeric: tabular-nums; }
+  .c-statut { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
+}
+/* liseré de statut à gauche */
+.vs-row--data.statut-sous  { box-shadow: inset 3px 0 0 #ef4444; }
+.vs-row--data.statut-sur   { box-shadow: inset 3px 0 0 #6366f1; }
+.vs-row--data.statut-dans  { box-shadow: inset 3px 0 0 #22c55e; }
+.vs-row--data.statut-sans  { box-shadow: inset 3px 0 0 #94a3b8; }
+
+.chevron { transition: transform .15s; color: var(--text-3); &.open { transform: rotate(180deg); } }
+
+/* barre de zones empilée */
+.zbar { display: flex; height: 9px; width: 100%; border-radius: 5px; overflow: hidden; background: var(--border); }
+.zbar__seg { height: 100%; }
+
+/* ── Détail dépliable ── */
+.vs-detail {
+  padding: 12px 16px 16px; border-bottom: 1px solid var(--border);
+  background: color-mix(in srgb, var(--text) 3%, transparent);
+  &__grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px 18px;
+    div { display: flex; flex-direction: column; gap: 1px; }
+    .k { font-size: 11px; color: var(--text-3); font-weight: 600; }
+    .v { font-size: 13px; color: var(--text); font-weight: 600; font-variant-numeric: tabular-nums; }
+  }
+  &__wide { grid-column: 1 / -1; }
+  &__zones { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 12px; padding-top: 12px; border-top: 1px dashed var(--border); }
+}
+.zchip {
+  display: inline-flex; align-items: center; gap: 5px; font-size: 12px; color: var(--text-3); font-weight: 600;
+  i { width: 9px; height: 9px; border-radius: 2px; display: inline-block; }
+}
+
+.delta-pos { color: #16a34a; }
+.delta-neg { color: #dc2626; }
+.muted { color: var(--text-3); }
+
+/* ── Colonne droite ── */
+.vs-side { display: flex; flex-direction: column; gap: 16px; }
+
+.vs-heatmap__ph {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  text-align: center; gap: 4px; padding: 32px 20px; color: var(--text-3);
+  background: repeating-linear-gradient(45deg, transparent, transparent 10px, color-mix(in srgb, var(--text) 3%, transparent) 10px, color-mix(in srgb, var(--text) 3%, transparent) 20px);
+  border-radius: 0 0 var(--r-xl) var(--r-xl);
+  p { margin: 0; font-weight: 700; color: var(--text); }
+  small { font-size: 11px; max-width: 240px; }
+}
+.vs-heatmap__icon { font-size: 28px; opacity: .6; }
+
+.vs-zones__body { padding: 18px; display: flex; flex-direction: column; align-items: center; gap: 16px; }
+.vs-donut {
+  width: 150px; height: 150px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center; flex: none;
+  &__hole {
+    width: 96px; height: 96px; border-radius: 50%; background: var(--surface);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+  }
+  &__val { font-size: 20px; font-weight: 700; color: var(--text); }
+  &__unit { font-size: 11px; color: var(--text-3); }
+}
+.vs-zones__legend {
+  list-style: none; margin: 0; padding: 0; width: 100%; display: flex; flex-direction: column; gap: 6px;
+  li { display: flex; align-items: center; gap: 8px; font-size: 12px; }
+  i { width: 11px; height: 11px; border-radius: 3px; flex: none; }
+  .vs-zones__lbl { color: var(--text); }
+  .vs-zones__km { margin-left: auto; font-weight: 700; color: var(--text); font-variant-numeric: tabular-nums; }
+}
+
+.loading, .empty-state { text-align: center; color: var(--text-3); padding: 24px; }
