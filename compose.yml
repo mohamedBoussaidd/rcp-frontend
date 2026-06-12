@@ -1,0 +1,13 @@
+# Frontend Angular (nginx statique) — déployé dans /opt/applications/sportgestions/frontend/
+services:
+  frontend:
+    image: mohamedd69/sportgestions-frontend:latest
+    container_name: sportgestions-frontend
+    restart: always
+    networks:
+      - sportgestions-network
+
+networks:
+  sportgestions-network:
+    external: true
+    name: sportgestions-network

@@ -5,7 +5,7 @@ import { Observable } from 'rxjs';
 @Injectable({ providedIn: 'root' })
 export class ConfigurationService {
   private http = inject(HttpClient);
-  private base = 'http://localhost:8080/api/configuration';
+  private base = '/api/configuration';
 
   getAll(): Observable<Record<string, number>> {
     return this.http.get<Record<string, number>>(this.base);
