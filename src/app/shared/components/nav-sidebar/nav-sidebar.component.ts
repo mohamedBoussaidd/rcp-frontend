@@ -67,7 +67,7 @@ const ALL_MODULES: NavModule[] = [
       { label: 'Comparaison',       link: '/vue-seance', section: 'comparaison', disabled: true },
       { label: 'Historique joueur', link: '/vue-seance', section: 'historique', disabled: true },
       { label: 'Pesées',            link: '/pesees',       roles: ['SUPER_ADMIN', 'PRESIDENT', 'PREPARATEUR', 'MEDICAL'] },
-      { label: 'Paramètres',        link: '/parametres',   roles: ['SUPER_ADMIN', 'PRESIDENT'] },
+      { label: 'Paramètres',        link: '/parametres',   roles: ['SUPER_ADMIN', 'PRESIDENT', 'PREPARATEUR'] },
       { label: 'Import Excel',      link: '/import',       roles: ['SUPER_ADMIN', 'PREPARATEUR'] },
       { label: 'Méthodologie',      link: '/methodologie', roles: ['SUPER_ADMIN', 'PRESIDENT', 'ENTRAINEUR', 'PREPARATEUR', 'MEDICAL'] },
     ],

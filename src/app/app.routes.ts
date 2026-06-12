@@ -42,7 +42,7 @@ export const routes: Routes = [
     loadComponent: () => import('./features/calendrier/calendrier.component').then(m => m.CalendrierComponent) },
   { path: 'pesees', canActivate: [authGuard, roleGuard, contexteGuard], data: { roles: STAFF_PHYSIQUE },
     loadComponent: () => import('./features/performance/pesees/pesees.component').then(m => m.PeseesComponent) },
-  { path: 'parametres', canActivate: [authGuard, roleGuard, contexteGuard], data: { roles: ['SUPER_ADMIN', 'PRESIDENT'] },
+  { path: 'parametres', canActivate: [authGuard, roleGuard, contexteGuard], data: { roles: ['SUPER_ADMIN', 'PRESIDENT', 'PREPARATEUR'] },
     loadComponent: () => import('./features/admin/parametres/parametres.component').then(m => m.ParametresComponent) },
   { path: 'methodologie', canActivate: [authGuard, roleGuard, contexteGuard], data: { roles: STAFF },
     loadComponent: () => import('./features/admin/methodologie/methodologie.component').then(m => m.MethodologieComponent) },
