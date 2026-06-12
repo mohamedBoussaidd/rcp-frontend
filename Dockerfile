@@ -3,7 +3,9 @@ FROM node:20-alpine AS build
 WORKDIR /app
 
 COPY package*.json ./
-RUN npm ci
+# ng-apexcharts déclare un peer Angular 18 alors que le projet est en Angular 19
+# → on relâche la résolution des peer-deps (comme en local)
+RUN npm ci --legacy-peer-deps
 
 COPY . .
 # defaultConfiguration = production (cf. angular.json)
