@@ -1,8 +1,7 @@
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { DatePipe, DecimalPipe } from '@angular/common';
-import { FormsModule } from '@angular/forms';
 import { MatCard, MatCardContent, MatCardHeader, MatCardTitle } from '@angular/material/card';
-import { EspaceJoueurService, MaPesee, DocumentMedical, Wellness, Rpe, RtpEtape } from '@core/services/espace-joueur.service';
+import { EspaceJoueurService, MaPesee, RtpEtape } from '@core/services/espace-joueur.service';
 import { Joueur, GpsPoint } from '@core/services/joueur.service';
 import { Blessure } from '@core/services/blessure.service';
 import { Seance } from '@core/services/seance.service';
@@ -17,20 +16,12 @@ interface SeancePrevue {
   meta: string;
 }
 
-/** Séance passée que le joueur peut noter (RPE pas encore saisi). */
-interface SeanceANoter {
-  id: string;
-  date: string;
-  titre: string;
-  duree?: number;
-}
-
 @Component({
   selector: 'app-espace-joueur',
   standalone: true,
   templateUrl: './espace-joueur.component.html',
   styleUrl: './espace-joueur.component.scss',
-  imports: [DatePipe, DecimalPipe, FormsModule, MatCard, MatCardContent, MatCardHeader, MatCardTitle],
+  imports: [DatePipe, DecimalPipe, MatCard, MatCardContent, MatCardHeader, MatCardTitle],
 })
 export class EspaceJoueurComponent implements OnInit {
 
@@ -40,88 +31,8 @@ export class EspaceJoueurComponent implements OnInit {
   rtpEtapes = signal<RtpEtape[]>([]);
   gps = signal<GpsPoint[]>([]);
   seances = signal<Seance[]>([]);
-  documents = signal<DocumentMedical[]>([]);
-  wellness = signal<Wellness[]>([]);
-  rpe = signal<Rpe[]>([]);
   loading = signal(true);
   nonLie = signal(false);
-
-  // ── Wellness (ressenti quotidien, indice de Hooper) ──
-  readonly WELLNESS_ITEMS: { key: 'sommeil' | 'fatigue' | 'douleur' | 'stress' | 'humeur'; label: string; bas: string; haut: string }[] = [
-    { key: 'sommeil', label: 'Sommeil',     bas: 'très mauvais', haut: 'excellent' },
-    { key: 'fatigue', label: 'Fatigue',     bas: 'épuisé',       haut: 'en forme' },
-    { key: 'douleur', label: 'Courbatures', bas: 'intenses',     haut: 'aucune' },
-    { key: 'stress',  label: 'Stress',      bas: 'très stressé', haut: 'détendu' },
-    { key: 'humeur',  label: 'Humeur',      bas: 'très basse',   haut: 'excellente' },
-  ];
-  wellnessFormOuvert = signal(false);
-  wForm = signal<{ sommeil: number; fatigue: number; douleur: number; stress: number; humeur: number; commentaire: string }>(
-    { sommeil: 3, fatigue: 3, douleur: 3, stress: 3, humeur: 3, commentaire: '' });
-  wEnvoi = signal(false);
-
-  // ── Signalement de gêne (intégré au wellness) ──
-  readonly ZONES_GENE = [
-    'ischio_jambiers', 'quadriceps', 'mollet', 'cheville', 'genou',
-    'hanche', 'dos', 'epaule', 'adducteurs', 'autre',
-  ];
-  readonly MOMENTS_GENE: { val: string; label: string }[] = [
-    { val: 'EFFORT', label: "À l'effort" },
-    { val: 'APRES',  label: 'Juste après' },
-    { val: 'REPOS',  label: 'Au repos' },
-  ];
-  geneActive = signal(false);
-  gForm = signal<{ zone: string; intensite: number; moment: string }>(
-    { zone: 'cheville', intensite: 2, moment: 'EFFORT' });
-
-  readonly wellnessAujourdhui = computed(() => {
-    const auj = new Date().toISOString().slice(0, 10);
-    return this.wellness().find(w => w.date === auj) ?? null;
-  });
-
-  // ── RPE de séance ──
-  /** seanceId déjà notés. */
-  private readonly rpeNotes = computed(() => new Set(this.rpe().map(r => r.seanceId)));
-
-  /** Séances passées (≤ 14 j) non encore notées, à proposer au joueur. */
-  readonly seancesANoter = computed<SeanceANoter[]>(() => {
-    const auj = new Date().toISOString().slice(0, 10);
-    const limite = new Date(Date.now() - 14 * 86400000).toISOString().slice(0, 10);
-    const notes = this.rpeNotes();
-
-    return this.seances()
-      .filter(s => s.statut !== 'ANNULEE' && s.date <= auj && s.date >= limite && !notes.has(s.id))
-      .map(s => ({ id: s.id, date: s.date, titre: s.titre || s.typeSeance?.libelle || 'Séance', duree: s.dureeMinutes }))
-      .sort((a, b) => b.date.localeCompare(a.date));
-  });
-
-  /** Valeur RPE sélectionnée (avant validation) par séance. */
-  rpeBrouillon = signal<Record<string, number>>({});
-  readonly NOTES_RPE = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
-
-  // ── Dépôt de document médical (formulaire inline) ──
-  readonly CATEGORIES = [
-    { val: 'certificat', label: 'Certificat' },
-    { val: 'ordonnance', label: 'Ordonnance' },
-    { val: 'imagerie', label: 'Imagerie' },
-    { val: 'compte_rendu', label: 'Compte rendu' },
-    { val: 'autre', label: 'Autre' },
-  ];
-  readonly ROLES_PARTAGE = [
-    { val: 'ENTRAINEUR', label: 'Entraîneur' },
-    { val: 'PREPARATEUR', label: 'Préparateur' },
-    { val: 'PRESIDENT', label: 'Président' },
-  ];
-
-  depotOuvert = signal(false);
-  fichierSel = signal<File | null>(null);
-  categorieSel = signal('certificat');
-  descriptionSel = signal('');
-  partageSel = signal<string[]>([]);
-  envoiEnCours = signal(false);
-  erreurDepot = signal<string | null>(null);
-
-  /** id du document dont on édite le partage (null = aucun). */
-  partageEnEdition = signal<string | null>(null);
 
   // ── Parcours de reprise (lecture seule) ──
   readonly PARCOURS: { statut: string; label: string }[] = [
@@ -222,173 +133,7 @@ export class EspaceJoueurComponent implements OnInit {
     });
     this.service.getGps().subscribe({ next: d => this.gps.set(d), error: () => {} });
     this.service.getSeances().subscribe({ next: d => this.seances.set(d), error: () => {} });
-    this.service.getWellness().subscribe({ next: d => this.wellness.set(d), error: () => {} });
-    this.service.getRpe().subscribe({ next: d => this.rpe.set(d), error: () => {} });
-    this.chargerDocuments();
   }
 
   joli(v?: string): string { return v ? v.replace(/_/g, ' ') : '—'; }
-
-  // ──────────────────────────── Wellness ────────────────────────────
-
-  ouvrirWellness(): void {
-    const w = this.wellnessAujourdhui();
-    this.wForm.set(w
-      ? { sommeil: w.sommeil, fatigue: w.fatigue, douleur: w.douleur, stress: w.stress, humeur: w.humeur, commentaire: w.commentaire ?? '' }
-      : { sommeil: 3, fatigue: 3, douleur: 3, stress: 3, humeur: 3, commentaire: '' });
-    this.geneActive.set(!!w?.geneZone);
-    this.gForm.set(w?.geneZone
-      ? { zone: w.geneZone, intensite: w.geneIntensite ?? 2, moment: w.geneMoment ?? 'EFFORT' }
-      : { zone: 'cheville', intensite: 2, moment: 'EFFORT' });
-    this.wellnessFormOuvert.set(true);
-  }
-  annulerWellness(): void { this.wellnessFormOuvert.set(false); }
-
-  setWItem(key: 'sommeil' | 'fatigue' | 'douleur' | 'stress' | 'humeur', val: number): void {
-    this.wForm.update(f => ({ ...f, [key]: val }));
-  }
-  setWCommentaire(val: string): void {
-    this.wForm.update(f => ({ ...f, commentaire: val }));
-  }
-  setGItem(key: 'zone' | 'intensite' | 'moment', val: string | number): void {
-    this.gForm.update(f => ({ ...f, [key]: val }));
-  }
-
-  enregistrerWellness(): void {
-    this.wEnvoi.set(true);
-    const f = this.wForm();
-    const g = this.geneActive() ? this.gForm() : null;
-    this.service.saisirWellness({
-      ...f,
-      geneZone: g ? g.zone : null,
-      geneIntensite: g ? g.intensite : null,
-      geneMoment: g ? g.moment : null,
-    }).subscribe({
-      next: w => {
-        // remplace la saisie du jour si elle existe, sinon l'ajoute en tête
-        this.wellness.update(list => [w, ...list.filter(x => x.date !== w.date)]);
-        this.wEnvoi.set(false);
-        this.wellnessFormOuvert.set(false);
-      },
-      error: () => this.wEnvoi.set(false),
-    });
-  }
-
-  // ──────────────────────────── RPE ────────────────────────────
-
-  setRpeBrouillon(seanceId: string, val: number): void {
-    this.rpeBrouillon.update(m => ({ ...m, [seanceId]: val }));
-  }
-
-  noterSeance(s: SeanceANoter): void {
-    const note = this.rpeBrouillon()[s.id];
-    if (!note) return;
-    this.service.saisirRpe({ seanceId: s.id, seanceType: 'PHYSIQUE', rpe: note, dureeMinutes: s.duree }).subscribe({
-      next: r => {
-        this.rpe.update(list => [r, ...list]);
-        this.rpeBrouillon.update(m => { const c = { ...m }; delete c[s.id]; return c; });
-      },
-      error: () => {},
-    });
-  }
-
-  // ──────────────────────────── Documents médicaux ────────────────────────────
-
-  private chargerDocuments(): void {
-    this.service.getDocumentsMedicaux().subscribe({ next: d => this.documents.set(d), error: () => {} });
-  }
-
-  categorieLabel(val: string): string {
-    return this.CATEGORIES.find(c => c.val === val)?.label ?? val;
-  }
-  roleLabel(val: string): string {
-    return this.ROLES_PARTAGE.find(r => r.val === val)?.label ?? val;
-  }
-  tailleLisible(octets: number): string {
-    if (octets < 1024) return octets + ' o';
-    if (octets < 1024 * 1024) return Math.round(octets / 1024) + ' Ko';
-    return (Math.round(octets / (1024 * 1024) * 10) / 10) + ' Mo';
-  }
-
-  ouvrirDepot(): void {
-    this.erreurDepot.set(null);
-    this.depotOuvert.set(true);
-  }
-  annulerDepot(): void {
-    this.depotOuvert.set(false);
-    this.fichierSel.set(null);
-    this.categorieSel.set('certificat');
-    this.descriptionSel.set('');
-    this.partageSel.set([]);
-    this.erreurDepot.set(null);
-  }
-
-  onFichier(event: Event): void {
-    const input = event.target as HTMLInputElement;
-    this.fichierSel.set(input.files?.[0] ?? null);
-  }
-
-  togglePartageDepot(role: string): void {
-    this.partageSel.update(roles =>
-      roles.includes(role) ? roles.filter(r => r !== role) : [...roles, role]);
-  }
-
-  deposer(): void {
-    const fichier = this.fichierSel();
-    if (!fichier) { this.erreurDepot.set('Choisissez un fichier.'); return; }
-    if (fichier.size > 10 * 1024 * 1024) { this.erreurDepot.set('Fichier trop volumineux (max 10 Mo).'); return; }
-    this.envoiEnCours.set(true);
-    this.erreurDepot.set(null);
-    this.service.deposerDocumentMedical(fichier, this.categorieSel(), this.descriptionSel(), this.partageSel())
-      .subscribe({
-        next: doc => {
-          this.documents.update(list => [doc, ...list]);
-          this.envoiEnCours.set(false);
-          this.annulerDepot();
-        },
-        error: (err) => {
-          this.envoiEnCours.set(false);
-          this.erreurDepot.set(
-            err.status === 415 ? 'Type non autorisé (PDF, JPG, PNG seulement).'
-            : err.status === 413 ? 'Fichier trop volumineux (max 10 Mo).'
-            : 'Échec du dépôt. Réessayez.');
-        },
-      });
-  }
-
-  telecharger(doc: DocumentMedical): void {
-    this.service.telechargerDocumentMedical(doc.id).subscribe({
-      next: blob => {
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = doc.nomOriginal;
-        a.click();
-        URL.revokeObjectURL(url);
-      },
-      error: () => {},
-    });
-  }
-
-  supprimer(doc: DocumentMedical): void {
-    if (!confirm(`Supprimer « ${doc.nomOriginal} » ?`)) return;
-    this.service.supprimerDocumentMedical(doc.id).subscribe({
-      next: () => this.documents.update(list => list.filter(d => d.id !== doc.id)),
-      error: () => {},
-    });
-  }
-
-  editerPartage(doc: DocumentMedical): void {
-    this.partageEnEdition.set(this.partageEnEdition() === doc.id ? null : doc.id);
-  }
-
-  togglePartageDoc(doc: DocumentMedical, role: string): void {
-    const roles = doc.partageRoles.includes(role)
-      ? doc.partageRoles.filter(r => r !== role)
-      : [...doc.partageRoles, role];
-    this.service.modifierPartageDocument(doc.id, roles).subscribe({
-      next: maj => this.documents.update(list => list.map(d => d.id === doc.id ? maj : d)),
-      error: () => {},
-    });
-  }
 }

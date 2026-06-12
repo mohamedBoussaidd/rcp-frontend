@@ -74,14 +74,16 @@ const ALL_MODULES: NavModule[] = [
   },
   {
     key: 'medical', label: 'Médical', icon: 'healing',
-    link: '/medical', query: { section: 'alertes' }, matches: ['/medical', '/mon-espace'],
+    link: '/medical', query: { section: 'alertes' }, matches: ['/medical', '/mon-espace', '/suivi-subjectif', '/mes-blessures'],
     roles: ['SUPER_ADMIN', 'PRESIDENT', 'ENTRAINEUR', 'PREPARATEUR', 'MEDICAL', 'JOUEUR'],
     subnav: [
       { label: 'Alertes',                       link: '/medical', section: 'alertes', default: true, roles: ['SUPER_ADMIN', 'PRESIDENT', 'ENTRAINEUR', 'PREPARATEUR', 'MEDICAL'] },
       { label: 'Blessures',                     link: '/medical', section: 'blessures', roles: ['SUPER_ADMIN', 'PRESIDENT', 'ENTRAINEUR', 'PREPARATEUR', 'MEDICAL'] },
-      { label: 'Suivi subjectif',               link: '/medical', section: 'suivi', roles: ['SUPER_ADMIN', 'PRESIDENT', 'ENTRAINEUR', 'PREPARATEUR', 'MEDICAL'] },
+      { label: 'Suivi subjectif',               link: '/suivi-subjectif', roles: ['SUPER_ADMIN', 'PRESIDENT', 'ENTRAINEUR', 'PREPARATEUR', 'MEDICAL'] },
       { label: 'Bilan blessures',               link: '/medical', section: 'bilan', roles: ['SUPER_ADMIN', 'PRESIDENT', 'ENTRAINEUR', 'PREPARATEUR', 'MEDICAL'] },
       { label: 'Documents',                     link: '/medical', section: 'documents', roles: ['SUPER_ADMIN', 'PRESIDENT', 'ENTRAINEUR', 'PREPARATEUR', 'MEDICAL'] },
+      { label: 'Mon suivi',                     link: '/suivi-subjectif', roles: ['JOUEUR'] },
+      { label: 'Mes blessures',                 link: '/mes-blessures', roles: ['JOUEUR'] },
       { label: 'Mon espace',                    link: '/mon-espace', roles: ['JOUEUR'] },
     ],
   },

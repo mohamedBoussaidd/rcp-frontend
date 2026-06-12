@@ -4,6 +4,7 @@ import { Observable } from 'rxjs';
 import { Joueur, GpsPoint } from './joueur.service';
 import { Blessure } from './blessure.service';
 import { Seance, ContenuSeance } from './seance.service';
+import { Conseil } from './conseil.service';
 
 export interface MaPesee {
   date: string;
@@ -141,6 +142,11 @@ export class EspaceJoueurService {
   }
   saisirRpe(req: RpeRequest): Observable<Rpe> {
     return this.http.post<Rpe>(`${this.base}/rpe`, req);
+  }
+
+  // ── Conseils du staff (lecture) ──
+  getConseils(): Observable<Conseil[]> {
+    return this.http.get<Conseil[]>(`${this.base}/conseils`);
   }
 
   // ── Documents médicaux ──

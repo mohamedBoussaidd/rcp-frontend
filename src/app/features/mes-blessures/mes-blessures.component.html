@@ -1,0 +1,175 @@
+<div class="mb">
+
+  <header class="mb-head">
+    <div>
+      <h1 class="mb-title">Mon suivi blessures</h1>
+      <p class="mb-sub">Historique de mes blessures, protocole de reprise et documents médicaux.</p>
+    </div>
+  </header>
+
+  @if (loading()) {
+    <p class="mb-empty">Chargement…</p>
+  } @else if (nonLie()) {
+    <div class="mb-card"><p class="mb-empty">Votre compte n'est pas rattaché à une fiche joueur.</p></div>
+  } @else {
+
+    <!-- ════════ Historique de blessures (cartes) ════════ -->
+    <h2 class="mb-section">Blessures déclarées</h2>
+
+    @if (blessuresTriees().length === 0) {
+      <div class="mb-card"><p class="mb-empty">Aucune blessure enregistrée. 💪</p></div>
+    } @else {
+      @for (b of blessuresTriees(); track b.id) {
+        <div class="mb-card mb-bless" [class.is-open]="ouvert() === b.id">
+          <button type="button" class="mb-bless__head" (click)="basculer(b)">
+            <span class="mb-bless__main">
+              <span class="mb-state mb-state--{{ statutClasse(b.statut) }}">{{ statutLabel(b.statut) }}</span>
+              <span class="mb-bless__titre">
+                {{ joli(b.zoneCorporelle) }}
+                @if (b.cote) { <em>· {{ joli(b.cote) }}</em> }
+                @if (b.typeBlessure) { <small>{{ joli(b.typeBlessure) }}</small> }
+              </span>
+              @if (b.recidive) { <span class="mb-tag mb-tag--bad">récidive</span> }
+            </span>
+            <span class="mb-bless__right">
+              <span class="mb-bless__date">{{ b.dateBlessure | date:'dd/MM/yyyy' }}</span>
+              <mat-icon class="mb-chev">{{ ouvert() === b.id ? 'expand_less' : 'expand_more' }}</mat-icon>
+            </span>
+          </button>
+
+          @if (ouvert() === b.id) {
+            <div class="mb-bless__body">
+              <div class="mb-grid">
+                <div class="mb-info"><span class="mb-info__l">Gravité</span><span class="mb-tag mb-tag--{{ graviteClasse(b.gravite) }}">{{ joli(b.gravite) }}</span></div>
+                <div class="mb-info"><span class="mb-info__l">Cause</span><span>{{ joli(b.causeProbable) }}</span></div>
+                <div class="mb-info"><span class="mb-info__l">Survenue le</span><span>{{ b.dateBlessure | date:'dd/MM/yyyy' }}</span></div>
+                @if (b.dateRetourPrevue && b.statut !== 'RETABLI') {
+                  <div class="mb-info"><span class="mb-info__l">Retour prévu</span>
+                    <span>{{ b.dateRetourPrevue | date:'dd/MM/yyyy' }}
+                      @if (joursAvantRetour(b.dateRetourPrevue); as j) {
+                        <em class="mb-jours">@if (j >= 0) { J−{{ j }} } @else { +{{ -j }} j }</em>
+                      }
+                    </span>
+                  </div>
+                }
+                @if (b.dateRetourEffectif) {
+                  <div class="mb-info"><span class="mb-info__l">Retour effectif</span><span>{{ b.dateRetourEffectif | date:'dd/MM/yyyy' }}</span></div>
+                }
+              </div>
+
+              @if (b.commentaire) { <p class="mb-comment">« {{ b.commentaire }} »</p> }
+
+              <!-- Suivi de reprise (RTP) -->
+              <div class="mb-rtp">
+                <div class="mb-rtp__head">
+                  <span class="mb-info__l">Protocole de reprise</span>
+                  @if (etapes(b.id).length > 0) {
+                    <span class="mb-rtp__pct">{{ rtpProgression(b.id) }}%</span>
+                  }
+                </div>
+                @if (etapes(b.id).length > 0) {
+                  <div class="mb-rtp__bar"><span [style.width.%]="rtpProgression(b.id)"></span></div>
+                  <ol class="mb-rtp__steps">
+                    @for (e of etapes(b.id); track e.id) {
+                      <li class="mb-step mb-step--{{ etapeClasse(e.statut) }}">
+                        <span class="mb-step__dot"></span>
+                        <span class="mb-step__lib">{{ e.libelle }}</span>
+                        <span class="mb-step__st">{{ ETAPE_LABELS[e.statut] }}</span>
+                      </li>
+                    }
+                  </ol>
+                } @else {
+                  <p class="mb-empty mb-empty--sm">Aucun protocole de reprise défini par le staff.</p>
+                }
+              </div>
+            </div>
+          }
+        </div>
+      }
+    }
+
+    <!-- ════════ Documents médicaux ════════ -->
+    <div class="mb-docs-head">
+      <h2 class="mb-section">Mes documents médicaux</h2>
+      @if (!depotOuvert()) {
+        <button class="mb-btn mb-btn--sm" (click)="ouvrirDepot()"><mat-icon>add</mat-icon> Ajouter</button>
+      }
+    </div>
+
+    <div class="mb-card">
+      @if (depotOuvert()) {
+        <div class="mb-depot">
+          <label class="mb-field">
+            <span>Fichier (PDF, JPG, PNG)</span>
+            <input type="file" accept="application/pdf,image/jpeg,image/png" (change)="onFichier($event)">
+          </label>
+          <label class="mb-field">
+            <span>Catégorie</span>
+            <select [ngModel]="categorieSel()" (ngModelChange)="categorieSel.set($event)">
+              @for (c of CATEGORIES; track c.val) { <option [value]="c.val">{{ c.label }}</option> }
+            </select>
+          </label>
+          <label class="mb-field">
+            <span>Description (optionnel)</span>
+            <input type="text" [ngModel]="descriptionSel()" (ngModelChange)="descriptionSel.set($event)" placeholder="Ex. IRM genou droit">
+          </label>
+          <div class="mb-field">
+            <span>Partager avec (en plus du staff médical)</span>
+            <div class="mb-cases">
+              @for (r of ROLES_PARTAGE; track r.val) {
+                <label class="mb-case">
+                  <input type="checkbox" [checked]="partageSel().includes(r.val)" (change)="togglePartageDepot(r.val)">
+                  {{ r.label }}
+                </label>
+              }
+            </div>
+          </div>
+          @if (erreurDepot()) { <p class="mb-erreur">{{ erreurDepot() }}</p> }
+          <div class="mb-depot__actions">
+            <button class="mb-btn" (click)="annulerDepot()" [disabled]="envoiEnCours()">Annuler</button>
+            <button class="mb-btn mb-btn--primary" (click)="deposer()" [disabled]="envoiEnCours()">
+              {{ envoiEnCours() ? 'Envoi…' : 'Déposer' }}
+            </button>
+          </div>
+        </div>
+      }
+
+      @if (documents().length === 0) {
+        <p class="mb-empty mb-empty--sm">Aucun document déposé.</p>
+      } @else {
+        <div class="mb-doclist">
+          @for (d of documents(); track d.id) {
+            <div class="mb-doc">
+              <span class="mb-doc__icon"><mat-icon>description</mat-icon></span>
+              <div class="mb-doc__body">
+                <div class="mb-doc__titre">{{ d.nomOriginal }}</div>
+                <div class="mb-doc__meta">
+                  {{ categorieLabel(d.categorie) }} · {{ tailleLisible(d.tailleOctets) }} · {{ d.dateDepot | date:'dd/MM/yyyy' }}
+                  @if (d.description) { · {{ d.description }} }
+                </div>
+                <div class="mb-doc__badges">
+                  @for (role of d.partageRoles; track role) { <span class="mb-tag">{{ roleLabel(role) }}</span> }
+                </div>
+                @if (partageEnEdition() === d.id) {
+                  <div class="mb-cases mb-cases--edit">
+                    @for (r of ROLES_PARTAGE; track r.val) {
+                      <label class="mb-case">
+                        <input type="checkbox" [checked]="d.partageRoles.includes(r.val)" (change)="togglePartageDoc(d, r.val)">
+                        {{ r.label }}
+                      </label>
+                    }
+                  </div>
+                }
+              </div>
+              <div class="mb-doc__actions">
+                <button class="mb-lien" (click)="telecharger(d)">Télécharger</button>
+                <button class="mb-lien" (click)="editerPartage(d)">Partage</button>
+                <button class="mb-lien mb-lien--danger" (click)="supprimer(d)">Supprimer</button>
+              </div>
+            </div>
+          }
+        </div>
+      }
+    </div>
+  }
+</div>

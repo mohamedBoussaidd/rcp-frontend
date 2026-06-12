@@ -1,0 +1,412 @@
+<div class="ss">
+
+  <!-- Onglets (seul Wellness/sRPE actif) -->
+  <div class="ss-tabs">
+    <span class="ss-tab is-active">Wellness / sRPE</span>
+    <span class="ss-tab is-disabled">Tests physiques <em>Bientôt</em></span>
+  </div>
+
+  <!-- En-tête + sélecteur -->
+  <header class="ss-head">
+    <div>
+      <h1 class="ss-title">Wellness &amp; charge perçue</h1>
+      <p class="ss-sub">
+        {{ today | date:'EEEE d MMMM y' }}
+        @if (isJoueur) {
+          · à remplir avant 11h00 · <span class="ss-pill">{{ joursRemplis() }} jours remplis sur 7</span>
+        }
+      </p>
+    </div>
+
+    <div class="ss-selector">
+      @if (isStaff) {
+        <label class="ss-selector__label">Joueur</label>
+        <select class="ss-selector__select" [ngModel]="selectedJoueurId()" (ngModelChange)="onSelectJoueur($event)">
+          <option value="">Toute l'équipe</option>
+          @for (j of joueurs(); track j.id) {
+            <option [value]="j.id">{{ j.prenom }} {{ j.nom }}</option>
+          }
+        </select>
+      } @else {
+        @if (joueurCourant(); as jc) {
+          <span class="ss-chip">
+            <span class="ss-chip__avatar">{{ initiales(jc.prenom, jc.nom) }}</span>
+            {{ jc.prenom }} {{ jc.nom }} @if (jc.poste) { <em>({{ joli(jc.poste) }})</em> }
+          </span>
+        }
+      }
+    </div>
+  </header>
+
+  @if (nonLie()) {
+    <div class="ss-empty">Votre compte n'est pas rattaché à une fiche joueur.</div>
+  }
+
+  <!-- ════════════════ VUE ÉQUIPE (staff) ════════════════ -->
+  @if (modeEquipe()) {
+    @if (moyenneEquipe(); as m) {
+      <div class="ss-synthese">
+        <div class="ss-stat">
+          <span class="ss-stat__label">Hooper moyen</span>
+          <span class="ss-stat__value">{{ m.hooper != null ? (m.hooper | number:'1.1-1') : '—' }}<small>/25</small></span>
+        </div>
+        <div class="ss-stat">
+          <span class="ss-stat__label">Charge moyenne</span>
+          <span class="ss-stat__value">{{ m.charge != null ? (m.charge | number:'1.0-0') : '—' }}<small>UA</small></span>
+        </div>
+        <div class="ss-stat">
+          <span class="ss-stat__label">Wellness rempli (auj.)</span>
+          <span class="ss-stat__value">{{ m.remplisAuj }}/{{ m.total }}<small>{{ m.pctRemplis }}%</small></span>
+        </div>
+        <div class="ss-stat" [class.ss-stat--alert]="m.nbGenes > 0">
+          <span class="ss-stat__label">Gênes signalées</span>
+          <span class="ss-stat__value">{{ m.nbGenes }}</span>
+        </div>
+      </div>
+    }
+
+    <div class="ss-card ss-card--table">
+      <table class="ss-table">
+        <thead>
+          <tr>
+            <th>Joueur</th>
+            <th class="num">Hooper</th>
+            <th class="num">RPE</th>
+            <th class="num">Charge</th>
+            <th class="num">Wellness</th>
+            <th>Dernière saisie</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (l of lignesEquipe(); track l.joueurId) {
+            <tr class="ss-row" (click)="onSelectJoueur(l.joueurId)">
+              <td>
+                <span class="ss-rowname">
+                  <span class="ss-chip__avatar sm">{{ initiales(l.prenom, l.nom) }}</span>
+                  {{ l.prenom }} {{ l.nom }}
+                  @if (l.gene) { <span class="ss-tag ss-tag--bad">gêne</span> }
+                </span>
+              </td>
+              <td class="num"><span class="ss-dot" [class]="hooperBarClasse(l.hooper)">{{ l.hooper ?? '—' }}</span></td>
+              <td class="num">{{ l.rpe ?? '—' }}</td>
+              <td class="num">{{ l.charge != null ? l.charge : '—' }}</td>
+              <td class="num">@if (l.remplitAuj) { <span class="ss-tag ss-tag--ok">à jour</span> } @else { <span class="ss-tag">à remplir</span> }</td>
+              <td>{{ l.derniere ? (l.derniere | date:'dd/MM') : '—' }}</td>
+            </tr>
+          }
+          @if (lignesEquipe().length === 0) {
+            <tr><td colspan="6" class="ss-table__empty">Aucun joueur.</td></tr>
+          }
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Conseils d'équipe (édition staff) -->
+    <div class="ss-card">
+      <div class="ss-card__head">
+        <h2 class="ss-card__title">Conseils de l'équipe</h2>
+        @if (peutEditerConseils) {
+          <button class="ss-btn ss-btn--sm" (click)="ouvrirConseil()"><mat-icon>add</mat-icon> Conseil</button>
+        }
+      </div>
+      <ng-container [ngTemplateOutlet]="conseilsListe" [ngTemplateOutletContext]="{ liste: conseilsEquipe() }"></ng-container>
+    </div>
+  }
+
+  <!-- ════════════════ VUE 1 JOUEUR (édition joueur / lecture staff) ════════════════ -->
+  @if (!modeEquipe() && (isJoueur ? !nonLie() : !!joueurCourant())) {
+    <div class="ss-grid">
+
+      <!-- Colonne gauche -->
+      <div class="ss-col">
+
+        <!-- Questionnaire Hooper -->
+        <div class="ss-card">
+          <div class="ss-card__head">
+            <div>
+              <h2 class="ss-card__title">Questionnaire Hooper</h2>
+              <p class="ss-card__sub">5 items · échelle 1 (bon) → 5 (mauvais)</p>
+            </div>
+            <div class="ss-total">
+              <div>
+                <span class="ss-total__label">Total</span>
+                <span class="ss-total__value">{{ totalCourant() ?? '—' }}<small>/25</small></span>
+              </div>
+              @if (etatBadge(); as b) { <span class="ss-state ss-state--{{ b.classe }}">{{ b.label }}</span> }
+            </div>
+          </div>
+
+          @for (item of HOOPER_ITEMS; track item.key) {
+            <div class="ss-item">
+              <div class="ss-item__head">
+                <span class="ss-item__label">{{ item.label }}</span>
+                <span class="ss-item__scale">1 — {{ item.bas }} · 5 — {{ item.haut }}</span>
+              </div>
+              <div class="ss-notes">
+                @for (n of NOTES_HOOPER; track n) {
+                  <button type="button" class="ss-note"
+                          [class.is-active]="valeurItem(item.key) === n"
+                          [disabled]="!isJoueur || dejaValide()"
+                          (click)="setW(item.key, n)">{{ n }}</button>
+                }
+              </div>
+            </div>
+          }
+
+          @if (isJoueur) {
+            @if (dejaValide()) {
+              <div class="ss-validated"><mat-icon>check_circle</mat-icon> Wellness validé aujourd'hui — vos notes Hooper sont enregistrées.</div>
+            }
+
+            <div class="ss-field">
+              <label>Commentaire (optionnel)</label>
+              <textarea rows="2" [disabled]="dejaValide()" [ngModel]="commentaire()" (ngModelChange)="commentaire.set($event)"
+                        placeholder="Une précision pour le staff…"></textarea>
+            </div>
+
+            @if (!dejaValide()) {
+              <div class="ss-card__foot">
+                <button class="ss-btn ss-btn--primary" [disabled]="wEnvoi()" (click)="validerWellness()">
+                  Valider mon wellness <mat-icon>arrow_forward</mat-icon>
+                </button>
+              </div>
+            }
+
+            <!-- Gêne : modifiable à tout moment de la journée -->
+            <div class="ss-gene">
+              <label class="ss-check">
+                <input type="checkbox" [ngModel]="geneActive()" (ngModelChange)="geneActive.set($event)">
+                Signaler une gêne / douleur localisée
+              </label>
+              @if (geneActive()) {
+                <div class="ss-gene__form">
+                  <select [ngModel]="gForm().zone" (ngModelChange)="setG('zone', $event)">
+                    @for (z of ZONES_GENE; track z) { <option [value]="z">{{ joli(z) }}</option> }
+                  </select>
+                  <select [ngModel]="gForm().moment" (ngModelChange)="setG('moment', $event)">
+                    @for (mm of MOMENTS_GENE; track mm.val) { <option [value]="mm.val">{{ mm.label }}</option> }
+                  </select>
+                  <div class="ss-notes ss-notes--sm">
+                    @for (n of NOTES_HOOPER; track n) {
+                      <button type="button" class="ss-note"
+                              [class.is-active]="gForm().intensite === n" (click)="setG('intensite', n)">{{ n }}</button>
+                    }
+                  </div>
+                </div>
+              }
+              @if (dejaValide()) {
+                <div class="ss-card__foot">
+                  <button class="ss-btn ss-btn--sm" [disabled]="geneEnvoi()" (click)="enregistrerGene()">Mettre à jour ma gêne</button>
+                </div>
+              }
+            </div>
+          } @else if (wellnessCourant()?.commentaire) {
+            <p class="ss-comment">« {{ wellnessCourant()?.commentaire }} »</p>
+          }
+        </div>
+
+        <!-- Charge perçue (sRPE) -->
+        <div class="ss-card">
+          <div class="ss-card__head">
+            <div>
+              <h2 class="ss-card__title">Charge perçue (sRPE)</h2>
+              <p class="ss-card__sub">Après la séance · intensité × durée = unités arbitraires</p>
+            </div>
+          </div>
+
+          @if (isJoueur) {
+            <div class="ss-field">
+              <label>Séance à noter</label>
+              <select [ngModel]="rpeSeanceId()" (ngModelChange)="onSelectSeance($event)">
+                <option value="">— Choisir une séance —</option>
+                @for (s of seancesANoter(); track s.id) {
+                  <option [value]="s.id">{{ s.date | date:'dd/MM' }} · {{ s.titre }}</option>
+                }
+              </select>
+              @if (seancesANoter().length === 0) { <small class="ss-hint">Aucune séance récente à noter.</small> }
+            </div>
+
+            <div class="ss-srpe">
+              <div class="ss-srpe__box">
+                <span class="ss-srpe__label">Intensité (RPE)</span>
+                <div class="ss-notes ss-notes--wrap">
+                  @for (n of NOTES_RPE; track n) {
+                    <button type="button" class="ss-note"
+                            [class.is-active]="rpeIntensite() === n" (click)="rpeIntensite.set(n)">{{ n }}</button>
+                  }
+                </div>
+              </div>
+              <div class="ss-srpe__box">
+                <span class="ss-srpe__label">Durée (min)</span>
+                <input type="number" min="0" max="240" [ngModel]="rpeDuree()" (ngModelChange)="rpeDuree.set($event)">
+              </div>
+              <div class="ss-srpe__box ss-srpe__box--charge">
+                <span class="ss-srpe__label">Charge calculée</span>
+                <span class="ss-srpe__charge">{{ chargeCalculee() ?? '—' }}</span>
+                <small>UA · {{ rpeIntensite() || 0 }} × {{ rpeDuree() || 0 }} min</small>
+              </div>
+            </div>
+            <div class="ss-card__foot">
+              <button class="ss-btn ss-btn--primary" [disabled]="rpeEnvoi() || !rpeSeanceId() || rpeIntensite() <= 0" (click)="enregistrerRpe()">
+                Enregistrer le RPE
+              </button>
+            </div>
+          } @else {
+            @if (rpeCourant(); as r) {
+              <div class="ss-srpe">
+                <div class="ss-srpe__box"><span class="ss-srpe__label">Intensité (RPE)</span><span class="ss-srpe__charge sm">{{ r.rpe }}</span></div>
+                <div class="ss-srpe__box"><span class="ss-srpe__label">Durée</span><span class="ss-srpe__charge sm">{{ r.dureeMinutes ?? '—' }}</span><small>min</small></div>
+                <div class="ss-srpe__box ss-srpe__box--charge"><span class="ss-srpe__label">Charge</span><span class="ss-srpe__charge">{{ r.charge ?? '—' }}</span><small>UA · {{ r.date | date:'dd/MM' }}</small></div>
+              </div>
+            } @else {
+              <p class="ss-muted">Aucun RPE renseigné récemment.</p>
+            }
+          }
+        </div>
+      </div>
+
+      <!-- Colonne droite -->
+      <div class="ss-col">
+
+        <!-- Graphe 7 jours -->
+        <div class="ss-card">
+          <div class="ss-card__head">
+            <h2 class="ss-card__title">7 derniers jours</h2>
+            <div class="ss-legend"><span class="ss-legend__bar"></span> Hooper /25 <span class="ss-legend__line"></span> tendance · RPE au point</div>
+          </div>
+
+          <div class="ss-chart">
+            <div class="ss-chart__plot">
+              <!-- Barres Hooper -->
+              <div class="ss-chart__bars">
+                @for (d of serie7j(); track d.date) {
+                  <div class="ss-chart__cell">
+                    @if (d.hooper != null) {
+                      <div class="ss-chart__bar" [class]="hooperBarClasse(d.hooper)" [style.height.%]="barH(d.hooper)"></div>
+                    }
+                  </div>
+                }
+              </div>
+              <!-- Courbe reliant les sommets des barres (pointillés) -->
+              @if (rpeCourbe()) {
+                <svg class="ss-chart__svg" viewBox="0 0 100 100" preserveAspectRatio="none">
+                  <polyline [attr.points]="rpeCourbe()" vector-effect="non-scaling-stroke"></polyline>
+                </svg>
+              }
+              <!-- Points au sommet de chaque barre (valeur Hooper + RPE) -->
+              @for (d of serie7j(); track d.date) {
+                @if (d.hooper != null) {
+                  <span class="ss-chart__point"
+                        [style.left.%]="($index + 0.5) / 7 * 100"
+                        [style.bottom.%]="barH(d.hooper)">
+                    <span class="ss-chart__val">{{ d.hooper }}@if (d.rpe != null) { <em>· RPE {{ d.rpe }}</em> }</span>
+                  </span>
+                }
+              }
+            </div>
+            <div class="ss-chart__days">
+              @for (d of serie7j(); track d.date) {
+                <span class="ss-chart__day" [class.is-today]="d.aujourdhui">{{ d.jour }}</span>
+              }
+            </div>
+          </div>
+
+          <div class="ss-chart__foot">
+            <div><span class="ss-stat__label">Hooper moyen</span><strong>{{ hooperMoyen() != null ? (hooperMoyen() | number:'1.1-1') : '—' }}</strong></div>
+            <div><span class="ss-stat__label">Charge cumulée</span><strong>{{ chargeCumulee() | number:'1.0-0' }} UA</strong></div>
+          </div>
+        </div>
+
+        <!-- Conseils du staff -->
+        <div class="ss-card">
+          <div class="ss-card__head">
+            <h2 class="ss-card__title">Conseils du staff</h2>
+            @if (peutEditerConseils && isStaff) {
+              <button class="ss-btn ss-btn--sm" (click)="ouvrirConseil()"><mat-icon>add</mat-icon> Conseil</button>
+            }
+          </div>
+          <ng-container [ngTemplateOutlet]="conseilsListe" [ngTemplateOutletContext]="{ liste: conseils() }"></ng-container>
+        </div>
+      </div>
+    </div>
+
+    <!-- Pied : note de confidentialité (joueur) -->
+    @if (isJoueur) {
+      <div class="ss-validate">
+        <p class="ss-validate__info"><mat-icon>info</mat-icon> Vos données sont partagées avec le staff médical et le préparateur. Elles ne sont jamais visibles par les autres joueurs.</p>
+      </div>
+    }
+  }
+</div>
+
+<!-- ════════════════ Template réutilisable : liste de conseils ════════════════ -->
+<ng-template #conseilsListe let-liste="liste">
+  @if (liste.length === 0) {
+    <p class="ss-muted">Aucun conseil pour le moment.</p>
+  }
+  <div class="ss-conseils">
+    @for (c of liste; track c.id) {
+      <div class="ss-conseil">
+        <span class="ss-conseil__icon"><mat-icon>{{ iconeOf(c.icone) }}</mat-icon></span>
+        <div class="ss-conseil__body">
+          <div class="ss-conseil__title">
+            {{ c.titre }}
+            <span class="ss-tag" [class.ss-tag--ok]="c.equipe">{{ c.equipe ? 'équipe' : 'perso' }}</span>
+          </div>
+          <p class="ss-conseil__text">{{ c.texte }}</p>
+        </div>
+        @if (peutEditerConseils && isStaff) {
+          <div class="ss-conseil__actions">
+            <button class="ss-iconbtn" (click)="ouvrirConseil(c)" title="Modifier"><mat-icon>edit</mat-icon></button>
+            <button class="ss-iconbtn ss-iconbtn--danger" (click)="supprimerConseil(c)" title="Supprimer"><mat-icon>delete</mat-icon></button>
+          </div>
+        }
+      </div>
+    }
+  </div>
+</ng-template>
+
+<!-- ════════════════ Form conseil (staff) ════════════════ -->
+@if (conseilFormOuvert()) {
+  <div class="ss-modal" (click)="annulerConseil()">
+    <div class="ss-modal__card" (click)="$event.stopPropagation()">
+      <div class="ss-modal__head">
+        <h3>{{ conseilEditId() ? 'Modifier le conseil' : 'Nouveau conseil' }}</h3>
+        <button class="ss-iconbtn" (click)="annulerConseil()"><mat-icon>close</mat-icon></button>
+      </div>
+      <div class="ss-modal__body">
+        <div class="ss-field">
+          <label>Titre</label>
+          <input type="text" maxlength="120" [ngModel]="cForm().titre" (ngModelChange)="setCForm('titre', $event)" placeholder="Ex. Hydratation pré-séance">
+        </div>
+        <div class="ss-field">
+          <label>Texte</label>
+          <textarea rows="3" [ngModel]="cForm().texte" (ngModelChange)="setCForm('texte', $event)" placeholder="Le conseil affiché au joueur…"></textarea>
+        </div>
+        <div class="ss-field">
+          <label>Icône</label>
+          <div class="ss-iconpick">
+            @for (ic of ICONES; track ic.key) {
+              <button type="button" class="ss-iconopt" [class.is-active]="cForm().icone === ic.key"
+                      (click)="setCForm('icone', ic.key)" [title]="ic.label"><mat-icon>{{ ic.icon }}</mat-icon></button>
+            }
+          </div>
+        </div>
+        <div class="ss-field">
+          <label>Destinataire</label>
+          <div class="ss-seg">
+            <button type="button" [class.is-active]="cForm().cibleEquipe" (click)="setCForm('cibleEquipe', true)">Toute l'équipe</button>
+            <button type="button" [class.is-active]="!cForm().cibleEquipe" [disabled]="!joueurCourant()"
+                    (click)="setCForm('cibleEquipe', false)">
+              {{ joueurCourant() ? (joueurCourant()!.prenom + ' ' + joueurCourant()!.nom) : 'Un joueur' }}
+            </button>
+          </div>
+        </div>
+      </div>
+      <div class="ss-modal__foot">
+        <button class="ss-btn" (click)="annulerConseil()">Annuler</button>
+        <button class="ss-btn ss-btn--primary" [disabled]="cEnvoi()" (click)="enregistrerConseil()">Enregistrer</button>
+      </div>
+    </div>
+  </div>
+}
