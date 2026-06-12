@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 import { ThemeService } from '@core/services/theme.service';
 import { NavSidebarComponent } from '@shared/components/nav-sidebar/nav-sidebar.component';
@@ -15,7 +15,10 @@ import { AuthService } from '@core/services/auth.service';
 export class AppComponent {
   title = 'RCP - Préparateur physique';
 
-  constructor(themeService: ThemeService, public sidebar: SidebarService, public auth: AuthService) {
-    themeService.init();
+  sidebar = inject(SidebarService);
+  auth = inject(AuthService);
+
+  constructor() {
+    inject(ThemeService).init();
   }
 }

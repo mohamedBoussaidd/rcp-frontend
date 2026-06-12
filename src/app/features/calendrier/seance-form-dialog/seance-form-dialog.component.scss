@@ -1,28 +1,18 @@
-.seance-subtitle {
-  display: block;
-  font-size: 0.75rem;
-  font-weight: 400;
-  color: var(--dm-muted);
-  margin-top: 3px;
-  letter-spacing: 0.02em;
+/* Cas particuliers du dialog « séance » — le socle est dans _forms.scss */
+.seance-modal {
+  width: 760px;
+  max-width: 95vw;
 }
 
-.dark-field-grid {
-  grid-template-columns: repeat(3, 1fr);
-}
-
-.full-width {
-  grid-column: 1 / -1;
-}
-
+/* ── Sections ── */
 .section-label {
   font-size: 0.68rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  color: var(--dm-label);
-  padding: 4px 0 2px;
-  border-bottom: 1px solid var(--dm-border);
+  color: var(--green-700);
+  padding: 4px 0 6px;
+  border-bottom: 1px solid var(--border);
 }
 
 .section-label-row {
@@ -30,24 +20,25 @@
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 4px 0 2px;
-  border-bottom: 1px solid var(--dm-border);
+  padding: 4px 0 6px;
+  border-bottom: 1px solid var(--border);
 
   .section-label { border-bottom: none; padding: 0; }
 }
 
 .btn-ajout-exo {
-  border: 1px solid var(--dm-accent);
+  border: 1px solid var(--green-600);
   background: transparent;
-  color: var(--dm-accent);
-  border-radius: 8px;
+  color: var(--green-700);
+  border-radius: var(--r-sm);
   padding: 4px 12px;
   font-size: 0.74rem;
   font-weight: 600;
+  font-family: inherit;
   cursor: pointer;
   transition: background .15s, color .15s;
 
-  &:hover { background: var(--dm-accent); color: #fff; }
+  &:hover { background: var(--green-600); color: #fff; }
 }
 
 .exo-biblio {
@@ -57,32 +48,12 @@
   max-height: 180px;
   overflow-y: auto;
   padding: 10px;
-  border: 1px dashed var(--dm-border);
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.02);
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--r-md);
+  background: var(--surface-2);
 }
 
 .exo-remove { margin-left: 4px; opacity: .9; }
-
-/* ── Aide contextuelle ── */
-.field-hint {
-  display: block;
-  font-size: 0.68rem;
-  color: var(--dm-muted);
-  margin-top: 4px;
-  font-style: italic;
-}
-
-/* ── Erreurs champ ── */
-.field-error {
-  border-color: #f87171 !important;
-}
-
-.msg-erreur {
-  font-size: 0.68rem;
-  color: #f87171;
-  margin-top: 3px;
-}
 
 /* ── Alerte écart durée ── */
 .alerte-ecart {
@@ -90,16 +61,16 @@
   align-items: flex-start;
   gap: 8px;
   padding: 10px 12px;
-  border-radius: 8px;
-  background: rgba(251, 146, 60, 0.12);
-  border: 1px solid rgba(251, 146, 60, 0.35);
-  color: #fb923c;
+  border-radius: var(--r-md);
+  background: var(--warn-bg);
+  border: 1px solid var(--warn-bd);
+  color: var(--warn);
   font-size: 0.8rem;
 
   &.alerte-long {
-    background: rgba(251, 191, 36, 0.12);
-    border-color: rgba(251, 191, 36, 0.35);
-    color: #fbbf24;
+    background: var(--info-bg);
+    border-color: var(--info-bd);
+    color: var(--info);
   }
 }
 
@@ -119,22 +90,23 @@
 
 .suggestion-chip {
   padding: 4px 10px;
-  border-radius: 20px;
-  border: 1px solid var(--dm-border);
-  background: var(--dm-field-bg);
-  color: var(--dm-muted);
+  border-radius: var(--r-pill);
+  border: 1px solid var(--border-strong);
+  background: var(--surface);
+  color: var(--text-2);
   font-size: 0.75rem;
+  font-family: inherit;
   cursor: pointer;
   transition: background .15s, color .15s, border-color .15s;
 
   &:hover {
-    border-color: var(--dm-accent);
-    color: var(--dm-text);
+    border-color: var(--green-600);
+    color: var(--text);
   }
 
   &.active {
-    background: var(--dm-accent);
-    border-color: var(--dm-accent);
+    background: var(--green-600);
+    border-color: var(--green-600);
     color: #fff;
   }
 }
@@ -147,29 +119,30 @@
 
 .exo-chip {
   padding: 5px 10px;
-  border-radius: 8px;
-  border: 1px solid var(--dm-border);
-  background: var(--dm-field-bg);
-  color: var(--dm-muted);
+  border-radius: var(--r-md);
+  border: 1px solid var(--border-strong);
+  background: var(--surface);
+  color: var(--text-2);
   font-size: 0.78rem;
+  font-family: inherit;
   cursor: pointer;
   transition: background .15s, color .15s, border-color .15s;
 
   small {
     margin-left: 4px;
-    opacity: .8;
+    opacity: .85;
     font-size: 0.7rem;
   }
-  small.tag-phys  { color: #6ee7b7; }
-  small.tag-mixte { color: #fcd34d; }
+  small.tag-phys  { color: var(--green-700); }
+  small.tag-mixte { color: var(--warn); }
 
-  &:hover { border-color: var(--dm-accent); color: var(--dm-text); }
+  &:hover { border-color: var(--green-600); color: var(--text); }
 
   &.on {
-    background: var(--dm-accent);
-    border-color: var(--dm-accent);
+    background: var(--green-600);
+    border-color: var(--green-600);
     color: #fff;
-    small { opacity: 1; }
+    small { opacity: 1; color: #fff; }
   }
 }
 

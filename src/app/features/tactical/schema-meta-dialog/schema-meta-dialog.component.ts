@@ -1,4 +1,4 @@
-import { Component, Inject } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
 import { MatIcon } from '@angular/material/icon';
@@ -34,10 +34,10 @@ export class SchemaMetaDialogComponent {
   nom = '';
   categorie = '';
 
-  constructor(
-    private dialogRef: MatDialogRef<SchemaMetaDialogComponent, SchemaMeta>,
-    @Inject(MAT_DIALOG_DATA) data: SchemaMetaData,
-  ) {
+  private dialogRef = inject<MatDialogRef<SchemaMetaDialogComponent, SchemaMeta>>(MatDialogRef);
+
+  constructor() {
+    const data = inject<SchemaMetaData>(MAT_DIALOG_DATA);
     this.titre = data?.titre ?? 'Nouveau schéma';
     this.nom = data?.nom ?? '';
     this.categorie = data?.categorie ?? '';

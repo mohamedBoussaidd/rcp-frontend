@@ -1,4 +1,4 @@
-import { Component, signal } from '@angular/core';
+import { Component, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { MatIcon } from '@angular/material/icon';
@@ -19,7 +19,10 @@ export class LoginComponent {
   erreur = signal<string | null>(null);
   showPwd = signal(false);
 
-  constructor(private auth: AuthService, private router: Router) {
+  private auth = inject(AuthService);
+  private router = inject(Router);
+
+  constructor() {
     // Déjà connecté : on saute directement à l'accueil du rôle
     if (this.auth.isAuthenticated()) {
       this.router.navigateByUrl(this.auth.homeRoute());

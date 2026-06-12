@@ -16,7 +16,7 @@
       <mat-card-header class="card-head">
         <mat-card-title>Équipes ({{ equipes().length }} / {{ maxEquipes }})</mat-card-title>
         @if (!equipesPleines()) {
-          <button class="btn-dark-primary" (click)="showEquipeForm.set(!showEquipeForm())">
+          <button class="btn btn--primary" (click)="showEquipeForm.set(!showEquipeForm())">
             {{ showEquipeForm() ? 'Annuler' : '+ Ajouter une équipe' }}
           </button>
         } @else {
@@ -31,7 +31,7 @@
               <input class="param-input wide" [(ngModel)]="equipeForm.nom" name="enom" placeholder="Seniors A"></label>
             <label class="f"><span>Catégorie</span>
               <input class="param-input wide" [(ngModel)]="equipeForm.categorie" name="ecat" placeholder="U19, Équipe B…"></label>
-            <button type="submit" class="btn-dark-primary" [disabled]="savingEquipe() || !equipeForm.nom">
+            <button type="submit" class="btn btn--primary" [disabled]="savingEquipe() || !equipeForm.nom">
               {{ savingEquipe() ? '…' : 'Créer' }}
             </button>
           </form>
@@ -72,7 +72,7 @@
     <mat-card>
       <mat-card-header class="card-head">
         <mat-card-title>Membres du staff ({{ membres().length }})</mat-card-title>
-        <button class="btn-dark-primary" (click)="showMembreForm.set(!showMembreForm())">
+        <button class="btn btn--primary" (click)="showMembreForm.set(!showMembreForm())">
           {{ showMembreForm() ? 'Annuler' : '+ Ajouter un membre' }}
         </button>
       </mat-card-header>
@@ -116,7 +116,7 @@
               }
             </div>
             <div class="form-actions">
-              <button type="submit" class="btn-dark-primary" [disabled]="savingMembre()">
+              <button type="submit" class="btn btn--primary" [disabled]="savingMembre()">
                 {{ savingMembre() ? 'Création…' : 'Créer le membre' }}
               </button>
             </div>

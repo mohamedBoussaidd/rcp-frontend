@@ -1,42 +1,13 @@
+/* Cas particuliers du dialog « méta schéma » — le socle est dans _forms.scss */
 :host { display: block; }
 
 .meta {
-  display: flex; flex-direction: column; gap: 16px;
-  padding: 22px; min-width: 340px; max-width: 420px;
-  background: var(--surface, #1b2330); color: var(--text, #e6eaf0);
-}
-.meta__title { margin: 0; font-size: 18px; font-weight: 700; letter-spacing: -0.02em; }
-
-.meta__field { display: flex; flex-direction: column; gap: 6px; }
-.meta__label { font-size: 13px; font-weight: 600; color: var(--text-2, #aeb6c2); }
-.meta__req { color: var(--bad, #ef4444); }
-
-.meta__input {
-  height: 38px; padding: 0 12px;
-  border-radius: var(--r-md, 8px);
-  border: 1px solid var(--border-strong, #39445480);
-  background: var(--surface-3, #232c3a); color: var(--text, #e6eaf0);
-  font-size: 14px; font-family: inherit; outline: none;
-  transition: border-color 120ms ease;
-  &:focus { border-color: var(--green-600, #16a34a); }
-  &::placeholder { color: var(--text-3, #7a8694); }
+  width: 400px;
+  max-width: 92vw;
 }
 
-.meta__actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 4px; }
-
-.btn {
-  display: inline-flex; align-items: center; gap: 6px;
-  height: 38px; padding: 0 16px;
-  border-radius: var(--r-md, 8px);
-  border: 1px solid var(--border-strong, #39445480);
-  background: var(--surface, #1b2330); color: var(--text, #e6eaf0);
-  font-size: 13px; font-weight: 600; font-family: inherit; cursor: pointer;
-  transition: background 120ms ease, border-color 120ms ease;
-  mat-icon { font-size: 16px; width: 16px; height: 16px; }
-  &:disabled { opacity: .5; cursor: not-allowed; }
-}
-.btn--secondary:hover:not(:disabled) { background: var(--surface-3, #232c3a); }
-.btn--primary {
-  background: var(--green-600, #16a34a); border-color: var(--green-600, #16a34a); color: #fff;
-  &:hover:not(:disabled) { background: var(--green-700, #15803d); }
+.form-card__footer .btn mat-icon {
+  font-size: 16px;
+  width: 16px;
+  height: 16px;
 }

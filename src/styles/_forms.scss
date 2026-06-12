@@ -1,0 +1,247 @@
+/* ═══════════════════════════════════════════════════════
+   FORMULAIRES — Socle unifié (clair)
+   Référence UNIQUE pour tous les formulaires (dialogs + en page).
+   Les cas particuliers se gèrent dans le SCSS du composant concerné.
+   ═══════════════════════════════════════════════════════ */
+
+/* ────────────────────────────────────────
+   Coquille de dialog claire
+   dialog.open(X, { panelClass: 'app-dialog' })
+   ──────────────────────────────────────── */
+.app-dialog .mat-mdc-dialog-container .mdc-dialog__surface {
+  background: var(--surface) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: var(--r-2xl) !important;
+  box-shadow: var(--shadow-xl) !important;
+  padding: 0 !important;
+  overflow: hidden;
+}
+
+/* ────────────────────────────────────────
+   Carte de formulaire (en-tête / corps / pied)
+   ──────────────────────────────────────── */
+.form-card {
+  display: flex;
+  flex-direction: column;
+  max-height: 86vh;
+  background: var(--surface);
+  color: var(--text);
+  border-radius: var(--r-2xl);
+  box-sizing: border-box;
+}
+
+.form-card__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--border);
+}
+
+.form-card__title {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--text);
+}
+
+.form-card__subtitle {
+  display: block;
+  margin-top: 3px;
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: var(--text-3);
+}
+
+.form-card__close {
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  color: var(--text-3);
+  font-size: 1.1rem;
+  line-height: 1;
+  padding: 6px 8px;
+  border-radius: var(--r-sm);
+  cursor: pointer;
+  transition: color .15s, background .15s;
+
+  &:hover {
+    color: var(--text);
+    background: var(--surface-3);
+  }
+}
+
+.form-card__body {
+  padding: 22px 24px;
+  overflow-y: auto;
+}
+
+.form-card__footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 16px 24px;
+  border-top: 1px solid var(--border);
+
+  &--split { justify-content: space-between; }
+}
+
+/* ────────────────────────────────────────
+   Grille de champs
+   ──────────────────────────────────────── */
+.form-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px 18px;
+
+  &--2 { grid-template-columns: repeat(2, 1fr); }
+  &--3 { grid-template-columns: repeat(3, 1fr); }
+}
+
+@media (max-width: 640px) {
+  .form-grid--2,
+  .form-grid--3 { grid-template-columns: 1fr; }
+}
+
+/* ────────────────────────────────────────
+   Section de formulaire
+   ──────────────────────────────────────── */
+.form-section {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+
+  & + & { margin-top: 22px; }
+}
+
+.form-section__title {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--green-700);
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--border);
+}
+
+/* ────────────────────────────────────────
+   Champ
+   ──────────────────────────────────────── */
+.form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+
+  &--full { grid-column: 1 / -1; }
+}
+
+.form-field__label {
+  font-size: 0.74rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  color: var(--green-600);
+
+  .req { color: var(--bad); margin-left: 2px; }
+}
+
+/* Contrôles natifs : input / select / textarea */
+.form-field__control,
+.form-field > input,
+.form-field > select,
+.form-field > textarea {
+  width: 100%;
+  box-sizing: border-box;
+  background: var(--surface-input);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-md);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 0.875rem;
+  padding: 9px 12px;
+  outline: none;
+  transition: border-color .15s, box-shadow .15s;
+
+  &::placeholder { color: var(--text-4); }
+
+  &:hover:not(:disabled) { border-color: var(--slate-400); }
+
+  &:focus {
+    border-color: var(--green-600);
+    box-shadow: 0 0 0 3px rgba(21, 128, 61, 0.12);
+  }
+
+  &:disabled {
+    background: var(--surface-3);
+    color: var(--text-3);
+    cursor: not-allowed;
+  }
+}
+
+.form-field > textarea {
+  resize: vertical;
+  min-height: 76px;
+  line-height: 1.5;
+}
+
+/* Select natif : chevron custom + pas de flèche système */
+.form-field > select {
+  appearance: none;
+  -webkit-appearance: none;
+  cursor: pointer;
+  padding-right: 32px;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2364748B' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'/></svg>");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+}
+
+/* Nombres : pas de spinners */
+.form-field > input[type=number] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+
+  &::-webkit-outer-spin-button,
+  &::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+}
+
+/* Dates : icône du calendrier en clair */
+.form-field > input[type=date],
+.form-field > input[type=time] {
+  &::-webkit-calendar-picker-indicator { filter: none; cursor: pointer; }
+}
+
+/* ────────────────────────────────────────
+   Aide & erreurs (unifié)
+   ──────────────────────────────────────── */
+.form-field__hint {
+  font-size: 0.7rem;
+  color: var(--text-3);
+}
+
+.form-field__error {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.7rem;
+  font-weight: 500;
+  color: var(--bad);
+}
+
+.form-field--error {
+
+  .form-field__label { color: var(--bad); }
+
+  .form-field__control,
+  & > input,
+  & > select,
+  & > textarea {
+    border-color: var(--bad);
+
+    &:focus { box-shadow: 0 0 0 3px rgba(185, 28, 28, 0.12); }
+  }
+}

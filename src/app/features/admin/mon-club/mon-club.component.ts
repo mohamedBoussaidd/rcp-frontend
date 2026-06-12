@@ -1,4 +1,4 @@
-import { Component, OnInit, computed, signal } from '@angular/core';
+import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatCard, MatCardContent, MatCardHeader, MatCardTitle } from '@angular/material/card';
 import { MatSnackBar } from '@angular/material/snack-bar';
@@ -46,11 +46,9 @@ export class MonClubComponent implements OnInit {
   readonly membres = computed(() => this.data()?.membres ?? []);
   readonly equipesPleines = computed(() => this.equipes().length >= MAX_EQUIPES);
 
-  constructor(
-    private service: MonClubService,
-    private snack: MatSnackBar,
-    private joueurService: JoueurService,
-  ) {}
+  private service = inject(MonClubService);
+  private snack = inject(MatSnackBar);
+  private joueurService = inject(JoueurService);
 
   ngOnInit(): void {
     this.charger();

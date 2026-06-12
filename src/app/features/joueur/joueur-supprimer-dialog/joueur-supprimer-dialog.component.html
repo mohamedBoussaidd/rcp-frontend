@@ -1,57 +1,61 @@
-<div class="dark-modal supprimer-modal">
+<div class="form-card supprimer-modal">
 
-  <div class="dark-modal-title-row">
-    <h2 class="dark-modal-title">Supprimer un joueur</h2>
-    <button class="dark-modal-close" (click)="fermer()">✕</button>
+  <div class="form-card__header">
+    <h2 class="form-card__title">Supprimer un joueur</h2>
+    <button type="button" class="form-card__close" (click)="fermer()" aria-label="Fermer">✕</button>
   </div>
 
-  @if (loading) {
-    <p class="msg-centre">Chargement…</p>
-  }
+  <div class="form-card__body">
 
-  @if (!loading && joueurs.length === 0) {
-    <p class="msg-centre">Aucun joueur enregistré.</p>
-  }
+    @if (loading) {
+      <p class="msg-centre">Chargement…</p>
+    }
 
-  @if (confirmation) {
-    <div class="confirmation-box">
-      <p class="confirmation-texte">
-        Supprimer définitivement
-        <strong>{{ confirmation.prenom }} {{ confirmation.nom }}</strong> ?
-      </p>
-      <p class="confirmation-avertissement">Cette action est irréversible.</p>
-      <div class="confirmation-actions">
-        <button class="btn-dark-primary btn-danger"
-                (click)="confirmerSuppression()"
-                [disabled]="enCours">
-          {{ enCours ? 'Suppression…' : 'Oui, supprimer' }}
-        </button>
-        <button class="btn-dark-outline"
-                (click)="annulerConfirmation()"
-                [disabled]="enCours">
-          Annuler
-        </button>
-      </div>
-    </div>
-  }
+    @if (!loading && joueurs.length === 0) {
+      <p class="msg-centre">Aucun joueur enregistré.</p>
+    }
 
-  @if (!loading && joueurs.length > 0) {
-    <ul class="joueur-liste">
-      @for (j of joueurs; track j.id) {
-        <li class="joueur-ligne" [class.estompe]="confirmation && confirmation.id !== j.id">
-          <div class="joueur-info">
-            <span class="joueur-nom">{{ j.prenom }} {{ j.nom }}</span>
-            <span class="joueur-poste">{{ j.postePrincipal || '—' }} · {{ j.statut }}</span>
-          </div>
-          <button class="btn-supprimer"
-                  (click)="demanderConfirmation(j)"
-                  [disabled]="!!confirmation"
-                  title="Supprimer {{ j.prenom }} {{ j.nom }}">
-            ✕
+    @if (confirmation) {
+      <div class="confirmation-box">
+        <p class="confirmation-texte">
+          Supprimer définitivement
+          <strong>{{ confirmation.prenom }} {{ confirmation.nom }}</strong> ?
+        </p>
+        <p class="confirmation-avertissement">Cette action est irréversible.</p>
+        <div class="confirmation-actions">
+          <button type="button" class="btn btn--danger"
+                  (click)="confirmerSuppression()"
+                  [disabled]="enCours">
+            {{ enCours ? 'Suppression…' : 'Oui, supprimer' }}
           </button>
-        </li>
-      }
-    </ul>
-  }
+          <button type="button" class="btn btn--secondary"
+                  (click)="annulerConfirmation()"
+                  [disabled]="enCours">
+            Annuler
+          </button>
+        </div>
+      </div>
+    }
+
+    @if (!loading && joueurs.length > 0) {
+      <ul class="joueur-liste">
+        @for (j of joueurs; track j.id) {
+          <li class="joueur-ligne" [class.estompe]="confirmation && confirmation.id !== j.id">
+            <div class="joueur-info">
+              <span class="joueur-nom">{{ j.prenom }} {{ j.nom }}</span>
+              <span class="joueur-poste">{{ j.postePrincipal || '—' }} · {{ j.statut }}</span>
+            </div>
+            <button type="button" class="btn-supprimer"
+                    (click)="demanderConfirmation(j)"
+                    [disabled]="!!confirmation"
+                    title="Supprimer {{ j.prenom }} {{ j.nom }}">
+              ✕
+            </button>
+          </li>
+        }
+      </ul>
+    }
+
+  </div>
 
 </div>

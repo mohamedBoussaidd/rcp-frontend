@@ -1,4 +1,4 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
 
@@ -40,9 +40,8 @@ export interface BlessureRequest {
 
 @Injectable({ providedIn: 'root' })
 export class BlessureService {
+  private http = inject(HttpClient);
   private readonly base = '/api/blessures';
-
-  constructor(private http: HttpClient) {}
 
   lister(joueurId?: string): Observable<Blessure[]> {
     let params = new HttpParams();

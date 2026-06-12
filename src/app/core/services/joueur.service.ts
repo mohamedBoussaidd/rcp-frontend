@@ -1,4 +1,4 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { shareReplay } from 'rxjs/operators';
@@ -51,9 +51,9 @@ export interface Joueur {
 })
 export class JoueurService {
 
-  private readonly base = '/api/joueurs';
+  private http = inject(HttpClient);
 
-  constructor(private http: HttpClient) {}
+  private readonly base = '/api/joueurs';
 
   getAll(): Observable<Joueur[]> {
     return this.http.get<Joueur[]>(this.base);

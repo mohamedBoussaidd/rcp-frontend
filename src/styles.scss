@@ -3,6 +3,9 @@
    Design system : slate base, terrain green accent (Manrope)
    ═══════════════════════════════════════════════════════ */
 
+// Socle unifié des formulaires (clair). Voir src/styles/_forms.scss.
+@use './styles/forms';
+
 html,
 body {
   height: 100%;
@@ -358,7 +361,7 @@ td.mat-mdc-footer-cell {
 }
 
 .mat-mdc-tab.mdc-tab--active .mdc-tab__text-label {
-  color: var(--bg) !important;
+  color: var(--green-700) !important;
 }
 
 .mat-mdc-tab-group .mdc-tab-indicator__content--underline {
@@ -603,7 +606,7 @@ mat-progress-bar {
 .field__label {
   font-size: 12px;
   font-weight: 600;
-  color: var(--text-2);
+  color: var(--green-600);
 }
 
 .field__hint {
@@ -1594,258 +1597,6 @@ mat-progress-bar {
   padding: 0 !important;
 }
 
-.dark-modal {
-  background: var(--dm-bg);
-  color: var(--dm-text);
-  padding: 28px 28px 24px;
-  border-radius: var(--dm-radius);
-  box-sizing: border-box;
-}
-
-.dark-modal-title-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 24px;
-}
-
-.dark-modal-title {
-  margin: 0;
-  font-size: 1.2rem;
-  font-weight: 700;
-  color: #fff;
-}
-
-.dark-modal-close {
-  background: none;
-  border: none;
-  color: var(--dm-muted);
-  font-size: 1rem;
-  line-height: 1;
-  padding: 4px 8px;
-  border-radius: 6px;
-  cursor: pointer;
-  transition: color .2s, background .2s;
-
-  &:hover {
-    color: #fff;
-    background: rgba(255, 255, 255, .08);
-  }
-}
-
-.dark-field-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 14px;
-}
-
-.dark-field {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-
-  label {
-    font-size: 0.7rem;
-    font-weight: 700;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
-    color: var(--dm-label);
-  }
-
-  input,
-  textarea {
-    background: var(--dm-field-bg);
-    border: 1px solid transparent;
-    border-radius: var(--dm-field-radius);
-    color: var(--dm-text);
-    font-size: 0.9rem;
-    font-family: inherit;
-    padding: 10px 14px;
-    outline: none;
-    width: 100%;
-    box-sizing: border-box;
-    transition: border-color .2s;
-
-    &::placeholder {
-      color: var(--dm-muted);
-    }
-
-    &:focus {
-      border-color: var(--dm-accent);
-    }
-
-    &::-webkit-calendar-picker-indicator {
-      filter: invert(0.6);
-    }
-
-    &[type=number]::-webkit-outer-spin-button,
-    &[type=number]::-webkit-inner-spin-button {
-      -webkit-appearance: none;
-    }
-  }
-
-  mat-select {
-    background: var(--dm-field-bg);
-    border: 1px solid transparent;
-    border-radius: var(--dm-field-radius);
-    padding: 10px 14px;
-    display: block;
-    transition: border-color .2s;
-
-    &.mat-mdc-select-focused {
-      border-color: var(--dm-accent);
-    }
-
-    .mat-mdc-select-value-text {
-      color: var(--dm-text);
-    }
-
-    .mat-mdc-select-placeholder {
-      color: var(--dm-muted);
-    }
-
-    .mat-mdc-select-arrow {
-      color: var(--dm-muted);
-    }
-  }
-
-  .mat-mdc-select {
-    width: auto;
-  }
-
-  select {
-    background: var(--dm-field-bg);
-    border: 1px solid transparent;
-    border-radius: var(--dm-field-radius);
-    color: var(--dm-text);
-    font-size: 0.9rem;
-    font-family: inherit;
-    padding: 10px 14px;
-    outline: none;
-    width: 100%;
-    box-sizing: border-box;
-    cursor: pointer;
-    appearance: none;
-
-    &:focus {
-      border-color: var(--dm-accent);
-    }
-
-    option {
-      background: var(--dm-field-bg);
-    }
-  }
-}
-
-/* Boutons modales sombres (compat) */
-.btn-dark-primary {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 9px 20px;
-  border-radius: var(--r-pill);
-  border: none;
-  background: var(--dm-teal);
-  color: #fff;
-  font-size: 0.875rem;
-  font-weight: 600;
-  font-family: inherit;
-  cursor: pointer;
-  white-space: nowrap;
-  transition: opacity .2s, transform .1s;
-
-  &:hover:not(:disabled) {
-    opacity: .88;
-    transform: translateY(-1px);
-  }
-
-  &:disabled {
-    opacity: .35;
-    cursor: not-allowed;
-  }
-}
-
-.btn-dark-danger {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 9px 20px;
-  border-radius: var(--r-pill);
-  border: none;
-  background: #dc2626;
-  color: #fff;
-  font-size: 0.875rem;
-  font-weight: 600;
-  font-family: inherit;
-  cursor: pointer;
-  white-space: nowrap;
-  transition: opacity .2s, transform .1s;
-
-  &:hover:not(:disabled) {
-    opacity: .88;
-    transform: translateY(-1px);
-  }
-
-  &:disabled {
-    opacity: .35;
-    cursor: not-allowed;
-  }
-}
-
-.btn-dark-secondary {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 9px 20px;
-  border-radius: var(--r-pill);
-  border: 1px solid rgba(255, 255, 255, .30);
-  background: rgba(45, 41, 41, .55);
-  color: #fff;
-  font-size: 0.875rem;
-  font-weight: 500;
-  font-family: inherit;
-  cursor: pointer;
-  white-space: nowrap;
-  transition: background .2s;
-
-  &:hover {
-    background: rgba(45, 41, 41, .9);
-  }
-}
-
-.btn-dark-outline {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 9px 20px;
-  border-radius: var(--r-pill);
-  border: 1px solid rgba(255, 255, 255, .18);
-  background: transparent;
-  color: var(--dm-text);
-  font-size: 0.875rem;
-  font-weight: 500;
-  font-family: inherit;
-  cursor: pointer;
-  white-space: nowrap;
-  transition: background .2s;
-
-  &:hover {
-    background: rgba(255, 255, 255, .06);
-  }
-}
-
-.dark-actions {
-  display: flex;
-  gap: 12px;
-  margin-top: 24px;
-
-  .btn-dark-primary,
-  .btn-dark-outline {
-    flex: 1;
-    justify-content: center;
-  }
-}
-
 /* ════════════════════════════════════════
    PARTAGÉS — Cellules objectif
    ════════════════════════════════════════ */
@@ -1885,25 +1636,6 @@ mat-progress-bar {
   max-width: 320px !important;
   white-space: normal !important;
   padding: 10px 14px !important;
-}
-
-.dark-select-panel .mat-mdc-select-panel,
-.dark-select-panel.mat-mdc-select-panel {
-  background: var(--dm-field-bg) !important;
-  border-radius: 10px !important;
-
-  .mat-mdc-option {
-    color: var(--dm-text);
-
-    &:hover:not(.mdc-list-item--disabled) {
-      background: rgba(21, 128, 61, 0.15) !important;
-    }
-
-    &.mdc-list-item--selected:not(.mdc-list-item--disabled) {
-      background: rgba(21, 128, 61, 0.25) !important;
-      color: var(--dm-label);
-    }
-  }
 }
 
 /* ════════════════════════════════════════

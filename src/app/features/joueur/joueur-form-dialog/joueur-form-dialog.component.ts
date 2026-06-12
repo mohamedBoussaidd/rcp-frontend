@@ -1,8 +1,7 @@
-import { Component, Inject, Optional } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
 import { MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { MatSelect, MatOption } from '@angular/material/select';
 import { JoueurService, Joueur } from '@core/services/joueur.service';
 
 @Component({
@@ -10,7 +9,7 @@ import { JoueurService, Joueur } from '@core/services/joueur.service';
   standalone: true,
   templateUrl: './joueur-form-dialog.component.html',
   styleUrl: './joueur-form-dialog.component.scss',
-  imports: [ReactiveFormsModule, MatSelect, MatOption]
+  imports: [ReactiveFormsModule]
 })
 export class JoueurFormDialogComponent {
 
@@ -59,14 +58,14 @@ export class JoueurFormDialogComponent {
     { value: 'inactif',  label: 'Inactif' },
   ];
 
-  constructor(
-    private fb: FormBuilder,
-    private dialogRef: MatDialogRef<JoueurFormDialogComponent>,
-    private joueurService: JoueurService,
-    private snackBar: MatSnackBar,
-    @Optional() @Inject(MAT_DIALOG_DATA) public data: Joueur | null
-  ) {
-    const j = data;
+  private fb = inject(FormBuilder);
+  private dialogRef = inject<MatDialogRef<JoueurFormDialogComponent>>(MatDialogRef);
+  private joueurService = inject(JoueurService);
+  private snackBar = inject(MatSnackBar);
+  data = inject<Joueur | null>(MAT_DIALOG_DATA, { optional: true });
+
+  constructor() {
+    const j = this.data;
     this.editMode = !!j?.id;
     this.titre    = this.editMode ? `Modifier — ${j!.prenom} ${j!.nom}` : 'Nouveau joueur';
 
@@ -111,6 +110,12 @@ export class JoueurFormDialogComponent {
 
   cancel(): void {
     this.dialogRef.close();
+  }
+
+  /** Champ en erreur (obligatoire non rempli) une fois touché — pilote l'affichage du message. */
+  estInvalide(nom: string): boolean {
+    const c = this.form.get(nom);
+    return !!c && c.invalid && (c.touched || c.dirty);
   }
 
   private cleanNullStrings(value: any): any {

@@ -1,7 +1,6 @@
-import { Component, Inject, OnInit, OnDestroy } from '@angular/core';
+import { Component, OnInit, OnDestroy, inject } from '@angular/core';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
-import { MatSelectModule } from '@angular/material/select';
 import { MatTabsModule } from '@angular/material/tabs';
 import { CommonModule } from '@angular/common';
 import { Subscription } from 'rxjs';
@@ -26,7 +25,7 @@ const SEUIL_ECART = 0.20;
   standalone: true,
   templateUrl: './seance-form-dialog.component.html',
   styleUrl: './seance-form-dialog.component.scss',
-  imports: [CommonModule, ReactiveFormsModule, MatSelectModule, MatTabsModule]
+  imports: [CommonModule, ReactiveFormsModule, MatTabsModule]
 })
 export class SeanceFormDialogComponent implements OnInit, OnDestroy {
 
@@ -45,13 +44,11 @@ export class SeanceFormDialogComponent implements OnInit, OnDestroy {
 
   private subs: Subscription[] = [];
 
-  constructor(
-    private fb: FormBuilder,
-    public dialogRef: MatDialogRef<SeanceFormDialogComponent>,
-    private seanceService: SeanceService,
-    private techniqueService: TechniqueService,
-    @Inject(MAT_DIALOG_DATA) public dialogData: DialogData
-  ) {}
+  private fb = inject(FormBuilder);
+  dialogRef = inject<MatDialogRef<SeanceFormDialogComponent>>(MatDialogRef);
+  private seanceService = inject(SeanceService);
+  private techniqueService = inject(TechniqueService);
+  dialogData = inject<DialogData>(MAT_DIALOG_DATA);
 
   get typeSeances(): TypeSeance[] { return this.dialogData.typeSeances; }
 

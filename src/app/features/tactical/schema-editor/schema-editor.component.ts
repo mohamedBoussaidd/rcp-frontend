@@ -1,4 +1,4 @@
-import { AfterViewInit, Component, ElementRef, Inject, OnDestroy, ViewChild, signal } from '@angular/core';
+import { AfterViewInit, Component, ElementRef, OnDestroy, ViewChild, inject, signal } from '@angular/core';
 import { MAT_DIALOG_DATA, MatDialog, MatDialogRef } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { Observable } from 'rxjs';
@@ -172,15 +172,15 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
   private get W() { return this.terrain() === 'complet' ? 1040 : 600; }
   private get H() { return 680; }
 
-  constructor(
-    public dialogRef: MatDialogRef<SchemaEditorComponent>,
-    @Inject(MAT_DIALOG_DATA) data: SchemaEditorData,
-    private service: TechniqueService,
-    private joueurService: JoueurService,
-    private snack: MatSnackBar,
-    private dialog: MatDialog,
-    private terrainRenderer: SchemaTerrainRenderer,
-  ) {
+  dialogRef = inject<MatDialogRef<SchemaEditorComponent>>(MatDialogRef);
+  private service = inject(TechniqueService);
+  private joueurService = inject(JoueurService);
+  private snack = inject(MatSnackBar);
+  private dialog = inject(MatDialog);
+  private terrainRenderer = inject(SchemaTerrainRenderer);
+
+  constructor() {
+    const data = inject<SchemaEditorData>(MAT_DIALOG_DATA);
     this.data = data;
     if (this.data.schemaJson) {
       try { const d = JSON.parse(this.data.schemaJson); if (d.terrain) this.terrain.set(d.terrain); } catch { }

@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { Router } from '@angular/router';
 import { MatCard, MatCardHeader, MatCardTitle, MatCardContent } from '@angular/material/card';
 
@@ -10,7 +10,7 @@ import { MatCard, MatCardHeader, MatCardTitle, MatCardContent } from '@angular/m
   imports: [MatCard, MatCardHeader, MatCardTitle, MatCardContent]
 })
 export class MethodologieComponent {
-  constructor(private router: Router) {}
+  private router = inject(Router);
 
   retourDashboard(): void {
     this.router.navigate(['/dashboard']);

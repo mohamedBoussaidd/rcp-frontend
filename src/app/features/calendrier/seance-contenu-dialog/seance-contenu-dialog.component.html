@@ -1,40 +1,42 @@
-<div class="dark-modal sc">
+<div class="form-card sc">
 
-  <div class="dark-modal-title-row">
+  <div class="form-card__header">
     <div>
-      <h2 class="dark-modal-title">{{ data.titre }}</h2>
-      <span class="seance-subtitle">
+      <h2 class="form-card__title">{{ data.titre }}</h2>
+      <span class="form-card__subtitle seance-subtitle">
         {{ data.date | date:'EEEE d MMMM yyyy' }}
         @if (data.contenu) { · {{ data.contenu.exercices.length }} exercice(s) · {{ data.contenu.dureeTotaleMinutes }} min }
       </span>
     </div>
-    <button class="dark-modal-close" (click)="fermer()">✕</button>
+    <button type="button" class="form-card__close" (click)="fermer()" aria-label="Fermer">✕</button>
   </div>
 
-  @if (!data.contenu || data.contenu.exercices.length === 0) {
-    <div class="sc-vide">Aucun exercice renseigné pour cette séance.</div>
-  } @else {
-    <div class="sc-exos">
-      @for (ex of data.contenu.exercices; track ex.exerciceId) {
-        <div class="sc-exo">
-          <div class="sc-exo__info">
-            <div class="sc-exo__titre">{{ ex.nom }}</div>
-            <div class="sc-exo__meta">
-              @if (ex.categorie) { <span class="tag">{{ joli(ex.categorie) }}</span> }
-              @if (ex.dureeMinutes) { <span class="tag">{{ ex.dureeMinutes }} min</span> }
-              @if (ex.intensite) { <span class="tag">int. {{ ex.intensite }}</span> }
+  <div class="form-card__body">
+    @if (!data.contenu || data.contenu.exercices.length === 0) {
+      <div class="sc-vide">Aucun exercice renseigné pour cette séance.</div>
+    } @else {
+      <div class="sc-exos">
+        @for (ex of data.contenu.exercices; track ex.exerciceId) {
+          <div class="sc-exo">
+            <div class="sc-exo__info">
+              <div class="sc-exo__titre">{{ ex.nom }}</div>
+              <div class="sc-exo__meta">
+                @if (ex.categorie) { <span class="tag">{{ joli(ex.categorie) }}</span> }
+                @if (ex.dureeMinutes) { <span class="tag">{{ ex.dureeMinutes }} min</span> }
+                @if (ex.intensite) { <span class="tag">int. {{ ex.intensite }}</span> }
+              </div>
+              @if (ex.objectif) { <div class="sc-exo__obj">🎯 {{ ex.objectif }}</div> }
+              @if (ex.description) { <div class="sc-exo__desc">{{ ex.description }}</div> }
             </div>
-            @if (ex.objectif) { <div class="sc-exo__obj">🎯 {{ ex.objectif }}</div> }
-            @if (ex.description) { <div class="sc-exo__desc">{{ ex.description }}</div> }
+            @if (ex.schemaJson) {
+              <app-schema-viewer [schemaJson]="ex.schemaJson" [largeur]="480"></app-schema-viewer>
+            } @else {
+              <div class="sc-exo__no-schema">Pas de schéma.</div>
+            }
           </div>
-          @if (ex.schemaJson) {
-            <app-schema-viewer [schemaJson]="ex.schemaJson" [largeur]="480"></app-schema-viewer>
-          } @else {
-            <div class="sc-exo__no-schema">Pas de schéma.</div>
-          }
-        </div>
-      }
-    </div>
-  }
+        }
+      </div>
+    }
+  </div>
 
 </div>

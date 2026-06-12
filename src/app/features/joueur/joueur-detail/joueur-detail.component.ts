@@ -1,4 +1,4 @@
-import { Component, OnInit, HostListener } from '@angular/core';
+import { Component, OnInit, HostListener, inject } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { MatDialog } from '@angular/material/dialog';
 import { JoueurService, Joueur, GpsPoint } from '@core/services/joueur.service';
@@ -353,16 +353,14 @@ export class JoueurDetailComponent implements OnInit {
     }
   };
 
-  constructor(
-    private route: ActivatedRoute,
-    private router: Router,
-    private joueurService: JoueurService,
-    private predictionService: PredictionService,
-    private peseesService: PeseesService,
-    private blessureService: BlessureService,
-    private blessureSuiviService: BlessureSuiviService,
-    private dialog: MatDialog
-  ) {}
+  private route = inject(ActivatedRoute);
+  private router = inject(Router);
+  private joueurService = inject(JoueurService);
+  private predictionService = inject(PredictionService);
+  private peseesService = inject(PeseesService);
+  private blessureService = inject(BlessureService);
+  private blessureSuiviService = inject(BlessureSuiviService);
+  private dialog = inject(MatDialog);
 
   retourDashboard(): void {
     this.router.navigate(['/dashboard']);
@@ -511,7 +509,7 @@ export class JoueurDetailComponent implements OnInit {
     const ref = this.dialog.open(JoueurFormDialogComponent, {
       width: '560px',
       maxWidth: '95vw',
-      panelClass: 'dark-dialog',
+      panelClass: 'app-dialog',
       data: this.joueur,
     });
     ref.afterClosed().subscribe(joueurMaj => {

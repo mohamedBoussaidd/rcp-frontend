@@ -1,4 +1,4 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 
@@ -82,7 +82,7 @@ export class PredictionService {
 
   private readonly base = '/api/predictions';
 
-  constructor(private http: HttpClient) {}
+  private http = inject(HttpClient);
 
   getResumeEquipe(): Observable<ResumeJoueur[]> {
     return this.http.get<ResumeJoueur[]>(`${this.base}/equipe`);

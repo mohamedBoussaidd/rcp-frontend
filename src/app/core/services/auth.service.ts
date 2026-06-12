@@ -1,4 +1,4 @@
-import { Injectable, signal } from '@angular/core';
+import { Injectable, inject, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
 import { Observable, tap } from 'rxjs';
@@ -27,14 +27,15 @@ interface LoginResponse extends AuthUser {
 @Injectable({ providedIn: 'root' })
 export class AuthService {
 
+  private http = inject(HttpClient);
+  private router = inject(Router);
+
   private readonly base = '/api/auth';
   private static readonly TOKEN_KEY = 'rcp_token';
   private static readonly USER_KEY  = 'rcp_user';
 
   /** Utilisateur courant (null si déconnecté). */
   readonly currentUser = signal<AuthUser | null>(this.loadUser());
-
-  constructor(private http: HttpClient, private router: Router) {}
 
   login(email: string, motDePasse: string): Observable<LoginResponse> {
     return this.http.post<LoginResponse>(`${this.base}/login`, { email, motDePasse }).pipe(

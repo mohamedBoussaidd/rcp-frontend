@@ -1,4 +1,4 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
 
@@ -42,7 +42,7 @@ export interface Rpe {
 @Injectable({ providedIn: 'root' })
 export class SuiviSubjectifService {
 
-  constructor(private http: HttpClient) {}
+  private http = inject(HttpClient);
 
   getWellness(joueurId?: string): Observable<Wellness[]> {
     let params = new HttpParams();

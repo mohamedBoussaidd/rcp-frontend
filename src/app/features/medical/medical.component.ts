@@ -163,16 +163,14 @@ export class MedicalComponent implements OnInit {
   get nbIndisponibles(): number { return this.blessures().filter(b => b.statut === 'INDISPONIBLE').length; }
   get nbEnReprise(): number     { return this.blessures().filter(b => b.statut === 'EN_REPRISE').length; }
 
-  constructor(
-    private blessureService: BlessureService,
-    private documentService: DocumentMedicalService,
-    private suiviService: SuiviSubjectifService,
-    private blessureSuiviService: BlessureSuiviService,
-    private predictionService: PredictionService,
-    private joueurService: JoueurService,
-    private snack: MatSnackBar,
-    public auth: AuthService,
-  ) {}
+  private blessureService = inject(BlessureService);
+  private documentService = inject(DocumentMedicalService);
+  private suiviService = inject(SuiviSubjectifService);
+  private blessureSuiviService = inject(BlessureSuiviService);
+  private predictionService = inject(PredictionService);
+  private joueurService = inject(JoueurService);
+  private snack = inject(MatSnackBar);
+  auth = inject(AuthService);
 
   ngOnInit(): void {
     this.joueurService.getAll().subscribe({ next: j => this.joueurs.set(j), error: () => {} });

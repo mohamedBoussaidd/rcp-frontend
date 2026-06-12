@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, inject } from '@angular/core';
 import { PredictionService, ResumeJoueur } from '@core/services/prediction.service';
 import { PeseesService, PoidsFicheJoueur } from '@core/services/pesees.service';
 import { JoueurService, Joueur } from '@core/services/joueur.service';
@@ -150,17 +150,15 @@ export class DashboardComponent implements OnInit {
     colors:     ['#15803D'],
   };
 
-  constructor(
-    private predictionService: PredictionService,
-    private peseesService: PeseesService,
-    private joueurService: JoueurService,
-    private seanceService: SeanceService,
-    private techniqueService: TechniqueService,
-    private snackBar: MatSnackBar,
-    private dialog: MatDialog,
-    private router: Router,
-    public auth: AuthService,
-  ) {}
+  private predictionService = inject(PredictionService);
+  private peseesService = inject(PeseesService);
+  private joueurService = inject(JoueurService);
+  private seanceService = inject(SeanceService);
+  private techniqueService = inject(TechniqueService);
+  private snackBar = inject(MatSnackBar);
+  private dialog = inject(MatDialog);
+  private router = inject(Router);
+  auth = inject(AuthService);
 
   ngOnInit(): void {
     this.loadEquipe();
@@ -224,7 +222,7 @@ export class DashboardComponent implements OnInit {
   allerPresence(seance: Seance): void {
     this.dialog.open(PresenceDialogComponent, {
       data: { seance },
-      panelClass: 'dark-dialog',
+      panelClass: 'app-dialog',
       maxWidth: '95vw',
     });
   }
@@ -268,14 +266,14 @@ export class DashboardComponent implements OnInit {
 
   ouvrirDialogJoueur(): void {
     const ref = this.dialog.open(JoueurFormDialogComponent, {
-      width: '560px', maxWidth: '95vw', panelClass: 'dark-dialog',
+      width: '560px', maxWidth: '95vw', panelClass: 'app-dialog',
     });
     ref.afterClosed().subscribe(joueur => { if (joueur) this.loadEquipe(); });
   }
 
   ouvrirDialogSuppression(): void {
     const ref = this.dialog.open(JoueurSupprimerDialogComponent, {
-      width: '500px', maxWidth: '95vw', panelClass: 'dark-dialog',
+      width: '500px', maxWidth: '95vw', panelClass: 'app-dialog',
     });
     ref.afterClosed().subscribe(() => this.loadEquipe());
   }

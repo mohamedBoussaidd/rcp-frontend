@@ -1,4 +1,4 @@
-import { Component, Inject, OnInit, signal } from '@angular/core';
+import { Component, OnInit, inject, signal } from '@angular/core';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { SeanceService, LignePresence, StatutPresence, Seance } from '@core/services/seance.service';
 import { MatSnackBar } from '@angular/material/snack-bar';
@@ -38,12 +38,10 @@ export class PresenceDialogComponent implements OnInit {
   get nbRetards():   number { return this.lignes.filter(l => l.statut === 'RETARD').length;   }
   get nbNonRens():   number { return this.lignes.filter(l => !l.statut).length;               }
 
-  constructor(
-    public dialogRef: MatDialogRef<PresenceDialogComponent>,
-    @Inject(MAT_DIALOG_DATA) public data: PresenceDialogData,
-    private seanceService: SeanceService,
-    private snack: MatSnackBar,
-  ) {}
+  dialogRef = inject<MatDialogRef<PresenceDialogComponent>>(MatDialogRef);
+  data = inject<PresenceDialogData>(MAT_DIALOG_DATA);
+  private seanceService = inject(SeanceService);
+  private snack = inject(MatSnackBar);
 
   ngOnInit(): void {
     this.seanceService.getFeuille(this.seance.id).subscribe({

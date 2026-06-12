@@ -59,7 +59,9 @@ export class PlanningTechniqueComponent implements OnInit {
   exoForm: ExerciceRequest = this.exoVide();
   savingExo     = signal(false);
 
-  constructor(private service: TechniqueService, private snack: MatSnackBar, private dialog: MatDialog) {}
+  private service = inject(TechniqueService);
+  private snack = inject(MatSnackBar);
+  private dialog = inject(MatDialog);
   ouvrirSchema(e: Exercice): void {
     const ref = this.dialog.open(SchemaEditorComponent, {
       width: '95vw', maxWidth: '95vw', panelClass: 'dark-dialog',

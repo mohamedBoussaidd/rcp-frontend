@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, inject } from '@angular/core';
 import { Router } from '@angular/router';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { ConfigurationService } from '@core/services/configuration.service';
@@ -386,12 +386,10 @@ export class ParametresComponent implements OnInit {
 
   readonly meta = PARAM_META;
 
-  constructor(
-    private configService: ConfigurationService,
-    private seanceService: SeanceService,
-    private snackBar: MatSnackBar,
-    private router: Router
-  ) {}
+  private configService = inject(ConfigurationService);
+  private seanceService = inject(SeanceService);
+  private snackBar = inject(MatSnackBar);
+  private router = inject(Router);
 
   ngOnInit(): void {
     this.valeurs = Object.fromEntries(

@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, inject } from '@angular/core';
 import { Router } from '@angular/router';
 import { MatIcon } from '@angular/material/icon';
 import { AuthService } from '@core/services/auth.service';
@@ -19,12 +19,10 @@ import { MonClubService } from '@core/services/mon-club.service';
 })
 export class BarreContexteComponent implements OnInit {
 
-  constructor(
-    public auth: AuthService,
-    public contexte: ContexteService,
-    private monClub: MonClubService,
-    private router: Router,
-  ) {}
+  auth = inject(AuthService);
+  contexte = inject(ContexteService);
+  private monClub = inject(MonClubService);
+  private router = inject(Router);
 
   ngOnInit(): void {
     // Président : son club est implicite → on initialise le contexte depuis mon-club.

@@ -1,4 +1,4 @@
-import { Component, Inject } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { DatePipe } from '@angular/common';
 import { ContenuSeance } from '@core/services/seance.service';
@@ -19,10 +19,8 @@ export interface SeanceContenuData {
   imports: [DatePipe, SchemaViewerComponent],
 })
 export class SeanceContenuDialogComponent {
-  constructor(
-    public dialogRef: MatDialogRef<SeanceContenuDialogComponent>,
-    @Inject(MAT_DIALOG_DATA) public data: SeanceContenuData,
-  ) {}
+  dialogRef = inject<MatDialogRef<SeanceContenuDialogComponent>>(MatDialogRef);
+  data = inject<SeanceContenuData>(MAT_DIALOG_DATA);
 
   joli(v?: string): string { return v ? v.replace(/_/g, ' ') : ''; }
   fermer(): void { this.dialogRef.close(); }

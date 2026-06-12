@@ -58,7 +58,7 @@ export class SchemaTactiqueComponent implements OnInit {
   /** Nouveau schéma : mini-formulaire (nom + catégorie) puis ouverture de l'éditeur. */
   nouveau(): void {
     this.dialog.open(SchemaMetaDialogComponent, {
-      panelClass: 'dark-dialog', data: { titre: 'Nouveau schéma' },
+      panelClass: 'app-dialog', data: { titre: 'Nouveau schéma' },
     }).afterClosed().subscribe((meta: SchemaMeta | undefined) => {
       if (!meta) return;
       this.dialog.open(SchemaEditorComponent, {
@@ -76,7 +76,7 @@ export class SchemaTactiqueComponent implements OnInit {
   renommer(s: SchemaTactique, ev: Event): void {
     ev.stopPropagation();
     this.dialog.open(SchemaMetaDialogComponent, {
-      panelClass: 'dark-dialog',
+      panelClass: 'app-dialog',
       data: { titre: 'Renommer le schéma', nom: s.nom, categorie: s.categorie },
     }).afterClosed().subscribe((meta: SchemaMeta | undefined) => {
       if (!meta) return;

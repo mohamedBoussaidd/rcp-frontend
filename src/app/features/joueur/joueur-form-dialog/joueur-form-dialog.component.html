@@ -1,100 +1,106 @@
-<div class="dark-modal">
+<div class="form-card">
 
-  <div class="dark-modal-title-row">
-    <h2 class="dark-modal-title">{{ titre }}</h2>
-    <button class="dark-modal-close" (click)="cancel()">✕</button>
+  <div class="form-card__header">
+    <h2 class="form-card__title">{{ titre }}</h2>
+    <button type="button" class="form-card__close" (click)="cancel()" aria-label="Fermer">✕</button>
   </div>
 
-  <form [formGroup]="form">
-    <div class="dark-field-grid">
+  <form [formGroup]="form" class="form-card__body">
+    <div class="form-grid form-grid--2">
 
-      <div class="dark-field">
-        <label>Prénom *</label>
+      <div class="form-field" [class.form-field--error]="estInvalide('prenom')">
+        <label class="form-field__label">Prénom <span class="req">*</span></label>
         <input formControlName="prenom" placeholder="ex : Thomas">
+        @if (estInvalide('prenom')) {
+          <span class="form-field__error">Le prénom est obligatoire</span>
+        }
       </div>
 
-      <div class="dark-field">
-        <label>Nom *</label>
+      <div class="form-field" [class.form-field--error]="estInvalide('nom')">
+        <label class="form-field__label">Nom <span class="req">*</span></label>
         <input formControlName="nom" placeholder="ex : Dupont">
+        @if (estInvalide('nom')) {
+          <span class="form-field__error">Le nom est obligatoire</span>
+        }
       </div>
 
-      <div class="dark-field">
-        <label>Date de naissance</label>
+      <div class="form-field">
+        <label class="form-field__label">Date de naissance</label>
         <input type="date" formControlName="dateNaissance">
       </div>
 
-      <div class="dark-field">
-        <label>Arrivée au club</label>
+      <div class="form-field">
+        <label class="form-field__label">Arrivée au club</label>
         <input type="date" formControlName="dateArriveeClub">
       </div>
 
-      <div class="dark-field">
-        <label>Poste principal</label>
-        <mat-select formControlName="postePrincipal" panelClass="dark-select-panel">
-          <mat-option [value]="null">— Non défini</mat-option>
+      <div class="form-field">
+        <label class="form-field__label">Poste principal</label>
+        <select formControlName="postePrincipal">
+          <option [ngValue]="null">— Non défini</option>
           @for (p of postes; track p.value) {
-            <mat-option [value]="p.value">{{ p.label }}</mat-option>
+            <option [ngValue]="p.value">{{ p.label }}</option>
           }
-        </mat-select>
+        </select>
       </div>
 
-      <div class="dark-field">
-        <label>Poste secondaire</label>
-        <mat-select formControlName="posteSecondaire" panelClass="dark-select-panel">
-          <mat-option [value]="null">— Non défini</mat-option>
+      <div class="form-field">
+        <label class="form-field__label">Poste secondaire</label>
+        <select formControlName="posteSecondaire">
+          <option [ngValue]="null">— Non défini</option>
           @for (p of postes; track p.value) {
-            <mat-option [value]="p.value">{{ p.label }}</mat-option>
+            <option [ngValue]="p.value">{{ p.label }}</option>
           }
-        </mat-select>
+        </select>
       </div>
 
-      <div class="dark-field">
-        <label>Profil athlétique</label>
-        <mat-select formControlName="profilAthletique" panelClass="dark-select-panel">
-          <mat-option [value]="null">— Non défini</mat-option>
+      <div class="form-field">
+        <label class="form-field__label">Profil athlétique</label>
+        <select formControlName="profilAthletique">
+          <option [ngValue]="null">— Non défini</option>
           @for (p of profils; track p.value) {
-            <mat-option [value]="p.value">{{ p.label }}</mat-option>
+            <option [ngValue]="p.value">{{ p.label }}</option>
           }
-        </mat-select>
+        </select>
       </div>
 
-      <div class="dark-field">
-        <label>Pied fort</label>
-        <mat-select formControlName="piedFort" panelClass="dark-select-panel">
-          <mat-option [value]="null">— Non défini</mat-option>
+      <div class="form-field">
+        <label class="form-field__label">Pied fort</label>
+        <select formControlName="piedFort">
+          <option [ngValue]="null">— Non défini</option>
           @for (p of piedsForts; track p.value) {
-            <mat-option [value]="p.value">{{ p.label }}</mat-option>
+            <option [ngValue]="p.value">{{ p.label }}</option>
           }
-        </mat-select>
+        </select>
       </div>
 
-      <div class="dark-field">
-        <label>Taille (cm)</label>
+      <div class="form-field">
+        <label class="form-field__label">Taille (cm)</label>
         <input type="number" formControlName="taille" placeholder="178">
       </div>
 
-      <div class="dark-field">
-        <label>Poids cible (kg)</label>
+      <div class="form-field">
+        <label class="form-field__label">Poids cible (kg)</label>
         <input type="number" step="0.1" formControlName="poidsFormeCible" placeholder="73.0">
       </div>
 
-      <div class="dark-field">
-        <label>Statut *</label>
-        <mat-select formControlName="statut" panelClass="dark-select-panel">
+      <div class="form-field" [class.form-field--error]="estInvalide('statut')">
+        <label class="form-field__label">Statut <span class="req">*</span></label>
+        <select formControlName="statut">
           @for (s of statuts; track s.value) {
-            <mat-option [value]="s.value">{{ s.label }}</mat-option>
+            <option [ngValue]="s.value">{{ s.label }}</option>
           }
-        </mat-select>
+        </select>
       </div>
 
     </div>
   </form>
 
-  <div class="dark-actions">
-    <button class="btn-dark-primary" (click)="save()" [disabled]="form.invalid || saving">
+  <div class="form-card__footer">
+    <button type="button" class="btn btn--secondary" (click)="cancel()">Annuler</button>
+    <button type="button" class="btn btn--primary" (click)="save()" [disabled]="form.invalid || saving">
       {{ saving ? 'Enregistrement…' : (editMode ? 'Enregistrer les modifications' : 'Créer le joueur') }}
     </button>
-    <button class="btn-dark-outline" (click)="cancel()">Annuler</button>
   </div>
 
 </div>

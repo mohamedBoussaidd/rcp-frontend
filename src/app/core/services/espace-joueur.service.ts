@@ -1,4 +1,4 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { Joueur, GpsPoint } from './joueur.service';
@@ -93,7 +93,7 @@ export interface DocumentMedical {
 export class EspaceJoueurService {
   private readonly base = '/api/moi';
 
-  constructor(private http: HttpClient) {}
+  private http = inject(HttpClient);
 
   getProfil(): Observable<Joueur> {
     return this.http.get<Joueur>(`${this.base}/profil`);

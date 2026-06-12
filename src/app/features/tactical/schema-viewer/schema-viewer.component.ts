@@ -1,4 +1,4 @@
-import { AfterViewInit, Component, ElementRef, Input, OnChanges, OnDestroy, ViewChild } from '@angular/core';
+import { AfterViewInit, Component, ElementRef, Input, OnChanges, OnDestroy, ViewChild, inject } from '@angular/core';
 import Konva from 'konva';
 import { JoueurService } from '@core/services/joueur.service';
 
@@ -67,7 +67,7 @@ export class SchemaViewerComponent implements AfterViewInit, OnChanges, OnDestro
   animable = false;
   enLecture = false;
 
-  constructor(private joueurService: JoueurService) {}
+  private joueurService = inject(JoueurService);
 
   ngAfterViewInit(): void {
     this.pret = true;

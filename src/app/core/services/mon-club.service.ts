@@ -1,4 +1,4 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { Role } from './auth.service';
@@ -46,9 +46,8 @@ export interface MembreCreateRequest {
 
 @Injectable({ providedIn: 'root' })
 export class MonClubService {
+  private http = inject(HttpClient);
   private readonly base = '/api';
-
-  constructor(private http: HttpClient) {}
 
   getMonClub(): Observable<MonClub> {
     return this.http.get<MonClub>(`${this.base}/mon-club`);

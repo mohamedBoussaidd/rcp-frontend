@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, inject } from '@angular/core';
 import { Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { CommonModule, DatePipe } from '@angular/common';
@@ -62,12 +62,10 @@ export class ImportComponent implements OnInit {
   // Résultat
   resultat: any = null;
 
-  constructor(
-    private seanceService: SeanceService,
-    private joueurService: JoueurService,
-    private snackBar: MatSnackBar,
-    private router: Router
-  ) {}
+  private seanceService = inject(SeanceService);
+  private joueurService = inject(JoueurService);
+  private snackBar = inject(MatSnackBar);
+  private router = inject(Router);
 
   ngOnInit(): void {
     const debut = this.dateStr(-365);

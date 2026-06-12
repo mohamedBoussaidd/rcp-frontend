@@ -1,4 +1,4 @@
-import { Component, OnInit, computed, signal } from '@angular/core';
+import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { DatePipe, DecimalPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatCard, MatCardContent, MatCardHeader, MatCardTitle } from '@angular/material/card';
@@ -199,7 +199,7 @@ export class EspaceJoueurComponent implements OnInit {
     return Math.round((dp - p.poidsFormeCible) * 10) / 10;
   });
 
-  constructor(private service: EspaceJoueurService) {}
+  private service = inject(EspaceJoueurService);
 
   ngOnInit(): void {
     this.service.getProfil().subscribe({

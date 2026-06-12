@@ -1,4 +1,4 @@
-import { Component, OnInit, signal } from '@angular/core';
+import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { DatePipe } from '@angular/common';
 import { MatSnackBar } from '@angular/material/snack-bar';
@@ -25,12 +25,10 @@ export class AdminClubsComponent implements OnInit {
   editingId = signal<string | null>(null);
   editForm  = { nom: '', logo: '' };
 
-  constructor(
-    private clubService: ClubService,
-    private contexte: ContexteService,
-    private router: Router,
-    private snack: MatSnackBar,
-  ) {}
+  private clubService = inject(ClubService);
+  private contexte = inject(ContexteService);
+  private router = inject(Router);
+  private snack = inject(MatSnackBar);
 
   entrer(c: Club): void {
     this.clubService.getEquipes(c.id).subscribe({

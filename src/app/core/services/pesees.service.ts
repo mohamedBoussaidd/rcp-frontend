@@ -1,4 +1,4 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 
@@ -23,9 +23,8 @@ export interface PoidsFicheJoueur {
 
 @Injectable({ providedIn: 'root' })
 export class PeseesService {
+  private http = inject(HttpClient);
   private readonly base = '/api/pesees';
-
-  constructor(private http: HttpClient) {}
 
   getByJoueur(joueurId: string): Observable<Pesee[]> {
     return this.http.get<Pesee[]>(this.base, { params: { joueurId } });

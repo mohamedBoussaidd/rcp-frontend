@@ -1,4 +1,4 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 
@@ -133,7 +133,7 @@ export class SeanceService {
   private readonly base = '/api/seances';
   private readonly baseTypes = '/api/type-seances';
 
-  constructor(private http: HttpClient) {}
+  private http = inject(HttpClient);
 
   getAll(): Observable<Seance[]> {
     return this.http.get<Seance[]>(this.base);

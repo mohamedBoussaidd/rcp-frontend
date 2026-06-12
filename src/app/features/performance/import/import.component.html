@@ -67,7 +67,7 @@
         }
       </label>
 
-      <button class="btn-dark-primary btn-import" [disabled]="!peutAnalyser" (click)="analyser()">
+      <button class="btn btn--primary btn-import" [disabled]="!peutAnalyser" (click)="analyser()">
         Analyser le fichier
       </button>
     </div>
@@ -167,12 +167,12 @@
     </div>
 
     <div class="resolution-footer">
-      <button class="btn-dark-primary btn-import"
+      <button class="btn btn--primary btn-import"
               [disabled]="!toutResolu"
               (click)="soumettreResolutions()">
         Confirmer et importer ({{ nbJoueursImportes }} joueurs)
       </button>
-      <button class="btn-dark-outline" (click)="etape = 'selection'">← Retour</button>
+      <button class="btn btn--secondary" (click)="etape = 'selection'">← Retour</button>
     </div>
   </div>
 }
@@ -207,7 +207,7 @@
           </div>
         }
       </div>
-      <button class="btn-dark-primary" (click)="nouvelImport()">Nouvel import</button>
+      <button class="btn btn--primary" (click)="nouvelImport()">Nouvel import</button>
     </div>
   </div>
 }

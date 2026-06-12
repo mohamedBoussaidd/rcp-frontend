@@ -1,4 +1,4 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { EquipeContexte } from './contexte.service';
@@ -25,9 +25,8 @@ export interface ClubCreateRequest {
 
 @Injectable({ providedIn: 'root' })
 export class ClubService {
+  private http = inject(HttpClient);
   private readonly base = '/api/clubs';
-
-  constructor(private http: HttpClient) {}
 
   lister(): Observable<Club[]> {
     return this.http.get<Club[]>(this.base);

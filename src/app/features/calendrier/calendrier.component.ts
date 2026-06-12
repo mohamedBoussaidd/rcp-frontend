@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, inject } from '@angular/core';
 import { Router } from '@angular/router';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
@@ -77,15 +77,13 @@ export class CalendrierComponent implements OnInit {
   readonly couleursType = COULEURS_TYPE;
   readonly infosType = INFOS_TYPE;
 
-  constructor(
-    private seanceService: SeanceService,
-    private dialog: MatDialog,
-    private snackBar: MatSnackBar,
-    private router: Router,
-    public auth: AuthService,
-    public contexte: ContexteService,
-    private espaceJoueur: EspaceJoueurService
-  ) {}
+  private seanceService = inject(SeanceService);
+  private dialog = inject(MatDialog);
+  private snackBar = inject(MatSnackBar);
+  private router = inject(Router);
+  auth = inject(AuthService);
+  contexte = inject(ContexteService);
+  private espaceJoueur = inject(EspaceJoueurService);
 
   /** Joueur : calendrier en lecture seule, données scopées via /api/moi (endpoints staff bloqués). */
   get lectureSeule(): boolean { return this.auth.hasRole('JOUEUR'); }
@@ -254,7 +252,7 @@ export class CalendrierComponent implements OnInit {
   ouvrirCreation(dateStr?: string): void {
     if (!this.typeSeances.length) return;
     const ref = this.dialog.open(SeanceFormDialogComponent, {
-      width: '760px', maxWidth: '96vw', panelClass: 'dark-dialog',
+      width: '760px', maxWidth: '96vw', panelClass: 'app-dialog',
       data: { typeSeances: this.typeSeances, date: dateStr ?? this.toDateStr(this.ancre) }
     });
     ref.afterClosed().subscribe((result: SeanceFormResult | null) => {
@@ -276,7 +274,7 @@ export class CalendrierComponent implements OnInit {
   editerSeance(seance: Seance, event: MouseEvent): void {
     event.stopPropagation();
     const ref = this.dialog.open(SeanceFormDialogComponent, {
-      width: '760px', maxWidth: '96vw', panelClass: 'dark-dialog',
+      width: '760px', maxWidth: '96vw', panelClass: 'app-dialog',
       data: { typeSeances: this.typeSeances, date: seance.date, seance }
     });
     ref.afterClosed().subscribe((result: SeanceFormResult | null) => {
@@ -310,7 +308,7 @@ export class CalendrierComponent implements OnInit {
 
   private ouvrirContenuDialog(titre: string, date: string, contenu: any): void {
     this.dialog.open(SeanceContenuDialogComponent, {
-      width: '900px', maxWidth: '96vw', panelClass: 'dark-dialog',
+      width: '900px', maxWidth: '96vw', panelClass: 'app-dialog',
       data: { titre, date, contenu },
     });
   }

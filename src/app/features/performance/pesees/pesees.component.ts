@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, inject } from '@angular/core';
 import { Router } from '@angular/router';
 import { PeseesService, PoidsFicheJoueur } from '@core/services/pesees.service';
 import { MatSnackBar } from '@angular/material/snack-bar';
@@ -50,12 +50,10 @@ export class PeseesComponent implements OnInit {
     this.pageSize  = event.pageSize;
   }
 
-  constructor(
-    private peseesService: PeseesService,
-    private router: Router,
-    private snackBar: MatSnackBar,
-    public auth: AuthService
-  ) {}
+  private peseesService = inject(PeseesService);
+  private router = inject(Router);
+  private snackBar = inject(MatSnackBar);
+  auth = inject(AuthService);
 
   ngOnInit(): void {
     this.charger();

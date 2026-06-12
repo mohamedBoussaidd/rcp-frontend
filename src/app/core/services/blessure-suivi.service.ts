@@ -1,4 +1,4 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 
@@ -25,9 +25,8 @@ export interface RtpEtape {
 /** Suivi d'une blessure : journal d'évolution + protocole de retour au jeu (RTP). */
 @Injectable({ providedIn: 'root' })
 export class BlessureSuiviService {
+  private http = inject(HttpClient);
   private readonly base = '/api/blessures';
-
-  constructor(private http: HttpClient) {}
 
   // ── Journal ──
   listerNotes(blessureId: string): Observable<BlessureNote[]> {

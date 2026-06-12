@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, inject } from '@angular/core';
 import { MatDialogRef } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { JoueurService, Joueur } from '@core/services/joueur.service';
@@ -17,11 +17,9 @@ export class JoueurSupprimerDialogComponent implements OnInit {
   confirmation: Joueur | null = null;
   enCours = false;
 
-  constructor(
-    private dialogRef: MatDialogRef<JoueurSupprimerDialogComponent>,
-    private joueurService: JoueurService,
-    private snackBar: MatSnackBar
-  ) {}
+  private dialogRef = inject<MatDialogRef<JoueurSupprimerDialogComponent>>(MatDialogRef);
+  private joueurService = inject(JoueurService);
+  private snackBar = inject(MatSnackBar);
 
   ngOnInit(): void {
     this.joueurService.getAllPourSuppression().subscribe({
