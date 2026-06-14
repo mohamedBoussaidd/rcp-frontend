@@ -1,0 +1,87 @@
+:host { display: block; }
+
+.well-locked {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--ok-bg);
+  color: var(--ok);
+  border: 1px solid var(--ok-bd);
+  border-radius: var(--r-lg);
+  padding: 10px 12px;
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 14px;
+
+  &__ic {
+    flex-shrink: 0;
+    width: 20px; height: 20px;
+    border-radius: 50%;
+    background: var(--ok);
+    color: #fff;
+    display: grid; place-items: center;
+    font-size: 12px; font-weight: 800;
+  }
+}
+
+.well-hooper {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+
+  &.is-locked { opacity: 0.92; }
+}
+
+.well-item {
+  &__head { margin-bottom: 8px; }
+  &__label { font-size: 15px; font-weight: 700; }
+
+  &__scale {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 6px;
+    font-size: 11.5px;
+    color: var(--text-3);
+  }
+}
+
+/* ── Gêne ── */
+.well-gene {
+  margin-top: 14px;
+
+  &__q { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  &__qlabel { font-size: 15px; font-weight: 700; }
+
+  &__toggle {
+    display: inline-flex;
+    background: var(--surface-3);
+    border-radius: var(--r-pill);
+    padding: 3px;
+    gap: 2px;
+    flex-shrink: 0;
+
+    button {
+      border: 0;
+      background: transparent;
+      padding: 7px 18px;
+      border-radius: var(--r-pill);
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--text-3);
+      cursor: pointer;
+      font-family: var(--font);
+      transition: background 120ms, color 120ms;
+
+      &.is-active { background: var(--surface); color: var(--text); box-shadow: var(--shadow-xs); }
+    }
+  }
+
+  &__detail { margin-top: 16px; }
+  &__hint { font-size: 13.5px; color: var(--text-2); text-align: center; margin: 0 0 8px; }
+  &__sub { font-size: 13px; font-weight: 700; color: var(--text-2); margin: 16px 0 8px; }
+  &__selected { text-align: center; font-size: 14px; margin: 12px 0 4px; }
+  &__selected strong { color: var(--bad); }
+  &__empty { text-align: center; font-size: 13px; color: var(--text-3); margin: 8px 0 0; }
+}
+
+.well-submit { margin-top: 22px; }

@@ -1,0 +1,242 @@
+/* ═══════════════════════════════════════════════════════
+   PWA JOUEUR — Design system mobile-first
+   Primitives partagées par les écrans /joueur (mobile plein écran).
+   S'appuie sur les tokens globaux (--green-*, --surface, --r-*, ombres).
+   ═══════════════════════════════════════════════════════ */
+
+/* Conteneur plein écran : hauteur dynamique (barre d'URL mobile) + encoches. */
+.pwa {
+  min-height: 100dvh;
+  background: var(--bg);
+  color: var(--text);
+  display: flex;
+  flex-direction: column;
+  padding-top: env(safe-area-inset-top);
+}
+
+/* ── Top bar contextuelle (écrans secondaires) ── */
+.pwa-topbar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 56px;
+  padding: 0 8px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  box-shadow: var(--shadow-xs);
+
+  &__back {
+    width: 40px;
+    height: 40px;
+    border: 0;
+    background: transparent;
+    border-radius: var(--r-pill);
+    font-size: 30px;
+    line-height: 1;
+    color: var(--text-2);
+    cursor: pointer;
+    display: grid;
+    place-items: center;
+    transition: background 120ms var(--ease-out);
+
+    &:active { background: var(--surface-3); }
+  }
+
+  &__title {
+    font-size: 17px;
+    font-weight: 700;
+    margin: 0;
+    letter-spacing: -0.01em;
+  }
+
+  &__spacer { flex: 1; }
+}
+
+/* ── Zone de contenu scrollable ── */
+.pwa-content {
+  flex: 1;
+  width: 100%;
+  max-width: 560px;
+  margin: 0 auto;
+  padding: 16px 16px calc(28px + env(safe-area-inset-bottom));
+}
+
+/* ── Cartes ── */
+.pwa-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-2xl);
+  box-shadow: var(--shadow-sm);
+  padding: 18px;
+}
+
+.pwa-section-title {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-3);
+  margin: 24px 4px 10px;
+}
+
+/* ── Boutons tactiles (≥48px) ── */
+.pwa-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 52px;
+  padding: 0 20px;
+  border-radius: var(--r-xl);
+  font-size: 16px;
+  font-weight: 700;
+  font-family: var(--font);
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: transform 90ms var(--ease-out), background 120ms var(--ease-out), opacity 120ms;
+  -webkit-tap-highlight-color: transparent;
+
+  &:active:not(:disabled) { transform: scale(0.97); }
+  &:disabled { opacity: 0.5; cursor: default; }
+
+  &--block { width: 100%; }
+}
+
+.pwa-btn--primary {
+  background: var(--green-600);
+  color: #fff;
+  box-shadow: var(--shadow-sm), inset 0 -1px 0 rgba(0, 0, 0, 0.08);
+  &:active:not(:disabled) { background: var(--green-700); }
+}
+
+.pwa-btn--secondary {
+  background: var(--surface);
+  color: var(--text);
+  border-color: var(--border-strong);
+}
+
+.pwa-btn--ghost {
+  background: transparent;
+  color: var(--text-2);
+}
+
+/* ── Échelle tactile (Hooper 1..5, sRPE) ── */
+.pwa-scale {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  gap: 8px;
+}
+
+.pwa-scale__btn {
+  min-height: 52px;
+  border: 1.5px solid var(--border-strong);
+  background: var(--surface);
+  border-radius: var(--r-lg);
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--text-2);
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  transition: transform 90ms var(--ease-out), background 120ms, border-color 120ms, color 120ms;
+  -webkit-tap-highlight-color: transparent;
+
+  &:active { transform: scale(0.94); }
+
+  &.is-active {
+    background: var(--green-600);
+    border-color: var(--green-600);
+    color: #fff;
+    box-shadow: var(--shadow-sm);
+  }
+}
+
+/* Variante colorée vert→rouge (intensité) — la couleur active est posée inline. */
+.pwa-scale__btn.is-active--scale { color: #fff; border-color: transparent; }
+
+/* ── Chips (sélection moment, zones) ── */
+.pwa-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+
+.pwa-chip {
+  min-height: 44px;
+  padding: 0 16px;
+  border-radius: var(--r-pill);
+  border: 1.5px solid var(--border-strong);
+  background: var(--surface);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-2);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  -webkit-tap-highlight-color: transparent;
+  transition: background 120ms, border-color 120ms, color 120ms;
+
+  &.is-active {
+    background: var(--green-50);
+    border-color: var(--green-600);
+    color: var(--green-700);
+  }
+}
+
+/* ── Toast de succès ── */
+.pwa-toast {
+  position: fixed;
+  left: 50%;
+  bottom: calc(24px + env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  background: var(--slate-900);
+  color: #fff;
+  padding: 12px 18px;
+  border-radius: var(--r-pill);
+  font-size: 14px;
+  font-weight: 600;
+  box-shadow: var(--shadow-lg);
+  z-index: 90;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* ── État vide / chargement ── */
+.pwa-empty {
+  text-align: center;
+  color: var(--text-3);
+  padding: 40px 16px;
+  font-size: 14px;
+  line-height: 1.7;
+}
+
+/* ── Bandeau hors-ligne / resync ── */
+.pwa-offline-bar {
+  position: sticky;
+  top: 0;
+  z-index: 25;
+  text-align: center;
+  font-size: 12.5px;
+  font-weight: 700;
+  padding: 8px 12px;
+  background: var(--warn-bg);
+  color: var(--warn);
+  border-bottom: 1px solid var(--warn-bd);
+
+  &--sync { background: var(--info-bg); color: var(--info); border-bottom-color: var(--info-bd); }
+}
+
+/* ── Animations partagées ── */
+@keyframes pwa-rise {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.pwa-rise { animation: pwa-rise 280ms var(--ease-out) both; }
+
+@keyframes pwa-pop {
+  0%   { transform: scale(0.6); opacity: 0; }
+  60%  { transform: scale(1.08); }
+  100% { transform: scale(1); opacity: 1; }
+}
+.pwa-pop { animation: pwa-pop 300ms var(--ease-out) both; }

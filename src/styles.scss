@@ -5,6 +5,8 @@
 
 // Socle unifié des formulaires (clair). Voir src/styles/_forms.scss.
 @use './styles/forms';
+// Design system mobile de la PWA joueur (/joueur). Voir src/styles/_pwa.scss.
+@use './styles/pwa';
 
 html,
 body {

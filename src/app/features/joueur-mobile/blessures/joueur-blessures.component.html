@@ -1,0 +1,57 @@
+@if (store.blessuresTriees().length === 0) {
+  <div class="pwa-empty pwa-rise">
+    <div class="bl-empty-emoji">💪</div>
+    Aucune blessure enregistrée.<br>Prends soin de toi !
+  </div>
+} @else {
+  <div class="bl-list">
+    @for (b of store.blessuresTriees(); track b.id) {
+      <article class="pwa-card bl-card pwa-rise" [class.is-open]="ouvert() === b.id">
+        <button type="button" class="bl-card__head" (click)="basculer(b)">
+          <div class="bl-card__main">
+            <span class="bl-card__title">{{ joli(b.typeBlessure) }}@if (b.zoneCorporelle) { · {{ joli(b.zoneCorporelle) }} }</span>
+            <span class="bl-card__date">Depuis le {{ b.dateBlessure | date:'d MMM yyyy' }}</span>
+          </div>
+          <span class="bl-badge" [class]="statutClasse(b.statut)">{{ statutLabel(b.statut) }}</span>
+        </button>
+
+        @if (ouvert() === b.id) {
+          <div class="bl-detail pwa-rise">
+            @if (b.dateRetourPrevue && b.statut !== 'RETABLI') {
+              <p class="bl-retour">
+                Retour prévu le {{ b.dateRetourPrevue | date:'d MMM' }}
+                @if (joursAvantRetour(b.dateRetourPrevue); as j) {
+                  @if (j > 0) { <span>(dans {{ j }} j)</span> } @else if (j === 0) { <span>(aujourd'hui)</span> }
+                }
+              </p>
+            }
+            @if (b.gravite) { <p class="bl-info">Gravité : <strong>{{ joli(b.gravite) }}</strong></p> }
+            @if (b.commentaire) { <p class="bl-comment">{{ b.commentaire }}</p> }
+
+            <!-- Parcours de reprise (RTP) -->
+            @if (store.etapesRtp(b.id).length > 0) {
+              <div class="bl-rtp">
+                <div class="bl-rtp__head">
+                  <span>Parcours de reprise</span>
+                  <span class="bl-rtp__pct">{{ store.rtpProgression(b.id) }}%</span>
+                </div>
+                <div class="bl-rtp__bar"><span [style.width.%]="store.rtpProgression(b.id)"></span></div>
+                <ol class="bl-rtp__steps">
+                  @for (e of store.etapesRtp(b.id); track e.id) {
+                    <li [class]="etapeClasse(e.statut)">
+                      <span class="bl-rtp__dot"></span>
+                      <span class="bl-rtp__label">{{ e.libelle }}</span>
+                      <span class="bl-rtp__statut">{{ ETAPES[e.statut] }}</span>
+                    </li>
+                  }
+                </ol>
+              </div>
+            } @else {
+              <p class="bl-nortp">Aucun protocole de reprise défini.</p>
+            }
+          </div>
+        }
+      </article>
+    }
+  </div>
+}

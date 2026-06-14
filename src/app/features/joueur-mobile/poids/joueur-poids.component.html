@@ -1,0 +1,57 @@
+@if (store.peseesTriees().length === 0) {
+  <div class="pwa-empty pwa-rise">
+    <div class="pds-empty-emoji">⚖️</div>
+    Aucune pesée enregistrée pour l'instant.
+  </div>
+} @else {
+  <!-- KPIs -->
+  <div class="pds-kpis pwa-rise">
+    <div class="pds-kpi">
+      <span class="pds-kpi__val">{{ store.dernierPoids() | number:'1.1-1' }}<small>kg</small></span>
+      <span class="pds-kpi__lab">Poids actuel</span>
+    </div>
+    @if (cible() !== null) {
+      <div class="pds-kpi">
+        <span class="pds-kpi__val">{{ cible() | number:'1.1-1' }}<small>kg</small></span>
+        <span class="pds-kpi__lab">Poids de forme</span>
+      </div>
+      <div class="pds-kpi">
+        <span class="pds-kpi__val pds-ecart" [class]="ecartClasse(store.ecartCible())">
+          {{ store.ecartCible()! > 0 ? '+' : '' }}{{ store.ecartCible() | number:'1.1-1' }}<small>kg</small>
+        </span>
+        <span class="pds-kpi__lab">Écart cible</span>
+      </div>
+    }
+  </div>
+
+  <!-- Courbe -->
+  <section class="pwa-card pwa-rise">
+    <p class="pds-title">Évolution ({{ points().length }} dernières pesées)</p>
+    <div class="pds-chartwrap">
+      <svg class="pds-chart" viewBox="0 0 100 100" preserveAspectRatio="none">
+        @if (cibleY() !== null) {
+          <line class="pds-chart__cible" x1="0" [attr.y1]="cibleY()" x2="100" [attr.y2]="cibleY()"
+                vector-effect="non-scaling-stroke" />
+        }
+        <polyline class="pds-chart__line" [attr.points]="polyline()" vector-effect="non-scaling-stroke" />
+      </svg>
+      @for (p of points(); track p.date) {
+        <span class="pds-dot" [style.left.%]="p.x" [style.top.%]="p.y"></span>
+      }
+    </div>
+    @if (cible() !== null) {
+      <p class="pds-legend"><i class="pds-legend__cible"></i> Poids de forme cible</p>
+    }
+  </section>
+
+  <!-- Liste -->
+  <p class="pwa-section-title">Détail</p>
+  <div class="pds-list pwa-rise">
+    @for (p of store.peseesTriees(); track p.date) {
+      <div class="pds-row">
+        <span class="pds-row__date">{{ p.date | date:'d MMM yyyy' }}</span>
+        <span class="pds-row__poids">{{ p.poids | number:'1.1-1' }} kg</span>
+      </div>
+    }
+  </div>
+}

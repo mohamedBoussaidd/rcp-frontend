@@ -11,7 +11,8 @@
     <p class="empty-state">Chargement…</p>
   } @else {
 
-    <!-- ── Équipes ── -->
+    <!-- ── Équipes (président / super-admin) ── -->
+    @if (peutGererEquipes) {
     <mat-card>
       <mat-card-header class="card-head">
         <mat-card-title>Équipes ({{ equipes().length }} / {{ maxEquipes }})</mat-card-title>
@@ -67,6 +68,7 @@
         }
       </mat-card-content>
     </mat-card>
+    }
 
     <!-- ── Membres ── -->
     <mat-card>
@@ -108,8 +110,8 @@
               @if (membreForm.role === 'JOUEUR') {
                 <label class="f"><span>Fiche joueur à lier</span>
                   <select class="param-input wide" [(ngModel)]="membreForm.joueurId" name="mfiche">
-                    <option value="">— Aucune —</option>
-                    @for (j of joueurs(); track j.id) {
+                    <option value="">— Aucune (à lier plus tard) —</option>
+                    @for (j of fichesLibres(); track j.id) {
                       <option [value]="j.id">{{ j.prenom }} {{ j.nom }}</option>
                     }
                   </select></label>
@@ -163,6 +165,31 @@
                     <span class="info-label">Équipe</span><span>{{ nomEquipe(m.equipeId) }}</span>
                     @if (m.specialite) { <span class="info-label">Spécialité</span><span>{{ m.specialite }}</span> }
                   </div>
+
+                  <!-- Liaison à une fiche joueur (comptes JOUEUR) -->
+                  @if (m.role === 'JOUEUR') {
+                    <div class="fiche-lien">
+                      @if (m.joueurId) {
+                        <span class="fiche-lien__ok">🔗 Fiche : {{ nomFiche(m.joueurId) }}</span>
+                        <button class="btn-mini" (click)="delier(m)">Détacher</button>
+                      } @else if (linkMembreId() === m.id) {
+                        <select class="param-input wide" [ngModel]="ficheChoisie()" (ngModelChange)="ficheChoisie.set($event)" name="lf-{{m.id}}">
+                          <option value="">— Choisir une fiche —</option>
+                          @for (j of fichesLibres(); track j.id) {
+                            <option [value]="j.id">{{ j.prenom }} {{ j.nom }}</option>
+                          }
+                        </select>
+                        <div class="row-actions">
+                          <button class="btn-mini" [disabled]="!ficheChoisie()" (click)="lier(m)">✓ Lier</button>
+                          <button class="btn-mini" (click)="creerEtLier(m)">+ Créer la fiche</button>
+                          <button class="btn-mini" (click)="ouvrirLien(m)">Annuler</button>
+                        </div>
+                      } @else {
+                        <span class="fiche-lien__none">Aucune fiche reliée</span>
+                        <button class="btn-mini" (click)="ouvrirLien(m)">Lier une fiche</button>
+                      }
+                    </div>
+                  }
                 }
               </div>
             }

@@ -1,5 +1,19 @@
 :host { display: block; }
 
+/* Liaison compte JOUEUR ↔ fiche */
+.fiche-lien {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px dashed var(--border);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+
+  &__ok { font-size: 0.82rem; font-weight: 600; color: var(--green-700); }
+  &__none { font-size: 0.82rem; color: var(--text-3); font-style: italic; }
+}
+
 .club-content {
   padding: 24px;
   display: flex;

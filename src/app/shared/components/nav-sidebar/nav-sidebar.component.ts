@@ -91,10 +91,11 @@ const ALL_MODULES: NavModule[] = [
     key: 'admin', label: 'Admin', icon: 'admin_panel_settings',
     link: '/admin/clubs', presidentLink: '/mon-club',
     matches: ['/admin', '/mon-club'],
-    roles: ['SUPER_ADMIN', 'PRESIDENT'],
+    roles: ['SUPER_ADMIN', 'PRESIDENT', 'ENTRAINEUR', 'PREPARATEUR'],
     subnav: [
-      { label: 'Clubs',        link: '/admin/clubs',  roles: ['SUPER_ADMIN'] },
-      { label: 'Mon club',     link: '/mon-club',     roles: ['PRESIDENT'] },
+      { label: 'Clubs',          link: '/admin/clubs', roles: ['SUPER_ADMIN'] },
+      { label: 'Comptes du club', link: '/mon-club',   roles: ['SUPER_ADMIN'] },
+      { label: 'Mon club',       link: '/mon-club',    roles: ['PRESIDENT', 'ENTRAINEUR', 'PREPARATEUR'] },
     ],
   },
 ];
@@ -142,7 +143,8 @@ export class NavSidebarComponent {
   /** Route primaire du module (alternative président si définie). */
   moduleLink(m: NavModule): string {
     const user = this.auth.currentUser();
-    if (m.presidentLink && user?.role === 'PRESIDENT') return m.presidentLink;
+    // Lien primaire alternatif (/mon-club) pour le staff non super-admin.
+    if (m.presidentLink && user && user.role !== 'SUPER_ADMIN') return m.presidentLink;
     return m.link;
   }
 

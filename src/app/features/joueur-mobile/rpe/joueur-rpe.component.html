@@ -1,0 +1,61 @@
+@if (store.seancesANoter().length === 0 && !seanceSel()) {
+  <div class="pwa-empty pwa-rise">
+    <div class="rpe-empty-emoji">✅</div>
+    Tout est à jour !<br>Aucune séance à noter pour le moment.
+  </div>
+} @else if (!seanceSel()) {
+  <!-- Liste des séances à noter -->
+  <p class="rpe-intro pwa-rise">Note l'effort ressenti pour chaque séance :</p>
+  <div class="rpe-list pwa-rise">
+    @for (s of store.seancesANoter(); track s.id) {
+      <button type="button" class="rpe-seance" (click)="choisirSeance(s)">
+        <span class="rpe-seance__body">
+          <span class="rpe-seance__title">{{ s.titre }}</span>
+          <span class="rpe-seance__date">{{ s.date | date:'EEEE d MMMM' }}@if (s.duree) { · {{ s.duree }} min }</span>
+        </span>
+        <span class="rpe-seance__chev" aria-hidden="true">›</span>
+      </button>
+    }
+  </div>
+} @else {
+  <!-- Notation d'une séance -->
+  <section class="pwa-card pwa-rise">
+    <div class="rpe-head">
+      <div>
+        <div class="rpe-head__title">{{ seanceSel()!.titre }}</div>
+        <div class="rpe-head__date">{{ seanceSel()!.date | date:'EEEE d MMMM' }}</div>
+      </div>
+      <button type="button" class="rpe-head__close" (click)="fermer()" aria-label="Changer de séance">✕</button>
+    </div>
+
+    <p class="rpe-q">Intensité de l'effort ressenti</p>
+    <div class="pwa-scale pwa-scale--ten">
+      @for (n of NOTES; track n) {
+        <button type="button" class="pwa-scale__btn"
+                [class.is-active]="intensite() === n"
+                [style.background]="intensite() === n ? couleur(n) : null"
+                [style.borderColor]="intensite() === n ? couleur(n) : null"
+                [style.color]="intensite() === n ? '#fff' : null"
+                (click)="setIntensite(n)">{{ n }}</button>
+      }
+    </div>
+    <div class="rpe-scale-legend"><span>Très facile</span><span>Maximal</span></div>
+
+    <p class="rpe-q">Durée (minutes)</p>
+    <input class="input input--lg rpe-duree" type="number" inputmode="numeric" min="0" max="300"
+           [value]="duree() ?? ''" (input)="setDuree($any($event.target).value)" placeholder="ex. 75">
+
+    @if (charge() !== null) {
+      <p class="rpe-charge">Charge estimée : <strong>{{ charge() }}</strong> <span>u.a.</span></p>
+    }
+  </section>
+
+  <button type="button" class="pwa-btn pwa-btn--primary pwa-btn--block rpe-submit"
+          [disabled]="!peutEnvoyer()" (click)="valider()">
+    {{ envoi() ? 'Envoi…' : 'Valider cette séance' }}
+  </button>
+}
+
+@if (toast()) {
+  <div class="pwa-toast pwa-pop">✓ Séance notée, merci !</div>
+}

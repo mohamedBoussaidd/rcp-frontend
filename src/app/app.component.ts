@@ -1,5 +1,6 @@
-import { Component, inject } from '@angular/core';
-import { RouterOutlet } from '@angular/router';
+import { Component, inject, signal } from '@angular/core';
+import { RouterOutlet, Router, NavigationEnd } from '@angular/router';
+import { filter } from 'rxjs';
 import { ThemeService } from '@core/services/theme.service';
 import { NavSidebarComponent } from '@shared/components/nav-sidebar/nav-sidebar.component';
 import { SidebarService } from '@core/services/sidebar.service';
@@ -17,8 +18,15 @@ export class AppComponent {
 
   sidebar = inject(SidebarService);
   auth = inject(AuthService);
+  private router = inject(Router);
+
+  /** PWA joueur : routes /joueur affichées en plein écran, sans la sidebar staff. */
+  readonly modeMobile = signal(this.router.url.startsWith('/joueur'));
 
   constructor() {
     inject(ThemeService).init();
+    this.router.events
+      .pipe(filter(e => e instanceof NavigationEnd))
+      .subscribe(e => this.modeMobile.set((e as NavigationEnd).urlAfterRedirects.startsWith('/joueur')));
   }
 }

@@ -1,0 +1,68 @@
+:host { display: block; }
+
+.rpe-empty-emoji { font-size: 44px; margin-bottom: 10px; }
+
+.rpe-intro { font-size: 14px; color: var(--text-2); margin: 4px 4px 12px; }
+
+.rpe-list { display: flex; flex-direction: column; gap: 10px; }
+
+.rpe-seance {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  text-align: left;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-xl);
+  box-shadow: var(--shadow-sm);
+  padding: 14px 16px;
+  cursor: pointer;
+  font-family: var(--font);
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 90ms var(--ease-out);
+  &:active { transform: scale(0.985); }
+
+  &__body { display: flex; flex-direction: column; gap: 3px; flex: 1; min-width: 0; }
+  &__title { font-size: 15.5px; font-weight: 700; color: var(--text); }
+  &__date { font-size: 13px; color: var(--text-3); text-transform: capitalize; }
+  &__chev { font-size: 24px; color: var(--text-4); }
+}
+
+.rpe-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 4px;
+
+  &__title { font-size: 16px; font-weight: 700; }
+  &__date { font-size: 13px; color: var(--text-3); text-transform: capitalize; margin-top: 2px; }
+  &__close {
+    border: 0; background: var(--surface-3); color: var(--text-2);
+    width: 32px; height: 32px; border-radius: 50%; font-size: 14px; cursor: pointer; flex-shrink: 0;
+  }
+}
+
+.rpe-q { font-size: 13px; font-weight: 700; color: var(--text-2); margin: 18px 0 8px; }
+
+/* 10 boutons sur une ligne : plus compacts. */
+.pwa-scale--ten {
+  gap: 5px;
+  .pwa-scale__btn { min-height: 44px; font-size: 14px; border-radius: var(--r-md); }
+}
+
+.rpe-scale-legend {
+  display: flex; justify-content: space-between;
+  margin-top: 6px; font-size: 11.5px; color: var(--text-3);
+}
+
+.rpe-duree { max-width: 140px; }
+
+.rpe-charge {
+  margin: 16px 0 0; font-size: 14px; color: var(--text-2);
+  strong { font-size: 18px; color: var(--green-700); }
+  span { color: var(--text-3); font-size: 12px; }
+}
+
+.rpe-submit { margin-top: 22px; }

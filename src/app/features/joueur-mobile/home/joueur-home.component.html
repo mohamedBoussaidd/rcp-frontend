@@ -1,0 +1,107 @@
+<header class="home-hello pwa-rise">
+  <div class="home-hello__txt">
+    <p class="home-hello__sup">{{ salutation() }}</p>
+    <h1 class="home-hello__name">{{ prenom() || 'Joueur' }} ⚽</h1>
+  </div>
+  <button type="button" class="home-logout" (click)="deconnexion()" aria-label="Se déconnecter">⏻</button>
+</header>
+
+<!-- Carte du jour : les 2 gestes quotidiens -->
+<section class="pwa-card home-today pwa-rise">
+  <p class="home-today__label">Aujourd'hui</p>
+
+  <a class="home-task" [class.home-task--done]="store.wellnessFait()" routerLink="/joueur/wellness">
+    <span class="home-task__icon">🌅</span>
+    <span class="home-task__body">
+      <span class="home-task__title">Ressenti du jour</span>
+      <span class="home-task__sub">Sommeil, fatigue, humeur…</span>
+    </span>
+    @if (store.wellnessFait()) {
+      <span class="home-task__state home-task__state--ok">Fait ✓</span>
+    } @else {
+      <span class="home-task__state home-task__state--todo">À faire</span>
+    }
+  </a>
+
+  <a class="home-task" [class.home-task--done]="store.nbSeancesANoter() === 0" routerLink="/joueur/rpe">
+    <span class="home-task__icon">🏃</span>
+    <span class="home-task__body">
+      <span class="home-task__title">Effort des séances</span>
+      <span class="home-task__sub">Note l'intensité ressentie</span>
+    </span>
+    @if (store.nbSeancesANoter() === 0) {
+      <span class="home-task__state home-task__state--ok">À jour ✓</span>
+    } @else {
+      <span class="home-task__state home-task__state--todo">{{ store.nbSeancesANoter() }} à noter</span>
+    }
+  </a>
+</section>
+
+<!-- Prochaine séance -->
+@if (store.prochaineSeance(); as s) {
+  <a class="pwa-card home-next pwa-rise" routerLink="/joueur/seances">
+    <span class="home-next__ic">{{ s.adversaire ? '⚽' : '📋' }}</span>
+    <span class="home-next__body">
+      <span class="home-next__label">Prochaine séance</span>
+      <span class="home-next__title">
+        @if (s.adversaire) { Match vs {{ s.adversaire }} } @else { {{ s.titre || s.typeSeance.libelle || 'Séance' }} }
+      </span>
+      <span class="home-next__when">{{ s.date | date:'EEEE d MMM' }}@if (s.heureDebut) { · {{ s.heureDebut }} }</span>
+    </span>
+    <span class="home-next__chev" aria-hidden="true">›</span>
+  </a>
+}
+
+<!-- Déclarer une gêne (raccourci vers l'étape gêne du ressenti) -->
+<a class="pwa-card home-gene pwa-rise" routerLink="/joueur/wellness" [queryParams]="{ gene: 1 }">
+  <span class="home-gene__icon">🩹</span>
+  <span class="home-gene__body">
+    <span class="home-gene__title">J'ai une gêne / douleur</span>
+    <span class="home-gene__sub">
+      @if (store.geneDuJour()) { Gêne signalée aujourd'hui — modifier } @else { Signale où tu as mal sur le corps }
+    </span>
+  </span>
+  <span class="home-gene__chev" aria-hidden="true">›</span>
+</a>
+
+<!-- Raccourcis -->
+<p class="pwa-section-title">Mon suivi</p>
+<div class="home-shortcuts pwa-rise">
+  <a class="home-shortcut" routerLink="/joueur/historique">
+    <span class="home-shortcut__icon">📈</span>
+    <span class="home-shortcut__label">Historique</span>
+  </a>
+  <a class="home-shortcut" routerLink="/joueur/conseils">
+    <span class="home-shortcut__icon">💬</span>
+    <span class="home-shortcut__label">Conseils
+      @if (nbConseils() > 0) { <span class="home-shortcut__badge">{{ nbConseils() }}</span> }
+    </span>
+  </a>
+    <a class="home-shortcut" routerLink="/joueur/calendrier">
+    <span class="home-shortcut__icon">📅</span>
+    <span class="home-shortcut__label">Calendrier</span>
+  </a>
+</div>
+
+<!-- Mon corps & santé -->
+<p class="pwa-section-title">Mon corps &amp; santé</p>
+<div class="home-shortcuts pwa-rise">
+  <a class="home-shortcut" routerLink="/joueur/blessures">
+    <span class="home-shortcut__icon">🩼</span>
+    <span class="home-shortcut__label">Mes blessures
+      @if (store.blessureActive()) { <span class="home-shortcut__badge home-shortcut__badge--alert">!</span> }
+    </span>
+  </a>
+  <a class="home-shortcut" routerLink="/joueur/poids">
+    <span class="home-shortcut__icon">⚖️</span>
+    <span class="home-shortcut__label">Mon poids</span>
+  </a>
+  <a class="home-shortcut" routerLink="/joueur/documents">
+    <span class="home-shortcut__icon">🗂️</span>
+    <span class="home-shortcut__label">Documents</span>
+  </a>
+  <a class="home-shortcut" routerLink="/joueur/seances">
+    <span class="home-shortcut__icon">📋</span>
+    <span class="home-shortcut__label">Mes séances</span>
+  </a>
+</div>

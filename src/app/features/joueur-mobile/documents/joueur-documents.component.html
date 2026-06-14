@@ -1,0 +1,75 @@
+<!-- Bouton dépôt -->
+@if (!depotOuvert()) {
+  <button type="button" class="pwa-btn pwa-btn--primary pwa-btn--block doc-add" (click)="ouvrirDepot()">
+    ＋ Ajouter un document
+  </button>
+}
+
+<!-- Formulaire de dépôt -->
+@if (depotOuvert()) {
+  <section class="pwa-card doc-form pwa-rise">
+    <p class="doc-form__title">Nouveau document</p>
+
+    <label class="doc-file">
+      <input type="file" accept=".pdf,image/*" (change)="onFichier($event)" hidden>
+      <span class="doc-file__btn">📷 Choisir un fichier ou prendre une photo</span>
+      @if (fichier()) { <span class="doc-file__name">{{ fichier()!.name }}</span> }
+    </label>
+
+    <label class="doc-label">Catégorie</label>
+    <div class="pwa-chips">
+      @for (c of CATEGORIES; track c.val) {
+        <button type="button" class="pwa-chip" [class.is-active]="categorie() === c.val"
+                (click)="categorie.set(c.val)">{{ c.label }}</button>
+      }
+    </div>
+
+    <label class="doc-label">Description (optionnel)</label>
+    <input class="input" type="text" [ngModel]="description()" (ngModelChange)="description.set($event)"
+           placeholder="ex. Ordonnance kiné">
+
+    <label class="doc-label">Partager avec (optionnel)</label>
+    <div class="pwa-chips">
+      @for (r of ROLES; track r.val) {
+        <button type="button" class="pwa-chip" [class.is-active]="partage().includes(r.val)"
+                (click)="togglePartage(r.val)">{{ r.label }}</button>
+      }
+    </div>
+
+    @if (erreur()) { <p class="doc-err">{{ erreur() }}</p> }
+
+    <div class="doc-form__actions">
+      <button type="button" class="pwa-btn pwa-btn--ghost" (click)="annuler()">Annuler</button>
+      <button type="button" class="pwa-btn pwa-btn--primary" [disabled]="envoi()" (click)="deposer()">
+        {{ envoi() ? 'Envoi…' : 'Déposer' }}
+      </button>
+    </div>
+  </section>
+}
+
+<!-- Liste -->
+@if (store.documents().length === 0) {
+  <div class="pwa-empty pwa-rise">
+    <div class="doc-empty-emoji">🗂️</div>
+    Aucun document pour l'instant.
+  </div>
+} @else {
+  <div class="doc-list">
+    @for (d of store.documents(); track d.id) {
+      <article class="pwa-card doc-item pwa-rise">
+        <span class="doc-item__ic">{{ icone(d.typeMime) }}</span>
+        <div class="doc-item__body">
+          <span class="doc-item__name">{{ d.nomOriginal }}</span>
+          <span class="doc-item__meta">{{ categorieLabel(d.categorie) }} · {{ tailleLisible(d.tailleOctets) }} · {{ d.dateDepot | date:'d MMM yyyy' }}</span>
+          @if (d.partageRoles.length > 0) {
+            <span class="doc-item__share">Partagé : {{ d.partageRoles.length }} rôle(s)</span>
+          }
+        </div>
+        <div class="doc-item__actions">
+          <button type="button" class="doc-act" (click)="telecharger(d)" aria-label="Télécharger">⬇️</button>
+          <button type="button" class="doc-act doc-act--del" (click)="supprimer(d)" aria-label="Supprimer">🗑️</button>
+        </div>
+      </article>
+    }
+  </div>
+}

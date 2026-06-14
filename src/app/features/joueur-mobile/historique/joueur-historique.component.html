@@ -1,0 +1,56 @@
+@if (joursRemplis() === 0) {
+  <div class="pwa-empty pwa-rise">
+    <div class="histo-empty-emoji">📭</div>
+    Pas encore de données cette semaine.<br>Remplis ton ressenti du jour !
+  </div>
+} @else {
+  <!-- Synthèse 7 jours -->
+  <div class="histo-kpis pwa-rise">
+    <div class="histo-kpi">
+      <span class="histo-kpi__val">{{ hooperMoyen() ?? '—' }}<small>/25</small></span>
+      <span class="histo-kpi__lab">Hooper moyen</span>
+    </div>
+    <div class="histo-kpi">
+      <span class="histo-kpi__val">{{ chargeCumulee() }}</span>
+      <span class="histo-kpi__lab">Charge 7 j</span>
+    </div>
+    <div class="histo-kpi">
+      <span class="histo-kpi__val">{{ joursRemplis() }}<small>/7</small></span>
+      <span class="histo-kpi__lab">Jours remplis</span>
+    </div>
+  </div>
+
+  <!-- Graphe 7 jours : barre Hooper + effort sRPE -->
+  <section class="pwa-card pwa-rise">
+    <p class="histo-title">7 derniers jours</p>
+    <div class="histo-chart">
+      @for (j of serie(); track j.date) {
+        <div class="histo-col" [class.is-today]="j.aujourdhui">
+          <div class="histo-col__track">
+            @if (j.rpe !== null) {
+              <span class="histo-col__rpe" [style.bottom.%]="j.rpe * 9">{{ j.rpe }}</span>
+            }
+            <div class="histo-col__bar" [class]="classe(j.hooper)" [style.height.%]="barH(j.hooper)"></div>
+          </div>
+          <span class="histo-col__day">{{ j.jour }}</span>
+        </div>
+      }
+    </div>
+    <div class="histo-legend">
+      <span><i class="dot ok"></i> Bon</span>
+      <span><i class="dot moyen"></i> Correct</span>
+      <span><i class="dot bad"></i> Vigilance</span>
+      <span><i class="dot rpe"></i> Effort /10</span>
+    </div>
+  </section>
+
+  @if (derniereGene(); as g) {
+    <section class="pwa-card histo-gene pwa-rise">
+      <span class="histo-gene__ic">🩹</span>
+      <div class="histo-gene__body">
+        <span class="histo-gene__title">Dernière gêne signalée</span>
+        <span class="histo-gene__detail">{{ g.geneZone }} · intensité {{ g.geneIntensite }}/5</span>
+      </div>
+    </section>
+  }
+}

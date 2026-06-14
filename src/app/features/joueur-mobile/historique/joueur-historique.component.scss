@@ -1,0 +1,114 @@
+:host { display: block; }
+
+.histo-empty-emoji { font-size: 44px; margin-bottom: 10px; }
+
+/* ── KPIs ── */
+.histo-kpis { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 14px; }
+
+.histo-kpi {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-xl);
+  box-shadow: var(--shadow-sm);
+  padding: 14px 8px;
+  text-align: center;
+
+  &__val {
+    display: block;
+    font-size: 22px;
+    font-weight: 800;
+    color: var(--text);
+    font-variant-numeric: tabular-nums;
+    small { font-size: 12px; color: var(--text-3); font-weight: 600; }
+  }
+  &__lab { font-size: 11px; color: var(--text-3); font-weight: 600; }
+}
+
+/* ── Graphe ── */
+.histo-title { font-size: 13px; font-weight: 700; color: var(--text-2); margin: 0 0 14px; }
+
+.histo-chart {
+  display: flex;
+  align-items: flex-end;
+  gap: 6px;
+  height: 150px;
+}
+
+.histo-col {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  height: 100%;
+
+  &__track {
+    position: relative;
+    width: 100%;
+    flex: 1;
+    background: var(--surface-3);
+    border-radius: var(--r-sm);
+    display: flex;
+    align-items: flex-end;
+    overflow: visible;
+  }
+
+  &__bar {
+    width: 100%;
+    border-radius: var(--r-sm);
+    transition: height 400ms var(--ease-out);
+    min-height: 3px;
+
+    &.ok { background: var(--ok); }
+    &.moyen { background: var(--warn); }
+    &.bad { background: var(--bad); }
+  }
+
+  &__rpe {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 10px;
+    font-weight: 800;
+    color: var(--info);
+    background: var(--info-bg);
+    border: 1px solid var(--info-bd);
+    border-radius: var(--r-pill);
+    padding: 0 4px;
+    line-height: 15px;
+    z-index: 2;
+  }
+
+  &__day { font-size: 11px; color: var(--text-3); font-weight: 600; }
+
+  &.is-today &__day { color: var(--green-700); font-weight: 800; }
+}
+
+.histo-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 16px;
+  font-size: 11.5px;
+  color: var(--text-3);
+
+  span { display: inline-flex; align-items: center; gap: 5px; }
+  .dot { width: 9px; height: 9px; border-radius: 3px; display: inline-block; }
+  .dot.ok { background: var(--ok); }
+  .dot.moyen { background: var(--warn); }
+  .dot.bad { background: var(--bad); }
+  .dot.rpe { background: var(--info); border-radius: 50%; }
+}
+
+/* ── Gêne ── */
+.histo-gene {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 14px;
+
+  &__ic { font-size: 24px; }
+  &__body { display: flex; flex-direction: column; gap: 2px; }
+  &__title { font-size: 14px; font-weight: 700; }
+  &__detail { font-size: 13px; color: var(--text-3); }
+}

@@ -1,0 +1,29 @@
+<div class="pwa">
+  @if (!estHome()) {
+    <header class="pwa-topbar">
+      <button class="pwa-topbar__back" type="button" (click)="retour()" aria-label="Retour">
+        <span aria-hidden="true">‹</span>
+      </button>
+      <h1 class="pwa-topbar__title">{{ titre() }}</h1>
+      <span class="pwa-topbar__spacer"></span>
+    </header>
+  }
+
+  @if (!offline.online()) {
+    <div class="pwa-offline-bar">📡 Hors-ligne — tes saisies seront envoyées au retour du réseau</div>
+  } @else if (offline.nbPending() > 0) {
+    <div class="pwa-offline-bar pwa-offline-bar--sync">↻ {{ offline.nbPending() }} saisie(s) en cours d'envoi…</div>
+  }
+
+  <main class="pwa-content" [class.pwa-content--bare]="estHome()">
+    @if (store.nonLie()) {
+      <div class="pwa-nonlie">
+        <div class="pwa-nonlie__emoji">🔗</div>
+        <p class="pwa-nonlie__txt">Ton compte n'est pas encore relié à une fiche joueur. Préviens ton staff.</p>
+        <button class="pwa-btn pwa-btn--ghost" type="button" (click)="deconnexion()">Se déconnecter</button>
+      </div>
+    } @else {
+      <router-outlet></router-outlet>
+    }
+  </main>
+</div>

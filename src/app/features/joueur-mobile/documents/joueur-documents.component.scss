@@ -1,0 +1,62 @@
+:host { display: block; }
+
+.doc-add { margin-bottom: 16px; }
+.doc-empty-emoji { font-size: 44px; margin-bottom: 10px; }
+
+/* ── Formulaire ── */
+.doc-form { margin-bottom: 16px; }
+.doc-form__title { font-size: 15px; font-weight: 700; margin: 0 0 14px; }
+
+.doc-label { display: block; font-size: 12px; font-weight: 700; color: var(--text-2); margin: 16px 0 8px; }
+
+.doc-file {
+  display: block;
+  cursor: pointer;
+
+  &__btn {
+    display: block;
+    text-align: center;
+    padding: 16px;
+    border: 1.5px dashed var(--border-strong);
+    border-radius: var(--r-lg);
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-2);
+    background: var(--surface-2);
+  }
+  &__name { display: block; margin-top: 8px; font-size: 13px; color: var(--green-700); font-weight: 600; text-align: center; }
+}
+
+.doc-err { color: var(--bad); font-size: 13px; font-weight: 600; margin: 12px 0 0; }
+
+.doc-form__actions { display: flex; gap: 10px; margin-top: 18px; justify-content: flex-end; }
+
+/* ── Liste ── */
+.doc-list { display: flex; flex-direction: column; gap: 10px; }
+
+.doc-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px;
+
+  &__ic { font-size: 26px; flex-shrink: 0; }
+  &__body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+  &__name { font-size: 14.5px; font-weight: 700; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  &__meta { font-size: 12px; color: var(--text-3); }
+  &__share { font-size: 11.5px; color: var(--green-700); font-weight: 600; }
+
+  &__actions { display: flex; gap: 6px; flex-shrink: 0; }
+}
+
+.doc-act {
+  width: 38px; height: 38px;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  border-radius: var(--r-md);
+  font-size: 16px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  &:active { background: var(--surface-3); }
+  &--del { border-color: var(--bad-bd); }
+}

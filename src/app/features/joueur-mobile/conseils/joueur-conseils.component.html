@@ -1,0 +1,36 @@
+@if (perso().length === 0 && equipe().length === 0) {
+  <div class="pwa-empty pwa-rise">
+    <div class="cons-empty-emoji">💬</div>
+    Aucun conseil pour le moment.<br>Ton staff t'en laissera ici.
+  </div>
+} @else {
+  @if (perso().length > 0) {
+    <p class="pwa-section-title">Pour toi</p>
+    <div class="cons-list pwa-rise">
+      @for (c of perso(); track c.id) {
+        <article class="pwa-card cons-card cons-card--perso">
+          <span class="cons-card__ic">{{ emoji(c.icone) }}</span>
+          <div class="cons-card__body">
+            <h3 class="cons-card__title">{{ c.titre }}</h3>
+            <p class="cons-card__text">{{ c.texte }}</p>
+          </div>
+        </article>
+      }
+    </div>
+  }
+
+  @if (equipe().length > 0) {
+    <p class="pwa-section-title">Pour l'équipe</p>
+    <div class="cons-list pwa-rise">
+      @for (c of equipe(); track c.id) {
+        <article class="pwa-card cons-card">
+          <span class="cons-card__ic">{{ emoji(c.icone) }}</span>
+          <div class="cons-card__body">
+            <h3 class="cons-card__title">{{ c.titre }}</h3>
+            <p class="cons-card__text">{{ c.texte }}</p>
+          </div>
+        </article>
+      }
+    </div>
+  }
+}

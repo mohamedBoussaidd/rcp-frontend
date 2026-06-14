@@ -6,6 +6,7 @@ import {
   Equipe, Membre, MembreCreateRequest, MonClub, MonClubService,
 } from '@core/services/mon-club.service';
 import { Joueur, JoueurService } from '@core/services/joueur.service';
+import { AuthService } from '@core/services/auth.service';
 
 const MAX_EQUIPES = 3;
 
@@ -49,6 +50,26 @@ export class MonClubComponent implements OnInit {
   private service = inject(MonClubService);
   private snack = inject(MatSnackBar);
   private joueurService = inject(JoueurService);
+  private auth = inject(AuthService);
+
+  /** Gestion des équipes/club : réservée au président et au super-admin. */
+  readonly peutGererEquipes = this.auth.hasRole('PRESIDENT', 'SUPER_ADMIN');
+
+  // ── Liaison compte JOUEUR ↔ fiche ──
+  linkMembreId = signal<string | null>(null);
+  ficheChoisie = signal<string>('');
+
+  /** Fiches déjà reliées à un compte (pour ne proposer que les libres). */
+  private readonly fichesLiees = computed(() =>
+    new Set(this.membres().map(m => m.joueurId).filter((id): id is string => !!id)));
+  /** Fiches non encore reliées, proposées dans le sélecteur de liaison. */
+  readonly fichesLibres = computed(() => this.joueurs().filter(j => !this.fichesLiees().has(j.id)));
+
+  nomFiche(id?: string): string {
+    if (!id) return '';
+    const j = this.joueurs().find(x => x.id === id);
+    return j ? `${j.prenom} ${j.nom}` : 'fiche inconnue';
+  }
 
   ngOnInit(): void {
     this.charger();
@@ -150,6 +171,41 @@ export class MonClubComponent implements OnInit {
     this.service.supprimerMembre(m.id).subscribe({
       next: () => this.charger(),
       error: () => this.snack.open('Suppression impossible', 'Fermer', { duration: 3000 }),
+    });
+  }
+
+  // ── Liaison fiche ──
+  ouvrirLien(m: Membre): void {
+    this.linkMembreId.set(this.linkMembreId() === m.id ? null : m.id);
+    this.ficheChoisie.set('');
+  }
+
+  lier(m: Membre): void {
+    const joueurId = this.ficheChoisie();
+    if (!joueurId) return;
+    this.service.lierFiche(m.id, joueurId).subscribe({
+      next: () => { this.linkMembreId.set(null); this.charger(); this.snack.open('Fiche reliée', 'Fermer', { duration: 2500 }); },
+      error: err => this.snack.open(
+        err.status === 409 ? 'Cette fiche est déjà reliée à un autre compte' : 'Liaison impossible', 'Fermer', { duration: 3500 }),
+    });
+  }
+
+  delier(m: Membre): void {
+    if (!confirm(`Détacher la fiche de ${m.prenom} ${m.nom} ?`)) return;
+    this.service.delierFiche(m.id).subscribe({
+      next: () => this.charger(),
+      error: () => this.snack.open('Opération impossible', 'Fermer', { duration: 3000 }),
+    });
+  }
+
+  /** Crée une fiche joueur minimale (nom/prénom du compte) puis la relie. */
+  creerEtLier(m: Membre): void {
+    this.joueurService.create({ nom: m.nom, prenom: m.prenom, statut: 'actif' }).subscribe({
+      next: fiche => this.service.lierFiche(m.id, fiche.id).subscribe({
+        next: () => { this.linkMembreId.set(null); this.charger(); this.snack.open('Fiche créée et reliée', 'Fermer', { duration: 2500 }); },
+        error: () => this.snack.open('Fiche créée mais liaison impossible', 'Fermer', { duration: 3500 }),
+      }),
+      error: () => this.snack.open('Création de la fiche impossible', 'Fermer', { duration: 3000 }),
     });
   }
 

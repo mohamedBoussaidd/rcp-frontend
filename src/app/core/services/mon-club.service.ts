@@ -76,4 +76,14 @@ export class MonClubService {
   supprimerMembre(id: string): Observable<void> {
     return this.http.delete<void>(`${this.base}/membres/${id}`);
   }
+
+  /** Lie un compte JOUEUR à une fiche joueur existante. */
+  lierFiche(membreId: string, joueurId: string): Observable<Membre> {
+    return this.http.put<Membre>(`${this.base}/membres/${membreId}/fiche`, { joueurId });
+  }
+
+  /** Détache un compte JOUEUR de sa fiche. */
+  delierFiche(membreId: string): Observable<Membre> {
+    return this.http.delete<Membre>(`${this.base}/membres/${membreId}/fiche`);
+  }
 }

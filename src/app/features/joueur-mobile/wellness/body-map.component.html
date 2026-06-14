@@ -1,0 +1,30 @@
+<div class="bodymap">
+  <div class="bodymap__tabs">
+    <button type="button" [class.is-active]="view() === 'front'" (click)="basculer('front')">Face</button>
+    <button type="button" [class.is-active]="view() === 'back'" (click)="basculer('back')">Dos</button>
+  </div>
+
+  <svg class="bodymap__svg" viewBox="0 0 200 384" role="group" aria-label="Mannequin du corps">
+    @for (r of visibles(); track r.id) {
+      @if (r.shape.kind === 'ellipse') {
+        <ellipse
+          [attr.cx]="r.shape.cx" [attr.cy]="r.shape.cy" [attr.rx]="r.shape.rx" [attr.ry]="r.shape.ry"
+          class="bodymap__zone" [class.is-active]="selectedId() === r.id"
+          (click)="choisir(r)" role="button" tabindex="0"
+          [attr.aria-label]="r.zone" [attr.aria-pressed]="selectedId() === r.id"
+          (keydown.enter)="choisir(r)" (keydown.space)="choisir(r)">
+          <title>{{ r.zone }}</title>
+        </ellipse>
+      } @else {
+        <rect
+          [attr.x]="r.shape.x" [attr.y]="r.shape.y" [attr.width]="r.shape.w" [attr.height]="r.shape.h" [attr.rx]="r.shape.rx"
+          class="bodymap__zone" [class.is-active]="selectedId() === r.id"
+          (click)="choisir(r)" role="button" tabindex="0"
+          [attr.aria-label]="r.zone" [attr.aria-pressed]="selectedId() === r.id"
+          (keydown.enter)="choisir(r)" (keydown.space)="choisir(r)">
+          <title>{{ r.zone }}</title>
+        </rect>
+      }
+    }
+  </svg>
+</div>

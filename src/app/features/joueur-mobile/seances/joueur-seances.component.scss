@@ -1,0 +1,64 @@
+:host { display: block; }
+
+.se-empty-emoji { font-size: 44px; margin-bottom: 10px; }
+
+.se-list { display: flex; flex-direction: column; gap: 12px; }
+
+.se-card {
+  padding: 0;
+  overflow: hidden;
+
+  &.is-match { border-left: 3px solid var(--info); }
+
+  &__head {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 14px 16px;
+    background: transparent;
+    border: 0;
+    text-align: left;
+    cursor: pointer;
+    font-family: var(--font);
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  &__date {
+    flex-shrink: 0;
+    width: 48px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    background: var(--surface-3);
+    border-radius: var(--r-lg);
+    padding: 6px 0;
+  }
+  &__day { font-size: 10px; font-weight: 700; color: var(--text-3); text-transform: uppercase; }
+  &__num { font-size: 20px; font-weight: 800; color: var(--text); line-height: 1.1; }
+  &__mon { font-size: 10px; font-weight: 600; color: var(--text-3); text-transform: uppercase; }
+
+  &__main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+  &__title { font-size: 15px; font-weight: 700; color: var(--text); }
+  &__meta { font-size: 12.5px; color: var(--text-3); }
+  &__lieu { font-size: 12px; color: var(--text-3); }
+  &__chev { font-size: 22px; color: var(--text-4); flex-shrink: 0; }
+}
+
+.se-detail {
+  padding: 0 16px 16px;
+  border-top: 1px solid var(--border);
+  padding-top: 12px;
+}
+
+.se-objectif { font-size: 13.5px; color: var(--text-2); margin: 0 0 12px; }
+.se-detail__title { font-size: 12px; font-weight: 700; color: var(--text-3); text-transform: uppercase; letter-spacing: 0.05em; margin: 0 0 8px; }
+.se-vide { font-size: 13px; color: var(--text-3); margin: 4px 0 0; }
+
+.se-exos { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; counter-reset: exo; }
+.se-exos li {
+  display: flex; flex-direction: column; gap: 2px;
+  padding: 10px 12px; background: var(--surface-2); border-radius: var(--r-md);
+}
+.se-exo__nom { font-size: 14px; font-weight: 600; color: var(--text); }
+.se-exo__meta { font-size: 12px; color: var(--text-3); }

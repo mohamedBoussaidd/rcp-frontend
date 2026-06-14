@@ -1,0 +1,61 @@
+:host { display: block; }
+
+.bodymap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+
+  &__tabs {
+    display: inline-flex;
+    background: var(--surface-3);
+    border-radius: var(--r-pill);
+    padding: 3px;
+    gap: 2px;
+
+    button {
+      border: 0;
+      background: transparent;
+      padding: 7px 20px;
+      border-radius: var(--r-pill);
+      font-size: 13.5px;
+      font-weight: 700;
+      color: var(--text-3);
+      cursor: pointer;
+      font-family: var(--font);
+      transition: background 120ms, color 120ms;
+
+      &.is-active { background: var(--surface); color: var(--text); box-shadow: var(--shadow-xs); }
+    }
+  }
+
+  &__svg {
+    width: 100%;
+    max-width: 240px;
+    height: auto;
+    touch-action: manipulation;
+  }
+
+  &__zone {
+    fill: var(--slate-200);
+    stroke: var(--slate-400);
+    stroke-width: 1;
+    cursor: pointer;
+    transition: fill 120ms var(--ease-out), stroke 120ms;
+    -webkit-tap-highlight-color: transparent;
+
+    &:hover { fill: var(--slate-300); }
+    &:focus-visible { outline: none; stroke: var(--green-600); stroke-width: 2; }
+
+    &.is-active {
+      fill: var(--bad);
+      stroke: var(--bad);
+      animation: zone-pulse 280ms var(--ease-out);
+    }
+  }
+}
+
+@keyframes zone-pulse {
+  0% { opacity: 0.5; }
+  100% { opacity: 1; }
+}

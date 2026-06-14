@@ -1,4 +1,4 @@
-@if (auth.currentUser()) {
+@if (auth.currentUser() && !modeMobile()) {
   <div class="app-shell">
     <app-nav-sidebar></app-nav-sidebar>
     <main class="app-main">

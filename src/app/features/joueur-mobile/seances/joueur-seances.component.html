@@ -1,0 +1,60 @@
+@if (store.prochainesSeances().length === 0) {
+  <div class="pwa-empty pwa-rise">
+    <div class="se-empty-emoji">📅</div>
+    Aucune séance à venir programmée.
+  </div>
+} @else {
+  <div class="se-list">
+    @for (s of store.prochainesSeances(); track s.id) {
+      <article class="pwa-card se-card pwa-rise" [class.is-match]="estMatch(s)">
+        <button type="button" class="se-card__head" (click)="basculer(s)">
+          <div class="se-card__date">
+            <span class="se-card__day">{{ s.date | date:'EEE' }}</span>
+            <span class="se-card__num">{{ s.date | date:'d' }}</span>
+            <span class="se-card__mon">{{ s.date | date:'MMM' }}</span>
+          </div>
+          <div class="se-card__main">
+            <span class="se-card__title">
+              @if (estMatch(s)) { ⚽ Match vs {{ s.adversaire }} }
+              @else { {{ s.titre || s.typeSeance.libelle || 'Séance' }} }
+            </span>
+            <span class="se-card__meta">
+              @if (s.heureDebut) { {{ s.heureDebut }} }
+              @if (s.typeSeance.libelle) { · {{ s.typeSeance.libelle }} }
+              @if (s.dureeMinutes) { · {{ s.dureeMinutes }} min }
+            </span>
+            @if (s.terrain) { <span class="se-card__lieu">📍 {{ s.terrain }}</span> }
+          </div>
+          <span class="se-card__chev" aria-hidden="true">{{ ouvert() === s.id ? '⌄' : '›' }}</span>
+        </button>
+
+        @if (ouvert() === s.id) {
+          <div class="se-detail pwa-rise">
+            @if (s.objectif) { <p class="se-objectif">🎯 {{ s.objectif }}</p> }
+
+            @if (contenu(s.id); as c) {
+              @if (c.exercices.length > 0) {
+                <p class="se-detail__title">Contenu</p>
+                <ol class="se-exos">
+                  @for (e of c.exercices; track e.exerciceId) {
+                    <li>
+                      <span class="se-exo__nom">{{ e.nom }}</span>
+                      <span class="se-exo__meta">
+                        @if (e.dureeMinutes) { {{ e.dureeMinutes }} min }
+                        @if (e.intensite) { · int. {{ e.intensite }}/10 }
+                      </span>
+                    </li>
+                  }
+                </ol>
+              } @else {
+                <p class="se-vide">Contenu non encore détaillé.</p>
+              }
+            } @else {
+              <p class="se-vide">Chargement du contenu…</p>
+            }
+          </div>
+        }
+      </article>
+    }
+  </div>
+}
