@@ -3,6 +3,7 @@ import { RouterLink } from '@angular/router';
 import { DatePipe } from '@angular/common';
 import { JoueurStore } from '../joueur.store';
 import { AuthService } from '@core/services/auth.service';
+import { InstallPwaComponent } from '@shared/components/install-pwa/install-pwa.component';
 
 /**
  * Écran d'accueil joueur (PWA) : carte « Aujourd'hui » centrée sur les 2 gestes
@@ -14,7 +15,7 @@ import { AuthService } from '@core/services/auth.service';
   standalone: true,
   templateUrl: './joueur-home.component.html',
   styleUrl: './joueur-home.component.scss',
-  imports: [RouterLink, DatePipe],
+  imports: [RouterLink, DatePipe, InstallPwaComponent],
 })
 export class JoueurHomeComponent {
 

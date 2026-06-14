@@ -1,0 +1,34 @@
+:host { display: block; }
+
+.install-pwa-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 48px;
+  padding: 0 18px;
+  border-radius: var(--r-xl, 14px);
+  border: 1px solid var(--green-600);
+  background: var(--green-50);
+  color: var(--green-700);
+  font-size: 15px;
+  font-weight: 700;
+  font-family: var(--font);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background 120ms, transform 90ms;
+
+  &:active { transform: scale(0.98); background: var(--green-100); }
+}
+
+.install-pwa-ios {
+  margin-top: 10px;
+  padding: 12px 14px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg, 10px);
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--text-2);
+}

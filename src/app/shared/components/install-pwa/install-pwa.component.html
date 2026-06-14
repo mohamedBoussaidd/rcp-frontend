@@ -1,0 +1,17 @@
+@if (!install.isStandalone) {
+  @if (install.canInstall()) {
+    <button type="button" class="install-pwa-btn" (click)="install.prompt()">
+      📲 Installer l'application
+    </button>
+  } @else if (install.iosInstallable) {
+    <button type="button" class="install-pwa-btn" (click)="showIos.set(!showIos())">
+      📲 Installer sur l'écran d'accueil
+    </button>
+    @if (showIos()) {
+      <div class="install-pwa-ios">
+        Dans Safari : touche <strong>Partager</strong> (le carré avec une flèche ↑),
+        puis fais défiler jusqu'à <strong>« Sur l'écran d'accueil »</strong>.
+      </div>
+    }
+  }
+}

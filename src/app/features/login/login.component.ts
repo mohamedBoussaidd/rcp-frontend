@@ -3,13 +3,14 @@ import { Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { MatIcon } from '@angular/material/icon';
 import { AuthService } from '@core/services/auth.service';
+import { InstallPwaComponent } from '@shared/components/install-pwa/install-pwa.component';
 
 @Component({
   selector: 'app-login',
   standalone: true,
   templateUrl: './login.component.html',
   styleUrl: './login.component.scss',
-  imports: [FormsModule, MatIcon],
+  imports: [FormsModule, MatIcon, InstallPwaComponent],
 })
 export class LoginComponent {
 

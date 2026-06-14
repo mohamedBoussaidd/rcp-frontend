@@ -5,6 +5,7 @@ import { ThemeService } from '@core/services/theme.service';
 import { NavSidebarComponent } from '@shared/components/nav-sidebar/nav-sidebar.component';
 import { SidebarService } from '@core/services/sidebar.service';
 import { AuthService } from '@core/services/auth.service';
+import { PwaInstallService } from '@core/services/pwa-install.service';
 
 @Component({
     selector: 'app-root',
@@ -25,6 +26,7 @@ export class AppComponent {
 
   constructor() {
     inject(ThemeService).init();
+    inject(PwaInstallService); // capte tôt l'événement d'installation (beforeinstallprompt)
     this.router.events
       .pipe(filter(e => e instanceof NavigationEnd))
       .subscribe(e => this.modeMobile.set((e as NavigationEnd).urlAfterRedirects.startsWith('/joueur')));
