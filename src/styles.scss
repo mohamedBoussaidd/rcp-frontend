@@ -96,6 +96,13 @@ body {
   --info-bg: #EFF6FF;
   --info-bd: #BFDBFE;
 
+  /* Tonalités « fiche joueur » (palette redesign — partagée Profil / GPS / Suivi).
+     fg = texte, bg = fond clair, bd = bordure, c = couleur pleine (donut/jauge), k = accent lumineux (KPI sur fond sombre) */
+  --t-ok-fg:#15803d;    --t-ok-bg:#dcfce7;    --t-ok-bd:#bbf7d0;    --t-ok-c:#16a34a;    --t-ok-k:#4ade80;
+  --t-warn-fg:#c2410c;  --t-warn-bg:#ffedd5;  --t-warn-bd:#fed7aa;  --t-warn-c:#f97316;  --t-warn-k:#fbbf24;
+  --t-alert-fg:#b91c1c; --t-alert-bg:#fee2e2; --t-alert-bd:#fecaca; --t-alert-c:#ef4444; --t-alert-k:#f87171;
+  --t-neutral-fg:#334155; --t-neutral-bg:#f1f5f9; --t-neutral-bd:#e2e8f0; --t-neutral-c:#94a3b8; --t-neutral-k:#cbd5e1;
+
   /* Compat — anciens noms de statuts */
   --success: #15803D;
   --success-bg: #ECFDF5;

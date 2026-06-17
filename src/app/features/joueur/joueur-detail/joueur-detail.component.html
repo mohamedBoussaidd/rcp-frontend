@@ -1,183 +1,180 @@
 @if (joueur) {
   <div class="detail-content">
 
-    <!-- ── Retour ── -->
-    <button class="btn-retour" (click)="retourDashboard()">← Dashboard</button>
-
-    <!-- ── En-tête ── -->
-    <div class="detail-header">
-      <div class="nav-joueurs">
-        <button class="btn-nav-joueur" [disabled]="!joueurPrecedent"
-                (click)="joueurPrecedent && naviguerVers(joueurPrecedent)"
-                [title]="joueurPrecedent ? joueurPrecedent.prenom + ' ' + joueurPrecedent.nom : ''">
-          ‹
-        </button>
-        <div>
-          <h2>{{ joueur.prenom }} {{ joueur.nom }}</h2>
-          <p class="detail-subtitle">
-            {{ joueur.postePrincipal || 'Poste non défini' }}
-            @if (joueur.taille) { · {{ joueur.taille }} cm }
-            @if (joueur.poidsActuel) { · {{ joueur.poidsActuel }} kg }
-          </p>
-        </div>
-        <button class="btn-nav-joueur" [disabled]="!joueurSuivant"
-                (click)="joueurSuivant && naviguerVers(joueurSuivant)"
-                [title]="joueurSuivant ? joueurSuivant.prenom + ' ' + joueurSuivant.nom : ''">
-          ›
-        </button>
+    <!-- ── Barre : fil d'ariane + toggle d'onglets ── -->
+    <div class="jd-toolbar">
+      <div class="jd-crumb">
+        <button class="jd-crumb__back" (click)="retourDashboard()">← Effectif</button>
+        <span class="jd-crumb__sep">/</span>
+        <span class="jd-crumb__name">{{ joueur.prenom }} {{ joueur.nom }}</span>
+        <span class="jd-crumb__sep">/</span>
+        <span class="jd-crumb__tab">{{ tabLabels[activeTab] }}</span>
       </div>
-      <button class="btn btn--primary" (click)="ouvrirEdition()">
-        Modifier le joueur
-      </button>
+      <div class="jd-tabs">
+        @for (lbl of tabLabels; track lbl; let i = $index) {
+          <button class="jd-tab" [class.is-active]="activeTab === i" (click)="allerOnglet(i)">{{ lbl }}</button>
+        }
+      </div>
+      <div class="jd-spacer"></div>
     </div>
 
-    <!-- ── Onglets ── -->
-    <mat-tab-group class="detail-tabs" animationDuration="200ms" (selectedIndexChange)="onTabChange($event)">
+    <!-- ── Hero identité (persistant sur tous les onglets, s'adapte au statut) ── -->
+    <!-- ===== HERO ===== -->
+          <div class="pf-hero pf-hero--{{ statutTone }}">
+            <span class="pf-hero__accent"></span>
 
-      <!-- ══ Onglet Profil ══ -->
-      <mat-tab label="Profil">
-        <div class="tab-content">
-
-          <!-- Poste & Rôle -->
-          <mat-card class="info-card">
-            <mat-card-header class="card-header-collapsible" (click)="posteRoleExpanded = !posteRoleExpanded">
-              <mat-card-title>Poste & Rôle</mat-card-title>
-              <span class="card-toggle">{{ posteRoleExpanded ? '▲' : '▼' }}</span>
-            </mat-card-header>
-            @if (posteRoleExpanded) {
-              <mat-card-content>
-                <div class="info-grid">
-                  <div class="info-item">
-                    <span class="info-label">Poste principal</span>
-                    <span class="info-value">{{ POSTES[joueur!.postePrincipal!] || joueur!.postePrincipal || '—' }}</span>
-                  </div>
-                  <div class="info-item">
-                    <span class="info-label">Poste secondaire</span>
-                    <span class="info-value">{{ POSTES[joueur!.posteSecondaire!] || joueur!.posteSecondaire || '—' }}</span>
-                  </div>
-                  <div class="info-item">
-                    <span class="info-label">Profil athlétique</span>
-                    <span class="info-value">{{ PROFILS[joueur!.profilAthletique!] || joueur!.profilAthletique || '—' }}</span>
-                  </div>
-                  <div class="info-item">
-                    <span class="info-label">Pied fort</span>
-                    <span class="info-value">{{ PIEDS[joueur!.piedFort!] || '—' }}</span>
-                  </div>
-                  <div class="info-item">
-                    <span class="info-label">Statut</span>
-                    <span class="info-value badge-statut statut-{{ joueur!.statut }}">
-                      {{ STATUTS[joueur!.statut] || joueur!.statut }}
+            <div class="pf-hero__top">
+              <!-- identité -->
+              <div class="pf-id">
+                <div class="pf-avatar">{{ initials }}</div>
+                <div class="pf-id__txt">
+                  <div class="pf-id__name">
+                    <h1>{{ joueur.prenom }} {{ joueur.nom }}</h1>
+                    <span class="pf-chip pf-chip--status">
+                      <span class="pf-dot"></span>{{ STATUTS[joueur.statut] || joueur.statut }}
                     </span>
                   </div>
-
-                  @if (blessureActive) {
-                    <div class="info-item parcours-medical">
-                      <span class="info-label">Parcours de reprise</span>
-                      <div class="parcours-timeline">
-                        @for (etape of PARCOURS; track etape.statut; let i = $index) {
-                          <div class="pm-etape"
-                               [class.atteinte]="i <= parcoursIndex"
-                               [class.courante]="i === parcoursIndex">
-                            <span class="pm-puce"></span>
-                            <span class="pm-label">{{ etape.label }}</span>
-                          </div>
-                        }
-                      </div>
-                      @if (rtpEtapes.length > 0) {
-                        <div class="pm-rtp">
-                          <div class="pm-barre"><span [style.width.%]="rtpProgression"></span></div>
-                          <span class="pm-rtp-info">
-                            {{ rtpProgression }}%
-                            @if (rtpEtapeCourante) { · {{ rtpEtapeCourante.libelle }} }
-                          </span>
-                        </div>
-                      }
-                    </div>
-                  }
-
-                  <div class="info-item">
-                    <span class="info-label">Au club depuis</span>
-                    <span class="info-value">{{ joueur!.dateArriveeClub ? (joueur!.dateArriveeClub | date:'dd/MM/yyyy') : '—' }}</span>
+                  <div class="pf-id__meta">
+                    <span class="strong">{{ POSTES[joueur.postePrincipal!] || joueur.postePrincipal || 'Poste non défini' }}</span>
+                    @if (joueur.taille)      { <span class="pf-sep"></span><span>{{ joueur.taille }} cm</span> }
+                    @if (joueur.poidsActuel) { <span class="pf-sep"></span><span>{{ joueur.poidsActuel }} kg</span> }
+                    @if (joueur.piedFort)    { <span class="pf-sep"></span><span>Pied {{ PIEDS[joueur.piedFort] || joueur.piedFort }}</span> }
                   </div>
                 </div>
-              </mat-card-content>
-            }
-          </mat-card>
+              </div>
 
-          <!-- Caractéristiques physiques -->
-          <mat-card class="info-card">
-            <mat-card-header class="card-header-collapsible" (click)="physiquesExpanded = !physiquesExpanded">
-              <mat-card-title>Caractéristiques physiques</mat-card-title>
-              <span class="card-toggle">{{ physiquesExpanded ? '▲' : '▼' }}</span>
-            </mat-card-header>
-            @if (physiquesExpanded) {
-              <mat-card-content>
-                <div class="info-grid">
-                  <div class="info-item">
-                    <span class="info-label">Âge</span>
-                    <span class="info-value">{{ age }}</span>
+              <!-- nav + edit -->
+              <div class="pf-hero__actions">
+                <div class="pf-nav">
+                  <button class="pf-nav__btn" [disabled]="!joueurPrecedent" title="Joueur précédent"
+                          (click)="joueurPrecedent && naviguerVers(joueurPrecedent)">‹</button>
+                  <span class="pf-nav__pos">Joueur {{ currentIndex + 1 }} / {{ joueursList.length }}</span>
+                  <button class="pf-nav__btn" [disabled]="!joueurSuivant" title="Joueur suivant"
+                          (click)="joueurSuivant && naviguerVers(joueurSuivant)">›</button>
+                </div>
+                <button class="pf-btn-edit" (click)="ouvrirEdition()">✎ Modifier le joueur</button>
+              </div>
+            </div>
+
+            <!-- KPI row — vitals joueur, affichés sur l'onglet Profil uniquement -->
+            @if (activeTab === 0) {
+            <div class="pf-kpis">
+              <div class="pf-kpi" [class]="'tone-' + (blessureActive ? 'alert' : 'ok')"
+                   title="Statut d'aptitude médicale à l'entraînement collectif et à la compétition.">
+                <div class="pf-kpi__head"><span class="pf-kpi__label">Disponibilité</span><span class="pf-kpi__i">i</span></div>
+                <div class="pf-kpi__val">{{ blessureActive ? 'Indispo.' : 'Apte' }}</div>
+                <div class="pf-kpi__sub"><span class="pf-kpi__pip"></span>{{ blessureActive ? 'En reprise' : 'Entraînement collectif' }}</div>
+              </div>
+
+              @if (risque) {
+                <div class="pf-kpi" [class]="'tone-' + riskTone(risque.score_risque)"
+                     title="Score composite (0–100) : charge, historique de blessures, asymétries et fatigue.">
+                  <div class="pf-kpi__head"><span class="pf-kpi__label">Risque blessure</span><span class="pf-kpi__i">i</span></div>
+                  <div class="pf-kpi__val">{{ risque.score_risque }}<span class="pf-kpi__unit">/100</span></div>
+                  <div class="pf-kpi__sub"><span class="pf-kpi__pip"></span>{{ risque.niveau }}</div>
+                </div>
+              }
+
+              @if (acwr != null) {
+                <div class="pf-kpi" [class]="'tone-' + acwrTone(acwr)"
+                     title="Ratio charge aiguë / charge chronique. Zone optimale entre 0,80 et 1,30.">
+                  <div class="pf-kpi__head"><span class="pf-kpi__label">ACWR</span><span class="pf-kpi__i">i</span></div>
+                  <div class="pf-kpi__val">{{ acwr | number:'1.2-2' }}</div>
+                  <div class="pf-kpi__sub"><span class="pf-kpi__pip"></span>{{ acwrZone(acwr) }}</div>
+                </div>
+              } @else if (ecartPoids != null) {
+                <div class="pf-kpi" [class]="'tone-' + ecartTone(ecartPoids)"
+                     title="Écart entre le poids actuel et le poids de forme cible (ACWR indisponible : aucune donnée GPS récente).">
+                  <div class="pf-kpi__head"><span class="pf-kpi__label">Écart poids</span><span class="pf-kpi__i">i</span></div>
+                  <div class="pf-kpi__val">{{ ecartPoids > 0 ? '+' : '' }}{{ ecartPoids | number:'1.1-1' }}<span class="pf-kpi__unit">kg</span></div>
+                  <div class="pf-kpi__sub"><span class="pf-kpi__pip"></span>{{ ecartLabel }}</div>
+                </div>
+              }
+
+              @if (fatigue) {
+                <div class="pf-kpi" [class]="'tone-' + fatigueTone(fatigue.score_fatigue)"
+                     title="Indice composite d'intensité subjective (RPE) et de fatigue neuromusculaire récente.">
+                  <div class="pf-kpi__head"><span class="pf-kpi__label">Fatigue</span><span class="pf-kpi__i">i</span></div>
+                  <div class="pf-kpi__val">{{ fatigue.score_fatigue | number:'1.0-0' }}<span class="pf-kpi__unit">%</span></div>
+                  <div class="pf-kpi__sub"><span class="pf-kpi__pip"></span>Intensité {{ fatigue.niveau }}</div>
+                </div>
+              }
+            </div>
+            }
+          </div>
+
+    <!-- ── Contenu des onglets (en-tête Material masqué : piloté par le toggle) ── -->
+    <mat-tab-group class="detail-tabs" [selectedIndex]="activeTab" animationDuration="200ms" (selectedIndexChange)="onTabChange($event)">
+
+      <!-- ══ Onglet Profil (grille 2 colonnes) ══ -->
+      <mat-tab label="Profil">
+        <div class="tab-content pf">
+
+          <!-- ===== BODY GRID (Direction B : colonne principale élargie) ===== -->
+          <div class="pf-grid">
+
+            <!-- COLONNE GAUCHE -->
+            <div class="pf-col">
+
+              <!-- Caractéristiques physiques -->
+              <section class="pf-card">
+                <div class="pf-card__head"><span class="pf-card__bullet"></span><h2>Caractéristiques physiques</h2></div>
+                <div class="pf-stats">
+                  <div class="pf-stat">
+                    <div class="pf-stat__label">Âge</div>
+                    <div class="pf-stat__val">{{ age }}</div>
                   </div>
-                  <div class="info-item">
-                    <span class="info-label">Taille</span>
-                    <span class="info-value">{{ joueur!.taille ? joueur!.taille + ' cm' : '—' }}</span>
+                  <div class="pf-stat">
+                    <div class="pf-stat__label">Taille</div>
+                    <div class="pf-stat__val">{{ joueur.taille || '—' }}<span class="pf-stat__unit">cm</span></div>
                   </div>
-                  <div class="info-item">
-                    <span class="info-label">Poids actuel</span>
-                    <span class="info-value accent">{{ joueur!.poidsActuel ? joueur!.poidsActuel + ' kg' : '—' }}</span>
+                  <div class="pf-stat">
+                    <div class="pf-stat__label">Poids actuel</div>
+                    <div class="pf-stat__val">{{ joueur.poidsActuel ? (joueur.poidsActuel | number:'1.1-1') : '—' }}<span class="pf-stat__unit">kg</span></div>
                   </div>
-                  <div class="info-item">
-                    <span class="info-label">Poids cible</span>
-                    <span class="info-value">{{ joueur!.poidsFormeCible ? joueur!.poidsFormeCible + ' kg' : '—' }}</span>
+                  <div class="pf-stat">
+                    <div class="pf-stat__label">Poids cible</div>
+                    <div class="pf-stat__val">{{ joueur.poidsFormeCible ? (joueur.poidsFormeCible | number:'1.1-1') : '—' }}<span class="pf-stat__unit">kg</span></div>
                   </div>
                   @if (imc) {
-                    <div class="info-item">
-                      <span class="info-label">IMC</span>
-                      <span class="info-value badge-statut" [class]="imc.classe">
-                        {{ imc.valeur }} — {{ imc.categorie }}
-                      </span>
+                    <div class="pf-stat">
+                      <div class="pf-stat__label">IMC</div>
+                      <div class="pf-stat__val">{{ imc.valeur | number:'1.1-1' }}</div>
+                      <span class="pf-badge" [class]="imc.classe">{{ imc.categorie }}</span>
+                    </div>
+                  }
+                  @if (ecartPoids != null) {
+                    <div class="pf-stat">
+                      <div class="pf-stat__label">Écart cible</div>
+                      <div class="pf-stat__val">{{ ecartPoids > 0 ? '+' : '' }}{{ ecartPoids | number:'1.1-1' }}<span class="pf-stat__unit">kg</span></div>
+                      <span class="pf-badge" [class]="'tone-' + ecartTone(ecartPoids)">{{ ecartLabel }}</span>
                     </div>
                   }
                 </div>
-                @if (joueur!.poidsActuel && joueur!.poidsFormeCible) {
-                  <div class="poids-ecart">
-                    @let ecart = joueur!.poidsActuel! - joueur!.poidsFormeCible!;
-                    @if (ecart > 0) {
-                      <span class="ecart-surplus">{{ ecart | number:'1.1-1' }} kg au-dessus du poids cible</span>
-                    } @else if (ecart < 0) {
-                      <span class="ecart-deficit">{{ (-ecart) | number:'1.1-1' }} kg en dessous du poids cible</span>
-                    } @else {
-                      <span class="ecart-ok">Au poids cible ✓</span>
-                    }
-                  </div>
-                }
-                @if (alerteSurpoids) {
-                  <div class="alerte-surpoids">
-                    <div class="alerte-surpoids-titre">
-                      ⚠️ Surpoids de {{ alerteSurpoids.ecart }} kg — impact sur le risque de blessure
-                    </div>
-                    <ul class="alerte-surpoids-detail">
-                      <li>
-                        <strong>+{{ alerteSurpoids.pointsRisque }} points</strong> ajoutés au score de risque blessure
-                        @if (alerteSurpoids.plafonne) { <em>(plafonné à +20 pts)</em> }
-                      </li>
-                      <li>Risques associés : contraintes articulaires (genoux, chevilles, hanches), fatigue musculaire accrue, risque de claquage et de tendinopathie</li>
-                      <li>Les objectifs de match sont ajustés de <strong>−{{ alerteSurpoids.ecart * 2 | number:'1.0-1' }}%</strong> pour tenir compte du surpoids — l'objectif réel à poids de forme reste plus élevé</li>
-                    </ul>
-                  </div>
-                }
-              </mat-card-content>
-            }
-          </mat-card>
 
-          <!-- Historique poids -->
-          @if (pesees.length > 0) {
-            <mat-card class="chart-card">
-              <mat-card-header class="card-header-collapsible" (click)="poidsExpanded = !poidsExpanded">
-                <mat-card-title>Historique des pesées</mat-card-title>
-                <span class="card-toggle">{{ poidsExpanded ? '▲' : '▼' }}</span>
-              </mat-card-header>
-              @if (poidsExpanded) {
-                <mat-card-content>
+                <!-- Alerte surpoids -->
+                @if (alerteSurpoids) {
+                  <div class="pf-alert">
+                    <span class="pf-alert__icon">⚠</span>
+                    <div class="pf-alert__body">
+                      <div class="pf-alert__title">Surpoids détecté — {{ alerteSurpoids.ecart | number:'1.1-1' }} kg au-dessus du poids cible</div>
+                      <ul class="pf-alert__list">
+                        <li><span class="pf-alert__hl">+{{ alerteSurpoids.pointsRisque }} pts</span>
+                          <span>ajoutés au score de risque blessure (charge articulaire et tendineuse accrue)@if (alerteSurpoids.plafonne) { <em> — plafonné à +20 pts</em> }.</span></li>
+                        <li><span class="pf-alert__hl">Objectifs ajustés</span>
+                          <span>les objectifs de match sont réduits de <strong>−{{ alerteSurpoids.ecart * 2 | number:'1.0-1' }} %</strong> ; l'objectif réel à poids de forme reste plus élevé.</span></li>
+                        <li><span class="pf-alert__hl">Suivi</span>
+                          <span>point nutritionnel hebdomadaire recommandé avec le staff médical.</span></li>
+                      </ul>
+                    </div>
+                  </div>
+                }
+              </section>
+
+              <!-- Historique des pesées -->
+              @if (pesees.length > 0) {
+                <section class="pf-card">
+                  <div class="pf-card__head"><span class="pf-card__bullet"></span><h2>Historique des pesées</h2></div>
                   <apx-chart
                     [series]="poidsChartOptions.series"
                     [chart]="poidsChartOptions.chart"
@@ -187,267 +184,280 @@
                     [yaxis]="poidsChartOptions.yaxis"
                     [dataLabels]="poidsChartOptions.dataLabels"
                     [colors]="poidsChartOptions.colors"
+                    [fill]="poidsChartOptions.fill"
+                    [legend]="poidsChartOptions.legend"
+                    [annotations]="poidsChartOptions.annotations"
                     [tooltip]="poidsChartOptions.tooltip">
                   </apx-chart>
-                </mat-card-content>
+                </section>
               }
-            </mat-card>
-          }
+            </div>
 
-          <!-- État actuel -->
-          @if (risque || fatigue) {
-            <mat-card class="info-card">
-              <mat-card-header class="card-header-collapsible" (click)="etatExpanded = !etatExpanded">
-                <mat-card-title>État actuel</mat-card-title>
-                <span class="card-toggle">{{ etatExpanded ? '▲' : '▼' }}</span>
-              </mat-card-header>
-              @if (etatExpanded) {
-                <mat-card-content>
-                  <div class="etat-grid">
-                    @if (risque) {
-                      <div class="etat-item">
-                        <span class="info-label">Risque blessure</span>
-                        <app-badge-risque [niveau]="risque.niveau" [score]="risque.score_risque"></app-badge-risque>
-                      </div>
-                    }
-                    @if (fatigue) {
-                      <div class="etat-item">
-                        <span class="info-label">Alerte intensité ({{ fatigue.niveau }})</span>
-                        <mat-progress-bar [value]="fatigue.score_fatigue"
-                          [color]="fatigue.score_fatigue > 65 ? 'warn' : fatigue.score_fatigue > 35 ? 'accent' : 'primary'">
-                        </mat-progress-bar>
-                        <p class="fatigue-raison">{{ fatigue.raison }}</p>
+            <!-- COLONNE DROITE -->
+            <div class="pf-col">
+
+              <!-- Poste & rôle -->
+              <section class="pf-card">
+                <div class="pf-card__head"><span class="pf-card__bullet"></span><h2>Poste &amp; rôle</h2></div>
+                <div class="pf-rows">
+                  <div class="pf-row"><span class="pf-row__label">Poste principal</span><span class="pf-row__val">{{ POSTES[joueur.postePrincipal!] || joueur.postePrincipal || '—' }}</span></div>
+                  <div class="pf-row"><span class="pf-row__label">Poste secondaire</span><span class="pf-row__val">{{ POSTES[joueur.posteSecondaire!] || joueur.posteSecondaire || '—' }}</span></div>
+                  <div class="pf-row"><span class="pf-row__label">Profil athlétique</span><span class="pf-row__val">{{ PROFILS[joueur.profilAthletique!] || joueur.profilAthletique || '—' }}</span></div>
+                  <div class="pf-row"><span class="pf-row__label">Pied fort</span><span class="pf-row__val">{{ PIEDS[joueur.piedFort!] || '—' }}</span></div>
+                  <div class="pf-row"><span class="pf-row__label">Statut</span>
+                    <span class="pf-badge pf-badge--dot" [class]="'tone-' + statutTone"><span class="pf-dot"></span>{{ STATUTS[joueur.statut] || joueur.statut }}</span>
+                  </div>
+                  <div class="pf-row"><span class="pf-row__label">Arrivée au club</span><span class="pf-row__val">{{ joueur.dateArriveeClub ? (joueur.dateArriveeClub | date:'dd/MM/yyyy') : '—' }}</span></div>
+                </div>
+
+                <!-- Timeline reprise (si blessé) -->
+                @if (blessureActive) {
+                  <div class="pf-reprise">
+                    <div class="pf-reprise__title">Protocole de reprise</div>
+                    <div class="pf-timeline">
+                      <div class="pf-timeline__track"></div>
+                      <div class="pf-timeline__fill" [style.width.%]="parcoursIndex >= 0 ? (parcoursIndex / (PARCOURS.length - 1)) * 100 : 0"></div>
+                      @for (etape of PARCOURS; track etape.statut; let i = $index) {
+                        <div class="pf-step" [class.done]="i < parcoursIndex" [class.current]="i === parcoursIndex">
+                          <span class="pf-step__dot">{{ i < parcoursIndex ? '✓' : (i + 1) }}</span>
+                          <span class="pf-step__label">{{ etape.label }}</span>
+                        </div>
+                      }
+                    </div>
+                    @if (rtpEtapes.length > 0) {
+                      <div class="pf-protocol">
+                        <div class="pf-protocol__head"><span>Progression du protocole</span><span class="pf-protocol__pct">{{ rtpProgression }}%</span></div>
+                        <div class="pf-protocol__bar"><span [style.width.%]="rtpProgression"></span></div>
+                        @if (rtpEtapeCourante) {
+                          <div class="pf-protocol__step"><strong>Étape en cours :</strong> {{ rtpEtapeCourante.libelle }}</div>
+                        }
                       </div>
                     }
                   </div>
-                </mat-card-content>
+                }
+              </section>
+
+              <!-- État actuel -->
+              @if (risque || fatigue) {
+                <section class="pf-card">
+                  <div class="pf-card__head"><span class="pf-card__bullet"></span><h2>État actuel</h2></div>
+
+                  @if (risque) {
+                    <div class="pf-risk">
+                      <div class="pf-donut" [class]="'tone-' + riskTone(risque.score_risque)">
+                        <svg width="84" height="84" viewBox="0 0 84 84">
+                          <circle cx="42" cy="42" r="36" fill="none" stroke="#f1f5f9" stroke-width="9"></circle>
+                          <circle cx="42" cy="42" r="36" fill="none" stroke="currentColor" stroke-width="9"
+                                  stroke-linecap="round" [attr.stroke-dasharray]="riskDash" transform="rotate(-90 42 42)"></circle>
+                        </svg>
+                        <div class="pf-donut__txt"><span class="pf-donut__score">{{ risque.score_risque }}</span><span class="pf-donut__max">/100</span></div>
+                      </div>
+                      <div class="pf-risk__txt">
+                        <div class="pf-risk__label">Risque blessure</div>
+                        <span class="pf-badge pf-badge--dot" [class]="'tone-' + riskTone(risque.score_risque)"><span class="pf-dot"></span>{{ risque.niveau }}</span>
+                        <div class="pf-risk__phrase">{{ riskPhrase }}</div>
+                      </div>
+                    </div>
+                  }
+
+                  @if (fatigue) {
+                    <div class="pf-gauge">
+                      <div class="pf-gauge__head">
+                        <span class="pf-gauge__label">Intensité / fatigue</span>
+                        <span class="pf-badge" [class]="'tone-' + fatigueTone(fatigue.score_fatigue)">{{ fatigue.niveau }}</span>
+                      </div>
+                      <div class="pf-gauge__bar">
+                        <span class="pf-gauge__marker" [style.left.%]="fatigue.score_fatigue"></span>
+                      </div>
+                      <div class="pf-gauge__scale"><span>Faible</span><span>Modérée</span><span>Élevée</span></div>
+                      <div class="pf-gauge__phrase">{{ fatigue.raison }}</div>
+                    </div>
+                  }
+                </section>
               }
-            </mat-card>
-          }
+            </div>
+          </div>
 
         </div>
       </mat-tab>
 
-      <!-- ══ Onglet GPS & Charge — rendu paresseux via matTabContent ══ -->
+      <!-- ══ Onglet GPS & Charge — composant réutilisable, rendu paresseux ══ -->
       <mat-tab label="GPS & Charge">
         <ng-template matTabContent>
-          <div class="tab-content">
+          <app-charge-vue [gpsData]="gpsData" [gpsLoading]="gpsLoading"></app-charge-vue>
+        </ng-template>
+      </mat-tab>
 
-            @if (gpsLoading) {
-              <p class="gps-empty">Chargement…</p>
-            }
+      <!-- ══ Onglet Suivi subjectif (wellness + sRPE) ══ -->
+      <mat-tab label="Suivi subjectif">
+        <ng-template matTabContent>
+          <div class="tab-content pf">
 
-            @if (!gpsLoading && gpsData.length === 0) {
-              <p class="gps-empty">Aucune donnée GPS disponible pour ce joueur.<br>
-                Importez un fichier Excel via le script Python.</p>
-            }
+            <!-- En-tête + sélecteur de fenêtre + légende -->
+            <section class="su-head">
+              <div class="su-head__top">
+                <div class="su-head__id">
+                  <div class="su-head__title">Ressenti &amp; charge perçue</div>
+                  <div class="su-head__sub">Questionnaire de Hooper + sRPE@if (rangeWellnessLabel) { · <strong>{{ rangeWellnessLabel }}</strong> }</div>
+                </div>
+                <div class="su-toggle">
+                  <button [class.is-active]="fenetreWellness === 7"  (click)="setFenetreWellness(7)">7 jours</button>
+                  <button [class.is-active]="fenetreWellness === 14" (click)="setFenetreWellness(14)">14 jours</button>
+                </div>
+              </div>
+              <div class="su-legend">
+                <span><strong>Hooper</strong> : 5 (très frais) → 25 (vigilance) · <em>plus bas = mieux</em></span>
+                <span class="su-legend__sep"></span>
+                <span><strong>sRPE</strong> : charge ressentie de la séance (RPE × durée), en UA</span>
+              </div>
+            </section>
 
-            @if (!gpsLoading && gpsData.length > 0) {
+            @if (!wellnessHisto.length) {
+              <p class="gps-empty">Aucune saisie de ressenti (wellness) pour ce joueur.</p>
+            } @else {
 
-              <!-- Barre de filtres -->
-              <div class="gps-filters">
-                <div class="filter-chips">
-                  @for (t of TYPES_GPS; track t.code) {
-                    <button class="chip-type"
-                            [class.active]="filtreTypes.includes(t.code)"
-                            [style.--c]="t.couleur"
-                            (click)="toggleFiltreType(t.code)">
-                      {{ t.libelle }}
-                    </button>
+              <!-- KPIs -->
+              <div class="su-kpis">
+                <div class="su-kpi">
+                  <div class="su-kpi__head">
+                    <span class="su-kpi__label">Dernier Hooper</span>
+                    @if (hooperDernier != null) {
+                      <span class="pf-badge" [class]="'tone-' + hooperTone(hooperDernier)"><span class="pf-dot"></span>{{ hooperLabel(hooperDernier) }}</span>
+                    }
+                  </div>
+                  <div class="su-kpi__val" [class]="'c-' + hooperTone(hooperDernier)">{{ hooperDernier ?? '—' }}<span class="su-kpi__unit">/25</span></div>
+                  <div class="su-kpi__sub">dernier relevé</div>
+                </div>
+                <div class="su-kpi">
+                  <div class="su-kpi__head">
+                    <span class="su-kpi__label">Moyenne Hooper</span>
+                    @if (hooperMoyen != null) {
+                      <span class="pf-badge" [class]="'tone-' + hooperTone(hooperMoyen)"><span class="pf-dot"></span>{{ hooperLabel(hooperMoyen) }}</span>
+                    }
+                  </div>
+                  <div class="su-kpi__val">{{ hooperMoyen != null ? (hooperMoyen | number:'1.1-1') : '—' }}<span class="su-kpi__unit">/25</span></div>
+                  <div class="su-kpi__sub">sur la fenêtre sélectionnée</div>
+                </div>
+                <div class="su-kpi">
+                  <div class="su-kpi__head"><span class="su-kpi__label">Jours remplis</span></div>
+                  <div class="su-kpi__val">{{ joursRemplisWellness }}<span class="su-kpi__unit">/ {{ fenetreWellness }}</span></div>
+                  <div class="su-kpi__sub">questionnaires complétés</div>
+                </div>
+                <div class="su-kpi">
+                  <div class="su-kpi__head"><span class="su-kpi__label">Charge sRPE cumulée</span></div>
+                  <div class="su-kpi__val">{{ chargeCumuleeWellness | number:'1.0-0' }}<span class="su-kpi__unit">UA</span></div>
+                  <div class="su-kpi__sub">somme RPE × durée</div>
+                </div>
+              </div>
+
+              <!-- Alerte gêne non traitée -->
+              @if (geneAlerte) {
+                <div class="su-gene">
+                  <span class="su-gene__icon"><mat-icon>warning</mat-icon></span>
+                  <div class="su-gene__body">
+                    <div class="su-gene__titleline">
+                      <span class="su-gene__title">Gêne récente non traitée — {{ geneAlerte.zone }}</span>
+                      <span class="pf-badge tone-alert">Non traitée</span>
+                    </div>
+                    <div class="su-gene__desc">Déclarée le {{ geneAlerte.date | date:'d MMM':'':'fr' }}. À transmettre au staff médical avant la prochaine séance à haute intensité.</div>
+                  </div>
+                  @if (geneAlerte.intensite != null) {
+                    <div class="su-gene__int">
+                      <div class="su-gene__intlabel">Intensité ressentie</div>
+                      <div class="su-gene__introw">
+                        <div class="su-gene__dots">
+                          @for (n of [1,2,3,4,5]; track n) {
+                            <span [style.background]="n <= geneAlerte.intensite ? '#dc2626' : '#fecaca'"></span>
+                          }
+                        </div>
+                        <span class="su-gene__intval">{{ geneAlerte.intensite }}<span>/5</span></span>
+                      </div>
+                    </div>
                   }
                 </div>
-                <div class="filter-dates">
-                  <input type="date" [(ngModel)]="filtreDebut" (ngModelChange)="onFiltreChange()" class="date-input" title="Du">
-                  <span class="date-sep">→</span>
-                  <input type="date" [(ngModel)]="filtreFin" (ngModelChange)="onFiltreChange()" class="date-input" title="Au">
-                </div>
-                @if (filtreTypes.length > 0 || filtreDebut || filtreFin) {
-                  <button class="chip-reset" (click)="resetFiltres()">✕ Réinitialiser</button>
-                  <span class="filter-count">{{ gpsDataEnriched.length }} / {{ gpsData.length }} séances</span>
-                }
-              </div>
+              }
 
-              <!-- Légende couleurs -->
-              <div class="legende">
-                <span class="legende-item" style="--c:#ef4444">Match</span>
-                <span class="legende-item" style="--c:#f97316">Match amical</span>
-                <span class="legende-item" style="--c:#6366f1">Intensif</span>
-                <span class="legende-item" style="--c:#0ea5a0">Technique</span>
-                <span class="legende-item" style="--c:#22c55e">Reprise</span>
-                <span class="legende-item" style="--c:#eab308">Pré-match</span>
-                <span class="legende-item" style="--c:#8b5cf6">Force</span>
-              </div>
-
-              <!-- Graphique charge -->
-              <mat-card class="chart-card">
-                <mat-card-header class="card-header-collapsible" (click)="chartExpanded = !chartExpanded">
-                  <mat-card-title>Charge par séance — distance totale</mat-card-title>
-                  <span class="card-toggle">{{ chartExpanded ? '▲' : '▼' }}</span>
-                </mat-card-header>
-                @if (chartExpanded) {
-                  <mat-card-content>
-                    <apx-chart
-                      [series]="chartOptions.series"
-                      [chart]="chartOptions.chart"
-                      [xaxis]="chartOptions.xaxis"
-                      [yaxis]="chartOptions.yaxis"
-                      [plotOptions]="chartOptions.plotOptions"
-                      [dataLabels]="chartOptions.dataLabels"
-                      [fill]="chartOptions.fill"
-                      [tooltip]="chartOptions.tooltip">
-                    </apx-chart>
-                  </mat-card-content>
-                }
-              </mat-card>
-
-              <!-- Tableau détail -->
-              <mat-card class="table-card">
-                <mat-card-header class="card-header-collapsible" (click)="tableExpanded = !tableExpanded">
-                  <mat-card-title>Détail des séances</mat-card-title>
-                  <span class="card-toggle">{{ tableExpanded ? '▲' : '▼' }}</span>
-                </mat-card-header>
-                @if (tableExpanded) {
-                  <div class="legende-statut">
-                    <span class="legende-statut-item statut-sous">Sous la norme (&lt; −20%)</span>
-                    <span class="legende-statut-item statut-dans">Dans la norme (±20%)</span>
-                    <span class="legende-statut-item statut-sur">Sur la norme (&gt; +20%)</span>
-                    <span class="legende-statut-item statut-nc">Non comparable (arrêt intempérie)</span>
+              <!-- Graphe combiné + décomposition (Direction A) -->
+              <div class="su-row">
+                <section class="pf-card">
+                  <div class="gps-cardhead">
+                    <div class="pf-card__head pf-card__head--flush"><span class="pf-card__bullet"></span><h2>Tendance — Hooper &amp; charge perçue</h2></div>
+                    <div class="gps-chartlegend">
+                      <span><span class="gps-chartlegend__sw" style="background:#cbd5e1"></span>Hooper /25</span>
+                      <span><span class="gps-chartlegend__sw" style="background:#15803d"></span>sRPE</span>
+                    </div>
                   </div>
-                  <mat-card-content>
-                    <table mat-table [dataSource]="gpsDataPage" class="gps-table">
+                  <apx-chart #suiviChart
+                    [series]="suiviChartOptions.series"
+                    [chart]="suiviChartOptions.chart"
+                    [xaxis]="suiviChartOptions.xaxis"
+                    [yaxis]="suiviChartOptions.yaxis"
+                    [plotOptions]="suiviChartOptions.plotOptions"
+                    [dataLabels]="suiviChartOptions.dataLabels"
+                    [stroke]="suiviChartOptions.stroke"
+                    [markers]="suiviChartOptions.markers"
+                    [colors]="suiviChartOptions.colors"
+                    [legend]="suiviChartOptions.legend"
+                    [tooltip]="suiviChartOptions.tooltip">
+                  </apx-chart>
+                </section>
 
-                      <ng-container matColumnDef="date">
-                        <th mat-header-cell *matHeaderCellDef>Date</th>
-                        <td mat-cell *matCellDef="let g">{{ g.date | date:'dd/MM/yyyy' }}</td>
-                        <td mat-footer-cell *matFooterCellDef></td>
-                      </ng-container>
-
-                      <ng-container matColumnDef="type">
-                        <th mat-header-cell *matHeaderCellDef>Type</th>
-                        <td mat-cell *matCellDef="let g">
-                          <span class="badge-type" [style.background]="couleurType(g.typeCode) + '28'" [style.color]="couleurType(g.typeCode)">
-                            {{ g.typeLibelle }}
-                          </span>
-                        </td>
-                        <td mat-footer-cell *matFooterCellDef class="footer-cell">{{ gpsDataEnriched.length }} séances</td>
-                      </ng-container>
-
-                      <ng-container matColumnDef="duree">
-                        <th mat-header-cell *matHeaderCellDef>Durée</th>
-                        <td mat-cell *matCellDef="let g">{{ g.dureeMinutes ?? '—' }} min</td>
-                        <td mat-footer-cell *matFooterCellDef class="footer-cell">{{ totalDuree }} min</td>
-                      </ng-container>
-
-                      <ng-container matColumnDef="distance">
-                        <th mat-header-cell *matHeaderCellDef>Distance</th>
-                        <td mat-cell *matCellDef="let g">
-                          @if (g.distanceTotaleM) {
-                            <strong>{{ (g.distanceTotaleM / 1000) | number:'1.2-2' }} km</strong>
-                          } @else { — }
-                        </td>
-                        <td mat-footer-cell *matFooterCellDef class="footer-cell">
-                          <strong>{{ totalDistanceKm | number:'1.1-1' }} km</strong>
-                        </td>
-                      </ng-container>
-
-                      <ng-container matColumnDef="ratioReel">
-                        <th mat-header-cell *matHeaderCellDef>Ratio réel</th>
-                        <td mat-cell *matCellDef="let g" class="muted">
-                          {{ g.ratioReel ? (g.ratioReel | number:'1.0-0') + ' m/min' : '—' }}
-                        </td>
-                        <td mat-footer-cell *matFooterCellDef class="footer-cell muted">
-                          {{ moyenneRatioReel ? 'ø ' + (moyenneRatioReel | number:'1.0-0') + ' m/min' : '—' }}
-                        </td>
-                      </ng-container>
-
-                      <ng-container matColumnDef="distAttendue">
-                        <th mat-header-cell *matHeaderCellDef>Dist. attendue</th>
-                        <td mat-cell *matCellDef="let g" class="muted">
-                          @if (g.distAttendue) {
-                            {{ (g.distAttendue / 1000) | number:'1.2-2' }} km
-                          } @else { — }
-                        </td>
-                        <td mat-footer-cell *matFooterCellDef class="footer-cell muted">
-                          {{ totalDistAttendueKm | number:'1.1-1' }} km
-                        </td>
-                      </ng-container>
-
-                      <ng-container matColumnDef="statut">
-                        <th mat-header-cell *matHeaderCellDef>Charge relative</th>
-                        <td mat-cell *matCellDef="let g">
-                          <span class="badge-statut" [class]="statutClass(g.statut)">
-                            {{ statutLibelle(g.statut) }}
-                          </span>
-                        </td>
-                        <td mat-footer-cell *matFooterCellDef></td>
-                      </ng-container>
-
-                      <ng-container matColumnDef="dist19">
-                        <th mat-header-cell *matHeaderCellDef>Dist. &gt;19 km/h</th>
-                        <td mat-cell *matCellDef="let g" class="muted">
-                          {{ g.distance19kmhM ? ((g.distance19kmhM / 1000) | number:'1.2-2') + ' km' : '—' }}
-                        </td>
-                        <td mat-footer-cell *matFooterCellDef class="footer-cell muted">
-                          {{ totalDist19Km | number:'1.1-1' }} km
-                        </td>
-                      </ng-container>
-
-                      <ng-container matColumnDef="dist28">
-                        <th mat-header-cell *matHeaderCellDef>Dist. &gt;28 km/h</th>
-                        <td mat-cell *matCellDef="let g" class="muted">
-                          {{ g.distanceSprint28kmhM ? ((g.distanceSprint28kmhM / 1000) | number:'1.2-2') + ' km' : '—' }}
-                        </td>
-                        <td mat-footer-cell *matFooterCellDef class="footer-cell muted">
-                          {{ totalDist28Km | number:'1.1-1' }} km
-                        </td>
-                      </ng-container>
-
-                      <ng-container matColumnDef="sprint">
-                        <th mat-header-cell *matHeaderCellDef>Sprint &gt;24 km/h</th>
-                        <td mat-cell *matCellDef="let g">
-                          {{ g.distanceSprint24kmhM ? ((g.distanceSprint24kmhM) | number:'1.0-0') + ' m' : '—' }}
-                          @if (g.nbSprints24kmh) {
-                            <small class="nb-sprints">({{ g.nbSprints24kmh }}x)</small>
+                <section class="pf-card su-breakdown">
+                  <div class="su-bd-head">
+                    <div class="pf-card__head pf-card__head--flush"><span class="pf-card__bullet"></span><h2>Dernier relevé</h2></div>
+                    @if (wellnessDernierRempli) { <span class="su-bd-date">{{ wellnessDernierRempli.date | date:'d MMM':'':'fr' }}</span> }
+                  </div>
+                  @if (hooperDernier != null) {
+                    <div class="su-bd-sub">D'où vient le score de {{ hooperDernier }}/25 ?</div>
+                  }
+                  <div class="su-jauges">
+                    @for (it of itemsDernierReleve; track it.label) {
+                      <div class="su-jauge">
+                        <div class="su-jauge__head">
+                          <span class="su-jauge__label">{{ it.label }}</span>
+                          <span class="su-jauge__val" [style.color]="it.color">{{ it.value }}<span class="su-jauge__max">/5</span></span>
+                        </div>
+                        <div class="su-jauge__segs">
+                          @for (sg of it.segs; track $index) {
+                            <span [style.background]="sg ? it.color : '#f1f5f9'"></span>
                           }
-                        </td>
-                        <td mat-footer-cell *matFooterCellDef class="footer-cell">{{ totalSprintM | number:'1.0-0' }} m</td>
-                      </ng-container>
+                        </div>
+                      </div>
+                    }
+                  </div>
+                  <div class="su-jauge-legend">
+                    <span><span style="background:#22c55e"></span>1–2 ok</span>
+                    <span><span style="background:#f59e0b"></span>3 vigilance</span>
+                    <span><span style="background:#ef4444"></span>4–5 alerte</span>
+                  </div>
+                </section>
+              </div>
 
-                      <ng-container matColumnDef="vitesseMax">
-                        <th mat-header-cell *matHeaderCellDef>Vit. max</th>
-                        <td mat-cell *matCellDef="let g">
-                          {{ g.vitesseMaxKmh ? (g.vitesseMaxKmh | number:'1.1-1') + ' km/h' : '—' }}
-                        </td>
-                        <td mat-footer-cell *matFooterCellDef class="footer-cell muted">
-                          {{ maxVitesse ? 'max ' + (maxVitesse | number:'1.1-1') + ' km/h' : '—' }}
-                        </td>
-                      </ng-container>
-
-                      <ng-container matColumnDef="accelerations">
-                        <th mat-header-cell *matHeaderCellDef>Accél.</th>
-                        <td mat-cell *matCellDef="let g">{{ g.nbAccelerations ?? '—' }}</td>
-                        <td mat-footer-cell *matFooterCellDef class="footer-cell">{{ totalAccelerations }}</td>
-                      </ng-container>
-
-                      <ng-container matColumnDef="freinages">
-                        <th mat-header-cell *matHeaderCellDef>Freinages</th>
-                        <td mat-cell *matCellDef="let g">{{ g.nbFreinages ?? '—' }}</td>
-                        <td mat-footer-cell *matFooterCellDef class="footer-cell">{{ totalFreinages }}</td>
-                      </ng-container>
-
-                      <tr mat-header-row *matHeaderRowDef="colonnesGps"></tr>
-                      <tr mat-row *matRowDef="let row; columns: colonnesGps;"></tr>
-                      <tr mat-footer-row *matFooterRowDef="colonnesGps"></tr>
-                    </table>
-                    <mat-paginator
-                      [length]="gpsDataEnriched.length"
-                      [pageSize]="10"
-                      [pageSizeOptions]="[5, 10, 20]"
-                      (page)="onPageChange($event)">
-                    </mat-paginator>
-                  </mat-card-content>
+              <!-- Historique jour par jour -->
+              <section class="pf-card su-history">
+                <div class="pf-card__head"><span class="pf-card__bullet"></span><h2>Historique jour par jour</h2></div>
+                <div class="su-hrow su-hrow--head">
+                  <span>Date</span><span>Score Hooper</span><span class="r">Charge sRPE</span><span class="r">Gêne déclarée</span>
+                </div>
+                @for (j of serieWellness; track j.date) {
+                  <div class="su-hrow">
+                    <span class="su-hdate">{{ j.date | date:'EEE d MMM':'':'fr' }}</span>
+                    <span>
+                      @if (j.hooper != null) {
+                        <span class="pf-badge" [class]="'tone-' + hooperTone(j.hooper)"><span class="pf-dot"></span>{{ j.hooper }}/25 · {{ hooperLabel(j.hooper) }}</span>
+                      } @else { <span class="su-empty">Non rempli</span> }
+                    </span>
+                    <span class="r" [class.su-soft]="j.charge == null">{{ j.charge != null ? (j.charge | number:'1.0-0') + ' UA' : 'Repos' }}</span>
+                    <span class="r">
+                      @if (j.geneZone) {
+                        <span class="su-hgene" [class.untreated]="!j.geneTraitee">
+                          <mat-icon>warning</mat-icon>{{ joliZone(j.geneZone) }}@if (j.geneIntensite != null) { {{ j.geneIntensite }}/5 }@if (!j.geneTraitee) { ⚠ }
+                        </span>
+                      } @else { <span class="su-empty">—</span> }
+                    </span>
+                  </div>
                 }
-              </mat-card>
+              </section>
 
             }
           </div>
