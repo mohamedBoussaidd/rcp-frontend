@@ -60,16 +60,19 @@ const ALL_MODULES: NavModule[] = [
   },
   {
     key: 'gps', label: 'GPS', icon: 'fitness_center',
-    link: '/vue-seance', matches: ['/vue-seance', '/pesees', '/import', '/methodologie', '/parametres'],
-    roles: ['SUPER_ADMIN', 'PRESIDENT', 'ENTRAINEUR', 'PREPARATEUR', 'MEDICAL'],
+    link: '/vue-seance', matches: ['/vue-seance', '/etat-effectif', '/charge-equipe', '/suivi-subjectif', '/pesees', '/import', '/methodologie', '/parametres'],
+    roles: ['SUPER_ADMIN', 'PRESIDENT', 'PREPARATEUR', 'MEDICAL'],
     subnav: [
+      { label: 'État de l\'effectif', link: '/etat-effectif' },
+      { label: 'Charge de l\'équipe', link: '/charge-equipe' },
       { label: 'Vue séance',        link: '/vue-seance' },
-      { label: 'Comparaison',       link: '/vue-seance', section: 'comparaison', disabled: true },
-      { label: 'Historique joueur', link: '/vue-seance', section: 'historique', disabled: true },
+      { label: 'Suivi subjectif',   link: '/suivi-subjectif' },
+      // { label: 'Comparaison',       link: '/vue-seance', section: 'comparaison', disabled: true },
+      // { label: 'Historique joueur', link: '/vue-seance', section: 'historique', disabled: true },
       { label: 'Pesées',            link: '/pesees',       roles: ['SUPER_ADMIN', 'PRESIDENT', 'PREPARATEUR', 'MEDICAL'] },
       { label: 'Paramètres',        link: '/parametres',   roles: ['SUPER_ADMIN', 'PRESIDENT', 'PREPARATEUR'] },
       { label: 'Import Excel',      link: '/import',       roles: ['SUPER_ADMIN', 'PREPARATEUR'] },
-      { label: 'Méthodologie',      link: '/methodologie', roles: ['SUPER_ADMIN', 'PRESIDENT', 'ENTRAINEUR', 'PREPARATEUR', 'MEDICAL'] },
+      { label: 'Méthodologie',      link: '/methodologie', roles: ['SUPER_ADMIN', 'PRESIDENT', 'PREPARATEUR', 'MEDICAL'] },
     ],
   },
   {
@@ -79,7 +82,6 @@ const ALL_MODULES: NavModule[] = [
     subnav: [
       { label: 'Alertes',                       link: '/medical', section: 'alertes', default: true, roles: ['SUPER_ADMIN', 'PRESIDENT', 'ENTRAINEUR', 'PREPARATEUR', 'MEDICAL'] },
       { label: 'Blessures',                     link: '/medical', section: 'blessures', roles: ['SUPER_ADMIN', 'PRESIDENT', 'ENTRAINEUR', 'PREPARATEUR', 'MEDICAL'] },
-      { label: 'Suivi subjectif',               link: '/suivi-subjectif', roles: ['SUPER_ADMIN', 'PRESIDENT', 'ENTRAINEUR', 'PREPARATEUR', 'MEDICAL'] },
       { label: 'Bilan blessures',               link: '/medical', section: 'bilan', roles: ['SUPER_ADMIN', 'PRESIDENT', 'ENTRAINEUR', 'PREPARATEUR', 'MEDICAL'] },
       { label: 'Documents',                     link: '/medical', section: 'documents', roles: ['SUPER_ADMIN', 'PRESIDENT', 'ENTRAINEUR', 'PREPARATEUR', 'MEDICAL'] },
       { label: 'Mon suivi',                     link: '/suivi-subjectif', roles: ['JOUEUR'] },
@@ -152,10 +154,14 @@ export class NavSidebarComponent {
     return m.query ?? {};
   }
 
-  /** Module actif d'après l'URL courante. */
+  /**
+   * Module actif d'après l'URL courante — restreint aux modules visibles par le rôle.
+   * Ainsi une route partagée (ex. /suivi-subjectif présent dans GPS et Médical) s'active
+   * sur le 1er module visible : GPS pour le staff physique, Médical pour le joueur.
+   */
   private readonly activeModule = computed<NavModule | null>(() => {
     const { path } = this.parsed();
-    return ALL_MODULES.find(m => m.matches.some(p => path.startsWith(p))) ?? null;
+    return this.navModules().find(m => m.matches.some(p => path.startsWith(p))) ?? null;
   });
 
   isModuleActive(m: NavModule): boolean {

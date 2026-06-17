@@ -1,0 +1,110 @@
+:host { display: block; }
+
+.kpi__ic { font-size: 16px; width: 16px; height: 16px; color: var(--text-3); }
+
+.text-bad  { color: var(--bad); }
+.text-warn { color: var(--warn); }
+
+/* ── Alerte wellness non rempli ── */
+.wellness-alerte {
+  display: flex; align-items: center; gap: 10px;
+  margin-bottom: 16px; padding: 12px 16px;
+  border-radius: var(--r, 10px);
+  background: var(--warn-bg); border: 1px solid var(--warn-bd); color: var(--warn);
+  text-decoration: none; font-size: 14px;
+  transition: filter .15s;
+  &:hover { filter: brightness(0.97); }
+  strong { font-weight: 700; }
+  mat-icon { font-size: 20px; width: 20px; height: 20px; }
+  &__go { margin-left: auto; }
+}
+
+.loading { padding: 8px 0; color: var(--text-3); font-size: 14px; }
+
+/* ── Grille 2 colonnes (charge / bilan) ── */
+.grid-2 {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr;
+  gap: 16px;
+}
+@media (max-width: 900px) {
+  .grid-2 { grid-template-columns: 1fr; }
+}
+
+/* ── À surveiller ── */
+.surveiller__vide {
+  display: flex; align-items: center; gap: 8px;
+  color: var(--text-3); font-size: 14px; padding: 6px 0;
+  mat-icon { font-size: 20px; width: 20px; height: 20px; color: var(--ok, var(--green-600)); }
+}
+
+.surv-row {
+  display: flex; flex-direction: column; gap: 6px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+  text-decoration: none; color: inherit;
+  &:last-child { border-bottom: none; }
+  &:hover .surv-row__nom { text-decoration: underline; }
+
+  &__main { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  &__id { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+  &__nom { font-weight: 600; font-size: 14px; color: var(--text-1); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  &__poste { font-size: 11.5px; color: var(--text-3); }
+  &__chips { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+  &__msg { font-size: 12.5px; color: var(--text-2); line-height: 1.4; }
+}
+
+.chip {
+  display: inline-flex; align-items: center;
+  padding: 3px 9px; border-radius: var(--r-pill, 999px);
+  font-size: 11.5px; font-weight: 600; white-space: nowrap;
+  background: var(--bg-2); color: var(--text-2); border: 1px solid var(--border);
+
+  &--ok   { background: var(--ok-bg);   color: var(--ok);   border-color: var(--ok-bd); }
+  &--warn { background: var(--warn-bg); color: var(--warn); border-color: var(--warn-bd); }
+  &--bad  { background: var(--bad-bg);  color: var(--bad);  border-color: var(--bad-bd); }
+}
+
+/* ── Segmenté 4/8/12 sem. ── */
+.seg {
+  display: inline-flex; gap: 2px; padding: 2px;
+  background: var(--bg-2); border: 1px solid var(--border); border-radius: var(--r-pill, 999px);
+}
+.seg__btn {
+  border: none; background: transparent; cursor: pointer;
+  padding: 4px 12px; border-radius: var(--r-pill, 999px);
+  font-size: 12px; font-weight: 600; color: var(--text-3);
+  transition: background .15s, color .15s;
+  &:hover { color: var(--text-1); }
+  &.is-active { background: var(--surface, #fff); color: var(--green-700); box-shadow: var(--shadow-sm); }
+}
+
+/* ── Bilan prévu/réalisé ── */
+.bilan {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
+}
+.bilan__kpi {
+  background: var(--bg-2); border: 1px solid var(--border);
+  border-radius: var(--r, 10px); padding: 14px;
+  display: flex; flex-direction: column; gap: 3px;
+}
+.bilan__val { font-size: 24px; font-weight: 700; line-height: 1; color: var(--text-1); }
+.bilan__label { font-size: 12px; color: var(--text-3); }
+.bilan__obj { margin-top: 12px; font-size: 13px; font-style: italic; color: var(--text-2); }
+
+/* ── Séances ── */
+.seance-jour__item {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 10px 0; border-bottom: 1px solid var(--border);
+  &:last-child { border-bottom: none; }
+}
+.seance-jour__meta { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.seance-jour__type-txt { font-weight: 600; font-size: 13.5px; color: var(--text-1); }
+.seance-jour__heure {
+  display: inline-flex; align-items: center; gap: 3px; font-size: 13px; color: var(--text-2);
+  mat-icon { font-size: 14px; width: 14px; height: 14px; }
+}
+.seance-jour__date { font-size: 13px; }
+.muted { color: var(--text-3); font-size: 13px; }
+
+.unit { font-size: 14px; color: var(--text-3); font-weight: 500; }

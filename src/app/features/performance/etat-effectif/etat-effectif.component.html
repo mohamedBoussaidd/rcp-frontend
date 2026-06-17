@@ -1,0 +1,146 @@
+<div class="screen">
+
+  <div class="page-head">
+    <div>
+      <h1 class="page-head__title">État de l'effectif</h1>
+      <p class="page-head__sub">Disponibilité, risque, fatigue &amp; ACWR — volume détaillé dans « Charge de l'équipe » · {{ joueurs.length }} joueurs</p>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card__header">
+      <h3 class="card__title">Effectif</h3>
+      <div class="row" style="gap:8px;flex-wrap:wrap">
+        <div class="input__wrap" style="width:220px">
+          <span class="input__icon"><mat-icon style="font-size:15px;width:15px;height:15px">search</mat-icon></span>
+          <input class="input" [(ngModel)]="recherche" (ngModelChange)="onRecherche()" placeholder="Rechercher un joueur…">
+        </div>
+        <button class="btn btn--sm" [class.btn--dark]="triFatigue !== null" [class.btn--ghost]="triFatigue === null" (click)="toggleTriFatigue()">
+          Fatigue {{ triFatigue === 'asc' ? '↑' : triFatigue === 'desc' ? '↓' : '↕' }}
+        </button>
+        <button class="btn btn--sm" [class.btn--dark]="triRisque !== null" [class.btn--ghost]="triRisque === null" (click)="toggleTriRisque()">
+          Risque {{ triRisque === 'asc' ? '↑' : triRisque === 'desc' ? '↓' : '↕' }}
+        </button>
+      </div>
+    </div>
+
+    @if (loading) {
+      <div class="card__body"><div class="loading">Chargement des données…</div></div>
+    }
+
+    @if (!loading) {
+
+      <!-- Vue table (desktop) -->
+      <div class="view-table table-wrap">
+        <table mat-table [dataSource]="joueursPagines" class="table">
+
+          <ng-container matColumnDef="joueur">
+            <th mat-header-cell *matHeaderCellDef>Joueur</th>
+            <td mat-cell *matCellDef="let j">
+              <a [routerLink]="['/joueurs', j.joueur_id]" class="player-link">{{ j.prenom }} {{ j.nom }}</a>
+            </td>
+          </ng-container>
+
+          <ng-container matColumnDef="poste">
+            <th mat-header-cell *matHeaderCellDef>Poste</th>
+            <td mat-cell *matCellDef="let j"><span class="badge badge--neutral">{{ j.poste || '—' }}</span></td>
+          </ng-container>
+
+          <ng-container matColumnDef="statut">
+            <th mat-header-cell *matHeaderCellDef>Statut</th>
+            <td mat-cell *matCellDef="let j">
+              @let s = statutMap.get(j.joueur_id);
+              @if (s) {
+                <span [class]="'badge badge--statut-' + s">{{ statutLibelle(s) }}</span>
+              }
+            </td>
+          </ng-container>
+
+          <ng-container matColumnDef="risque">
+            <th mat-header-cell *matHeaderCellDef>Risque blessure</th>
+            <td mat-cell *matCellDef="let j">
+              <app-badge-risque [niveau]="j.niveau_risque" [score]="j.score_risque"></app-badge-risque>
+            </td>
+          </ng-container>
+
+          <ng-container matColumnDef="acwr">
+            <th mat-header-cell *matHeaderCellDef>
+              ACWR <app-info-hint titre="ACWR" [texte]="aideAcwr"></app-info-hint>
+            </th>
+            <td mat-cell *matCellDef="let j">
+              @if (j.acwr != null) {
+                <span class="chip" [class]="'chip--' + acwrClasse(j.acwr)">{{ j.acwr | number:'1.2-2' }}</span>
+              } @else { <span class="muted">—</span> }
+            </td>
+          </ng-container>
+
+          <ng-container matColumnDef="fatigue">
+            <th mat-header-cell *matHeaderCellDef>Alerte intensité</th>
+            <td mat-cell *matCellDef="let j">
+              <mat-progress-bar [value]="j.score_fatigue" [color]="j.score_fatigue > 65 ? 'warn' : 'primary'"></mat-progress-bar>
+              <small class="progress-label">{{ j.niveau_fatigue }}</small>
+            </td>
+          </ng-container>
+
+          <ng-container matColumnDef="poids">
+            <th mat-header-cell *matHeaderCellDef>Poids</th>
+            <td mat-cell *matCellDef="let j">
+              @let fiche = poidsMap.get(j.joueur_id);
+              @if (fiche && fiche.ecartKg != null && fiche.ecartKg > 1) {
+                <span class="badge" [class.badge--warn]="fiche.ecartKg <= 3" [class.badge--bad]="fiche.ecartKg > 3">
+                  +{{ fiche.ecartKg | number:'1.1-1' }} kg
+                </span>
+              } @else if (fiche && fiche.dernierPoids != null) {
+                <span class="badge badge--ok">✓ OK</span>
+              }
+            </td>
+          </ng-container>
+
+          <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+          <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
+        </table>
+      </div>
+
+      <!-- Vue cards (mobile) -->
+      <div class="view-cards">
+        @for (j of joueursPagines; track j.joueur_id) {
+          @let s = statutMap.get(j.joueur_id);
+          @let fiche = poidsMap.get(j.joueur_id);
+          <a class="joueur-card" [routerLink]="['/joueurs', j.joueur_id]">
+            <div class="joueur-card__nom">{{ j.prenom }} {{ j.nom }}</div>
+            <div class="row row--between">
+              <span class="joueur-card__poste">{{ j.poste || '—' }}</span>
+              @if (s) { <span [class]="'badge badge--statut-' + s" style="font-size:11px">{{ statutLibelle(s) }}</span> }
+            </div>
+            <div class="row" style="gap:6px;flex-wrap:wrap">
+              <app-badge-risque [niveau]="j.niveau_risque" [score]="j.score_risque"></app-badge-risque>
+              @if (j.acwr != null) {
+                <span class="chip" [class]="'chip--' + acwrClasse(j.acwr)">ACWR {{ j.acwr | number:'1.2-2' }}</span>
+              }
+              @if (fiche && fiche.ecartKg != null && fiche.ecartKg > 1) {
+                <span class="badge" [class.badge--warn]="fiche.ecartKg <= 3" [class.badge--bad]="fiche.ecartKg > 3">
+                  +{{ fiche.ecartKg | number:'1.1-1' }} kg
+                </span>
+              }
+            </div>
+            <div class="joueur-card__fatigue">
+              <mat-progress-bar [value]="j.score_fatigue" [color]="j.score_fatigue > 65 ? 'warn' : 'primary'"></mat-progress-bar>
+              <small>{{ j.niveau_fatigue }}</small>
+            </div>
+          </a>
+        }
+      </div>
+
+      <div style="border-top: 1px solid var(--border)">
+        <mat-paginator
+          [length]="joueursFiltres.length"
+          [pageSize]="pageSize"
+          [pageSizeOptions]="[5, 10, 20]"
+          (page)="onPageChange($event)">
+        </mat-paginator>
+      </div>
+
+    }
+  </div>
+
+</div>

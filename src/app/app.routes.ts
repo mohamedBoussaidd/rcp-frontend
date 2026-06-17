@@ -38,7 +38,7 @@ export const routes: Routes = [
     loadChildren: () => import('./features/joueur-mobile/joueur.routes').then(m => m.default)
   },
   {
-    path: 'suivi-subjectif', canActivate: [authGuard, roleGuard, contexteGuard], data: { roles: [...STAFF, 'JOUEUR'] },
+    path: 'suivi-subjectif', canActivate: [authGuard, roleGuard, contexteGuard], data: { roles: [...STAFF_PHYSIQUE, 'JOUEUR'] },
     loadComponent: () => import('./features/suivi-subjectif/suivi-subjectif.component').then(m => m.SuiviSubjectifComponent)
   },
   {
@@ -66,11 +66,19 @@ export const routes: Routes = [
     loadComponent: () => import('./features/performance/import/import.component').then(m => m.ImportComponent)
   },
   {
-    path: 'vue-seance', canActivate: [authGuard, roleGuard, contexteGuard], data: { roles: STAFF },
+    path: 'vue-seance', canActivate: [authGuard, roleGuard, contexteGuard], data: { roles: STAFF_PHYSIQUE },
     loadComponent: () => import('./features/performance/vue-seance/vue-seance.component').then(m => m.VueSeanceComponent)
   },
   {
-    path: 'vue-seance/:id', canActivate: [authGuard, roleGuard, contexteGuard], data: { roles: STAFF },
+    path: 'etat-effectif', canActivate: [authGuard, roleGuard, contexteGuard], data: { roles: STAFF_PHYSIQUE },
+    loadComponent: () => import('./features/performance/etat-effectif/etat-effectif.component').then(m => m.EtatEffectifComponent)
+  },
+  {
+    path: 'charge-equipe', canActivate: [authGuard, roleGuard, contexteGuard], data: { roles: STAFF_PHYSIQUE },
+    loadComponent: () => import('./features/performance/charge-equipe/charge-equipe.component').then(m => m.ChargeEquipeComponent)
+  },
+  {
+    path: 'vue-seance/:id', canActivate: [authGuard, roleGuard, contexteGuard], data: { roles: STAFF_PHYSIQUE },
     loadComponent: () => import('./features/performance/vue-seance/vue-seance.component').then(m => m.VueSeanceComponent)
   },
   {
@@ -86,7 +94,7 @@ export const routes: Routes = [
     loadComponent: () => import('./features/admin/parametres/parametres.component').then(m => m.ParametresComponent)
   },
   {
-    path: 'methodologie', canActivate: [authGuard, roleGuard, contexteGuard], data: { roles: STAFF },
+    path: 'methodologie', canActivate: [authGuard, roleGuard, contexteGuard], data: { roles: STAFF_PHYSIQUE },
     loadComponent: () => import('./features/admin/methodologie/methodologie.component').then(m => m.MethodologieComponent)
   },
 

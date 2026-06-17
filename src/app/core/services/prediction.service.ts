@@ -1,5 +1,5 @@
 import { Injectable, inject } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
 
 export interface ResumeJoueur {
@@ -11,6 +11,15 @@ export interface ResumeJoueur {
   score_fatigue: number;
   niveau_risque: 'FAIBLE' | 'MODERE' | 'ELEVE';
   niveau_fatigue: 'NOMINAL' | 'VIGILANCE' | 'ALERTE';
+  // Indicateurs préparateur (bruts, optionnels)
+  acwr?: number | null;
+  charge_aigue_km?: number | null;
+  charge_chronique_km?: number | null;
+  readiness?: number | null;       // composite bien-être 0-100
+  readiness_date?: string | null;
+  monotonie?: number | null;       // indice de Foster (8 sem.)
+  sprint_niveau?: 'POSSIBLE' | 'PROBABLE' | null;  // fatigue neuromusculaire (orientation)
+  sprint_message?: string | null;
 }
 
 export interface RisqueBlessure {
@@ -75,6 +84,50 @@ export interface RapportSeance {
   lignes: LigneRapport[];
 }
 
+export interface ChargeSeance {
+  seance_id: string;
+  date: string;
+  type_code: string;
+  type_libelle: string;
+  nb_joueurs: number;
+  distance_totale_m: number;
+  distance_attendue_m: number | null;
+  duree_minutes: number;
+  distance_19kmh_m: number;
+  distance_28kmh_m: number;
+  nb_sprints: number;
+  nb_accelerations: number;
+  nb_freinages: number;
+  vitesse_max: number | null;
+  ratio_reel: number | null;
+  statut: 'SOUS_NORME' | 'DANS_NORME' | 'SUR_NORME' | 'SANS_BASELINE';
+  delta_pct: number | null;
+}
+
+export interface ChargeJoueur {
+  joueur_id: string;
+  nom: string;
+  prenom: string;
+  poste: string;
+  rang: number;
+  nb_seances: number;
+  distance_totale_m: number;
+  distance_attendue_m: number | null;
+  duree_minutes: number;
+  distance_19kmh_m: number;
+  distance_28kmh_m: number;
+  nb_sprints: number;
+  vitesse_max: number | null;
+  ratio_reel: number | null;
+  statut: 'SOUS_NORME' | 'DANS_NORME' | 'SUR_NORME' | 'SANS_BASELINE';
+  delta_pct: number | null;
+}
+
+export interface ChargeEquipe {
+  seances: ChargeSeance[];
+  joueurs: ChargeJoueur[];
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -96,11 +149,20 @@ export class PredictionService {
     return this.http.get<NiveauFatigue>(`${this.base}/fatigue/${joueurId}`);
   }
 
-  getChargeCollective(): Observable<ChargeCollective> {
-    return this.http.get<ChargeCollective>(`${this.base}/charge-collective`);
+  getChargeCollective(semaines: 4 | 8 | 12 = 4): Observable<ChargeCollective> {
+    const params = new HttpParams().set('semaines', semaines);
+    return this.http.get<ChargeCollective>(`${this.base}/charge-collective`, { params });
   }
 
   getRapportSeance(seanceId: string): Observable<RapportSeance> {
     return this.http.get<RapportSeance>(`${this.base}/seance/${seanceId}/rapport`);
+  }
+
+  getChargeEquipe(debut?: string, fin?: string, types?: string[]): Observable<ChargeEquipe> {
+    let params = new HttpParams();
+    if (debut) params = params.set('debut', debut);
+    if (fin)   params = params.set('fin', fin);
+    if (types && types.length) params = params.set('types', types.join(','));
+    return this.http.get<ChargeEquipe>(`${this.base}/equipe/charge`, { params });
   }
 }

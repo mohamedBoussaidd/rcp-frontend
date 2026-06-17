@@ -1,0 +1,243 @@
+<div class="screen">
+
+  <!-- ══ En-tête ══ -->
+  <div class="page-head">
+    <div>
+      <h1 class="page-head__title">Préparation physique</h1>
+      <p class="page-head__sub">{{ aujourdhui | date:'EEEE d MMMM':'':'fr' }} · {{ joueurs.length }} joueurs suivis</p>
+    </div>
+  </div>
+
+  <!-- ══ Bandeau readiness ══ -->
+  <div class="grid grid--kpis" style="margin-bottom:16px">
+
+    <div class="card kpi">
+      <div class="row row--between">
+        <div class="kpi__label">Disponibles</div>
+        <mat-icon class="kpi__ic">check_circle</mat-icon>
+      </div>
+      <div class="kpi__value">{{ nbDisponibles }}<span class="unit"> / {{ joueurs.length }}</span></div>
+      <div class="kpi__sub">
+        @if (nbBlesses > 0) {
+          <span class="badge badge--bad">{{ nbBlesses }} blessé{{ nbBlesses > 1 ? 's' : '' }}</span>
+        } @else {
+          <span class="badge badge--ok">Aucun blessé</span>
+        }
+      </div>
+    </div>
+
+    <div class="card kpi">
+      <div class="row row--between">
+        <div class="kpi__label">Readiness équipe
+          <app-info-hint titre="Readiness" [texte]="aide.readiness"></app-info-hint>
+        </div>
+        <mat-icon class="kpi__ic">battery_charging_full</mat-icon>
+      </div>
+      <div class="kpi__value" [class.text-bad]="(readinessEquipe ?? 100) < 40" [class.text-warn]="(readinessEquipe ?? 100) >= 40 && (readinessEquipe ?? 100) < 55">
+        @if (readinessEquipe != null) { {{ readinessEquipe }}<span class="unit"> / 100</span> }
+        @else { <span class="unit">— non saisi</span> }
+      </div>
+      <div class="kpi__sub">ressenti du jour (Hooper)</div>
+    </div>
+
+    <div class="card kpi">
+      <div class="row row--between">
+        <div class="kpi__label">À risque élevé
+          <app-info-hint titre="Risque blessure" [texte]="aide.risque"></app-info-hint>
+        </div>
+        <mat-icon class="kpi__ic">monitor_heart</mat-icon>
+      </div>
+      <div class="kpi__value" [class.text-bad]="nbRisqueEleve > 0">{{ nbRisqueEleve }}</div>
+      <div class="kpi__sub">joueurs en risque élevé</div>
+    </div>
+
+    <div class="card kpi">
+      <div class="row row--between">
+        <div class="kpi__label">Alerte fatigue
+          <app-info-hint titre="Fatigue" [texte]="aide.fatigue"></app-info-hint>
+        </div>
+        <mat-icon class="kpi__ic">bolt</mat-icon>
+      </div>
+      <div class="kpi__value" [class.text-warn]="nbAlerteFatigue > 0">{{ nbAlerteFatigue }}</div>
+      <div class="kpi__sub">joueurs en alerte</div>
+    </div>
+
+  </div>
+
+  <!-- ══ Alerte wellness non rempli ══ -->
+  @if (!loading && nbNonRemplis > 0) {
+    <a class="wellness-alerte" routerLink="/suivi-subjectif" [queryParams]="{ focus: 'non-remplis' }">
+      <mat-icon>notifications_active</mat-icon>
+      <span><strong>{{ nbNonRemplis }}</strong> joueur{{ nbNonRemplis > 1 ? 's' : '' }} n'{{ nbNonRemplis > 1 ? 'ont' : 'a' }} pas rempli le wellness aujourd'hui</span>
+      <mat-icon class="wellness-alerte__go">chevron_right</mat-icon>
+    </a>
+  }
+
+  <!-- ══ À surveiller aujourd'hui ══ -->
+  <div class="card" style="margin-bottom:16px">
+    <div class="card__header">
+      <h3 class="card__title">À surveiller aujourd'hui</h3>
+      <span class="badge badge--neutral">{{ aSurveiller.length }}</span>
+    </div>
+    <div class="card__body">
+      @if (loading) {
+        <div class="loading">Analyse de l'effectif…</div>
+      } @else if (!aSurveiller.length) {
+        <div class="surveiller__vide">
+          <mat-icon>verified</mat-icon>
+          <span>Aucun signal particulier — effectif globalement frais.</span>
+        </div>
+      } @else {
+        @for (j of aSurveiller; track j.joueur_id) {
+          <a class="surv-row" [routerLink]="['/joueurs', j.joueur_id]">
+            <div class="surv-row__main">
+              <div class="surv-row__id">
+                <span class="surv-row__nom">{{ j.prenom }} {{ j.nom }}</span>
+                <span class="surv-row__poste">{{ j.poste || '—' }}</span>
+              </div>
+              <div class="surv-row__chips">
+                @if (j.acwr != null) {
+                  <span class="chip" [class]="'chip--' + acwrClasse(j.acwr)">ACWR {{ j.acwr | number:'1.2-2' }}</span>
+                }
+                @if (j.niveau_risque !== 'FAIBLE') {
+                  <span class="chip" [class.chip--bad]="j.niveau_risque === 'ELEVE'" [class.chip--warn]="j.niveau_risque === 'MODERE'">
+                    Risque {{ j.niveau_risque === 'ELEVE' ? 'élevé' : 'modéré' }}
+                  </span>
+                }
+                @if (j.niveau_fatigue !== 'NOMINAL') {
+                  <span class="chip" [class.chip--bad]="j.niveau_fatigue === 'ALERTE'" [class.chip--warn]="j.niveau_fatigue === 'VIGILANCE'">
+                    Fatigue {{ j.niveau_fatigue === 'ALERTE' ? 'alerte' : 'vigilance' }}
+                  </span>
+                }
+                @if (j.sprint_niveau) {
+                  <span class="chip" [class.chip--bad]="j.sprint_niveau === 'PROBABLE'" [class.chip--warn]="j.sprint_niveau === 'POSSIBLE'">
+                    Fatigue neuromusc.
+                  </span>
+                }
+                @if (geneRecente(j.joueur_id); as g) {
+                  <span class="chip chip--bad">Gêne {{ g.zone }}</span>
+                }
+                @for (d of jourDegradeChips(j.joueur_id); track d) {
+                  <span class="chip chip--warn">{{ d }}</span>
+                }
+                @if (j.readiness != null && j.readiness < 55) {
+                  <span class="chip" [class]="'chip--' + readinessClasse(j.readiness)">Readiness {{ j.readiness }}</span>
+                }
+              </div>
+            </div>
+            @if (messageSurveillance(j); as msg) {
+              <div class="surv-row__msg">{{ msg }}</div>
+            }
+          </a>
+        }
+      }
+    </div>
+  </div>
+
+  <!-- ══ Charge collective + bilan dernière séance ══ -->
+  <div class="grid-2" style="margin-bottom:16px">
+
+    <div class="card">
+      <div class="card__header">
+        <div>
+          <h3 class="card__title">Charge collective
+            <app-info-hint titre="Charge collective" [texte]="aide.charge"></app-info-hint>
+          </h3>
+          <div class="card__sub">distance équipe (km)</div>
+        </div>
+        <div class="seg">
+          <button class="seg__btn" [class.is-active]="semaines === 4"  (click)="changerSemaines(4)">4 sem.</button>
+          <button class="seg__btn" [class.is-active]="semaines === 8"  (click)="changerSemaines(8)">8 sem.</button>
+          <button class="seg__btn" [class.is-active]="semaines === 12" (click)="changerSemaines(12)">12 sem.</button>
+        </div>
+      </div>
+      <div class="card__body">
+        <apx-chart
+          [series]="chartOptions.series"
+          [chart]="chartOptions.chart"
+          [xaxis]="chartOptions.xaxis"
+          [yaxis]="chartOptions.yaxis"
+          [stroke]="chartOptions.stroke"
+          [dataLabels]="chartOptions.dataLabels"
+          [title]="chartOptions.title"
+          [theme]="chartOptions.theme"
+          [grid]="chartOptions.grid"
+          [colors]="chartOptions.colors">
+        </apx-chart>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card__header">
+        <div>
+          <h3 class="card__title">Dernière séance
+            <app-info-hint titre="Prévu / réalisé" [texte]="aide.bilan"></app-info-hint>
+          </h3>
+          <div class="card__sub">
+            @if (derniereSeance) {
+              {{ derniereSeance.typeSeance.libelle }} · {{ derniereSeance.date | date:'EEE d MMM':'':'fr' }}
+            } @else { aucune séance passée }
+          </div>
+        </div>
+      </div>
+      <div class="card__body">
+        @if (!derniereSeance) {
+          <div class="surveiller__vide"><mat-icon>history</mat-icon><span>Pas encore de séance réalisée.</span></div>
+        } @else if (bilanObjectifM == null) {
+          <div class="surveiller__vide"><mat-icon>flag</mat-icon><span>Aucun objectif d'équipe défini pour cette séance.</span></div>
+        } @else {
+          <div class="bilan">
+            <div class="bilan__kpi">
+              <span class="bilan__val">{{ bilanObjectifM / 1000 | number:'1.1-1' }}<span class="unit"> km</span></span>
+              <span class="bilan__label">Objectif équipe</span>
+            </div>
+            <div class="bilan__kpi">
+              <span class="bilan__val" [class.text-bad]="bilanConcernes > 0 && bilanAtteint / bilanConcernes < 0.5">
+                {{ bilanAtteint }}<span class="unit"> / {{ bilanConcernes }}</span>
+              </span>
+              <span class="bilan__label">Ont atteint l'objectif</span>
+            </div>
+          </div>
+          @if (rapport?.objectif) {
+            <div class="bilan__obj">« {{ rapport?.objectif }} »</div>
+          }
+        }
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ══ Séances à venir ══ -->
+  <div class="card">
+    <div class="card__header">
+      <h3 class="card__title">Séances à venir</h3>
+    </div>
+    <div class="card__body">
+      @if (!seancesAujourdhui.length && !seancesAVenir.length) {
+        <div class="surveiller__vide"><mat-icon>event_busy</mat-icon><span>Aucune séance planifiée.</span></div>
+      }
+      @for (s of seancesAujourdhui; track s.id) {
+        <div class="seance-jour__item">
+          <div class="seance-jour__meta">
+            <span class="badge badge--neutral">Aujourd'hui</span>
+            <span class="seance-jour__type-txt">{{ s.typeSeance.libelle }}</span>
+            @if (s.heureDebut) { <span class="seance-jour__heure"><mat-icon>schedule</mat-icon>{{ s.heureDebut | slice:0:5 }}</span> }
+            @if (s.titre) { <span class="muted">{{ s.titre }}</span> }
+          </div>
+          <button class="btn btn--primary btn--sm" (click)="allerPresence(s)"><mat-icon>how_to_reg</mat-icon>Appel</button>
+        </div>
+      }
+      @for (s of seancesAVenir; track s.id) {
+        <div class="seance-jour__item">
+          <div class="seance-jour__meta">
+            <span class="seance-jour__date muted">{{ s.date | date:'EEE d MMM':'':'fr' }}</span>
+            <span class="seance-jour__type-txt">{{ s.typeSeance.libelle }}</span>
+            @if (s.heureDebut) { <span class="seance-jour__heure"><mat-icon>schedule</mat-icon>{{ s.heureDebut | slice:0:5 }}</span> }
+            @if (s.titre) { <span class="muted">{{ s.titre }}</span> }
+          </div>
+        </div>
+      }
+    </div>
+  </div>
+
+</div>

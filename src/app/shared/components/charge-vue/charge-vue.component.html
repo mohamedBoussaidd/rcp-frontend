@@ -1,0 +1,204 @@
+<div class="tab-content">
+
+  @if (gpsLoading) {
+    <p class="gps-empty">Chargement…</p>
+  }
+
+  @if (!gpsLoading && gpsData.length === 0) {
+    <p class="gps-empty">Aucune donnée GPS disponible pour ce joueur.<br>
+      Importez un fichier Excel via le script Python.</p>
+  }
+
+  @if (!gpsLoading && gpsData.length > 0) {
+
+    <!-- Barre contexte + filtres -->
+    <section class="pf-card gps-bar">
+      <div class="gps-bar__top">
+        <div class="gps-ctx">
+          <div class="gps-ctx__txt">
+            <div class="gps-ctx__title">Charge externe — GPS</div>
+            <div class="gps-ctx__sub"><strong>{{ gpsDataEnriched.length }} séances</strong> sur la période sélectionnée</div>
+          </div>
+        </div>
+        <div class="gps-dates">
+          <div class="gps-field">
+            <label>Date début</label>
+            <input type="date" [(ngModel)]="filtreDebut" (ngModelChange)="onFiltreChange()" class="gps-date">
+          </div>
+          <div class="gps-field">
+            <label>Date fin</label>
+            <input type="date" [(ngModel)]="filtreFin" (ngModelChange)="onFiltreChange()" class="gps-date">
+          </div>
+          <button class="gps-reset" (click)="resetFiltres()">↻ Réinitialiser</button>
+        </div>
+      </div>
+      <div class="gps-chips">
+        <span class="gps-chips__label">Type de séance</span>
+        @for (t of TYPES_GPS; track t.code) {
+          <button class="gps-chip"
+                  [class.off]="filtreTypes.length > 0 && !filtreTypes.includes(t.code)"
+                  [style.--c]="t.couleur" (click)="toggleFiltreType(t.code)">
+            <span class="gps-chip__dot"></span>{{ t.libelle }}
+          </button>
+        }
+      </div>
+    </section>
+
+    <!-- KPI band — principaux -->
+    <div class="gps-kpis">
+      <div class="gps-kpi">
+        <div class="gps-kpi__head"><span class="gps-kpi__icon ico-green"><mat-icon>swap_horiz</mat-icon></span><span class="gps-kpi__label">Distance totale</span></div>
+        <div class="gps-kpi__val">{{ totalDistanceKm | number:'1.1-1' }}<span class="gps-kpi__unit">km</span></div>
+        <div class="gps-kpi__foot">
+          @if (pourcentageVsAttendu != null) {
+            <span class="pf-badge" [class]="(pourcentageVsAttendu >= -5 && pourcentageVsAttendu <= 5) ? 'tone-ok' : 'tone-warn'">{{ pourcentageVsAttendu >= 0 ? '+' : '' }}{{ pourcentageVsAttendu | number:'1.0-0' }} % vs attendu</span>
+          } @else { <span class="gps-kpi__foottxt">pas de baseline</span> }
+        </div>
+      </div>
+      <div class="gps-kpi">
+        <div class="gps-kpi__head"><span class="gps-kpi__icon ico-indigo"><mat-icon>schedule</mat-icon></span><span class="gps-kpi__label">Durée totale</span></div>
+        <div class="gps-kpi__val">{{ dureeFormatee }}</div>
+        <div class="gps-kpi__foot"><span class="gps-kpi__foottxt">{{ gpsDataEnriched.length }} séances cumulées</span></div>
+      </div>
+      <div class="gps-kpi">
+        <div class="gps-kpi__head"><span class="gps-kpi__icon ico-cyan"><mat-icon>speed</mat-icon></span><span class="gps-kpi__label">Ratio réel moyen</span></div>
+        <div class="gps-kpi__val">{{ moyenneRatioReel != null ? (moyenneRatioReel | number:'1.0-0') : '—' }}<span class="gps-kpi__unit">m/min</span></div>
+        <div class="gps-kpi__foot"><span class="gps-kpi__foottxt">distance / durée sur la période</span></div>
+      </div>
+      <div class="gps-kpi">
+        <div class="gps-kpi__head"><span class="gps-kpi__icon ico-amber"><mat-icon>bolt</mat-icon></span><span class="gps-kpi__label">Vitesse max</span></div>
+        <div class="gps-kpi__val">{{ maxVitesse != null ? (maxVitesse | number:'1.1-1') : '—' }}<span class="gps-kpi__unit">km/h</span></div>
+        <div class="gps-kpi__foot"><span class="gps-kpi__foottxt">pic sur la période</span></div>
+      </div>
+    </div>
+
+    <!-- KPI band — secondaires -->
+    <div class="gps-kpis2">
+      <div class="gps-tile"><div class="gps-tile__label">Distance attendue</div><div class="gps-tile__val">{{ totalDistAttendueKm | number:'1.1-1' }}<span class="gps-tile__unit">km</span></div><div class="gps-tile__sub">séances comparables</div></div>
+      <div class="gps-tile"><div class="gps-tile__label">Sprints</div><div class="gps-tile__val">{{ totalNbSprints }}</div><div class="gps-tile__sub">&gt; 24 km/h</div></div>
+      <div class="gps-tile"><div class="gps-tile__label">Distance &gt; 19 km/h</div><div class="gps-tile__val">{{ totalDist19Km | number:'1.1-1' }}<span class="gps-tile__unit">km</span></div><div class="gps-tile__sub">haute intensité</div></div>
+      <div class="gps-tile"><div class="gps-tile__label">Distance &gt; 28 km/h</div><div class="gps-tile__val">{{ totalDist28Km | number:'1.1-1' }}<span class="gps-tile__unit">km</span></div><div class="gps-tile__sub">très haute int.</div></div>
+      <div class="gps-tile"><div class="gps-tile__label">Accélérations</div><div class="gps-tile__val">{{ totalAccelerations }}</div><div class="gps-tile__sub">sur la période</div></div>
+      <div class="gps-tile"><div class="gps-tile__label">Freinages</div><div class="gps-tile__val">{{ totalFreinages }}</div><div class="gps-tile__sub">sur la période</div></div>
+    </div>
+
+    <!-- Graphe + répartition (Direction B) -->
+    <div class="gps-chartrow">
+      <section class="pf-card">
+        <div class="gps-cardhead">
+          <div class="pf-card__head pf-card__head--flush"><span class="pf-card__bullet"></span><h2>Distance par séance</h2></div>
+          <div class="gps-chartlegend">
+            <span><span class="gps-chartlegend__sw"></span>Réalisée</span>
+            <span><span class="gps-chartlegend__dash"></span>Attendue</span>
+          </div>
+        </div>
+        <apx-chart #gpsChart
+          [series]="chartOptions.series"
+          [chart]="chartOptions.chart"
+          [xaxis]="chartOptions.xaxis"
+          [yaxis]="chartOptions.yaxis"
+          [plotOptions]="chartOptions.plotOptions"
+          [dataLabels]="chartOptions.dataLabels"
+          [colors]="chartOptions.colors"
+          [legend]="chartOptions.legend"
+          [tooltip]="chartOptions.tooltip">
+        </apx-chart>
+      </section>
+
+      <section class="pf-card gps-breakdown">
+        <div class="pf-card__head"><span class="pf-card__bullet"></span><h2>Répartition par type</h2></div>
+        @for (r of repartitionTypes; track r.libelle) {
+          <div class="gps-brk">
+            <div class="gps-brk__head">
+              <span class="gps-brk__name"><span class="gps-brk__dot" [style.background]="r.couleur"></span>{{ r.libelle }}</span>
+              <span class="gps-brk__val">{{ r.km | number:'1.1-1' }} km</span>
+            </div>
+            <div class="gps-brk__bar"><span [style.width.%]="r.pct" [style.background]="r.couleur"></span></div>
+          </div>
+        }
+      </section>
+    </div>
+
+    <!-- Tableau détail -->
+    <section class="pf-card gps-tablecard">
+      <div class="gps-tablehead">
+        <div class="pf-card__head pf-card__head--flush">
+          <span class="pf-card__bullet"></span>
+          <h2>Détail des séances</h2>
+          <span class="gps-count">{{ gpsDataEnriched.length }}</span>
+        </div>
+        <div class="gps-pager">
+          <span class="gps-pager__info">Page {{ pageIndex + 1 }} / {{ nbPagesGps }}</span>
+          <button class="gps-pager__btn" (click)="pagePrecedente()" [disabled]="pageIndex === 0" title="Page précédente">‹</button>
+          <button class="gps-pager__btn" (click)="pageSuivante()" [disabled]="pageIndex >= nbPagesGps - 1" title="Page suivante">›</button>
+        </div>
+      </div>
+      <div class="legende-statut legende-statut--sm">
+        <span class="legende-statut-item statut-sous">Sous norme</span>
+        <span class="legende-statut-item statut-dans">Dans norme</span>
+        <span class="legende-statut-item statut-sur">Sur norme</span>
+        <span class="legende-statut-item statut-nc">Non comparable</span>
+      </div>
+      <div class="gps-scroll">
+        <table class="gps-table2">
+          <thead>
+            <tr>
+              <th class="sticky">Date</th>
+              <th>Type</th>
+              <th class="r">Durée</th>
+              <th class="r">Distance</th>
+              <th class="r">Attendue</th>
+              <th class="r">Ratio</th>
+              <th class="c">Charge rel.</th>
+              <th class="r">&gt;19 km/h</th>
+              <th class="r">&gt;28 km/h</th>
+              <th class="r">Sprints</th>
+              <th class="r">V. max</th>
+              <th class="r">Accél.</th>
+              <th class="r">Frein.</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (g of gpsDataPage; track $index) {
+              <tr>
+                <td class="sticky date">{{ g.date | date:'dd MMM':'':'fr' }}</td>
+                <td>
+                  <span class="gps-typebadge" [style.--c]="couleurType(g.typeCode)"><span class="gps-typebadge__dot"></span>{{ g.typeLibelle }}</span>
+                </td>
+                <td class="r soft">{{ g.dureeMinutes ?? '—' }} min</td>
+                <td class="r strong">{{ g.distanceTotaleM ? ((g.distanceTotaleM / 1000) | number:'1.2-2') + ' km' : '—' }}</td>
+                <td class="r faint">{{ g.distAttendue ? ((g.distAttendue / 1000) | number:'1.2-2') + ' km' : '—' }}</td>
+                <td class="r mid">{{ g.ratioReel ? (g.ratioReel | number:'1.0-0') + ' m/min' : '—' }}</td>
+                <td class="c"><span class="pf-badge" [class]="chargeTone(g.statut)">{{ statutLibelle(g.statut) }}</span></td>
+                <td class="r soft">{{ g.distance19kmhM ? ((g.distance19kmhM / 1000) | number:'1.2-2') + ' km' : '—' }}</td>
+                <td class="r soft">{{ g.distanceSprint28kmhM ? ((g.distanceSprint28kmhM / 1000) | number:'1.2-2') + ' km' : '—' }}</td>
+                <td class="r soft">{{ g.distanceSprint24kmhM ? ((g.distanceSprint24kmhM) | number:'1.0-0') + ' m' : '—' }}@if (g.nbSprints24kmh) { · {{ g.nbSprints24kmh }}}</td>
+                <td class="r mid">{{ g.vitesseMaxKmh ? (g.vitesseMaxKmh | number:'1.1-1') : '—' }}</td>
+                <td class="r soft">{{ g.nbAccelerations ?? '—' }}</td>
+                <td class="r soft">{{ g.nbFreinages ?? '—' }}</td>
+              </tr>
+            }
+          </tbody>
+          <tfoot>
+            <tr>
+              <td class="sticky">Total période</td>
+              <td class="faint">{{ gpsDataEnriched.length }}</td>
+              <td class="r strong">{{ totalDuree }} min</td>
+              <td class="r strong">{{ totalDistanceKm | number:'1.1-1' }} km</td>
+              <td class="r faint">{{ totalDistAttendueKm | number:'1.1-1' }} km</td>
+              <td class="r strong">{{ moyenneRatioReel ? (moyenneRatioReel | number:'1.0-0') + ' m/min' : '—' }}</td>
+              <td></td>
+              <td class="r strong">{{ totalDist19Km | number:'1.1-1' }} km</td>
+              <td class="r strong">{{ totalDist28Km | number:'1.1-1' }} km</td>
+              <td class="r strong">{{ totalNbSprints }}</td>
+              <td class="r strong">{{ maxVitesse ? (maxVitesse | number:'1.1-1') : '—' }}</td>
+              <td class="r strong">{{ totalAccelerations }}</td>
+              <td class="r strong">{{ totalFreinages }}</td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+    </section>
+
+  }
+</div>
