@@ -28,6 +28,17 @@ export class DocumentMedicalService {
     return this.http.get<DocumentMedical[]>(this.base, { params });
   }
 
+  /** Dépôt d'un document par le staff pour un joueur (multipart). */
+  deposer(joueurId: string, fichier: File, categorie: string, description: string, partageRoles: string[]): Observable<DocumentMedical> {
+    const fd = new FormData();
+    fd.append('joueurId', joueurId);
+    fd.append('fichier', fichier);
+    fd.append('categorie', categorie);
+    if (description) fd.append('description', description);
+    for (const r of partageRoles) fd.append('partageRoles', r);
+    return this.http.post<DocumentMedical>(this.base, fd);
+  }
+
   telecharger(id: string): Observable<Blob> {
     return this.http.get(`${this.base}/${id}/fichier`, { responseType: 'blob' });
   }

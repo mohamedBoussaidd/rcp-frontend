@@ -11,13 +11,6 @@
       </h1>
       <p class="page-head__sub">Suivi médical de l'effectif</p>
     </div>
-    @if (section() === 'blessures' && auth.canEcrireBlessures()) {
-      <div class="page-head__actions">
-        <button class="btn btn--primary" (click)="showForm() ? annuler() : nouveau()">
-          {{ showForm() ? 'Annuler' : '+ Déclarer une blessure' }}
-        </button>
-      </div>
-    }
   </div>
 
   <!-- ═══════════════════════════════════════
@@ -25,96 +18,164 @@
        ═══════════════════════════════════════ -->
   @if (section() === 'alertes') {
 
-    @if (aDesAlertes) {
-      <div class="card" style="margin-bottom:16px">
-        <div class="card__header">
-          <h3 class="card__title">Alertes en cours</h3>
-          <span class="badge badge--warn">
-            {{ retoursEnRetard.length + retoursImminents.length + joueursRisqueEleve.length + genesSignalees.length }}
-          </span>
+    <!-- Bandeau KPI -->
+    <div class="al-kpis">
+      <div class="al-kpi al-kpi--alert">
+        <div class="al-kpi__top">
+          <span class="al-kpi__num">{{ retoursEnRetard.length + retoursImminents.length + joueursRisqueEleve.length + genesSignalees.length }}</span>
+          <span class="al-kpi__ic">⚠</span>
         </div>
-        <div class="card__body stack stack--lg">
+        <div class="al-kpi__label">Alertes actives</div>
+      </div>
+      <div class="al-kpi al-kpi--bad">
+        <div class="al-kpi__top"><span class="al-kpi__num">{{ genesSignalees.length }}</span><span class="al-kpi__ic">⚠</span></div>
+        <div class="al-kpi__label">Gênes signalées</div>
+      </div>
+      <div class="al-kpi al-kpi--bad">
+        <div class="al-kpi__top"><span class="al-kpi__num">{{ retoursEnRetard.length }}</span><span class="al-kpi__ic">🕐</span></div>
+        <div class="al-kpi__label">Retours en retard</div>
+      </div>
+      <div class="al-kpi al-kpi--warn">
+        <div class="al-kpi__top"><span class="al-kpi__num">{{ retoursImminents.length }}</span><span class="al-kpi__ic">↻</span></div>
+        <div class="al-kpi__label">Retours imminents</div>
+      </div>
+      <div class="al-kpi al-kpi--info">
+        <div class="al-kpi__top"><span class="al-kpi__num">{{ joueursRisqueEleve.length }}</span><span class="al-kpi__ic">⚡</span></div>
+        <div class="al-kpi__label">Risque / Fatigue</div>
+      </div>
+    </div>
 
-          @if (genesSignalees.length > 0) {
-            <div>
-              <p class="section-title section-title--bad">Gênes signalées ({{ genesSignalees.length }})</p>
-              <div class="alerte-grid">
-                @for (g of genesSignalees; track g.id) {
-                  <div class="alerte-card alerte-card--bad">
-                    <div class="row row--between">
-                      <span class="alerte-card__joueur">{{ g.joueurPrenom }} {{ g.joueurNom }}</span>
-                      <span class="badge badge--bad">{{ g.geneIntensite }}/5</span>
-                    </div>
-                    <p class="alerte-card__corps">{{ joliLabel(g.geneZone) }}</p>
-                    <p class="alerte-card__meta">{{ momentGeneLabel(g.geneMoment) }} · {{ g.date | date:'dd/MM' }}</p>
-                    @if (peutTraiterGene) {
-                      <div class="row" style="gap:6px;margin-top:8px">
-                        <button class="btn btn--secondary btn--sm" (click)="traiterGene(g)">Traiter</button>
-                        @if (auth.canEcrireBlessures()) {
-                          <button class="btn btn--secondary btn--sm" (click)="convertirGeneEnBlessure(g)">+ Blessure</button>
-                        }
-                      </div>
+    <!-- Alertes actives -->
+    @if (aDesAlertes) {
+      <div class="al-block">
+        <p class="al-block__title">Alertes actives <span class="al-block__count">{{ retoursEnRetard.length + retoursImminents.length + joueursRisqueEleve.length + genesSignalees.length }}</span></p>
+        <div class="al-list">
+
+          @for (g of genesSignalees; track g.id) {
+            <div class="al-card al-card--bad">
+              <div class="al-card__row">
+                <div class="al-card__id">
+                  <span class="al-card__dot al-card__dot--bad"></span>
+                  <span class="al-card__name">{{ g.joueurPrenom }} {{ g.joueurNom }}</span>
+                </div>
+                <span class="al-card__time">{{ g.date | date:'dd/MM' }}</span>
+              </div>
+              <div class="al-card__row">
+                <div class="al-card__type">
+                  <span class="al-card__typelabel al-card__typelabel--bad">Gêne signalée</span>
+                  @if (g.geneZone) { <span class="al-tag">{{ joliLabel(g.geneZone) }}</span> }
+                </div>
+                <div class="al-card__status">
+                  @if (g.geneIntensite) {
+                    <span class="al-sev" [class]="g.geneIntensite >= 4 ? 'al-sev--bad' : g.geneIntensite === 3 ? 'al-sev--warn' : 'al-sev--ok'">
+                      {{ g.geneIntensite >= 4 ? 'Élevée' : g.geneIntensite === 3 ? 'Modérée' : 'Légère' }}
+                    </span>
+                  }
+                  <span class="al-status al-status--active">Active</span>
+                </div>
+              </div>
+              <p class="al-card__desc">Gêne à {{ joliLabel(g.geneZone) }} signalée {{ momentGeneLabel(g.geneMoment) }}.</p>
+              @if (peutTraiterGene) {
+                <div class="al-card__foot">
+                  <div class="al-card__acts">
+                    @if (auth.canEcrireBlessures()) {
+                      <button class="al-link" (click)="convertirGeneEnBlessure(g)">+ Blessure</button>
                     }
                   </div>
-                }
+                  <button class="al-link al-link--ok" (click)="traiterGene(g)">Marquer résolue</button>
+                </div>
+              }
+            </div>
+          }
+
+          @for (b of retoursEnRetard; track b.id) {
+            <div class="al-card al-card--bad">
+              <div class="al-card__row">
+                <div class="al-card__id">
+                  <span class="al-card__dot al-card__dot--bad"></span>
+                  <span class="al-card__name">{{ b.joueurPrenom }} {{ b.joueurNom }}</span>
+                </div>
+                <span class="al-card__time">+{{ -joursAvantRetour(b.dateRetourPrevue)! }}j</span>
+              </div>
+              <div class="al-card__row">
+                <div class="al-card__type">
+                  <span class="al-card__typelabel al-card__typelabel--bad">Retour en retard</span>
+                  @if (b.zoneCorporelle) { <span class="al-tag">{{ joliLabel(b.zoneCorporelle) }}</span> }
+                </div>
+                <div class="al-card__status">
+                  @if (b.gravite) {
+                    <span class="al-sev" [class]="b.gravite === 'grave' ? 'al-sev--bad' : b.gravite === 'modere' ? 'al-sev--warn' : 'al-sev--ok'">{{ joliLabel(b.gravite) }}</span>
+                  }
+                  <span class="al-status al-status--active">Active</span>
+                </div>
+              </div>
+              @if (b.commentaire) { <p class="al-card__desc">{{ b.commentaire }}</p> }
+              <p class="al-card__note">Retour prévu le {{ b.dateRetourPrevue | date:'dd/MM' }}.</p>
+              <div class="al-card__foot">
+                <div class="al-card__acts">
+                  <button class="al-link" [routerLink]="['/joueurs', b.joueurId]">Voir la fiche</button>
+                </div>
               </div>
             </div>
           }
 
-          @if (retoursEnRetard.length > 0) {
-            <div>
-              <p class="section-title section-title--bad">Retours en retard ({{ retoursEnRetard.length }})</p>
-              <div class="alerte-grid">
-                @for (b of retoursEnRetard; track b.id) {
-                  <div class="alerte-card alerte-card--bad">
-                    <div class="row row--between">
-                      <span class="alerte-card__joueur">{{ b.joueurPrenom }} {{ b.joueurNom }}</span>
-                      <span class="badge badge--bad">+{{ -joursAvantRetour(b.dateRetourPrevue)! }}j</span>
-                    </div>
-                    <p class="alerte-card__corps">{{ joliLabel(b.zoneCorporelle) }}</p>
-                    <p class="alerte-card__meta">prévu {{ b.dateRetourPrevue | date:'dd/MM' }}</p>
-                    <div class="row" style="gap:6px;margin-top:8px">
-                      <button class="btn btn--secondary btn--sm" [routerLink]="['/joueurs', b.joueurId]">Fiche</button>
-                    </div>
-                  </div>
-                }
+          @for (b of retoursImminents; track b.id) {
+            <div class="al-card al-card--warn">
+              <div class="al-card__row">
+                <div class="al-card__id">
+                  <span class="al-card__dot al-card__dot--warn"></span>
+                  <span class="al-card__name">{{ b.joueurPrenom }} {{ b.joueurNom }}</span>
+                </div>
+                <span class="al-card__time">J−{{ joursAvantRetour(b.dateRetourPrevue) }}</span>
+              </div>
+              <div class="al-card__row">
+                <div class="al-card__type">
+                  <span class="al-card__typelabel al-card__typelabel--warn">Retour imminent</span>
+                  @if (b.zoneCorporelle) { <span class="al-tag">{{ joliLabel(b.zoneCorporelle) }}</span> }
+                </div>
+                <div class="al-card__status">
+                  @if (b.gravite) {
+                    <span class="al-sev" [class]="b.gravite === 'grave' ? 'al-sev--bad' : b.gravite === 'modere' ? 'al-sev--warn' : 'al-sev--ok'">{{ joliLabel(b.gravite) }}</span>
+                  }
+                  <span class="al-status al-status--active">Active</span>
+                </div>
+              </div>
+              <p class="al-card__note">Retour prévu le {{ b.dateRetourPrevue | date:'dd/MM' }} (dans 7 jours ou moins).</p>
+              <div class="al-card__foot">
+                <div class="al-card__acts">
+                  <button class="al-link" [routerLink]="['/joueurs', b.joueurId]">Voir la fiche</button>
+                </div>
               </div>
             </div>
           }
 
-          @if (retoursImminents.length > 0) {
-            <div>
-              <p class="section-title section-title--warn">Retours imminents — 7 j ({{ retoursImminents.length }})</p>
-              <div class="alerte-grid">
-                @for (b of retoursImminents; track b.id) {
-                  <div class="alerte-card alerte-card--warn">
-                    <div class="row row--between">
-                      <span class="alerte-card__joueur">{{ b.joueurPrenom }} {{ b.joueurNom }}</span>
-                      <span class="badge badge--warn">J−{{ joursAvantRetour(b.dateRetourPrevue) }}</span>
-                    </div>
-                    <p class="alerte-card__corps">{{ joliLabel(b.zoneCorporelle) }}</p>
-                    <p class="alerte-card__meta">prévu {{ b.dateRetourPrevue | date:'dd/MM' }}</p>
-                    <button class="btn btn--secondary btn--sm" style="margin-top:8px" [routerLink]="['/joueurs', b.joueurId]">Fiche</button>
-                  </div>
-                }
+          @for (j of joueursRisqueEleve; track j.joueur_id) {
+            <div class="al-card al-card--warn">
+              <div class="al-card__row">
+                <div class="al-card__id">
+                  <span class="al-card__dot al-card__dot--warn"></span>
+                  <span class="al-card__name">{{ j.prenom }} {{ j.nom }}</span>
+                  @if (j.poste) { <span class="al-card__pos">{{ joliLabel(j.poste) }}</span> }
+                </div>
               </div>
-            </div>
-          }
-
-          @if (joueursRisqueEleve.length > 0) {
-            <div>
-              <p class="section-title section-title--warn">Risque / fatigue élevés ({{ joueursRisqueEleve.length }})</p>
-              <div class="alerte-grid">
-                @for (j of joueursRisqueEleve; track j.joueur_id) {
-                  <div class="alerte-card alerte-card--warn">
-                    <span class="alerte-card__joueur">{{ j.prenom }} {{ j.nom }}</span>
-                    <div class="row" style="gap:6px;margin-top:6px;flex-wrap:wrap">
-                      @if (j.niveau_risque === 'ELEVE') { <span class="badge badge--bad">risque {{ j.score_risque }}</span> }
-                      @if (j.niveau_fatigue === 'ALERTE') { <span class="badge badge--warn">fatigue</span> }
-                    </div>
-                    <button class="btn btn--secondary btn--sm" style="margin-top:8px" [routerLink]="['/joueurs', j.joueur_id]">Fiche</button>
-                  </div>
-                }
+              <div class="al-card__row">
+                <div class="al-card__type">
+                  <span class="al-card__typelabel al-card__typelabel--warn">Risque / Fatigue</span>
+                  <span class="al-tag">Général</span>
+                </div>
+                <div class="al-card__status">
+                  @if (j.niveau_risque === 'ELEVE') { <span class="al-sev al-sev--bad">Élevée</span> }
+                  <span class="al-status al-status--active">Active</span>
+                </div>
+              </div>
+              <div class="al-card__badges">
+                @if (j.niveau_risque === 'ELEVE') { <span class="badge badge--bad">risque {{ j.score_risque }}</span> }
+                @if (j.niveau_fatigue === 'ALERTE') { <span class="badge badge--warn">fatigue</span> }
+              </div>
+              <div class="al-card__foot">
+                <div class="al-card__acts">
+                  <button class="al-link" [routerLink]="['/joueurs', j.joueur_id]">Voir la fiche</button>
+                </div>
               </div>
             </div>
           }
@@ -125,29 +186,39 @@
       <div class="card card--padded"><div class="empty-state">Aucune alerte en cours. 💪</div></div>
     }
 
+    <!-- Historique récent -->
     @if (peutVoirHistoriqueGenes && genesHistorique.length > 0) {
-      <div class="card">
-        <div class="card__header">
-          <h3 class="card__title">Historique des gênes</h3>
-          <span class="badge badge--neutral">{{ genesHistorique.length }}</span>
-        </div>
-        <div class="card__body">
-          <div class="alerte-grid">
-            @for (g of genesHistorique; track g.id) {
-              <div class="alerte-card" [class.alerte-card--info]="g.geneResolution === 'CONVERTIE'">
-                <div class="row row--between">
-                  <span class="alerte-card__joueur">{{ g.joueurPrenom }} {{ g.joueurNom }}</span>
-                  <span class="badge badge--neutral">{{ g.geneIntensite }}/5</span>
+      <div class="al-block al-block--muted">
+        <p class="al-block__title">Historique récent <span class="al-block__count">{{ genesHistorique.length }}</span></p>
+        <div class="al-list">
+          @for (g of genesHistorique; track g.id) {
+            <div class="al-card al-card--done">
+              <div class="al-card__row">
+                <div class="al-card__id">
+                  <span class="al-card__dot al-card__dot--done"></span>
+                  <span class="al-card__name">{{ g.joueurPrenom }} {{ g.joueurNom }}</span>
                 </div>
-                <p class="alerte-card__corps">{{ joliLabel(g.geneZone) }}</p>
-                <p class="alerte-card__meta">{{ momentGeneLabel(g.geneMoment) }} · signalée {{ g.date | date:'dd/MM' }}</p>
-                <p class="alerte-card__meta"><strong>{{ resolutionGeneLabel(g.geneResolution) }}</strong>@if (g.geneTraiteeLe) { · le {{ g.geneTraiteeLe | date:'dd/MM' }} }</p>
-                @if (peutRouvrirGene) {
-                  <button class="btn btn--ghost btn--sm" style="margin-top:8px" (click)="rouvrirGene(g)">Rouvrir</button>
-                }
+                <span class="al-card__time">{{ g.date | date:'dd/MM' }}</span>
               </div>
-            }
-          </div>
+              <div class="al-card__row">
+                <div class="al-card__type">
+                  <span class="al-card__typelabel">Gêne signalée</span>
+                  @if (g.geneZone) { <span class="al-tag">{{ joliLabel(g.geneZone) }}</span> }
+                </div>
+                <div class="al-card__status">
+                  <span class="al-status al-status--resolved">{{ g.geneResolution === 'CONVERTIE' ? 'Convertie' : 'Résolue' }}</span>
+                </div>
+              </div>
+              <p class="al-card__note">{{ momentGeneLabel(g.geneMoment) }} · {{ resolutionGeneLabel(g.geneResolution) }}@if (g.geneTraiteeLe) { · le {{ g.geneTraiteeLe | date:'dd/MM' }} }</p>
+              @if (peutRouvrirGene) {
+                <div class="al-card__foot">
+                  <div class="al-card__acts">
+                    <button class="al-link" (click)="rouvrirGene(g)">Rouvrir</button>
+                  </div>
+                </div>
+              }
+            </div>
+          }
         </div>
       </div>
     }
@@ -158,250 +229,334 @@
        ═══════════════════════════════════════ -->
   @if (section() === 'blessures') {
 
-    <!-- Infirmerie -->
-    <div class="card" style="margin-bottom:16px">
-      <div class="card__header">
-        <h3 class="card__title">Infirmerie</h3>
-        <div class="row" style="gap:8px">
-          <span class="badge badge--bad badge--dot">{{ nbIndisponibles }} indispo.</span>
-          <span class="badge badge--warn badge--dot">{{ nbEnReprise }} en reprise</span>
-        </div>
+    <!-- Bandeau KPI -->
+    <div class="bl-kpis">
+      <div class="bl-kpi bl-kpi--bad">
+        <div class="bl-kpi__top"><span class="bl-kpi__num">{{ nbIndisponibles }}</span><span class="bl-kpi__ic">⚕</span></div>
+        <div class="bl-kpi__label">Indisponibles</div>
       </div>
-      <div class="card__body card__body--flush">
-        @if (infirmerie.length === 0) {
-          <div class="empty-state">Aucun joueur à l'infirmerie. 💪</div>
-        } @else {
-          @for (b of infirmerie; track b.id) {
-            <div class="infirmerie-ligne">
-              <span class="infirmerie-ligne__joueur">{{ b.joueurPrenom }} {{ b.joueurNom }}</span>
-              <span class="badge" [class]="'badge--' + (b.statut === 'EN_REPRISE' ? 'warn' : 'bad')">{{ statutBlessureLabel(b.statut) }}</span>
-              <span class="infirmerie-ligne__zone">{{ joliLabel(b.zoneCorporelle) }} <small>{{ joliLabel(b.typeBlessure) }}</small></span>
-              <span class="infirmerie-ligne__retour">
-                @if (b.dateRetourPrevue) {
-                  retour {{ b.dateRetourPrevue | date:'dd/MM' }}
-                  @let j = joursAvantRetour(b.dateRetourPrevue);
-                  @if (j !== null) {
-                    <span class="badge" [class]="j < 0 ? 'badge--bad' : 'badge--neutral'" style="margin-left:4px">
-                      {{ j < 0 ? '+' + (-j) + 'j retard' : 'J−' + j }}
-                    </span>
-                  }
-                } @else {
-                  <span style="color:var(--text-3)">retour non estimé</span>
-                }
-              </span>
-            </div>
-          }
+      <div class="bl-kpi bl-kpi--warn">
+        <div class="bl-kpi__top"><span class="bl-kpi__num">{{ nbEnReprise }}</span><span class="bl-kpi__ic">↗</span></div>
+        <div class="bl-kpi__label">En reprise</div>
+      </div>
+      <div class="bl-kpi bl-kpi--ok">
+        <div class="bl-kpi__top"><span class="bl-kpi__num">{{ nbRetablisRecents }}</span><span class="bl-kpi__ic">✓</span></div>
+        <div class="bl-kpi__label">Rétablis récents</div>
+      </div>
+    </div>
+
+    <!-- En-tête infirmerie + toggle + déclarer -->
+    <div class="bl-head">
+      <p class="bl-head__title">Infirmerie <span class="bl-head__count">({{ infirmerie.length }})</span></p>
+      <div class="bl-head__actions">
+        <div class="bl-toggle">
+          <button [class.is-on]="vueBlessures() === 'grille'" (click)="vueBlessures.set('grille')" title="Grille">▦</button>
+          <button [class.is-on]="vueBlessures() === 'liste'" (click)="vueBlessures.set('liste')" title="Liste">≣</button>
+        </div>
+        @if (auth.canEcrireBlessures()) {
+          <button class="btn btn--primary" (click)="nouveau()">+ Déclarer une blessure</button>
         }
       </div>
     </div>
 
-    <!-- Liste blessures -->
-    <div class="card" style="margin-bottom:16px">
-      <div class="card__header">
-        <h3 class="card__title">Blessures déclarées</h3>
-        <span class="badge badge--neutral">{{ blessures().length }}</span>
+    @if (loading()) {
+      <div class="card card--padded"><div class="loading">Chargement…</div></div>
+    } @else if (infirmerie.length === 0) {
+      <div class="card card--padded"><div class="empty-state">Aucun joueur à l'infirmerie. 💪</div></div>
+    } @else if (vueBlessures() === 'grille') {
+
+      <!-- Vue grille -->
+      <div class="bl-grid">
+        @for (b of infirmerie; track b.id) {
+          <button type="button" class="bl-card" (click)="ouvrirSuivi(b)">
+            <div class="bl-card__top">
+              <div class="bl-card__who">
+                <span class="bl-avatar" [class]="statutBlessureClass(b.statut)">{{ initiales(b.joueurPrenom, b.joueurNom) }}</span>
+                <span class="bl-card__id">
+                  <span class="bl-card__name">{{ b.joueurPrenom }} {{ b.joueurNom }}</span>
+                  @if (posteJoueur(b.joueurId)) { <span class="bl-card__pos">{{ posteJoueur(b.joueurId) }}</span> }
+                </span>
+              </div>
+              <span class="bl-status" [class]="statutBlessureClass(b.statut)">{{ statutBlessureLabel(b.statut) }}</span>
+            </div>
+            <div class="bl-card__diag">
+              {{ labelDe(zones, b.zoneCorporelle) }}@if (b.cote) { {{ labelDe(cotes, b.cote) | lowercase }}}@if (b.typeBlessure) { — {{ labelDe(types, b.typeBlessure) }}}
+            </div>
+            <div class="bl-stats">
+              <div class="bl-stat"><span class="bl-stat__lbl">Depuis</span><span class="bl-stat__val">{{ joursDepuis(b) }} jours</span></div>
+              <div class="bl-stat"><span class="bl-stat__lbl">Durée estimée</span><span class="bl-stat__val">{{ dureeEstimee(b) !== null ? dureeEstimee(b) + ' jours' : '—' }}</span></div>
+              <div class="bl-stat"><span class="bl-stat__lbl">Retour prévu</span><span class="bl-stat__val">{{ b.dateRetourPrevue ? (b.dateRetourPrevue | date:'dd MMM') : '—' }}</span></div>
+            </div>
+            @let pctCard = progressionTemps(b);
+            <div class="bl-prog">
+              <div class="bl-prog__bar"><span [class]="progressionClass(pctCard)" [style.width.%]="pctCard"></span></div>
+              <span class="bl-prog__pct">{{ pctCard }}%</span>
+            </div>
+            <div class="bl-card__foot">
+              @if (b.recidive) { <span class="badge badge--warn">⚠ Récidive</span> } @else { <span></span> }
+              @if (b.causeProbable) { <span class="bl-card__cause">{{ labelDe(causes, b.causeProbable) }}</span> }
+            </div>
+          </button>
+        }
       </div>
-      <div class="card__body">
-        @if (showForm() && auth.canEcrireBlessures()) {
-          <form class="form-panel" style="margin-bottom:20px" (ngSubmit)="enregistrer()">
-            <div class="form-grid">
-              <div class="field">
-                <label class="field__label">Joueur *</label>
+
+    } @else {
+
+      <!-- Vue liste compacte -->
+      <div class="card"><div class="card__body card__body--flush">
+        @for (b of infirmerie; track b.id) {
+          <button type="button" class="bl-ligne" (click)="ouvrirSuivi(b)">
+            <span class="bl-avatar bl-avatar--sm" [class]="statutBlessureClass(b.statut)">{{ initiales(b.joueurPrenom, b.joueurNom) }}</span>
+            <span class="bl-ligne__name">{{ b.joueurPrenom }} {{ b.joueurNom }}</span>
+            <span class="bl-status" [class]="statutBlessureClass(b.statut)">{{ statutBlessureLabel(b.statut) }}</span>
+            <span class="bl-ligne__diag">{{ labelDe(zones, b.zoneCorporelle) }}@if (b.typeBlessure) { · {{ labelDe(types, b.typeBlessure) }}}</span>
+            <span class="bl-ligne__retour">{{ b.dateRetourPrevue ? ('retour ' + (b.dateRetourPrevue | date:'dd/MM')) : 'retour non estimé' }}</span>
+          </button>
+        }
+      </div></div>
+    }
+
+    <!-- Historique (blessures rétablies) -->
+    @if (blessuresRetablies.length > 0) {
+      <div class="bl-head bl-head--sub">
+        <p class="bl-head__title bl-head__title--muted">Historique <span class="bl-head__count">({{ blessuresRetablies.length }})</span></p>
+      </div>
+      <div class="card"><div class="card__body card__body--flush">
+        @for (b of blessuresRetablies; track b.id) {
+          <button type="button" class="bl-ligne" (click)="ouvrirSuivi(b)">
+            <span class="bl-avatar bl-avatar--sm st-retabli">{{ initiales(b.joueurPrenom, b.joueurNom) }}</span>
+            <span class="bl-ligne__name">{{ b.joueurPrenom }} {{ b.joueurNom }}</span>
+            <span class="bl-status st-retabli">Rétabli</span>
+            <span class="bl-ligne__diag">{{ labelDe(zones, b.zoneCorporelle) }}@if (b.typeBlessure) { · {{ labelDe(types, b.typeBlessure) }}}</span>
+            <span class="bl-ligne__retour">{{ b.dateRetourEffectif ? ('le ' + (b.dateRetourEffectif | date:'dd/MM/yyyy')) : '' }}</span>
+          </button>
+        }
+      </div></div>
+    }
+
+    <!-- ══ MODALE Déclarer / Modifier (3 étapes) ══ -->
+    @if (showForm() && auth.canEcrireBlessures()) {
+      <div class="bl-overlay" (click)="annuler()">
+        <div class="bl-modal" (click)="$event.stopPropagation()">
+          <div class="bl-modal__head">
+            <div>
+              <h3 class="bl-modal__title">{{ editingId() ? 'Modifier la blessure' : 'Déclarer une blessure' }}</h3>
+              <p class="bl-modal__sub">Étape {{ formStep() }}/3 — {{ formStep() === 1 ? 'Joueur & diagnostic' : formStep() === 2 ? 'Détails' : 'Notes' }}</p>
+            </div>
+            <button type="button" class="bl-modal__close" (click)="annuler()">×</button>
+          </div>
+          <div class="bl-steps"><span [class.is-on]="formStep() >= 1"></span><span [class.is-on]="formStep() >= 2"></span><span [class.is-on]="formStep() >= 3"></span></div>
+
+          <form class="bl-modal__body" (ngSubmit)="enregistrer()">
+            @if (formStep() === 1) {
+              <div class="bl-field">
+                <label class="bl-label">Joueur</label>
                 <select class="input select" [(ngModel)]="form.joueurId" name="joueur">
-                  <option value="" disabled>Choisir…</option>
+                  <option value="" disabled>Rechercher un joueur…</option>
                   @for (j of joueurs(); track j.id) { <option [value]="j.id">{{ j.prenom }} {{ j.nom }}</option> }
                 </select>
               </div>
-              <div class="field">
-                <label class="field__label">Date de blessure *</label>
-                <input class="input" type="date" [(ngModel)]="form.dateBlessure" name="date">
-              </div>
-              <div class="field">
-                <label class="field__label">Statut</label>
-                <select class="input select" [(ngModel)]="form.statut" name="statut">
-                  @for (s of STATUTS_BLESSURE; track s.val) { <option [value]="s.val">{{ s.label }}</option> }
-                </select>
-              </div>
-              <div class="field">
-                <label class="field__label">Retour prévu</label>
-                <input class="input" type="date" [(ngModel)]="form.dateRetourPrevue" name="retourPrevu">
-              </div>
-              <div class="field">
-                <label class="field__label">Retour effectif</label>
-                <input class="input" type="date" [(ngModel)]="form.dateRetourEffectif" name="retour">
-              </div>
-              <div class="field">
-                <label class="field__label">Type</label>
-                <select class="input select" [(ngModel)]="form.typeBlessure" name="type">
-                  <option value="">—</option>
-                  @for (t of types; track t) { <option [value]="t">{{ joliLabel(t) }}</option> }
-                </select>
-              </div>
-              <div class="field">
-                <label class="field__label">Zone</label>
-                <select class="input select" [(ngModel)]="form.zoneCorporelle" name="zone">
-                  <option value="">—</option>
-                  @for (z of zones; track z) { <option [value]="z">{{ joliLabel(z) }}</option> }
-                </select>
-              </div>
-              <div class="field">
-                <label class="field__label">Côté</label>
-                <select class="input select" [(ngModel)]="form.cote" name="cote">
-                  <option value="">—</option>
-                  @for (c of cotes; track c) { <option [value]="c">{{ joliLabel(c) }}</option> }
-                </select>
-              </div>
-              <div class="field">
-                <label class="field__label">Gravité</label>
-                <select class="input select" [(ngModel)]="form.gravite" name="gravite">
-                  <option value="">—</option>
-                  @for (g of gravites; track g) { <option [value]="g">{{ joliLabel(g) }}</option> }
-                </select>
-              </div>
-              <div class="field">
-                <label class="field__label">Cause probable</label>
-                <select class="input select" [(ngModel)]="form.causeProbable" name="cause">
-                  <option value="">—</option>
-                  @for (c of causes; track c) { <option [value]="c">{{ joliLabel(c) }}</option> }
-                </select>
-              </div>
-              <div class="field span2">
-                <label class="field__label">Commentaire</label>
-                <input class="input" [(ngModel)]="form.commentaire" name="commentaire" placeholder="Observations…">
-              </div>
-            </div>
-            <label style="display:inline-flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;margin-top:8px">
-              <input type="checkbox" [(ngModel)]="form.recidive" name="recidive" style="accent-color:var(--green-600)">
-              Récidive
-            </label>
-            <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:14px">
-              <button type="button" class="btn btn--secondary" (click)="annuler()">Annuler</button>
-              <button type="submit" class="btn btn--primary" [disabled]="saving() || !form.joueurId || !form.dateBlessure">
-                {{ saving() ? 'Enregistrement…' : (editingId() ? 'Enregistrer' : 'Déclarer') }}
-              </button>
-            </div>
-          </form>
-        }
-
-        @if (loading()) {
-          <div class="loading">Chargement…</div>
-        } @else if (blessures().length === 0) {
-          <div class="empty-state">Aucune blessure enregistrée.</div>
-        } @else {
-          <div class="blessures-grid">
-            @for (b of blessures(); track b.id) {
-              <div class="blessure-card" [class.blessure-card--retabli]="!b.enCours">
-                <div class="row row--between" style="margin-bottom:8px">
-                  <span class="blessure-card__joueur">{{ b.joueurPrenom }} {{ b.joueurNom }}</span>
-                  <span class="badge" [class]="b.statut === 'EN_REPRISE' ? 'badge--warn' : b.statut === 'RETABLI' ? 'badge--ok' : 'badge--bad'">
-                    {{ statutBlessureLabel(b.statut) }}
-                  </span>
-                </div>
-                <div class="row" style="gap:6px;flex-wrap:wrap;margin-bottom:8px">
-                  @if (b.gravite) { <span class="badge" [class]="graviteClass(b.gravite)">{{ joliLabel(b.gravite) }}</span> }
-                  @if (b.zoneCorporelle) { <span class="badge badge--neutral">{{ joliLabel(b.zoneCorporelle) }}</span> }
-                  @if (b.typeBlessure) { <span class="badge badge--neutral">{{ joliLabel(b.typeBlessure) }}</span> }
-                  @if (b.recidive) { <span class="badge badge--warn">récidive</span> }
-                </div>
-                <div class="blessure-card__info">
-                  <span class="info-label">Blessé le</span>
-                  <span>{{ b.dateBlessure | date:'dd/MM/yyyy' }}</span>
-                  @if (b.statut === 'RETABLI') {
-                    <span class="info-label">Retour effectif</span>
-                    <span>{{ b.dateRetourEffectif ? (b.dateRetourEffectif | date:'dd/MM/yyyy') : '—' }}</span>
-                  } @else {
-                    <span class="info-label">Retour prévu</span>
-                    <span>{{ b.dateRetourPrevue ? (b.dateRetourPrevue | date:'dd/MM/yyyy') : '—' }}</span>
-                  }
-                  @if (b.causeProbable) {
-                    <span class="info-label">Cause</span>
-                    <span>{{ joliLabel(b.causeProbable) }}</span>
+              <div class="bl-field">
+                <label class="bl-label">Zone corporelle</label>
+                <div class="bl-chips">
+                  @for (z of zones; track z.val) {
+                    <button type="button" class="bl-chip" [class.is-on]="form.zoneCorporelle === z.val" (click)="form.zoneCorporelle = z.val">{{ z.label }}</button>
                   }
                 </div>
-                @if (b.commentaire) { <p class="blessure-card__comm">{{ b.commentaire }}</p> }
-                <div class="row" style="gap:6px;margin-top:10px;flex-wrap:wrap">
-                  <button class="btn btn--secondary btn--sm" [class.btn--dark]="suiviBlessure()?.id === b.id" (click)="ouvrirSuivi(b)">Suivi</button>
-                  @if (auth.canEcrireBlessures()) {
-                    <button class="btn btn--secondary btn--sm" (click)="editer(b)">Modifier</button>
-                    <button class="btn btn--danger btn--sm" (click)="supprimer(b)">Supprimer</button>
+              </div>
+              <div class="bl-field">
+                <label class="bl-label">Type de blessure</label>
+                <div class="bl-chips">
+                  @for (t of types; track t.val) {
+                    <button type="button" class="bl-chip" [class.is-on]="form.typeBlessure === t.val" (click)="form.typeBlessure = t.val">{{ t.label }}</button>
+                  }
+                </div>
+              </div>
+              <div class="bl-field">
+                <label class="bl-label">Gravité</label>
+                <div class="bl-grav">
+                  @for (g of gravites; track g.val) {
+                    <button type="button" class="bl-grav__opt" [class.is-on]="form.gravite === g.val" (click)="form.gravite = g.val">
+                      <span class="bl-grav__lbl">{{ g.label }}</span><span class="bl-grav__sub">{{ g.sub }}</span>
+                    </button>
                   }
                 </div>
               </div>
             }
-          </div>
-        }
-      </div>
-    </div>
+            @if (formStep() === 2) {
+              <div class="bl-field">
+                <label class="bl-label">Côté</label>
+                <div class="bl-seg">
+                  @for (c of cotes; track c.val) {
+                    <button type="button" class="bl-seg__opt" [class.is-on]="form.cote === c.val" (click)="form.cote = c.val">{{ c.label }}</button>
+                  }
+                </div>
+              </div>
+              <div class="bl-field">
+                <label class="bl-label">Cause probable</label>
+                <div class="bl-seg bl-seg--grid">
+                  @for (c of causes; track c.val) {
+                    <button type="button" class="bl-seg__opt" [class.is-on]="form.causeProbable === c.val" (click)="form.causeProbable = c.val">{{ c.label }}</button>
+                  }
+                </div>
+              </div>
+              <div class="bl-field">
+                <label class="bl-label">Récidive</label>
+                <label class="bl-switch">
+                  <input type="checkbox" [(ngModel)]="form.recidive" name="recidive">
+                  <span class="bl-switch__track"></span>
+                  <span class="bl-switch__txt">{{ form.recidive ? 'Oui' : 'Non' }}</span>
+                </label>
+              </div>
+              <div class="bl-row2">
+                <div class="bl-field"><label class="bl-label">Date de début</label><input class="input" type="date" [(ngModel)]="form.dateBlessure" name="date"></div>
+                <div class="bl-field"><label class="bl-label">Retour estimé</label><input class="input" type="date" [(ngModel)]="form.dateRetourPrevue" name="retourPrevu"></div>
+              </div>
+            }
+            @if (formStep() === 3) {
+              <div class="bl-field">
+                <label class="bl-label">Commentaires</label>
+                <textarea class="input" rows="3" [(ngModel)]="form.commentaire" name="commentaire" placeholder="Contexte, circonstances de la blessure…"></textarea>
+              </div>
+              <div class="bl-field">
+                <label class="bl-label">Notes médicales confidentielles</label>
+                <textarea class="input bl-conf" rows="3" [(ngModel)]="form.notesMedicales" name="notesMedicales" placeholder="Notes réservées au staff médical…"></textarea>
+              </div>
+            }
 
-    <!-- Suivi d'une blessure (journal + RTP) -->
-    @if (suiviBlessure(); as b) {
-      <div class="card">
-        <div class="card__header">
-          <h3 class="card__title">
-            Suivi — {{ b.joueurPrenom }} {{ b.joueurNom }}
-            <span class="card__sub" style="margin-left:8px">{{ joliLabel(b.zoneCorporelle) }} · {{ statutBlessureLabel(b.statut) }}</span>
-          </h3>
-          <button class="btn btn--secondary btn--sm" (click)="fermerSuivi()">Fermer</button>
+            <div class="bl-modal__foot">
+              @if (formStep() === 1) {
+                <button type="button" class="al-link" (click)="annuler()">‹ Annuler</button>
+              } @else {
+                <button type="button" class="al-link" (click)="etapePrecedente()">‹ Retour</button>
+              }
+              @if (formStep() < 3) {
+                <button type="button" class="btn btn--primary" [disabled]="formStep() === 1 && !form.joueurId" (click)="etapeSuivante()">Suivant ›</button>
+              } @else {
+                <button type="submit" class="btn btn--primary" [disabled]="saving() || !form.joueurId || !form.dateBlessure">{{ saving() ? 'Enregistrement…' : '✓ Enregistrer' }}</button>
+              }
+            </div>
+          </form>
         </div>
-        <div class="card__body">
-          <div class="suivi-cols">
-            <div>
-              <div class="row row--between" style="margin-bottom:10px">
-                <p class="section-title">Protocole de reprise</p>
-                @if (rtp().length > 0 && auth.canEcrireBlessures()) {
-                  <button class="btn btn--danger btn--sm" (click)="supprimerRtp()">Réinitialiser</button>
+      </div>
+    }
+
+    <!-- ══ DRAWER Suivi (Résumé / Protocole / Journal) ══ -->
+    @if (suiviBlessure(); as b) {
+      <div class="bl-drawer-overlay" (click)="fermerSuivi()"></div>
+      <aside class="bl-drawer">
+        <div class="bl-drawer__head">
+          <div>
+            <h3 class="bl-drawer__title">{{ b.joueurPrenom }} {{ b.joueurNom }}</h3>
+            <p class="bl-drawer__sub">{{ labelDe(zones, b.zoneCorporelle) }}@if (b.typeBlessure) { — {{ labelDe(types, b.typeBlessure) }}}</p>
+          </div>
+          <div class="row" style="gap:10px;align-items:center">
+            <span class="bl-status" [class]="statutBlessureClass(b.statut)">{{ statutBlessureLabel(b.statut) }}</span>
+            <button type="button" class="bl-modal__close" (click)="fermerSuivi()">×</button>
+          </div>
+        </div>
+        <div class="bl-tabs">
+          <button [class.is-on]="suiviTab() === 'resume'" (click)="suiviTab.set('resume')">Résumé</button>
+          <button [class.is-on]="suiviTab() === 'protocole'" (click)="suiviTab.set('protocole')">Protocole</button>
+          <button [class.is-on]="suiviTab() === 'journal'" (click)="suiviTab.set('journal')">Journal</button>
+        </div>
+        <div class="bl-drawer__body">
+
+          @if (suiviTab() === 'resume') {
+            <div class="bl-info-grid">
+              <div class="bl-info"><span class="bl-info__lbl">Gravité</span><span class="bl-info__val">{{ labelDe(gravites, b.gravite) }}</span></div>
+              <div class="bl-info"><span class="bl-info__lbl">Côté</span><span class="bl-info__val">{{ labelDe(cotes, b.cote) }}</span></div>
+              <div class="bl-info"><span class="bl-info__lbl">Cause</span><span class="bl-info__val">{{ labelDe(causes, b.causeProbable) }}</span></div>
+              <div class="bl-info"><span class="bl-info__lbl">Récidive</span><span class="bl-info__val">{{ b.recidive ? 'Oui' : 'Non' }}</span></div>
+              <div class="bl-info"><span class="bl-info__lbl">Début</span><span class="bl-info__val">{{ b.dateBlessure | date:'dd MMM yyyy' }}</span></div>
+              <div class="bl-info"><span class="bl-info__lbl">Retour prévu</span><span class="bl-info__val">{{ b.dateRetourPrevue ? (b.dateRetourPrevue | date:'dd MMM yyyy') : '—' }}</span></div>
+            </div>
+            @let pctRes = progressionTemps(b);
+            <p class="bl-label bl-label--mt">Progression</p>
+            <div class="bl-prog"><div class="bl-prog__bar"><span [class]="progressionClass(pctRes)" [style.width.%]="pctRes"></span></div><span class="bl-prog__pct">{{ pctRes }}%</span></div>
+
+            @if (auth.canEcrireBlessures()) {
+              <p class="bl-label bl-label--mt">Changer le statut</p>
+              <div class="bl-seg">
+                @for (s of STATUTS_BLESSURE; track s.val) {
+                  <button type="button" class="bl-seg__opt" [class.is-on]="b.statut === s.val" (click)="changerStatut(b, s.val)">{{ s.label }}</button>
                 }
               </div>
-              @if (rtp().length === 0) {
-                <div class="empty-state" style="padding:24px 0">Aucun protocole.</div>
-                @if (auth.canEcrireBlessures()) {
-                  <button class="btn btn--primary btn--sm" (click)="initRtp()">Démarrer un protocole</button>
-                }
-              } @else {
-                <div class="rtp-progress">
-                  <div class="rtp-barre"><span [style.width.%]="rtpProgression"></span></div>
-                  <span class="rtp-pct">{{ rtpProgression }}%</span>
-                </div>
-                <ol class="rtp-etapes">
-                  @for (e of rtp(); track e.id) {
-                    <li class="rtp-etape" [class]="etapeClass(e.statut)">
-                      <button class="rtp-puce" [disabled]="!auth.canEcrireBlessures()" (click)="cyclerEtape(e)" [title]="ETAPE_LABELS[e.statut]">
-                        {{ e.statut === 'VALIDEE' ? '✓' : e.statut === 'EN_COURS' ? '•' : '' }}
-                      </button>
-                      <span class="rtp-libelle">{{ e.libelle }}</span>
-                      @if (e.dateValidation) { <span style="font-size:11px;color:var(--text-3)">{{ e.dateValidation | date:'dd/MM' }}</span> }
-                    </li>
-                  }
-                </ol>
-              }
-            </div>
-            <div>
-              <p class="section-title" style="margin-bottom:10px">Journal</p>
+            }
+            @if (b.commentaire) {
+              <p class="bl-label bl-label--mt">Commentaires</p>
+              <p class="bl-text">{{ b.commentaire }}</p>
+            }
+            @if (b.notesMedicales) {
+              <p class="bl-label bl-label--mt">Notes médicales</p>
+              <p class="bl-text bl-text--conf">{{ b.notesMedicales }}</p>
+            }
+            @if (auth.canEcrireBlessures()) {
+              <div class="bl-drawer__actions">
+                <button type="button" class="al-link" (click)="editer(b)">Modifier</button>
+                <button type="button" class="al-link al-link--danger" (click)="supprimer(b)">Supprimer</button>
+              </div>
+            }
+          }
+
+          @if (suiviTab() === 'protocole') {
+            @if (rtp().length === 0) {
+              <div class="empty-state" style="padding:24px 0">Aucun protocole de reprise.</div>
               @if (auth.canEcrireBlessures()) {
-                <div class="row" style="gap:8px;margin-bottom:12px">
-                  <input class="input" style="flex:1" [ngModel]="noteTexte()" (ngModelChange)="noteTexte.set($event)" placeholder="Soin, observation…" (keyup.enter)="ajouterNote()">
-                  <button class="btn btn--primary btn--sm" [disabled]="!noteTexte().trim()" (click)="ajouterNote()">Ajouter</button>
-                </div>
+                <button type="button" class="bl-genbtn" (click)="initRtp()">+ Générer un protocole type</button>
               }
-              @if (notes().length === 0) {
-                <div class="empty-state" style="padding:24px 0">Aucune note.</div>
-              } @else {
-                <div class="notes-liste">
-                  @for (n of notes(); track n.id) {
-                    <div class="note-ligne">
-                      <span class="note-ligne__date">{{ n.date | date:'dd/MM/yyyy' }}</span>
-                      <span class="note-ligne__texte">{{ n.texte }}</span>
-                      @if (auth.canEcrireBlessures()) {
-                        <button class="btn btn--danger btn--sm btn--icon" (click)="supprimerNote(n)">✕</button>
-                      }
+            } @else {
+              <div class="bl-prog" style="margin-bottom:18px"><div class="bl-prog__bar"><span class="pg-bad" [style.width.%]="rtpProgression"></span></div><span class="bl-prog__pct">{{ rtpProgression }}%</span></div>
+              <ol class="bl-timeline">
+                @for (e of rtp(); track e.id) {
+                  <li class="bl-phase" [class]="etapeClass(e.statut)">
+                    <button type="button" class="bl-phase__dot" [disabled]="!auth.canEcrireBlessures()" (click)="cyclerEtape(e)" [title]="ETAPE_LABELS[e.statut]"></button>
+                    <div class="bl-phase__card">
+                      <div class="bl-phase__head">
+                        <span class="bl-phase__title">{{ e.libelle }}</span>
+                        @if (e.jDebut != null && e.jFin != null) { <span class="bl-phase__j">J{{ e.jDebut }} – J{{ e.jFin }}</span> }
+                      </div>
+                      @if (e.description) { <p class="bl-phase__desc">{{ e.description }}</p> }
+                      <span class="bl-phase__statut">{{ ETAPE_LABELS[e.statut] }}@if (e.dateValidation) { · {{ e.dateValidation | date:'dd/MM' }} }</span>
                     </div>
-                  }
-                </div>
+                  </li>
+                }
+              </ol>
+              @if (auth.canEcrireBlessures()) {
+                <button type="button" class="al-link al-link--danger" style="margin-top:12px" (click)="supprimerRtp()">Réinitialiser le protocole</button>
               }
-            </div>
-          </div>
+            }
+          }
+
+          @if (suiviTab() === 'journal') {
+            @if (auth.canEcrireBlessures()) {
+              <div class="bl-journal-add">
+                <input class="input" [ngModel]="noteTexte()" (ngModelChange)="noteTexte.set($event)" placeholder="Ajouter une note de suivi…" (keyup.enter)="ajouterNote()">
+                <button type="button" class="btn btn--primary btn--sm" [disabled]="!noteTexte().trim()" (click)="ajouterNote()">Envoyer</button>
+              </div>
+            }
+            @if (notes().length === 0) {
+              <div class="empty-state" style="padding:24px 0">Aucune note.</div>
+            } @else {
+              <div class="bl-journal">
+                @for (n of notes(); track n.id) {
+                  <div class="bl-note">
+                    <div class="bl-note__head">
+                      <span class="bl-note__who">Staff médical</span>
+                      <span class="bl-note__date">{{ n.date | date:'dd/MM/yyyy' }}</span>
+                    </div>
+                    <p class="bl-note__txt">{{ n.texte }}</p>
+                    @if (auth.canEcrireBlessures()) {
+                      <button type="button" class="bl-note__del" (click)="supprimerNote(n)">✕</button>
+                    }
+                  </div>
+                }
+              </div>
+            }
+          }
+
         </div>
-      </div>
+      </aside>
     }
   }
 
@@ -470,107 +625,249 @@
        SECTION : BILAN BLESSURES
        ═══════════════════════════════════════ -->
   @if (section() === 'bilan') {
-    <div class="card">
-      <div class="card__header"><h3 class="card__title">Bilan blessures</h3></div>
-      <div class="card__body">
-        @if (statsTotal === 0) {
-          <div class="empty-state">Aucune blessure enregistrée.</div>
-        } @else {
-          <div class="bilan-kpis">
-            <div class="card kpi" style="padding:14px 16px">
-              <div class="kpi__label">Total</div>
-              <div class="kpi__value">{{ statsTotal }}</div>
-            </div>
-            <div class="card kpi" style="padding:14px 16px">
-              <div class="kpi__label">En cours</div>
-              <div class="kpi__value">{{ statsEnCours }}</div>
-            </div>
-            <div class="card kpi" style="padding:14px 16px">
-              <div class="kpi__label">Récidives</div>
-              <div class="kpi__value">{{ statsRecidivePct }}<span class="unit"> %</span></div>
-            </div>
-            <div class="card kpi" style="padding:14px 16px">
-              <div class="kpi__label">Jours perdus</div>
-              <div class="kpi__value">{{ statsJoursPerdus }}</div>
-            </div>
-          </div>
+    @if (statsTotal === 0) {
+      <div class="card card--padded"><div class="empty-state">Aucune blessure enregistrée.</div></div>
+    } @else {
 
-          <div class="bilan-cols" style="margin-top:20px">
-            <div>
-              <p class="section-title" style="margin-bottom:10px">Par zone corporelle</p>
-              <div class="stack">
-                @for (z of statsParZone; track z.zone) {
-                  <div class="row" style="gap:10px;font-size:13px">
-                    <span style="min-width:140px;color:var(--text-2)">{{ joliLabel(z.zone) }}</span>
-                    <div class="zone-barre"><span [style.width.%]="z.count / statsZoneMax * 100"></span></div>
-                    <span class="num" style="font-weight:600;min-width:20px">{{ z.count }}</span>
-                  </div>
-                }
-              </div>
-            </div>
-            <div>
-              <p class="section-title" style="margin-bottom:10px">Par gravité</p>
-              <div class="stack" style="gap:8px">
-                <div class="row row--between" style="font-size:13px">
-                  <span class="badge badge--ok">Léger</span>
-                  <span class="num" style="font-weight:700">{{ statsParGravite.leger }}</span>
-                </div>
-                <div class="row row--between" style="font-size:13px">
-                  <span class="badge badge--warn">Modéré</span>
-                  <span class="num" style="font-weight:700">{{ statsParGravite.modere }}</span>
-                </div>
-                <div class="row row--between" style="font-size:13px">
-                  <span class="badge badge--bad">Grave</span>
-                  <span class="num" style="font-weight:700">{{ statsParGravite.grave }}</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        }
+      <!-- KPI -->
+      <div class="bi-kpis">
+        <div class="bi-kpi">
+          <div class="bi-kpi__label">Total blessures</div>
+          <div class="bi-kpi__num">{{ statsTotal }}</div>
+          <div class="bi-kpi__sub">Saison {{ saisonLabel }}</div>
+        </div>
+        <div class="bi-kpi">
+          <div class="bi-kpi__label">En cours</div>
+          <div class="bi-kpi__num">{{ statsEnCours }}</div>
+          <div class="bi-kpi__sub">À l'infirmerie</div>
+        </div>
+        <div class="bi-kpi">
+          <div class="bi-kpi__label">Taux récidive</div>
+          <div class="bi-kpi__num">{{ statsRecidivePct }}<span class="bi-kpi__unit">%</span></div>
+          <div class="bi-kpi__sub">Sur la saison</div>
+        </div>
+        <div class="bi-kpi">
+          <div class="bi-kpi__label">Jours perdus</div>
+          <div class="bi-kpi__num">{{ statsJoursPerdus }}</div>
+          <div class="bi-kpi__sub">≈ {{ matchsEstimes }} matchs</div>
+        </div>
       </div>
-    </div>
+
+      <!-- Zone + Gravité -->
+      <div class="bi-cols">
+        <div class="card card--padded">
+          <p class="bi-title">Répartition par zone corporelle</p>
+          <apx-chart
+            [series]="bilanZonesBar().series"
+            [chart]="zonesChart"
+            [xaxis]="bilanZonesBar().xaxis"
+            [plotOptions]="zonesPlot"
+            [colors]="zonesColors"
+            [dataLabels]="zonesDataLabels"
+            [grid]="zonesGrid">
+          </apx-chart>
+        </div>
+        <div class="card card--padded">
+          <p class="bi-title">Répartition par gravité</p>
+          <div class="bi-donut">
+            <div class="bi-donut__chart">
+              <apx-chart
+                [series]="bilanGravite().series"
+                [chart]="donutChart"
+                [labels]="bilanGravite().labels"
+                [colors]="bilanGravite().colors"
+                [plotOptions]="donutPlot"
+                [dataLabels]="donutDataLabels"
+                [legend]="donutLegend"
+                [stroke]="donutStroke">
+              </apx-chart>
+            </div>
+            <ul class="bi-legend">
+              @for (c of DUREE_CATS; track c.label; let i = $index) {
+                <li class="bi-legend__row">
+                  <span class="bi-legend__dot" [style.background]="c.color"></span>
+                  <span class="bi-legend__lbl">{{ c.label }}</span>
+                  <span class="bi-legend__val">{{ bilanGravite().counts[i] }}</span>
+                </li>
+              }
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <!-- Évolution saison -->
+      <div class="card card--padded" style="margin-top:16px">
+        <p class="bi-title">Évolution sur la saison</p>
+        <apx-chart
+          [series]="bilanEvolution().series"
+          [chart]="evoChart"
+          [xaxis]="bilanEvolution().xaxis"
+          [yaxis]="evoYaxis"
+          [stroke]="evoStroke"
+          [fill]="evoFill"
+          [markers]="evoMarkers"
+          [colors]="evoColors"
+          [dataLabels]="evoDataLabels"
+          [legend]="evoLegend">
+        </apx-chart>
+      </div>
+
+      <!-- Zones à risque + Joueurs touchés -->
+      <div class="bi-cols" style="margin-top:16px">
+        <div class="card card--padded">
+          <p class="bi-title">Zones les plus à risque</p>
+          <div class="bi-rank">
+            @for (z of statsParZone.slice(0, 5); track z.zone; let i = $index) {
+              <div class="bi-rank__row">
+                <span class="bi-rank__pos">#{{ i + 1 }}</span>
+                <span class="bi-rank__lbl">{{ labelDe(zones, z.zone) }}</span>
+                <div class="bi-rank__bar"><span [style.width.%]="z.count / statsZoneMax * 100"></span></div>
+                <span class="bi-rank__val">{{ z.count }}</span>
+              </div>
+            }
+          </div>
+        </div>
+        <div class="card card--padded">
+          <p class="bi-title">Joueurs les plus touchés</p>
+          <div class="bi-rank">
+            @for (j of joueursTouches; track j.id; let i = $index) {
+              <div class="bi-rank__row bi-rank__row--player">
+                <span class="bi-rank__pos">#{{ i + 1 }}</span>
+                <span class="bl-avatar bl-avatar--sm">{{ initiales(j.prenom, j.nom) }}</span>
+                <span class="bi-rank__lbl">{{ initiales(j.prenom)[0] }}. {{ j.nom }}</span>
+                @if (j.poste) { <span class="bi-rank__poste">{{ posteAbbr(j.poste) }}</span> }
+                <span class="badge badge--neutral">{{ j.count }} bless.</span>
+              </div>
+            }
+          </div>
+        </div>
+      </div>
+    }
   }
 
   <!-- ═══════════════════════════════════════
        SECTION : DOCUMENTS
        ═══════════════════════════════════════ -->
   @if (section() === 'documents') {
-    <div class="card">
-      <div class="card__header">
-        <h3 class="card__title">Documents médicaux</h3>
-        <select class="input select" style="max-width:200px" [ngModel]="filtreJoueurDoc()" (ngModelChange)="onFiltreJoueurDoc($event)" name="filtreDoc">
-          <option value="">Tous les joueurs</option>
-          @for (j of joueurs(); track j.id) { <option [value]="j.id">{{ j.prenom }} {{ j.nom }}</option> }
-        </select>
+
+    <!-- Barre d'outils -->
+    <div class="doc-toolbar">
+      <div class="doc-search">
+        <span class="doc-search__ic">🔍</span>
+        <input class="doc-search__in" [ngModel]="rechercheDoc()" (ngModelChange)="rechercheDoc.set($event)" name="rechercheDoc" placeholder="Rechercher un document, un joueur, une catégorie…">
       </div>
-      <div class="card__body card__body--flush">
-        @if (documents().length === 0) {
-          <div class="empty-state" style="padding:32px">Aucun document accessible.</div>
-        } @else {
-          @for (d of documents(); track d.id) {
-            <div class="doc-ligne">
-              <div class="doc-ligne__info">
-                <span class="doc-ligne__joueur">{{ d.joueurPrenom }} {{ d.joueurNom }}</span>
-                <span class="doc-ligne__nom">{{ d.nomOriginal }}</span>
-                <span class="doc-ligne__meta">{{ categorieDocLabel(d.categorie) }} · {{ tailleLisible(d.tailleOctets) }} · {{ d.dateDepot | date:'dd/MM/yyyy' }}</span>
-                @if (d.description) { <span class="doc-ligne__desc">{{ d.description }}</span> }
-                @if (d.partageRoles.length) {
-                  <div class="row" style="gap:4px;flex-wrap:wrap">
-                    @for (role of d.partageRoles; track role) { <span class="badge badge--neutral">{{ roleDocLabel(role) }}</span> }
+      <select class="input select doc-filter" [ngModel]="filtreCategorieDoc()" (ngModelChange)="filtreCategorieDoc.set($event)" name="filtreCatDoc">
+        <option value="">Toutes catégories</option>
+        @for (c of CATEGORIES_DOC_LIST; track c) { <option [value]="c">{{ catMeta(c).label }}</option> }
+      </select>
+      <select class="input select doc-filter" [ngModel]="filtreJoueurDoc()" (ngModelChange)="onFiltreJoueurDoc($event)" name="filtreDoc">
+        <option value="">Tous les joueurs</option>
+        @for (j of joueurs(); track j.id) { <option [value]="j.id">{{ j.prenom }} {{ j.nom }}</option> }
+      </select>
+      @if (auth.canEcrireBlessures()) {
+        <button class="btn btn--primary doc-add" (click)="ouvrirDepotDoc()">⬆ Ajouter un document</button>
+      }
+    </div>
+
+    <!-- Table -->
+    <div class="card doc-card">
+      @if (documentsFiltres.length === 0) {
+        <div class="empty-state" style="padding:40px">Aucun document accessible.</div>
+      } @else {
+        <table class="doc-table">
+          <thead>
+            <tr>
+              <th>Type</th><th>Document</th><th>Joueur</th><th>Catégorie</th>
+              <th>Date</th><th>Taille</th><th>Accès</th><th class="doc-table__actions">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (d of documentsFiltres; track d.id) {
+              <tr>
+                <td>
+                  <span class="doc-type" [style.background]="catMeta(d.categorie).color + '1f'">{{ catMeta(d.categorie).icon }}</span>
+                </td>
+                <td>
+                  <div class="doc-name">{{ d.nomOriginal }}</div>
+                  @if (d.description) { <div class="doc-desc">{{ d.description }}</div> }
+                </td>
+                <td class="doc-player">{{ d.joueurPrenom }} {{ d.joueurNom }}</td>
+                <td>
+                  <span class="doc-cat" [style.color]="catMeta(d.categorie).color" [style.background]="catMeta(d.categorie).color + '14'">{{ catMeta(d.categorie).label }}</span>
+                </td>
+                <td class="doc-muted">{{ tempsRelatif(d.dateDepot) }}</td>
+                <td class="doc-muted">{{ tailleLisible(d.tailleOctets) }}</td>
+                <td>
+                  <span class="doc-acces" [title]="d.partageRoles.length ? d.partageRoles.join(', ') : ''">
+                    {{ accesLibelle(d) === 'Tous' ? '👁' : '🔒' }} {{ accesLibelle(d) }}
+                  </span>
+                </td>
+                <td>
+                  <div class="doc-actions">
+                    <button class="doc-iconbtn" title="Télécharger" (click)="telechargerDoc(d)">⬇</button>
+                    @if (auth.canEcrireBlessures()) {
+                      <button class="doc-iconbtn doc-iconbtn--danger" title="Supprimer" (click)="supprimerDoc(d)">🗑</button>
+                    }
                   </div>
-                }
-              </div>
-              <div class="row" style="gap:6px;flex-shrink:0">
-                <button class="btn btn--secondary btn--sm" (click)="telechargerDoc(d)">Télécharger</button>
-                @if (auth.canEcrireBlessures()) {
-                  <button class="btn btn--danger btn--sm" (click)="supprimerDoc(d)">Supprimer</button>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      }
+    </div>
+
+    <!-- ══ MODALE Ajouter un document ══ -->
+    @if (showDocForm() && auth.canEcrireBlessures()) {
+      <div class="bl-overlay" (click)="annulerDepotDoc()">
+        <div class="bl-modal" (click)="$event.stopPropagation()">
+          <div class="bl-modal__head">
+            <div>
+              <h3 class="bl-modal__title">Ajouter un document</h3>
+              <p class="bl-modal__sub">PDF, JPG ou PNG · 10 Mo max</p>
+            </div>
+            <button type="button" class="bl-modal__close" (click)="annulerDepotDoc()">×</button>
+          </div>
+          <form class="bl-modal__body" (ngSubmit)="enregistrerDoc()">
+            <div class="bl-field">
+              <label class="bl-label">Joueur</label>
+              <select class="input select" [(ngModel)]="docForm.joueurId" name="docJoueur">
+                <option value="" disabled>Choisir un joueur…</option>
+                @for (j of joueurs(); track j.id) { <option [value]="j.id">{{ j.prenom }} {{ j.nom }}</option> }
+              </select>
+            </div>
+            <div class="bl-field">
+              <label class="bl-label">Fichier</label>
+              <input class="input" type="file" accept=".pdf,.jpg,.jpeg,.png" (change)="onDocFile($event)" name="docFichier">
+            </div>
+            <div class="bl-field">
+              <label class="bl-label">Catégorie</label>
+              <div class="bl-chips">
+                @for (c of CATEGORIES_DOC_LIST; track c) {
+                  <button type="button" class="bl-chip" [class.is-on]="docForm.categorie === c" (click)="docForm.categorie = c">{{ catMeta(c).label }}</button>
                 }
               </div>
             </div>
-          }
-        }
+            <div class="bl-field">
+              <label class="bl-label">Accès (en plus du staff médical)</label>
+              <div class="bl-seg bl-seg--grid">
+                @for (r of ROLES_DOC_LIST; track r.val) {
+                  <button type="button" class="bl-seg__opt" [class.is-on]="docForm.partageRoles.includes(r.val)" (click)="togglePartageDoc(r.val)">{{ r.label }}</button>
+                }
+              </div>
+            </div>
+            <div class="bl-field">
+              <label class="bl-label">Description</label>
+              <textarea class="input" rows="2" [(ngModel)]="docForm.description" name="docDesc" placeholder="Précisions sur le document…"></textarea>
+            </div>
+            <div class="bl-modal__foot">
+              <button type="button" class="al-link" (click)="annulerDepotDoc()">Annuler</button>
+              <button type="submit" class="btn btn--primary" [disabled]="savingDoc() || !docFile() || !docForm.joueurId">{{ savingDoc() ? 'Envoi…' : '⬆ Envoyer' }}</button>
+            </div>
+          </form>
+        </div>
       </div>
-    </div>
+    }
   }
 
 </div>

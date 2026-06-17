@@ -1,6 +1,7 @@
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { DatePipe, DecimalPipe, NgTemplateOutlet } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { ActivatedRoute } from '@angular/router';
 import { MatIcon } from '@angular/material/icon';
 import { AuthService } from '@core/services/auth.service';
 import { EspaceJoueurService } from '@core/services/espace-joueur.service';
@@ -63,10 +64,16 @@ export class SuiviSubjectifComponent implements OnInit {
   readonly today = new Date();
 
   private auth = inject(AuthService);
+  private route = inject(ActivatedRoute);
   private espace = inject(EspaceJoueurService);
   private suivi = inject(SuiviSubjectifService);
   private conseilService = inject(ConseilService);
   private joueurService = inject(JoueurService);
+
+  /** Fenêtre d'historique (jours) : 7 ou 14, au choix. */
+  fenetreJours = signal<7 | 14>(7);
+  /** Tri « non-remplis aujourd'hui en tête » de la vue équipe (déclenché via ?focus=non-remplis). */
+  triNonRemplis = signal(false);
 
   // ── Rôle ──
   readonly isJoueur = this.auth.hasRole('JOUEUR');
@@ -158,10 +165,13 @@ export class SuiviSubjectifComponent implements OnInit {
       this.espace.getSeances().subscribe({ next: d => this.seances.set(d), error: () => {} });
       this.espace.getConseils().subscribe({ next: d => this.conseils.set(d), error: () => {} });
     } else {
+      this.triNonRemplis.set(this.route.snapshot.queryParamMap.get('focus') === 'non-remplis');
       this.joueurService.getAll().subscribe({ next: j => this.joueurs.set(j), error: () => {} });
       this.chargerStaff();
     }
   }
+
+  setFenetre(n: 7 | 14): void { this.fenetreJours.set(n); }
 
   // ──────────────────────────── Chargement staff ────────────────────────────
 
@@ -226,7 +236,7 @@ export class SuiviSubjectifComponent implements OnInit {
     return { label: 'Vigilance', classe: 'bad' };
   });
 
-  /** Série des 7 derniers jours pour le joueur courant : barre Hooper + point RPE. */
+  /** Série des N derniers jours (7 ou 14) pour le joueur courant : barre Hooper + point RPE. */
   readonly serie7j = computed<JourSerie[]>(() => {
     const jours = ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam'];
     const auj = this.dateISO(new Date());
@@ -236,7 +246,7 @@ export class SuiviSubjectifComponent implements OnInit {
       rpeByDate.set(r.date, Math.max(rpeByDate.get(r.date) ?? 0, r.rpe));
     }
     const out: JourSerie[] = [];
-    for (let i = 6; i >= 0; i--) {
+    for (let i = this.fenetreJours() - 1; i >= 0; i--) {
       const d = new Date();
       d.setDate(d.getDate() - i);
       const iso = this.dateISO(d);
@@ -256,11 +266,13 @@ export class SuiviSubjectifComponent implements OnInit {
    * Points de la courbe (polyline SVG, repère 0..100 × 0..100) reliant le SOMMET
    * de la barre Hooper de chaque jour rempli. La valeur RPE est affichée sur le point.
    */
-  readonly rpeCourbe = computed(() =>
-    this.serie7j()
-      .map((d, i) => d.hooper != null ? `${((i + 0.5) / 7 * 100).toFixed(2)},${(100 - this.barH(d.hooper)).toFixed(2)}` : null)
+  readonly rpeCourbe = computed(() => {
+    const n = this.serie7j().length || 1;
+    return this.serie7j()
+      .map((d, i) => d.hooper != null ? `${((i + 0.5) / n * 100).toFixed(2)},${(100 - this.barH(d.hooper)).toFixed(2)}` : null)
       .filter((p): p is string => p !== null)
-      .join(' '));
+      .join(' ');
+  });
 
   readonly hooperMoyen = computed(() => {
     const vals = this.serie7j().map(j => j.hooper).filter((v): v is number => v != null);
@@ -269,7 +281,7 @@ export class SuiviSubjectifComponent implements OnInit {
 
   /** Charge cumulée sur les 7 derniers jours (somme des charges sRPE). */
   readonly chargeCumulee = computed(() => {
-    const limite = this.dateISO(new Date(Date.now() - 6 * 86400000));
+    const limite = this.dateISO(new Date(Date.now() - (this.fenetreJours() - 1) * 86400000));
     return this.rpe()
       .filter(r => r.date >= limite && r.charge != null)
       .reduce((tot, r) => tot + (r.charge ?? 0), 0);
@@ -311,7 +323,11 @@ export class SuiviSubjectifComponent implements OnInit {
         remplitAuj: latest?.date === auj,
         derniere: latest?.date ?? null,
       };
-    }).sort((a, b) => a.nom.localeCompare(b.nom));
+    }).sort((a, b) => {
+      // Option : non-remplis du jour en tête (depuis le dashboard via ?focus=non-remplis).
+      if (this.triNonRemplis() && a.remplitAuj !== b.remplitAuj) return a.remplitAuj ? 1 : -1;
+      return a.nom.localeCompare(b.nom);
+    });
   });
 
   readonly moyenneEquipe = computed(() => {

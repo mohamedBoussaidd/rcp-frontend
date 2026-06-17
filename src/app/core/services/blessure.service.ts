@@ -20,6 +20,7 @@ export interface Blessure {
   causeProbable?: string;
   recidive: boolean;
   commentaire?: string;
+  notesMedicales?: string;
   enCours: boolean;
 }
 
@@ -36,6 +37,7 @@ export interface BlessureRequest {
   causeProbable?: string;
   recidive?: boolean;
   commentaire?: string;
+  notesMedicales?: string;
 }
 
 @Injectable({ providedIn: 'root' })

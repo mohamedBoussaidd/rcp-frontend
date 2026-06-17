@@ -20,6 +20,9 @@ export interface RtpEtape {
   libelle: string;
   statut: StatutEtape;
   dateValidation?: string;
+  jDebut?: number;
+  jFin?: number;
+  description?: string;
 }
 
 /** Suivi d'une blessure : journal d'évolution + protocole de retour au jeu (RTP). */

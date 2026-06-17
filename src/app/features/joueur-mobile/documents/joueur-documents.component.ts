@@ -20,10 +20,12 @@ export class JoueurDocumentsComponent {
   store = inject(JoueurStore);
 
   readonly CATEGORIES = [
+    { val: 'irm', label: 'IRM' },
+    { val: 'radio', label: 'Radio' },
+    { val: 'echographie', label: 'Échographie' },
+    { val: 'bilan_sanguin', label: 'Bilan sanguin' },
     { val: 'certificat', label: 'Certificat' },
     { val: 'ordonnance', label: 'Ordonnance' },
-    { val: 'imagerie', label: 'Imagerie' },
-    { val: 'compte_rendu', label: 'Compte rendu' },
     { val: 'autre', label: 'Autre' },
   ];
   readonly ROLES = [

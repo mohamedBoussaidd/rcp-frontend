@@ -2,6 +2,31 @@
   display: block;
 }
 
+/* Bandeau focus « non-remplis » (depuis le dashboard) */
+.ss-focus-banner {
+  display: flex; align-items: center; gap: 8px;
+  margin-bottom: 12px; padding: 10px 14px;
+  border-radius: 10px;
+  background: var(--warn-bg); border: 1px solid var(--warn-bd); color: var(--warn);
+  font-size: 13.5px;
+  mat-icon { font-size: 18px; width: 18px; height: 18px; }
+}
+.ss-row--manquant { background: var(--warn-bg); }
+.ss-row--manquant:hover { filter: brightness(0.98); }
+
+/* Sélecteur 7 / 14 jours */
+.ss-fenetre {
+  display: inline-flex; gap: 2px; padding: 2px;
+  background: var(--bg-2); border: 1px solid var(--border); border-radius: 999px;
+}
+.ss-fenetre__btn {
+  border: none; background: transparent; cursor: pointer;
+  padding: 4px 12px; border-radius: 999px;
+  font-size: 12px; font-weight: 600; color: var(--text-3);
+  &:hover { color: var(--text-1); }
+  &.is-active { background: var(--surface, #fff); color: var(--green-700); box-shadow: var(--shadow-sm); }
+}
+
 .ss {
   max-width: 1280px;
   margin: 0 auto;

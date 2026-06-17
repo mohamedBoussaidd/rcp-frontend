@@ -13,7 +13,7 @@
       <p class="ss-sub">
         {{ today | date:'EEEE d MMMM y' }}
         @if (isJoueur) {
-          · à remplir avant 11h00 · <span class="ss-pill">{{ joursRemplis() }} jours remplis sur 7</span>
+          · à remplir avant 11h00 · <span class="ss-pill">{{ joursRemplis() }} jours remplis sur {{ fenetreJours() }}</span>
         }
       </p>
     </div>
@@ -65,6 +65,13 @@
       </div>
     }
 
+    @if (triNonRemplis()) {
+      <div class="ss-focus-banner">
+        <mat-icon>filter_alt</mat-icon>
+        <span>Tri : joueurs n'ayant <strong>pas rempli</strong> le wellness aujourd'hui en tête.</span>
+      </div>
+    }
+
     <div class="ss-card ss-card--table">
       <table class="ss-table">
         <thead>
@@ -79,7 +86,7 @@
         </thead>
         <tbody>
           @for (l of lignesEquipe(); track l.joueurId) {
-            <tr class="ss-row" (click)="onSelectJoueur(l.joueurId)">
+            <tr class="ss-row" [class.ss-row--manquant]="triNonRemplis() && !l.remplitAuj" (click)="onSelectJoueur(l.joueurId)">
               <td>
                 <span class="ss-rowname">
                   <span class="ss-chip__avatar sm">{{ initiales(l.prenom, l.nom) }}</span>
@@ -271,9 +278,13 @@
         <!-- Graphe 7 jours -->
         <div class="ss-card">
           <div class="ss-card__head">
-            <h2 class="ss-card__title">7 derniers jours</h2>
-            <div class="ss-legend"><span class="ss-legend__bar"></span> Hooper /25 <span class="ss-legend__line"></span> tendance · RPE au point</div>
+            <h2 class="ss-card__title">{{ fenetreJours() }} derniers jours</h2>
+            <div class="ss-fenetre">
+              <button class="ss-fenetre__btn" [class.is-active]="fenetreJours() === 7"  (click)="setFenetre(7)">7 j</button>
+              <button class="ss-fenetre__btn" [class.is-active]="fenetreJours() === 14" (click)="setFenetre(14)">14 j</button>
+            </div>
           </div>
+          <div class="ss-legend"><span class="ss-legend__bar"></span> Hooper /25 <span class="ss-legend__line"></span> tendance · RPE au point</div>
 
           <div class="ss-chart">
             <div class="ss-chart__plot">
@@ -297,7 +308,7 @@
               @for (d of serie7j(); track d.date) {
                 @if (d.hooper != null) {
                   <span class="ss-chart__point"
-                        [style.left.%]="($index + 0.5) / 7 * 100"
+                        [style.left.%]="($index + 0.5) / serie7j().length * 100"
                         [style.bottom.%]="barH(d.hooper)">
                     <span class="ss-chart__val">{{ d.hooper }}@if (d.rpe != null) { <em>· RPE {{ d.rpe }}</em> }</span>
                   </span>
