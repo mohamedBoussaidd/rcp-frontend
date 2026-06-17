@@ -11,7 +11,7 @@ import { MatDialog } from '@angular/material/dialog';
 import { JoueurFormDialogComponent } from '../joueur/joueur-form-dialog/joueur-form-dialog.component';
 import { JoueurSupprimerDialogComponent } from '../joueur/joueur-supprimer-dialog/joueur-supprimer-dialog.component';
 import { PresenceDialogComponent } from '../performance/presence-dialog/presence-dialog.component';
-import { ApexChart, ApexAxisChartSeries, ApexXAxis, ApexStroke, ApexDataLabels, ApexTitleSubtitle, ApexTheme, ApexGrid, ApexYAxis, ChartComponent } from 'ng-apexcharts';
+import { ApexChart, ApexAxisChartSeries, ApexXAxis, ApexStroke, ApexDataLabels, ApexTitleSubtitle, ApexTheme, ApexGrid, ApexYAxis, ApexFill, ApexMarkers, ChartComponent } from 'ng-apexcharts';
 import { MatIcon } from '@angular/material/icon';
 import { FormsModule } from '@angular/forms';
 import { MatTable, MatColumnDef, MatHeaderCellDef, MatHeaderCell, MatCellDef, MatCell, MatHeaderRowDef, MatHeaderRow, MatRowDef, MatRow } from '@angular/material/table';
@@ -20,6 +20,7 @@ import { RouterLink } from '@angular/router';
 import { BadgeRisqueComponent } from '@shared/components/badge-risque/badge-risque.component';
 import { MatProgressBar } from '@angular/material/progress-bar';
 import { AuthService } from '@core/services/auth.service';
+import { DashboardPreparateurComponent } from './dashboard-preparateur/dashboard-preparateur.component';
 
 @Component({
   selector: 'app-dashboard',
@@ -32,6 +33,7 @@ import { AuthService } from '@core/services/auth.service';
     MatTable, MatColumnDef, MatHeaderCellDef, MatHeaderCell,
     MatCellDef, MatCell, MatHeaderRowDef, MatHeaderRow, MatRowDef, MatRow,
     MatPaginator,
+    DashboardPreparateurComponent,
   ]
 })
 export class DashboardComponent implements OnInit {
@@ -137,9 +139,11 @@ export class DashboardComponent implements OnInit {
     theme: ApexTheme;
     grid: ApexGrid;
     colors: string[];
+    fill: ApexFill;
+    markers: ApexMarkers;
   } = {
     series:     [{ name: 'Charge équipe (km)', data: [0, 0, 0, 0] }],
-    chart:      { type: 'line', height: 260, toolbar: { show: false }, background: 'transparent', fontFamily: 'Manrope, sans-serif' },
+    chart:      { type: 'area', height: 260, toolbar: { show: false }, zoom: { enabled: false }, background: 'transparent', fontFamily: 'Manrope, sans-serif' },
     xaxis:      { categories: ['S-4', 'S-3', 'S-2', 'S-1'], labels: { style: { colors: '#64748B', fontSize: '12px' } } },
     yaxis:      { labels: { style: { colors: '#64748B', fontSize: '12px' } } },
     stroke:     { curve: 'smooth', width: 2.5 },
@@ -148,6 +152,8 @@ export class DashboardComponent implements OnInit {
     theme:      { mode: 'light' },
     grid:       { borderColor: '#E5E9EF', strokeDashArray: 3 },
     colors:     ['#15803D'],
+    fill:       { type: 'gradient', gradient: { shadeIntensity: 1, opacityFrom: 0.5, opacityTo: 0.04, stops: [0, 100] } },
+    markers:    { size: 4, strokeWidth: 0, hover: { size: 6 } },
   };
 
   private predictionService = inject(PredictionService);
