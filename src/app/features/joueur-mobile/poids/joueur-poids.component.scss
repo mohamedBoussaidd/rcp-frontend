@@ -28,10 +28,18 @@
 /* ── Courbe ── */
 .pds-title { font-size: 13px; font-weight: 700; color: var(--text-2); margin: 0 0 14px; }
 
-.pds-chartwrap { position: relative; height: 160px; width: 100%; }
+.pds-chartwrap {
+  position: relative;
+  height: 160px;
+  width: 100%;
+  touch-action: none; /* permet le scrub sans scroller la page */
+  cursor: crosshair;
+}
 
 .pds-chart {
   width: 100%; height: 100%; display: block; overflow: visible;
+
+  &__area { fill: url(#pdsFill); }
 
   &__line {
     fill: none;
@@ -47,6 +55,18 @@
   }
 }
 
+/* Ligne-guide verticale du curseur. */
+.pds-guide {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1.5px;
+  background: var(--green-600);
+  opacity: 0.35;
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
 .pds-dot {
   position: absolute;
   width: 9px; height: 9px;
@@ -54,31 +74,67 @@
   background: var(--surface);
   border: 2.5px solid var(--green-600);
   transform: translate(-50%, -50%);
+  pointer-events: none;
+  transition: width 100ms, height 100ms;
+
+  &.is-sel {
+    width: 14px; height: 14px;
+    box-shadow: 0 0 0 4px rgba(21, 128, 61, 0.15);
+  }
+}
+
+/* Infobulle de survol. */
+.pds-tip {
+  position: absolute;
+  top: 38px;
+  transform: translateX(-50%);
+  z-index: 5;
+  min-width: 130px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-md);
+  padding: 8px 11px;
+  pointer-events: none;
+
+  &__date {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--text-4);
+    text-transform: capitalize;
+    margin-bottom: 5px;
+  }
+
+  &__line {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    font-size: 12px;
+
+    & + & { margin-top: 3px; }
+    &--ecart { margin-top: 5px; padding-top: 5px; border-top: 1px solid var(--border); }
+  }
+
+  &__lab { font-weight: 600; color: var(--text-3); }
+
+  &__val {
+    font-family: var(--font-num);
+    font-variant-numeric: tabular-nums;
+    font-weight: 700;
+    color: var(--text);
+
+    &.ok { color: var(--ok); }
+    &.moyen { color: var(--warn); }
+    &.bad { color: var(--bad); }
+  }
 }
 
 .pds-legend {
-  display: flex; align-items: center; gap: 6px;
-  font-size: 11.5px; color: var(--text-3); margin: 14px 0 0;
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  font-size: 11px; color: var(--text-4); margin: 14px 0 0;
 
+  &__hint { font-weight: 600; }
+  &__cibleItem { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
   &__cible { width: 16px; height: 0; border-top: 2px dashed var(--text-4); display: inline-block; }
-}
-
-/* ── Liste ── */
-.pds-list {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--r-xl);
-  box-shadow: var(--shadow-sm);
-  overflow: hidden;
-}
-
-.pds-row {
-  display: flex; justify-content: space-between; align-items: center;
-  padding: 13px 16px;
-  font-size: 14px;
-  border-bottom: 1px solid var(--border);
-  &:last-child { border-bottom: 0; }
-
-  &__date { color: var(--text-2); }
-  &__poids { font-weight: 700; color: var(--text); font-variant-numeric: tabular-nums; }
 }

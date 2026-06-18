@@ -6,6 +6,10 @@
 
 /* Conteneur plein écran : hauteur dynamique (barre d'URL mobile) + encoches. */
 .pwa {
+  /* Hauteur de la barre de navigation basse fixe (partagée avec les barres
+     d'action fixes des écrans de saisie). */
+  --pwa-nav-h: calc(62px + env(safe-area-inset-bottom));
+
   min-height: 100dvh;
   background: var(--bg);
   color: var(--text);

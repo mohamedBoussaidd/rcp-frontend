@@ -5,15 +5,15 @@ import { AuthService } from '@core/services/auth.service';
 import { JoueurStore } from './joueur.store';
 import { OfflineQueueService } from './offline-queue.service';
 
-/** Onglet actif de la barre de navigation basse (PWA). */
+/** Onglet mis en avant dans la barre de navigation basse (PWA). */
 type OngletNav = 'accueil' | 'historique' | 'conseils' | 'sante' | null;
 
 /**
  * Coquille mobile de l'espace joueur (PWA). Plein écran, sans le chrome desktop
  * (la sidebar staff est masquée par AppComponent sur les routes /joueur).
- * Top bar contextuelle (retour + titre) sur les écrans secondaires ; barre de
- * navigation basse (Accueil · Historique · FAB Ressenti · Conseils · Santé) sur
- * les écrans racines.
+ * Barre de navigation basse (Accueil · Historique · FAB Ressenti · Conseils ·
+ * Santé) PERSISTANTE sur tous les écrans ; top bar contextuelle (retour + titre)
+ * sur les écrans secondaires uniquement.
  */
 @Component({
   selector: 'app-joueur-layout',
@@ -34,34 +34,39 @@ export class JoueurLayoutComponent implements OnInit {
   readonly estHome = signal(true);
   /** L'écran rend son propre en-tête → on masque le topbar contextuel. */
   readonly ownHeader = signal(false);
-  /** Onglet de nav basse actif (null = écran secondaire, nav masquée). */
-  readonly onglet = signal<OngletNav>('accueil');
+  /** Écran racine (un onglet de nav) → pas de bouton retour. */
+  readonly estRacine = signal(true);
+  /** Onglet de nav basse mis en avant (null = aucun, ex. wellness/rpe). */
+  readonly ongletActif = signal<OngletNav>('accueil');
 
   ngOnInit(): void {
     this.store.ensureLoaded();
-    this.majTopbar();
+    this.maj();
     this.router.events
       .pipe(filter(e => e instanceof NavigationEnd))
-      .subscribe(() => this.majTopbar());
+      .subscribe(() => this.maj());
   }
 
-  private majTopbar(): void {
+  private maj(): void {
     let r = this.route;
     while (r.firstChild) r = r.firstChild;
     const data = r.snapshot.data;
     this.titre.set(data['title'] ?? '');
     this.estHome.set(!!data['home']);
     this.ownHeader.set(!!data['ownHeader']);
-    this.onglet.set(this.ongletDeUrl());
+
+    const url = this.router.url.split('?')[0].replace(/\/$/, '');
+    this.estRacine.set(['/joueur', '/joueur/historique', '/joueur/conseils', '/joueur/sante'].includes(url));
+    this.ongletActif.set(this.ongletDeUrl(url));
   }
 
-  /** Déduit l'onglet de nav basse depuis l'URL (null hors écran racine). */
-  private ongletDeUrl(): OngletNav {
-    const url = this.router.url.split('?')[0].replace(/\/$/, '');
+  /** Onglet mis en avant selon la section de l'URL. */
+  private ongletDeUrl(url: string): OngletNav {
     if (url === '/joueur') return 'accueil';
-    if (url === '/joueur/historique') return 'historique';
-    if (url === '/joueur/conseils') return 'conseils';
-    if (url === '/joueur/sante') return 'sante';
+    if (url.startsWith('/joueur/historique')) return 'historique';
+    if (url.startsWith('/joueur/conseils')) return 'conseils';
+    if (['/joueur/sante', '/joueur/blessures', '/joueur/poids', '/joueur/documents', '/joueur/seances']
+      .some(p => url.startsWith(p))) return 'sante';
     return null;
   }
 

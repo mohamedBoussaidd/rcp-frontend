@@ -27,34 +27,64 @@
     }
   </div>
 
-  <!-- Courbe -->
+  <!-- Courbe interactive -->
   <section class="pwa-card pwa-rise">
     <p class="pds-title">Évolution ({{ points().length }} dernières pesées)</p>
-    <div class="pds-chartwrap">
+
+    <!-- Infobulle (poids du moment / cible / écart) -->
+    @if (sel(); as s) {
+      <div class="pds-tip" [style.left.%]="tipX()">
+        <div class="pds-tip__date">{{ s.date | date:'d MMM yyyy':'':'fr' }}</div>
+        <div class="pds-tip__line">
+          <span class="pds-tip__lab">Poids</span>
+          <span class="pds-tip__val">{{ s.poids | number:'1.1-1' }} kg</span>
+        </div>
+        @if (s.cible !== null) {
+          <div class="pds-tip__line">
+            <span class="pds-tip__lab">Poids de forme</span>
+            <span class="pds-tip__val">{{ s.cible | number:'1.1-1' }} kg</span>
+          </div>
+          <div class="pds-tip__line pds-tip__line--ecart">
+            <span class="pds-tip__lab">Écart</span>
+            <span class="pds-tip__val" [class]="ecartClasse(s.ecart)">{{ s.ecart! > 0 ? '+' : '' }}{{ s.ecart | number:'1.1-1' }} kg</span>
+          </div>
+        }
+      </div>
+    }
+
+    <div class="pds-chartwrap" (pointermove)="scruter($event)" (pointerdown)="scruter($event)" (pointerleave)="finScrutation()">
       <svg class="pds-chart" viewBox="0 0 100 100" preserveAspectRatio="none">
+        <defs>
+          <linearGradient id="pdsFill" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#1A9C4D" stop-opacity="0.28" />
+            <stop offset="100%" stop-color="#1A9C4D" stop-opacity="0" />
+          </linearGradient>
+        </defs>
+        @if (aire()) {
+          <polygon class="pds-chart__area" [attr.points]="aire()" />
+        }
         @if (cibleY() !== null) {
           <line class="pds-chart__cible" x1="0" [attr.y1]="cibleY()" x2="100" [attr.y2]="cibleY()"
                 vector-effect="non-scaling-stroke" />
         }
         <polyline class="pds-chart__line" [attr.points]="polyline()" vector-effect="non-scaling-stroke" />
       </svg>
-      @for (p of points(); track p.date) {
-        <span class="pds-dot" [style.left.%]="p.x" [style.top.%]="p.y"></span>
+
+      <!-- Ligne-guide verticale sur le point sélectionné -->
+      @if (sel(); as s) {
+        <span class="pds-guide" [style.left.%]="s.x"></span>
+      }
+
+      @for (p of points(); track p.date; let i = $index) {
+        <span class="pds-dot" [class.is-sel]="i === selIdx()" [style.left.%]="p.x" [style.top.%]="p.y"></span>
       }
     </div>
-    @if (cible() !== null) {
-      <p class="pds-legend"><i class="pds-legend__cible"></i> Poids de forme cible</p>
-    }
-  </section>
 
-  <!-- Liste -->
-  <p class="pwa-section-title">Détail</p>
-  <div class="pds-list pwa-rise">
-    @for (p of store.peseesTriees(); track p.date) {
-      <div class="pds-row">
-        <span class="pds-row__date">{{ p.date | date:'d MMM yyyy' }}</span>
-        <span class="pds-row__poids">{{ p.poids | number:'1.1-1' }} kg</span>
-      </div>
-    }
-  </div>
+    <div class="pds-legend">
+      <span class="pds-legend__hint">Glisse sur la courbe pour voir chaque pesée</span>
+      @if (cible() !== null) {
+        <span class="pds-legend__cibleItem"><i class="pds-legend__cible"></i> Poids de forme</span>
+      }
+    </div>
+  </section>
 }

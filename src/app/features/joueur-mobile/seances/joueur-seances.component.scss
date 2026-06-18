@@ -57,8 +57,97 @@
 
 .se-exos { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; counter-reset: exo; }
 .se-exos li {
-  display: flex; flex-direction: column; gap: 2px;
+  display: flex; align-items: center; gap: 10px;
   padding: 10px 12px; background: var(--surface-2); border-radius: var(--r-md);
 }
+.se-exo__body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
 .se-exo__nom { font-size: 14px; font-weight: 600; color: var(--text); }
 .se-exo__meta { font-size: 12px; color: var(--text-3); }
+
+.se-exo__play {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border: 1px solid var(--green-600);
+  background: var(--green-50);
+  color: var(--green-700);
+  font-family: var(--font);
+  font-size: 11.5px;
+  font-weight: 700;
+  padding: 6px 11px;
+  border-radius: var(--r-pill);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 90ms var(--ease-out);
+
+  svg { width: 13px; height: 13px; }
+  &:active { transform: scale(0.94); }
+}
+
+/* ── Fenêtre d'animation tactique ── */
+.se-anim {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  background: rgba(11, 18, 32, 0.72);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  animation: se-anim-fade 180ms var(--ease-out);
+
+  &__sheet {
+    width: 100%;
+    max-width: 520px;
+    background: var(--surface);
+    border-radius: var(--r-2xl);
+    box-shadow: var(--shadow-xl);
+    overflow: hidden;
+    animation: se-anim-pop 220ms var(--ease-out);
+  }
+
+  &__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  &__title { font-size: 15px; font-weight: 800; color: var(--text); min-width: 0; }
+
+  &__close {
+    flex: none;
+    width: 32px; height: 32px;
+    border: 0;
+    background: var(--surface-3);
+    color: var(--text-2);
+    border-radius: 50%;
+    font-size: 14px;
+    cursor: pointer;
+  }
+
+  &__stage {
+    display: flex;
+    justify-content: center;
+    padding: 16px;
+    background: var(--surface-2);
+  }
+
+  &__hint {
+    margin: 0;
+    padding: 0 16px 16px;
+    text-align: center;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-3);
+  }
+}
+
+@keyframes se-anim-fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes se-anim-pop {
+  from { opacity: 0; transform: scale(0.94); }
+  to { opacity: 1; transform: scale(1); }
+}

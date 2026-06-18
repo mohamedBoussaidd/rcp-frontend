@@ -1,7 +1,7 @@
 <div class="pwa">
   @if (!estHome() && !ownHeader()) {
     <header class="pwa-topbar">
-      @if (onglet() === null) {
+      @if (!estRacine()) {
         <button class="pwa-topbar__back" type="button" (click)="retour()" aria-label="Retour">
           <span aria-hidden="true">‹</span>
         </button>
@@ -17,7 +17,7 @@
     <div class="pwa-offline-bar pwa-offline-bar--sync">↻ {{ offline.nbPending() }} saisie(s) en cours d'envoi…</div>
   }
 
-  <main class="pwa-content" [class.pwa-content--bare]="estHome() || ownHeader()" [class.pwa-content--nav]="onglet() !== null">
+  <main class="pwa-content" [class.pwa-content--bare]="estHome() || ownHeader()" [class.pwa-content--nav]="!store.nonLie()">
     @if (store.nonLie()) {
       <div class="pwa-nonlie">
         <div class="pwa-nonlie__emoji">🔗</div>
@@ -29,15 +29,15 @@
     }
   </main>
 
-  <!-- Barre de navigation basse (écrans racines uniquement) -->
-  @if (onglet() !== null && !store.nonLie()) {
+  <!-- Barre de navigation basse persistante -->
+  @if (!store.nonLie()) {
     <nav class="pwa-nav">
-      <button type="button" class="pwa-nav__item" [class.is-active]="onglet() === 'accueil'" (click)="aller('accueil')">
+      <button type="button" class="pwa-nav__item" [class.is-active]="ongletActif() === 'accueil'" (click)="aller('accueil')">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5V21a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>
         <span>Accueil</span>
       </button>
 
-      <button type="button" class="pwa-nav__item" [class.is-active]="onglet() === 'historique'" (click)="aller('historique')">
+      <button type="button" class="pwa-nav__item" [class.is-active]="ongletActif() === 'historique'" (click)="aller('historique')">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m7 14 3-4 3 3 4-6"/></svg>
         <span>Historique</span>
       </button>
@@ -48,13 +48,13 @@
         </button>
       </div>
 
-      <button type="button" class="pwa-nav__item" [class.is-active]="onglet() === 'conseils'" (click)="aller('conseils')">
+      <button type="button" class="pwa-nav__item" [class.is-active]="ongletActif() === 'conseils'" (click)="aller('conseils')">
         @if (store.conseils().length > 0) { <span class="pwa-nav__dot"></span> }
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.4 8.4 0 0 1-9 8 9 9 0 0 1-3.4-.7L3 20l1.3-4A8.4 8.4 0 0 1 12 3a8.4 8.4 0 0 1 9 8.5z"/></svg>
         <span>Conseils</span>
       </button>
 
-      <button type="button" class="pwa-nav__item" [class.is-active]="onglet() === 'sante'" (click)="aller('sante')">
+      <button type="button" class="pwa-nav__item" [class.is-active]="ongletActif() === 'sante'" (click)="aller('sante')">
         @if (store.blessureActive()) { <span class="pwa-nav__dot"></span> }
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-4.5-9.5-9A5 5 0 0 1 12 6a5 5 0 0 1 9.5 6C19 16.5 12 21 12 21z"/></svg>
         <span>Santé</span>
