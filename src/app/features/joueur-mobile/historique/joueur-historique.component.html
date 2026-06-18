@@ -1,56 +1,108 @@
-@if (joursRemplis() === 0) {
-  <div class="pwa-empty pwa-rise">
-    <div class="histo-empty-emoji">📭</div>
-    Pas encore de données cette semaine.<br>Remplis ton ressenti du jour !
+<!-- Onglets -->
+<div class="histo-tabs pwa-rise">
+  <button type="button" class="histo-tab" [class.is-active]="tab() === 'bienetre'" (click)="setTab('bienetre')">Bien-être</button>
+  <button type="button" class="histo-tab" [class.is-active]="tab() === 'charge'" (click)="setTab('charge')">Charge / RPE</button>
+</div>
+
+@if (joursRemplis() === 0 && chargeMax() === 0) {
+  <div class="histo-empty pwa-rise">
+    <div class="histo-empty__ic">
+      <svg viewBox="0 0 24 24" fill="none" stroke="var(--text-4)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m7 14 3-4 3 3 4-6"/></svg>
+    </div>
+    <div class="histo-empty__t">Pas encore de données</div>
+    <div class="histo-empty__s">Remplis ton ressenti du jour pour suivre ta forme.</div>
   </div>
 } @else {
-  <!-- Synthèse 7 jours -->
-  <div class="histo-kpis pwa-rise">
-    <div class="histo-kpi">
-      <span class="histo-kpi__val">{{ hooperMoyen() ?? '—' }}<small>/25</small></span>
-      <span class="histo-kpi__lab">Hooper moyen</span>
-    </div>
-    <div class="histo-kpi">
-      <span class="histo-kpi__val">{{ chargeCumulee() }}</span>
-      <span class="histo-kpi__lab">Charge 7 j</span>
-    </div>
-    <div class="histo-kpi">
-      <span class="histo-kpi__val">{{ joursRemplis() }}<small>/7</small></span>
-      <span class="histo-kpi__lab">Jours remplis</span>
-    </div>
-  </div>
 
-  <!-- Graphe 7 jours : barre Hooper + effort sRPE -->
-  <section class="pwa-card pwa-rise">
-    <p class="histo-title">7 derniers jours</p>
-    <div class="histo-chart">
-      @for (j of serie(); track j.date) {
-        <div class="histo-col" [class.is-today]="j.aujourdhui">
-          <div class="histo-col__track">
-            @if (j.rpe !== null) {
-              <span class="histo-col__rpe" [style.bottom.%]="j.rpe * 9">{{ j.rpe }}</span>
-            }
-            <div class="histo-col__bar" [class]="classe(j.hooper)" [style.height.%]="barH(j.hooper)"></div>
-          </div>
-          <span class="histo-col__day">{{ j.jour }}</span>
+  <!-- ════════ BIEN-ÊTRE ════════ -->
+  @if (tab() === 'bienetre') {
+    <div class="histo-pane pwa-rise">
+      <section class="pwa-card">
+        <div class="histo-card-head">
+          <div class="histo-card-title">Ressenti Hooper</div>
+          <div class="histo-card-val"><span class="histo-card-val__n">{{ hooperMoyen() ?? '—' }}</span><span class="histo-card-val__u">/25</span></div>
         </div>
+        <div class="histo-card-sub">7 derniers jours · plus bas = meilleure forme</div>
+
+        <div class="histo-chart">
+          @for (j of serie(); track j.date) {
+            <div class="histo-col" [class.is-today]="j.aujourdhui">
+              <div class="histo-col__track">
+                @if (j.rpe !== null) {
+                  <span class="histo-col__rpe" [style.bottom.%]="j.rpe * 9">{{ j.rpe }}</span>
+                }
+                <div class="histo-col__bar" [class]="classe(j.hooper)" [style.height.%]="barH(j.hooper)"></div>
+              </div>
+              <span class="histo-col__day">{{ j.jour }}</span>
+            </div>
+          }
+        </div>
+        <div class="histo-legend">
+          <span><i class="dot ok"></i> Bon</span>
+          <span><i class="dot moyen"></i> Correct</span>
+          <span><i class="dot bad"></i> Vigilance</span>
+          <span><i class="dot rpe"></i> Effort /10</span>
+        </div>
+      </section>
+
+      <div class="histo-stats">
+        <div class="pwa-card histo-stat">
+          <div class="histo-stat__lab">Sommeil moyen</div>
+          <div class="histo-stat__val">{{ sommeilMoyen() ?? '—' }}<small>/5</small></div>
+        </div>
+        <div class="pwa-card histo-stat">
+          <div class="histo-stat__lab">Fatigue moyenne</div>
+          <div class="histo-stat__val histo-stat__val--warn">{{ fatigueMoyen() ?? '—' }}<small>/5</small></div>
+        </div>
+      </div>
+
+      @if (derniereGene(); as g) {
+        <section class="pwa-card histo-gene">
+          <span class="histo-gene__ic">
+            <svg viewBox="0 0 24 24" fill="none" stroke="var(--bad)" stroke-width="2" stroke-linecap="round"><path d="M12 9v4m0 4h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg>
+          </span>
+          <div class="histo-gene__body">
+            <span class="histo-gene__title">Dernière gêne signalée</span>
+            <span class="histo-gene__detail">{{ g.geneZone }} · intensité {{ g.geneIntensite }}/5</span>
+          </div>
+        </section>
       }
     </div>
-    <div class="histo-legend">
-      <span><i class="dot ok"></i> Bon</span>
-      <span><i class="dot moyen"></i> Correct</span>
-      <span><i class="dot bad"></i> Vigilance</span>
-      <span><i class="dot rpe"></i> Effort /10</span>
-    </div>
-  </section>
+  }
 
-  @if (derniereGene(); as g) {
-    <section class="pwa-card histo-gene pwa-rise">
-      <span class="histo-gene__ic">🩹</span>
-      <div class="histo-gene__body">
-        <span class="histo-gene__title">Dernière gêne signalée</span>
-        <span class="histo-gene__detail">{{ g.geneZone }} · intensité {{ g.geneIntensite }}/5</span>
+  <!-- ════════ CHARGE / RPE ════════ -->
+  @if (tab() === 'charge') {
+    <div class="histo-pane pwa-rise">
+      <section class="pwa-card">
+        <div class="histo-card-head">
+          <div class="histo-card-title">Charge d'entraînement</div>
+          <div class="histo-card-val"><span class="histo-card-val__n">{{ chargeCumulee() }}</span><span class="histo-card-val__u">UA</span></div>
+        </div>
+        <div class="histo-card-sub">7 derniers jours · RPE × durée</div>
+
+        <div class="histo-chart">
+          @for (p of chargeSerie(); track $index) {
+            <div class="histo-col" [class.is-today]="p.aujourdhui">
+              <div class="histo-col__track">
+                @if (p.charge > 0) { <span class="histo-col__rpe histo-col__rpe--charge" [style.bottom.%]="p.h">{{ p.charge }}</span> }
+                <div class="histo-col__bar histo-col__bar--charge" [style.height.%]="p.h"></div>
+              </div>
+              <span class="histo-col__day">{{ p.jour }}</span>
+            </div>
+          }
+        </div>
+      </section>
+
+      <div class="histo-stats">
+        <div class="pwa-card histo-stat">
+          <div class="histo-stat__lab">Charge cumulée</div>
+          <div class="histo-stat__val">{{ chargeCumulee() }}<small>UA</small></div>
+        </div>
+        <div class="pwa-card histo-stat">
+          <div class="histo-stat__lab">Pic journalier</div>
+          <div class="histo-stat__val">{{ chargeMax() }}<small>UA</small></div>
+        </div>
       </div>
-    </section>
+    </div>
   }
 }

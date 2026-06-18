@@ -1,0 +1,59 @@
+<!-- En-tête : titre + avatar -->
+<header class="sante-head pwa-rise">
+  <h1 class="sante-head__title">Mon corps &amp; santé</h1>
+  <button type="button" class="sante-avatar" (click)="deconnexion()" aria-label="Se déconnecter">{{ initiales() }}</button>
+</header>
+
+<div class="sante-list pwa-rise">
+  <!-- Blessures -->
+  <a class="sante-row" routerLink="/joueur/blessures">
+    <span class="sante-row__icon sante-row__icon--bad">
+      <svg viewBox="0 0 24 24" fill="none" stroke="var(--bad)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 2h6v3a2 2 0 0 1 2 2v3l3 1v6l-3-1v3H7v-3l-3 1v-6l3-1V7a2 2 0 0 1 2-2z"/></svg>
+    </span>
+    <span class="sante-row__body">
+      <span class="sante-row__title">Mes blessures</span>
+      <span class="sante-row__sub">{{ blessureResume() }}</span>
+    </span>
+    @if (store.blessureActive()) {
+      <span class="sante-row__badge">1 ACTIVE</span>
+    } @else {
+      <svg class="sante-chev" viewBox="0 0 24 24" fill="none" stroke="var(--text-4)" stroke-width="2.4" stroke-linecap="round"><path d="m9 18 6-6-6-6"/></svg>
+    }
+  </a>
+
+  <!-- Poids -->
+  <a class="sante-row" routerLink="/joueur/poids">
+    <span class="sante-row__icon sante-row__icon--ok">
+      <svg viewBox="0 0 24 24" fill="none" stroke="var(--green-600)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 12 8.5 8.5"/></svg>
+    </span>
+    <span class="sante-row__body">
+      <span class="sante-row__title">Mon poids</span>
+      <span class="sante-row__sub sante-row__sub--mono">{{ poidsResume() }}</span>
+    </span>
+    <svg class="sante-chev" viewBox="0 0 24 24" fill="none" stroke="var(--text-4)" stroke-width="2.4" stroke-linecap="round"><path d="m9 18 6-6-6-6"/></svg>
+  </a>
+
+  <!-- Documents -->
+  <a class="sante-row" routerLink="/joueur/documents">
+    <span class="sante-row__icon sante-row__icon--info">
+      <svg viewBox="0 0 24 24" fill="none" stroke="var(--info)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>
+    </span>
+    <span class="sante-row__body">
+      <span class="sante-row__title">Documents médicaux</span>
+      <span class="sante-row__sub">{{ nbDocuments() }} fichier{{ nbDocuments() > 1 ? 's' : '' }} · ordonnances, IRM…</span>
+    </span>
+    <svg class="sante-chev" viewBox="0 0 24 24" fill="none" stroke="var(--text-4)" stroke-width="2.4" stroke-linecap="round"><path d="m9 18 6-6-6-6"/></svg>
+  </a>
+
+  <!-- Séances -->
+  <a class="sante-row" routerLink="/joueur/seances">
+    <span class="sante-row__icon">
+      <svg viewBox="0 0 24 24" fill="none" stroke="var(--text-2)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 4 6v6c0 5 3.5 8 8 10 4.5-2 8-5 8-10V6z"/></svg>
+    </span>
+    <span class="sante-row__body">
+      <span class="sante-row__title">Mes séances</span>
+      <span class="sante-row__sub">Programme &amp; charge d'entraînement</span>
+    </span>
+    <svg class="sante-chev" viewBox="0 0 24 24" fill="none" stroke="var(--text-4)" stroke-width="2.4" stroke-linecap="round"><path d="m9 18 6-6-6-6"/></svg>
+  </a>
+</div>

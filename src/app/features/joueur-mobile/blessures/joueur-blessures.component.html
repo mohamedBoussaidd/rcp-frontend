@@ -1,16 +1,22 @@
 @if (store.blessuresTriees().length === 0) {
-  <div class="pwa-empty pwa-rise">
-    <div class="bl-empty-emoji">💪</div>
-    Aucune blessure enregistrée.<br>Prends soin de toi !
+  <div class="bl-empty pwa-rise">
+    <div class="bl-empty__ic">
+      <svg viewBox="0 0 24 24" fill="none" stroke="var(--green-600)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 2h6v3a2 2 0 0 1 2 2v3l3 1v6l-3-1v3H7v-3l-3 1v-6l3-1V7a2 2 0 0 1 2-2z"/></svg>
+    </div>
+    <div class="bl-empty__t">Aucune blessure enregistrée</div>
+    <div class="bl-empty__s">Prends soin de toi !</div>
   </div>
 } @else {
   <div class="bl-list">
     @for (b of store.blessuresTriees(); track b.id) {
       <article class="pwa-card bl-card pwa-rise" [class.is-open]="ouvert() === b.id">
         <button type="button" class="bl-card__head" (click)="basculer(b)">
+          <span class="bl-card__icon" [class.bl-card__icon--ok]="b.statut === 'RETABLI'">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 2h6v3a2 2 0 0 1 2 2v3l3 1v6l-3-1v3H7v-3l-3 1v-6l3-1V7a2 2 0 0 1 2-2z"/></svg>
+          </span>
           <div class="bl-card__main">
             <span class="bl-card__title">{{ joli(b.typeBlessure) }}@if (b.zoneCorporelle) { · {{ joli(b.zoneCorporelle) }} }</span>
-            <span class="bl-card__date">Depuis le {{ b.dateBlessure | date:'d MMM yyyy' }}</span>
+            <span class="bl-card__date">Depuis le {{ b.dateBlessure | date:'d MMM yyyy':'':'fr' }}</span>
           </div>
           <span class="bl-badge" [class]="statutClasse(b.statut)">{{ statutLabel(b.statut) }}</span>
         </button>

@@ -1,9 +1,10 @@
 import { Component, OnInit, computed, effect, inject, signal } from '@angular/core';
 import { Router, ActivatedRoute } from '@angular/router';
+import { FormsModule } from '@angular/forms';
 import { BodyMapComponent } from './body-map.component';
 import { JoueurStore, HooperKey, GeneForm } from '../joueur.store';
 
-interface HooperItem {
+interface ScaleItem {
   key: HooperKey;
   label: string;
   emoji: string;
@@ -11,19 +12,22 @@ interface HooperItem {
   haut: string;  // sens de la valeur 5
 }
 
+interface MoodItem { val: number; label: string; mouth: string; }
 interface MomentGene { val: string; label: string; }
 
 /**
- * Saisie du ressenti quotidien (Hooper 1..5, un écran) + étape gêne optionnelle
- * (mannequin). Upsert 1/jour : si le ressenti est déjà validé, le Hooper se
- * verrouille (valeurs renvoyées telles quelles) et seule la gêne reste éditable.
+ * Saisie du ressenti quotidien — refonte « Claude Design ».
+ * Onglet « Ressenti » : humeur (visages) + 4 échelles Hooper (1..5) + commentaire.
+ * Onglet « Mode gêne » : mannequin + intensité + moment.
+ * Upsert 1/jour : si le ressenti est déjà validé, le Hooper se verrouille et
+ * seule la gêne reste éditable.
  */
 @Component({
   selector: 'app-joueur-wellness',
   standalone: true,
   templateUrl: './joueur-wellness.component.html',
   styleUrl: './joueur-wellness.component.scss',
-  imports: [BodyMapComponent],
+  imports: [BodyMapComponent, FormsModule],
 })
 export class JoueurWellnessComponent implements OnInit {
 
@@ -32,18 +36,32 @@ export class JoueurWellnessComponent implements OnInit {
   private route = inject(ActivatedRoute);
 
   readonly NOTES = [1, 2, 3, 4, 5];
-  readonly HOOPER: HooperItem[] = [
-    { key: 'sommeil', label: 'Qualité du sommeil', emoji: '😴', bas: 'Excellente', haut: 'Très mauvaise' },
-    { key: 'fatigue', label: 'Fatigue générale',   emoji: '🔋', bas: 'Très frais', haut: 'Épuisé' },
-    { key: 'douleur', label: 'Douleurs musculaires', emoji: '💪', bas: 'Aucune',    haut: 'Très fortes' },
-    { key: 'stress',  label: 'Stress',             emoji: '🧠', bas: 'Aucun',      haut: 'Important' },
-    { key: 'humeur',  label: 'Humeur',             emoji: '🙂', bas: 'Excellente', haut: 'Très mauvaise' },
+
+  /** Humeur : 5 visages, valeur 1 (excellente) → 5 (très mauvaise). */
+  readonly MOODS: MoodItem[] = [
+    { val: 1, label: 'Top',     mouth: 'M34 58 Q50 72 66 58' },
+    { val: 2, label: 'Bien',    mouth: 'M36 60 Q50 68 64 60' },
+    { val: 3, label: 'Moyen',   mouth: 'M36 61 L64 61' },
+    { val: 4, label: 'Bof',     mouth: 'M36 64 Q50 58 64 64' },
+    { val: 5, label: 'Mauvais', mouth: 'M34 66 Q50 52 66 66' },
   ];
+
+  /** Les 4 échelles Hooper hors humeur. */
+  readonly SCALES: ScaleItem[] = [
+    { key: 'sommeil', label: 'Qualité du sommeil',  emoji: '😴', bas: 'Excellente', haut: 'Très mauvaise' },
+    { key: 'fatigue', label: 'Fatigue générale',    emoji: '🔋', bas: 'Très frais',  haut: 'Épuisé' },
+    { key: 'douleur', label: 'Douleurs musculaires', emoji: '💪', bas: 'Aucune',     haut: 'Très fortes' },
+    { key: 'stress',  label: 'Stress',              emoji: '🧠', bas: 'Aucun',       haut: 'Important' },
+  ];
+
   readonly MOMENTS: MomentGene[] = [
     { val: 'EFFORT', label: "À l'effort" },
     { val: 'APRES',  label: 'Juste après' },
     { val: 'REPOS',  label: 'Au repos' },
   ];
+
+  /** Onglet actif. */
+  readonly tab = signal<'ressenti' | 'gene'>('ressenti');
 
   // Brouillons
   readonly wForm = signal<Record<HooperKey, number>>({ sommeil: 3, fatigue: 3, douleur: 3, stress: 3, humeur: 3 });
@@ -75,7 +93,12 @@ export class JoueurWellnessComponent implements OnInit {
   }
 
   ngOnInit(): void {
-    if (this.route.snapshot.queryParamMap.get('gene')) this.geneActive.set(true);
+    if (this.route.snapshot.queryParamMap.get('gene')) { this.geneActive.set(true); this.tab.set('gene'); }
+  }
+
+  setTab(t: 'ressenti' | 'gene'): void {
+    this.tab.set(t);
+    if (t === 'gene') this.geneActive.set(true);
   }
 
   setNote(key: HooperKey, val: number): void {
@@ -84,16 +107,19 @@ export class JoueurWellnessComponent implements OnInit {
   }
   noteOf(key: HooperKey): number { return this.wForm()[key]; }
 
-  toggleGene(actif: boolean): void {
-    this.geneActive.set(actif);
-    if (actif && !this.gForm().zone) { /* l'utilisateur choisit la zone sur le mannequin */ }
+  setHumeur(val: number): void {
+    if (this.verrouille()) return;
+    this.wForm.update(f => ({ ...f, humeur: val }));
   }
+
   setZone(zone: string): void { this.gForm.update(g => ({ ...g, zone })); }
   setIntensite(v: number): void { this.gForm.update(g => ({ ...g, intensite: v })); }
   setMoment(m: string): void { this.gForm.update(g => ({ ...g, moment: m })); }
 
-  /** Couleur d'une note d'intensité (vert → rouge) pour le bouton actif. */
-  couleurIntensite(v: number): string {
+  onComment(v: string): void { this.commentaire.set(v); }
+
+  /** Couleur d'une note (vert → rouge) : plus haut = plus mauvais. */
+  couleurNote(v: number): string {
     const palette = ['', '#15803D', '#65A30D', '#CA8A04', '#EA580C', '#B91C1C'];
     return palette[v] ?? '#B91C1C';
   }

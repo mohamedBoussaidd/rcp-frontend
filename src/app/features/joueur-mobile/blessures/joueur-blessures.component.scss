@@ -1,6 +1,20 @@
 :host { display: block; }
 
-.bl-empty-emoji { font-size: 44px; margin-bottom: 10px; }
+.bl-empty {
+  text-align: center;
+  padding: 48px 16px;
+
+  &__ic {
+    width: 64px; height: 64px;
+    margin: 0 auto 14px;
+    border-radius: 50%;
+    background: var(--green-50);
+    display: flex; align-items: center; justify-content: center;
+    svg { width: 30px; height: 30px; }
+  }
+  &__t { font-size: 16px; font-weight: 800; color: var(--text); }
+  &__s { font-size: 13px; font-weight: 600; color: var(--text-3); margin-top: 4px; }
+}
 
 .bl-list { display: flex; flex-direction: column; gap: 12px; }
 
@@ -20,6 +34,18 @@
     cursor: pointer;
     font-family: var(--font);
     -webkit-tap-highlight-color: transparent;
+  }
+
+  &__icon {
+    flex: none;
+    width: 40px; height: 40px;
+    border-radius: 11px;
+    background: var(--bad-bg);
+    color: var(--bad);
+    display: flex; align-items: center; justify-content: center;
+    svg { width: 21px; height: 21px; }
+
+    &--ok { background: var(--ok-bg); color: var(--ok); }
   }
 
   &__main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }

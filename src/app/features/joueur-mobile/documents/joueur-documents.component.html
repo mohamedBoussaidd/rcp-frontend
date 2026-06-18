@@ -1,7 +1,8 @@
 <!-- Bouton dépôt -->
 @if (!depotOuvert()) {
   <button type="button" class="pwa-btn pwa-btn--primary pwa-btn--block doc-add" (click)="ouvrirDepot()">
-    ＋ Ajouter un document
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+    Ajouter un document
   </button>
 }
 
@@ -50,8 +51,11 @@
 <!-- Liste -->
 @if (store.documents().length === 0) {
   <div class="pwa-empty pwa-rise">
-    <div class="doc-empty-emoji">🗂️</div>
-    Aucun document pour l'instant.
+    <div class="pwa-empty__ic">
+      <svg viewBox="0 0 24 24" fill="none" stroke="var(--green-600)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>
+    </div>
+    <div class="pwa-empty__t">Aucun document</div>
+    <div class="pwa-empty__s">Dépose une ordonnance, un certificat…</div>
   </div>
 } @else {
   <div class="doc-list">

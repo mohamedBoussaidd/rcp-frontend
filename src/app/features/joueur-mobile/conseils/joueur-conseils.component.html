@@ -1,7 +1,10 @@
 @if (perso().length === 0 && equipe().length === 0) {
   <div class="pwa-empty pwa-rise">
-    <div class="cons-empty-emoji">💬</div>
-    Aucun conseil pour le moment.<br>Ton staff t'en laissera ici.
+    <div class="pwa-empty__ic">
+      <svg viewBox="0 0 24 24" fill="none" stroke="var(--green-600)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.4 8.4 0 0 1-9 8 9 9 0 0 1-3.4-.7L3 20l1.3-4A8.4 8.4 0 0 1 12 3a8.4 8.4 0 0 1 9 8.5z"/></svg>
+    </div>
+    <div class="pwa-empty__t">Aucun conseil pour le moment</div>
+    <div class="pwa-empty__s">Ton staff t'en laissera ici.</div>
   </div>
 } @else {
   @if (perso().length > 0) {

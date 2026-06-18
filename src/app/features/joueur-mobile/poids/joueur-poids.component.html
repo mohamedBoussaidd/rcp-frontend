@@ -1,7 +1,10 @@
 @if (store.peseesTriees().length === 0) {
   <div class="pwa-empty pwa-rise">
-    <div class="pds-empty-emoji">⚖️</div>
-    Aucune pesée enregistrée pour l'instant.
+    <div class="pwa-empty__ic">
+      <svg viewBox="0 0 24 24" fill="none" stroke="var(--green-600)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 12 8.5 8.5"/></svg>
+    </div>
+    <div class="pwa-empty__t">Aucune pesée</div>
+    <div class="pwa-empty__s">Tes pesées apparaîtront ici.</div>
   </div>
 } @else {
   <!-- KPIs -->

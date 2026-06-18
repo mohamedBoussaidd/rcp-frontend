@@ -1,4 +1,39 @@
+/* ═══════════════════════════════════════════════════════
+   RESSENTI DU JOUR — refonte Claude Design
+   ═══════════════════════════════════════════════════════ */
+
 :host { display: block; }
+
+/* Marge basse pour ne pas masquer le contenu sous la barre d'action fixe. */
+:host { padding-bottom: 84px; }
+
+/* ── Onglets segmentés ── */
+.well-tabs {
+  display: flex;
+  gap: 4px;
+  background: var(--surface-3);
+  padding: 4px;
+  border-radius: var(--r-pill);
+  margin-bottom: 14px;
+}
+
+.well-tab {
+  flex: 1;
+  border: 0;
+  background: transparent;
+  padding: 9px 0;
+  border-radius: var(--r-pill);
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-3);
+  cursor: pointer;
+  font-family: var(--font);
+  transition: background 120ms, color 120ms;
+
+  &.is-active { background: var(--surface); color: var(--text); box-shadow: var(--shadow-sm); }
+}
+
+.well-pane { display: flex; flex-direction: column; gap: 12px; }
 
 .well-locked {
   display: flex;
@@ -11,7 +46,7 @@
   padding: 10px 12px;
   font-size: 13px;
   font-weight: 600;
-  margin-bottom: 14px;
+  margin-bottom: 12px;
 
   &__ic {
     flex-shrink: 0;
@@ -24,64 +59,202 @@
   }
 }
 
-.well-hooper {
-  display: flex;
-  flex-direction: column;
-  gap: 18px;
+.well-card-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 14px;
 
-  &.is-locked { opacity: 0.92; }
+  &__opt { font-weight: 600; color: var(--text-4); font-size: 12px; }
 }
 
-.well-item {
-  &__head { margin-bottom: 8px; }
-  &__label { font-size: 15px; font-weight: 700; }
+/* ── Humeur (visages) ── */
+.well-faces {
+  display: flex;
+  justify-content: space-between;
+  gap: 6px;
+}
 
-  &__scale {
+.well-face {
+  flex: 1;
+  border: none;
+  background: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 0;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+
+  &:disabled { cursor: default; }
+
+  &__circle {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: var(--surface-3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 90ms var(--ease-out), background 120ms;
+  }
+
+  &.is-active .well-face__circle { transform: scale(1.06); box-shadow: var(--shadow-sm); }
+
+  &__label {
+    font-size: 9.5px;
+    font-weight: 700;
+    color: var(--text-4);
+    &.is-active { color: var(--text-2); }
+  }
+}
+
+/* ── Échelles (4 cartes Hooper) ── */
+.well-scales { padding-top: 6px; padding-bottom: 6px; }
+
+.well-scale {
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border);
+
+  &--last { border-bottom: 0; }
+
+  &__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 11px;
+  }
+
+  &__id { display: flex; align-items: center; gap: 9px; }
+
+  &__emoji {
+    width: 30px;
+    height: 30px;
+    border-radius: 9px;
+    background: var(--surface-3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+  }
+
+  &__label { font-size: 14px; font-weight: 700; color: var(--text); }
+
+  &__val {
+    font-family: var(--font-num);
+    font-variant-numeric: tabular-nums;
+    font-size: 12px;
+    font-weight: 700;
+  }
+
+  &__ends {
     display: flex;
     justify-content: space-between;
-    margin-top: 6px;
-    font-size: 11.5px;
-    color: var(--text-3);
+    margin-top: 7px;
+    font-size: 10.5px;
+    font-weight: 600;
+    color: var(--text-4);
   }
+}
+
+/* ── Rangée de points (1..5) ── */
+.well-dots {
+  display: flex;
+  gap: 6px;
+}
+
+.well-dot {
+  flex: 1;
+  min-height: 44px;
+  border: 1.5px solid var(--border-strong);
+  background: var(--surface);
+  border-radius: var(--r-lg);
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-2);
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 90ms var(--ease-out);
+
+  &:active:not(:disabled) { transform: scale(0.92); }
+  &:disabled { cursor: default; }
+  &.is-active { box-shadow: var(--shadow-sm); }
+}
+
+/* ── Commentaire ── */
+.well-textarea {
+  width: 100%;
+  min-height: 64px;
+  resize: none;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  border-radius: var(--r-lg);
+  padding: 11px 12px;
+  font-family: var(--font);
+  font-size: 13px;
+  color: var(--text);
+  outline: none;
+
+  &:focus { border-color: var(--green-500); }
 }
 
 /* ── Gêne ── */
-.well-gene {
-  margin-top: 14px;
-
-  &__q { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-  &__qlabel { font-size: 15px; font-weight: 700; }
-
-  &__toggle {
-    display: inline-flex;
-    background: var(--surface-3);
-    border-radius: var(--r-pill);
-    padding: 3px;
-    gap: 2px;
-    flex-shrink: 0;
-
-    button {
-      border: 0;
-      background: transparent;
-      padding: 7px 18px;
-      border-radius: var(--r-pill);
-      font-size: 14px;
-      font-weight: 700;
-      color: var(--text-3);
-      cursor: pointer;
-      font-family: var(--font);
-      transition: background 120ms, color 120ms;
-
-      &.is-active { background: var(--surface); color: var(--text); box-shadow: var(--shadow-xs); }
-    }
-  }
-
-  &__detail { margin-top: 16px; }
-  &__hint { font-size: 13.5px; color: var(--text-2); text-align: center; margin: 0 0 8px; }
-  &__sub { font-size: 13px; font-weight: 700; color: var(--text-2); margin: 16px 0 8px; }
-  &__selected { text-align: center; font-size: 14px; margin: 12px 0 4px; }
-  &__selected strong { color: var(--bad); }
-  &__empty { text-align: center; font-size: 13px; color: var(--text-3); margin: 8px 0 0; }
+.well-zone-pill {
+  text-align: center;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--bad);
+  background: var(--bad-bg);
+  border-radius: var(--r-pill);
+  padding: 8px;
+  margin-top: 4px;
 }
 
-.well-submit { margin-top: 22px; }
+.well-zone-empty {
+  text-align: center;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-4);
+  padding: 8px;
+}
+
+.well-moments {
+  display: flex;
+  gap: 8px;
+}
+
+.well-moment {
+  flex: 1;
+  min-height: 44px;
+  border: 1.5px solid var(--border-strong);
+  background: var(--surface);
+  border-radius: var(--r-lg);
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--text-2);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background 120ms, border-color 120ms, color 120ms;
+
+  &.is-active {
+    background: var(--green-50);
+    border-color: var(--green-600);
+    color: var(--green-700);
+  }
+}
+
+/* ── Barre d'action fixe ── */
+.well-submit-bar {
+  position: fixed;
+  left: 50%;
+  bottom: 0;
+  transform: translateX(-50%);
+  width: 100%;
+  max-width: 560px;
+  padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
+  background: linear-gradient(to top, var(--bg) 70%, transparent);
+  z-index: 25;
+}

@@ -45,14 +45,6 @@
       }
     </div>
 
-    @if (nbNonRens > 0) {
-      <div class="pd-bulk">
-        <button class="btn btn--sm" (click)="marquerTousPresents()">
-          <mat-icon>done_all</mat-icon>
-          Marquer les {{ nbNonRens }} restants présents
-        </button>
-      </div>
-    }
   }
 
   <!-- Liste joueurs -->
@@ -88,7 +80,14 @@
   </div>
 
   <!-- Footer -->
+
   <div class="pd-footer">
+       @if (nbNonRens > 0) {
+        <button class="btn btn--ghost green" (click)="marquerTousPresents()">
+          <mat-icon>done_all</mat-icon>
+          Marquer les {{ nbNonRens }} restants présents
+        </button>
+    }
     <button class="btn btn--ghost" (click)="fermer()">Fermer</button>
   </div>
 

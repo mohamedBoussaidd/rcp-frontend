@@ -12,194 +12,204 @@
     @if (auth.canEcrireJoueurs()) {
       <div class="page-head__actions">
         <button class="btn btn--secondary" (click)="ouvrirDialogSuppression()">
-          <mat-icon>delete_outline</mat-icon>Supprimer
+          <mat-icon>delete_outline</mat-icon>Supprimer une fiche
         </button>
         <button class="btn btn--primary" (click)="ouvrirDialogJoueur()">
-          <mat-icon>add</mat-icon>Ajouter un joueur
+          <mat-icon>add</mat-icon>Ajouter une fiche
         </button>
       </div>
     }
   </div>
 
-  <!-- ══ KPIs ══ -->
-  <div class="grid grid--kpis" style="margin-bottom:16px">
+  <!-- ══ KPIs (2×2) + Charge collective côte à côte ══ -->
+  <div class="dash-top" style="margin-bottom:16px">
 
-    <div class="card kpi">
-      <div class="row row--between">
-        <div class="kpi__label">Effectif total</div>
-        <mat-icon style="font-size:16px;width:16px;height:16px;color:var(--text-3)">groups</mat-icon>
+    <div class="kpi-grid">
+
+      <div class="card kpi kpi--row">
+        <div class="kpi__icon kpi__icon--neutral"><mat-icon>groups</mat-icon></div>
+        <div class="kpi__body">
+          <div class="kpi__value">{{ joueurs.length }}</div>
+          <div class="kpi__label">Effectif total</div>
+          <div class="kpi__sub">joueurs dans le roster</div>
+        </div>
       </div>
-      <div class="kpi__value">{{ joueurs.length }}</div>
-      <div class="kpi__sub">joueurs dans le roster</div>
+
+      <div class="card kpi kpi--row">
+        <div class="kpi__icon kpi__icon--ok"><mat-icon>check_circle</mat-icon></div>
+        <div class="kpi__body">
+          <div class="kpi__value">{{ nbDisponibles }}<span class="unit"> / {{ joueurs.length }}</span></div>
+          <div class="kpi__label">Disponibles</div>
+          <div class="kpi__sub">
+            @if (nbBlesses > 0) {
+              <span class="badge badge--bad">{{ nbBlesses }} blessé{{ nbBlesses > 1 ? 's' : '' }}</span>
+            } @else {
+              <span class="badge badge--ok">Aucun blessé</span>
+            }
+          </div>
+        </div>
+      </div>
+
+      <div class="card kpi kpi--row">
+        <div class="kpi__icon kpi__icon--warn"><mat-icon>bolt</mat-icon></div>
+        <div class="kpi__body">
+          <div class="kpi__value">{{ fatigueMoyenne | number:'1.0-0' }}<span class="unit"> %</span></div>
+          <div class="kpi__label">Fatigue moyenne</div>
+          <div class="kpi__sub">indice alerte intensité</div>
+        </div>
+      </div>
+
+      <div class="card kpi kpi--row">
+        <div class="kpi__icon kpi__icon--bad"><mat-icon>monitor_heart</mat-icon></div>
+        <div class="kpi__body">
+          <div class="kpi__value">{{ risqueMoyen | number:'1.0-0' }}<span class="unit"> %</span></div>
+          <div class="kpi__label">Risque blessure moyen</div>
+          <div class="kpi__sub">score prédictif IA</div>
+        </div>
+      </div>
+
     </div>
 
-    <div class="card kpi">
-      <div class="row row--between">
-        <div class="kpi__label">Disponibles</div>
-        <mat-icon style="font-size:16px;width:16px;height:16px;color:var(--text-3)">check_circle</mat-icon>
+    <div class="card charge-card">
+      <div class="card__header">
+        <div>
+          <h3 class="card__title">Charge collective</h3>
+          <div class="card__sub">4 dernières semaines · distance (km)</div>
+        </div>
+        <button class="btn btn--ghost btn--sm btn--icon" (click)="chargeExpanded = !chargeExpanded">
+          <mat-icon>{{ chargeExpanded ? 'expand_less' : 'expand_more' }}</mat-icon>
+        </button>
       </div>
-      <div class="kpi__value">{{ nbDisponibles }}<span class="unit"> / {{ joueurs.length }}</span></div>
-      <div class="kpi__sub">
-        @if (nbBlesses > 0) {
-          <span class="badge badge--bad">{{ nbBlesses }} blessé{{ nbBlesses > 1 ? 's' : '' }}</span>
-        } @else {
-          <span class="badge badge--ok">Aucun blessé</span>
-        }
-      </div>
-    </div>
-
-    <div class="card kpi">
-      <div class="row row--between">
-        <div class="kpi__label">Fatigue moyenne</div>
-        <mat-icon style="font-size:16px;width:16px;height:16px;color:var(--text-3)">bolt</mat-icon>
-      </div>
-      <div class="kpi__value">{{ fatigueMoyenne | number:'1.0-0' }}<span class="unit"> %</span></div>
-      <div class="kpi__sub">indice alerte intensité</div>
-    </div>
-
-    <div class="card kpi">
-      <div class="row row--between">
-        <div class="kpi__label">Risque blessure moyen</div>
-        <mat-icon style="font-size:16px;width:16px;height:16px;color:var(--text-3)">monitor_heart</mat-icon>
-      </div>
-      <div class="kpi__value">{{ risqueMoyen | number:'1.0-0' }}<span class="unit"> %</span></div>
-      <div class="kpi__sub">score prédictif IA</div>
+      @if (chargeExpanded) {
+        <div class="card__body">
+          <apx-chart
+            [series]="chartOptions.series"
+            [chart]="chartOptions.chart"
+            [xaxis]="chartOptions.xaxis"
+            [yaxis]="chartOptions.yaxis"
+            [stroke]="chartOptions.stroke"
+            [dataLabels]="chartOptions.dataLabels"
+            [title]="chartOptions.title"
+            [theme]="chartOptions.theme"
+            [grid]="chartOptions.grid"
+            [colors]="chartOptions.colors"
+            [fill]="chartOptions.fill"
+            [markers]="chartOptions.markers">
+          </apx-chart>
+        </div>
+      }
     </div>
 
   </div>
 
-  <!-- ══ Séance(s) du jour ══ -->
+  <!-- ══ Séances à venir (groupées par jour) ══ -->
   <div class="card seance-jour" style="margin-bottom:16px">
     <div class="card__header">
-      <div>
-        <h3 class="card__title">Séance du jour</h3>
-        <div class="card__sub">{{ aujourdhui | date:'EEEE d MMMM':'':'fr' }}</div>
+      <div class="row" style="align-items:center;gap:10px">
+        <h3 class="card__title" style="margin:0">Séances à venir</h3>
+        @if (totalSeances) {
+          <span class="badge badge--neutral">{{ totalSeances }}</span>
+        }
       </div>
     </div>
     <div class="card__body">
-      @if (!seancesAujourdhui.length && !seancesAVenir.length) {
+      @if (!totalSeances) {
         <div class="seance-jour__vide">
           <mat-icon>event_busy</mat-icon>
           <span>Aucune séance à venir</span>
         </div>
       }
 
-      @if (!seancesAujourdhui.length && seancesAVenir.length) {
-        <div class="seance-jour__vide seance-jour__vide--info">
-          <mat-icon>event_note</mat-icon>
-          <span>Pas de séance aujourd'hui — prochaine séance le {{ seancesAVenir[0].date | date:'EEEE d MMMM':'':'fr' }}</span>
+      @for (g of seancesParJour; track g.date) {
+        <div class="seance-jour__groupe">
+          <div class="seance-jour__jour">
+            <span class="seance-jour__puce"></span>
+            <span class="seance-jour__jour-label">{{ g.label ?? (g.date | date:'EEEE d MMMM':'':'fr') }}</span>
+            <span class="seance-jour__jour-count">{{ g.seances.length }} séance{{ g.seances.length > 1 ? 's' : '' }}</span>
+          </div>
+
+          @for (s of g.seances; track s.id) {
+            <div class="seance-jour__item">
+              <div class="seance-jour__heure-col">
+                <mat-icon>schedule</mat-icon>
+                <span>{{ s.heureDebut ? (s.heureDebut | slice:0:5) : '—' }}</span>
+              </div>
+
+              <div class="seance-jour__corps">
+                <div class="seance-jour__meta">
+                  <span class="seance-jour__type"
+                    [style.background]="couleurType(s).bg"
+                    [style.color]="couleurType(s).fg">
+                    {{ s.typeSeance?.libelle ?? 'Séance' }}
+                  </span>
+                  @if (s.titre || s.objectif) {
+                    <span class="seance-jour__titre">{{ s.titre }}{{ s.titre && s.objectif ? ' — ' : '' }}{{ s.objectif }}</span>
+                  }
+                </div>
+                @if (s.terrain) {
+                  <span class="seance-jour__terrain muted">
+                    <mat-icon>place</mat-icon>{{ s.terrain }}
+                  </span>
+                }
+              </div>
+
+              <div class="seance-jour__actions">
+                @if (s.dureeMinutes) {
+                  <span class="seance-jour__duree">{{ s.dureeMinutes }} min</span>
+                }
+                <button class="btn btn--primary btn--sm" (click)="allerPresence(s)">
+                  <mat-icon>how_to_reg</mat-icon>Appel
+                </button>
+              </div>
+            </div>
+          }
         </div>
       }
-
-      @for (s of seancesAujourdhui; track s.id) {
-        <ng-container *ngTemplateOutlet="seanceItem; context: { $implicit: s }"></ng-container>
-      }
-
-      @if (seancesAVenir.length && seancesAujourdhui.length) {
-        <div class="seance-jour__avenir-titre">Prochaines séances</div>
-      }
-      @for (s of seancesAVenir; track s.id) {
-        <ng-container *ngTemplateOutlet="seanceItem; context: { $implicit: s }"></ng-container>
-      }
     </div>
-  </div>
-
-  <ng-template #seanceItem let-s>
-    <div class="seance-jour__item">
-      <div class="seance-jour__meta">
-        <span class="seance-jour__type"
-          [style.background]="'#' + (s.typeSeance?.code === 'MATCH' ? 'ef444420' : s.typeSeance?.code === 'INTENSIF' ? '6366f120' : '0ea5a020')"
-          [style.color]="s.typeSeance?.code === 'MATCH' ? '#ef4444' : s.typeSeance?.code === 'INTENSIF' ? '#6366f1' : '#0ea5a0'">
-          {{ s.typeSeance?.libelle ?? 'Séance' }}
-        </span>
-        <span class="seance-jour__date muted">{{ s.date | date:'EEE d MMM':'':'fr' }}</span>
-        @if (s.heureDebut) {
-          <span class="seance-jour__heure">
-            <mat-icon style="font-size:14px;width:14px;height:14px">schedule</mat-icon>
-            {{ s.heureDebut | slice:0:5 }}
-          </span>
-        }
-        @if (s.dureeMinutes) {
-          <span class="seance-jour__duree">{{ s.dureeMinutes }} min</span>
-        }
-        @if (s.terrain) {
-          <span class="seance-jour__terrain muted">
-            <mat-icon style="font-size:14px;width:14px;height:14px">place</mat-icon>{{ s.terrain }}
-          </span>
-        }
-      </div>
-      @if (s.titre) {
-        <div class="seance-jour__titre">{{ s.titre }}</div>
-      }
-      <div class="seance-jour__actions">
-        @if (s.date === aujourdhui) {
-          <button class="btn btn--primary btn--sm" (click)="allerPresence(s)">
-            <mat-icon>how_to_reg</mat-icon>Appel
-          </button>
-        }
-        <span class="badge" [class.badge--ok]="s.statut === 'REALISEE'"
-          [class.badge--neutral]="s.statut === 'PLANIFIEE'"
-          [class.badge--bad]="s.statut === 'ANNULEE'">
-          {{ s.statut === 'REALISEE' ? 'Réalisée' : s.statut === 'ANNULEE' ? 'Annulée' : 'Planifiée' }}
-        </span>
-      </div>
-    </div>
-  </ng-template>
-
-  <!-- ══ Charge collective ══ -->
-  <div class="card" style="margin-bottom:16px">
-    <div class="card__header">
-      <div>
-        <h3 class="card__title">Charge collective</h3>
-        <div class="card__sub">4 dernières semaines · distance (km)</div>
-      </div>
-      <button class="btn btn--ghost btn--sm btn--icon" (click)="chargeExpanded = !chargeExpanded">
-        <mat-icon>{{ chargeExpanded ? 'expand_less' : 'expand_more' }}</mat-icon>
-      </button>
-    </div>
-    @if (chargeExpanded) {
-      <div class="card__body">
-        <apx-chart
-          [series]="chartOptions.series"
-          [chart]="chartOptions.chart"
-          [xaxis]="chartOptions.xaxis"
-          [yaxis]="chartOptions.yaxis"
-          [stroke]="chartOptions.stroke"
-          [dataLabels]="chartOptions.dataLabels"
-          [title]="chartOptions.title"
-          [theme]="chartOptions.theme"
-          [grid]="chartOptions.grid"
-          [colors]="chartOptions.colors"
-          [fill]="chartOptions.fill"
-          [markers]="chartOptions.markers">
-        </apx-chart>
-      </div>
-    }
   </div>
 
   <!-- ══ Grille joueurs (aperçu effectif — table complète déplacée dans GPS › État de l'effectif) ══ -->
-  <div class="card" style="margin-bottom:16px">
-    <div class="card__header">
-      <h3 class="card__title">Effectif</h3>
-      <span class="badge badge--neutral">{{ joueurs.length }} joueurs</span>
+  <div class="card effectif-card" style="margin-bottom:16px">
+    <div class="effectif-card__head">
+      <div class="row" style="align-items:center;gap:10px">
+        <h3 class="card__title" style="margin:0">Effectif</h3>
+        <span class="badge badge--neutral">{{ joueurs.length }}</span>
+      </div>
+      <div class="effectif-card__tools">
+        <div class="effectif-search">
+          <mat-icon>search</mat-icon>
+          <input type="text" placeholder="Rechercher…" [(ngModel)]="recherche">
+        </div>
+        <div class="effectif-filters">
+          @for (f of filtresStatut; track f.key) {
+            <button class="effectif-filter" [class.effectif-filter--active]="filtreStatut === f.key"
+              (click)="filtreStatut = f.key">{{ f.label }}</button>
+          }
+        </div>
+      </div>
     </div>
+
     <div class="joueurs-grid">
-      @for (j of joueurs; track j.joueur_id) {
+      @for (j of effectifFiltre; track j.joueur_id) {
         @let statut = statutMap.get(j.joueur_id) ?? 'actif';
         <button class="joueur-card-btn" (click)="ouvrirPanel(j)">
-          <div class="joueur-card-btn__avatar">
+          <div class="joueur-card-btn__avatar"
+            [style.background]="avatarColor(j.joueur_id).bg"
+            [style.color]="avatarColor(j.joueur_id).fg">
             {{ j.prenom[0] ?? '' }}{{ j.nom[0] ?? '' }}
           </div>
           <div class="joueur-card-btn__info">
             <span class="joueur-card-btn__nom">{{ j.prenom }} {{ j.nom }}</span>
-            <span class="joueur-card-btn__poste">{{ j.poste ?? '—' }}</span>
+            <div class="joueur-card-btn__sub">
+              @if (j.poste) { <span class="poste-chip">{{ j.poste }}</span> }
+              <span class="statut-dot" [class]="'badge badge--statut-' + statut">
+                <span class="statut-dot__pt"></span>{{ statutLibelle(statut) }}
+              </span>
+            </div>
           </div>
-          <span [class]="'badge badge--statut-' + statut" style="margin-left:auto;font-size:11px">
-            {{ statutLibelle(statut) }}
-          </span>
         </button>
       }
-      @if (!joueurs.length && !loading) {
+      @if (!effectifFiltre.length && !loading) {
         <div class="empty-state" style="padding:24px">Aucun joueur dans l'effectif.</div>
       }
     </div>
@@ -242,66 +252,123 @@
 
           <!-- Profil -->
           @if (panelOnglet === 'profil') {
-            <dl class="panel-dl">
-              <dt>Statut</dt>
-              <dd>
+            <div class="info-list">
+              <div class="info-row">
+                <mat-icon>verified_user</mat-icon>
+                <span class="info-row__label">Statut</span>
                 @let s = statutMap.get(panelJoueur.id) ?? 'actif';
-                <span [class]="'badge badge--statut-' + s">{{ statutLibelle(s) }}</span>
-              </dd>
+                <span class="info-row__val">
+                  <span [class]="'badge badge--statut-' + s">{{ statutLibelle(s) }}</span>
+                </span>
+              </div>
               @if (panelJoueur.dateNaissance) {
-                <dt>Date de naissance</dt>
-                <dd>{{ panelJoueur.dateNaissance | date:'dd/MM/yyyy' }}</dd>
+                <div class="info-row">
+                  <mat-icon>cake</mat-icon>
+                  <span class="info-row__label">Date de naissance</span>
+                  <span class="info-row__val">{{ panelJoueur.dateNaissance | date:'dd/MM/yyyy' }}</span>
+                </div>
               }
               @if (panelJoueur.taille) {
-                <dt>Taille</dt><dd>{{ panelJoueur.taille }} cm</dd>
+                <div class="info-row">
+                  <mat-icon>straighten</mat-icon>
+                  <span class="info-row__label">Taille</span>
+                  <span class="info-row__val">{{ panelJoueur.taille }} cm</span>
+                </div>
               }
               @if (panelJoueur.poidsActuel) {
-                <dt>Poids actuel</dt><dd>{{ panelJoueur.poidsActuel }} kg</dd>
+                <div class="info-row">
+                  <mat-icon>monitor_weight</mat-icon>
+                  <span class="info-row__label">Poids actuel</span>
+                  <span class="info-row__val">{{ panelJoueur.poidsActuel }} kg</span>
+                </div>
               }
               @if (panelJoueur.poidsFormeCible) {
-                <dt>Poids de forme</dt><dd>{{ panelJoueur.poidsFormeCible }} kg</dd>
+                <div class="info-row">
+                  <mat-icon>fitness_center</mat-icon>
+                  <span class="info-row__label">Poids de forme</span>
+                  <span class="info-row__val">{{ panelJoueur.poidsFormeCible }} kg</span>
+                </div>
               }
               @if (panelJoueur.piedFort) {
-                <dt>Pied fort</dt><dd>{{ panelJoueur.piedFort }}</dd>
+                <div class="info-row">
+                  <mat-icon>sports_soccer</mat-icon>
+                  <span class="info-row__label">Pied fort</span>
+                  <span class="info-row__val">{{ panelJoueur.piedFort }}</span>
+                </div>
               }
               @if (panelJoueur.postePrincipal) {
-                <dt>Poste principal</dt><dd>{{ panelJoueur.postePrincipal }}</dd>
+                <div class="info-row">
+                  <mat-icon>place</mat-icon>
+                  <span class="info-row__label">Poste principal</span>
+                  <span class="info-row__val">{{ panelJoueur.postePrincipal }}</span>
+                </div>
               }
               @if (panelJoueur.posteSecondaire) {
-                <dt>Poste secondaire</dt><dd>{{ panelJoueur.posteSecondaire }}</dd>
+                <div class="info-row">
+                  <mat-icon>place</mat-icon>
+                  <span class="info-row__label">Poste secondaire</span>
+                  <span class="info-row__val">{{ panelJoueur.posteSecondaire }}</span>
+                </div>
               }
               @if (panelJoueur.dateArriveeClub) {
-                <dt>Arrivée au club</dt><dd>{{ panelJoueur.dateArriveeClub | date:'dd/MM/yyyy' }}</dd>
+                <div class="info-row">
+                  <mat-icon>event</mat-icon>
+                  <span class="info-row__label">Arrivée au club</span>
+                  <span class="info-row__val">{{ panelJoueur.dateArriveeClub | date:'dd/MM/yyyy' }}</span>
+                </div>
               }
-            </dl>
+            </div>
           }
 
           <!-- GPS & Charge -->
           @if (panelOnglet === 'gps' && panelResume) {
-            <div class="panel-kpis">
-              <div class="panel-kpi">
-                <span class="panel-kpi__val">{{ panelResume.score_fatigue | number:'1.0-0' }}<span style="font-size:14px">%</span></span>
-                <span class="panel-kpi__label">Fatigue</span>
-                <span class="badge" [class.badge--ok]="panelResume.niveau_fatigue === 'NOMINAL'"
-                  [class.badge--warn]="panelResume.niveau_fatigue === 'VIGILANCE'"
-                  [class.badge--bad]="panelResume.niveau_fatigue === 'ALERTE'">
+
+            <div class="metric-card">
+              <div class="metric-card__head">
+                <span class="metric-card__title"><mat-icon>monitor_heart</mat-icon> Fatigue</span>
+                <span class="metric-card__badge"
+                  [class.is-ok]="panelResume.niveau_fatigue === 'NOMINAL'"
+                  [class.is-warn]="panelResume.niveau_fatigue === 'VIGILANCE'"
+                  [class.is-bad]="panelResume.niveau_fatigue === 'ALERTE'">
                   {{ panelResume.niveau_fatigue }}
                 </span>
               </div>
-              <div class="panel-kpi">
-                <span class="panel-kpi__val">{{ panelResume.score_risque | number:'1.0-0' }}<span style="font-size:14px">%</span></span>
-                <span class="panel-kpi__label">Risque blessure</span>
-                <span class="badge" [class.badge--ok]="panelResume.niveau_risque === 'FAIBLE'"
-                  [class.badge--warn]="panelResume.niveau_risque === 'MODERE'"
-                  [class.badge--bad]="panelResume.niveau_risque === 'ELEVE'">
+              <div class="metric-card__row">
+                <div class="metric-bar">
+                  <div class="metric-bar__fill"
+                    [class.is-ok]="panelResume.niveau_fatigue === 'NOMINAL'"
+                    [class.is-warn]="panelResume.niveau_fatigue === 'VIGILANCE'"
+                    [class.is-bad]="panelResume.niveau_fatigue === 'ALERTE'"
+                    [style.width.%]="panelResume.score_fatigue"></div>
+                </div>
+                <span class="metric-card__pct">{{ panelResume.score_fatigue | number:'1.0-0' }}%</span>
+              </div>
+            </div>
+
+            <div class="metric-card">
+              <div class="metric-card__head">
+                <span class="metric-card__title"><mat-icon>favorite_border</mat-icon> Risque blessure</span>
+                <span class="metric-card__badge"
+                  [class.is-ok]="panelResume.niveau_risque === 'FAIBLE'"
+                  [class.is-warn]="panelResume.niveau_risque === 'MODERE'"
+                  [class.is-bad]="panelResume.niveau_risque === 'ELEVE'">
                   {{ panelResume.niveau_risque }}
                 </span>
               </div>
+              <div class="metric-card__row">
+                <div class="metric-bar">
+                  <div class="metric-bar__fill"
+                    [class.is-ok]="panelResume.niveau_risque === 'FAIBLE'"
+                    [class.is-warn]="panelResume.niveau_risque === 'MODERE'"
+                    [class.is-bad]="panelResume.niveau_risque === 'ELEVE'"
+                    [style.width.%]="panelResume.score_risque"></div>
+                </div>
+                <span class="metric-card__pct">{{ panelResume.score_risque | number:'1.0-0' }}%</span>
+              </div>
             </div>
+
             @let poids = poidsMap.get(panelJoueur.id);
             @if (poids) {
-              <div class="panel-section-title">Poids & Composition</div>
-
               @if (poids.ecartKg != null && poids.ecartKg > 3) {
                 <div class="panel-alert panel-alert--danger">
                   <mat-icon>warning</mat-icon>
@@ -320,49 +387,71 @@
                 </div>
               }
 
-              <dl class="panel-dl">
-                @if (poids.dernierPoids) {
-                  <dt>Dernier relevé</dt><dd>{{ poids.dernierPoids }} kg</dd>
-                }
-                @if (panelJoueur.poidsFormeCible) {
-                  <dt>Poids de forme</dt><dd>{{ panelJoueur.poidsFormeCible }} kg</dd>
-                }
-                @if (poids.ecartKg != null) {
-                  <dt>Écart vs forme</dt>
-                  <dd [class.text-bad]="poids.ecartKg > 3" [class.text-warn]="poids.ecartKg > 1 && poids.ecartKg <= 3">
-                    {{ poids.ecartKg > 0 ? '+' : '' }}{{ poids.ecartKg | number:'1.1-1' }} kg
-                  </dd>
-                }
-              </dl>
+              <div class="metric-card">
+                <div class="metric-card__head">
+                  <span class="metric-card__title"><mat-icon>monitor_weight</mat-icon> Poids & composition</span>
+                </div>
+                <div class="poids-grid">
+                  <div class="poids-grid__cell">
+                    <span class="poids-grid__label">Actuel</span>
+                    <span class="poids-grid__val">{{ poids.dernierPoids ?? panelJoueur.poidsActuel ?? '—' }} <small>kg</small></span>
+                  </div>
+                  <div class="poids-grid__cell">
+                    <span class="poids-grid__label">Forme</span>
+                    <span class="poids-grid__val">{{ panelJoueur.poidsFormeCible ?? '—' }} <small>kg</small></span>
+                  </div>
+                  @if (poids.ecartKg != null) {
+                    <div class="poids-grid__cell">
+                      <span class="poids-grid__label">Écart</span>
+                      <span class="poids-grid__val"
+                        [class.text-bad]="poids.ecartKg > 3" [class.text-warn]="poids.ecartKg > 1 && poids.ecartKg <= 3">
+                        {{ poids.ecartKg > 0 ? '+' : '' }}{{ poids.ecartKg | number:'1.1-1' }} <small>kg</small>
+                      </span>
+                    </div>
+                  }
+                </div>
+              </div>
             }
           }
 
           <!-- Performances -->
           @if (panelOnglet === 'performances') {
             @if (panelStats) {
-              <div class="panel-kpis">
-                <div class="panel-kpi">
-                  <span class="panel-kpi__val">{{ panelStats.total }}</span>
-                  <span class="panel-kpi__label">Convocations</span>
+              <div class="stat-grid">
+                <div class="stat-cell">
+                  <mat-icon>event_available</mat-icon>
+                  <span class="stat-cell__val">{{ panelStats.total }}</span>
+                  <span class="stat-cell__label">Convocations</span>
                 </div>
-                <div class="panel-kpi">
-                  <span class="panel-kpi__val">{{ panelStats.titulaire }}</span>
-                  <span class="panel-kpi__label">Titulaire</span>
+                <div class="stat-cell">
+                  <mat-icon>star</mat-icon>
+                  <span class="stat-cell__val">{{ panelStats.titulaire }}</span>
+                  <span class="stat-cell__label">Titulaire</span>
                 </div>
-                <div class="panel-kpi">
-                  <span class="panel-kpi__val">{{ panelStats.remplacant }}</span>
-                  <span class="panel-kpi__label">Remplaçant</span>
+                <div class="stat-cell">
+                  <mat-icon>swap_horiz</mat-icon>
+                  <span class="stat-cell__val">{{ panelStats.remplacant }}</span>
+                  <span class="stat-cell__label">Remplaçant</span>
                 </div>
-                <div class="panel-kpi">
-                  <span class="panel-kpi__val">{{ panelStats.suspendu }}</span>
-                  <span class="panel-kpi__label">Suspendu</span>
+                <div class="stat-cell">
+                  <mat-icon>block</mat-icon>
+                  <span class="stat-cell__val">{{ panelStats.suspendu }}</span>
+                  <span class="stat-cell__label">Suspendu</span>
                 </div>
               </div>
-              <div class="panel-section-title">Détail des convocations</div>
-              <dl class="panel-dl">
-                <dt>Réserve</dt><dd>{{ panelStats.reserve }}</dd>
-                <dt>Repos</dt><dd>{{ panelStats.repos }}</dd>
-              </dl>
+
+              <div class="metric-card" style="margin-top:14px">
+                <div class="poids-grid" style="grid-template-columns:1fr 1fr">
+                  <div class="poids-grid__cell">
+                    <span class="poids-grid__label">Réserve</span>
+                    <span class="poids-grid__val">{{ panelStats.reserve }}</span>
+                  </div>
+                  <div class="poids-grid__cell">
+                    <span class="poids-grid__label">Repos</span>
+                    <span class="poids-grid__val">{{ panelStats.repos }}</span>
+                  </div>
+                </div>
+              </div>
             } @else {
               <div class="empty-state" style="padding:24px">Aucune donnée de match disponible.</div>
             }

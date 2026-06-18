@@ -1,7 +1,10 @@
 @if (store.prochainesSeances().length === 0) {
   <div class="pwa-empty pwa-rise">
-    <div class="se-empty-emoji">📅</div>
-    Aucune séance à venir programmée.
+    <div class="pwa-empty__ic">
+      <svg viewBox="0 0 24 24" fill="none" stroke="var(--green-600)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4.5" width="18" height="17" rx="2.5"/><path d="M3 9h18M8 2.5v4M16 2.5v4"/></svg>
+    </div>
+    <div class="pwa-empty__t">Aucune séance à venir</div>
+    <div class="pwa-empty__s">Ton programme s'affichera ici.</div>
   </div>
 } @else {
   <div class="se-list">

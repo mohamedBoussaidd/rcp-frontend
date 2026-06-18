@@ -1,32 +1,80 @@
+/* ═══════════════════════════════════════════════════════
+   HISTORIQUE — refonte Claude Design
+   ═══════════════════════════════════════════════════════ */
+
 :host { display: block; }
 
-.histo-empty-emoji { font-size: 44px; margin-bottom: 10px; }
-
-/* ── KPIs ── */
-.histo-kpis { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 14px; }
-
-.histo-kpi {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--r-xl);
-  box-shadow: var(--shadow-sm);
-  padding: 14px 8px;
-  text-align: center;
-
-  &__val {
-    display: block;
-    font-size: 22px;
-    font-weight: 800;
-    color: var(--text);
-    font-variant-numeric: tabular-nums;
-    small { font-size: 12px; color: var(--text-3); font-weight: 600; }
-  }
-  &__lab { font-size: 11px; color: var(--text-3); font-weight: 600; }
+/* ── Onglets segmentés ── */
+.histo-tabs {
+  display: flex;
+  gap: 4px;
+  background: var(--surface-3);
+  padding: 4px;
+  border-radius: var(--r-pill);
+  margin-bottom: 14px;
 }
 
-/* ── Graphe ── */
-.histo-title { font-size: 13px; font-weight: 700; color: var(--text-2); margin: 0 0 14px; }
+.histo-tab {
+  flex: 1;
+  border: 0;
+  background: transparent;
+  padding: 9px 0;
+  border-radius: var(--r-pill);
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-3);
+  cursor: pointer;
+  font-family: var(--font);
+  transition: background 120ms, color 120ms;
 
+  &.is-active { background: var(--surface); color: var(--text); box-shadow: var(--shadow-sm); }
+}
+
+.histo-pane { display: flex; flex-direction: column; gap: 12px; }
+
+/* ── État vide ── */
+.histo-empty {
+  text-align: center;
+  padding: 48px 16px;
+
+  &__ic {
+    width: 64px; height: 64px;
+    margin: 0 auto 14px;
+    border-radius: 50%;
+    background: var(--surface-3);
+    display: flex; align-items: center; justify-content: center;
+    svg { width: 30px; height: 30px; }
+  }
+  &__t { font-size: 16px; font-weight: 800; color: var(--text); }
+  &__s { font-size: 13px; font-weight: 600; color: var(--text-3); margin-top: 4px; }
+}
+
+/* ── En-tête de carte graphe ── */
+.histo-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 4px;
+}
+
+.histo-card-title { font-size: 14px; font-weight: 700; color: var(--text); }
+
+.histo-card-val {
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+
+  &__n {
+    font-family: var(--font-num);
+    font-variant-numeric: tabular-nums;
+    font-size: 18px; font-weight: 700; color: var(--ok);
+  }
+  &__u { font-size: 11px; font-weight: 700; color: var(--text-4); }
+}
+
+.histo-card-sub { font-size: 11.5px; font-weight: 600; color: var(--text-3); margin-bottom: 14px; }
+
+/* ── Graphe ── */
 .histo-chart {
   display: flex;
   align-items: flex-end;
@@ -62,6 +110,7 @@
     &.ok { background: var(--ok); }
     &.moyen { background: var(--warn); }
     &.bad { background: var(--bad); }
+    &--charge { background: var(--green-600); }
   }
 
   &__rpe {
@@ -77,6 +126,8 @@
     padding: 0 4px;
     line-height: 15px;
     z-index: 2;
+
+    &--charge { color: var(--green-700); background: var(--green-50); border-color: var(--ok-bd); }
   }
 
   &__day { font-size: 11px; color: var(--text-3); font-weight: 600; }
@@ -100,15 +151,36 @@
   .dot.rpe { background: var(--info); border-radius: 50%; }
 }
 
+/* ── Cartes de stats ── */
+.histo-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; }
+
+.histo-stat {
+  &__lab { font-size: 11.5px; font-weight: 600; color: var(--text-3); }
+  &__val {
+    margin-top: 3px;
+    font-family: var(--font-num);
+    font-variant-numeric: tabular-nums;
+    font-size: 20px; font-weight: 700; color: var(--text);
+    small { font-size: 12px; font-weight: 600; color: var(--text-4); margin-left: 2px; }
+    &--warn { color: var(--warn); }
+  }
+}
+
 /* ── Gêne ── */
 .histo-gene {
   display: flex;
   align-items: center;
   gap: 12px;
-  margin-top: 14px;
 
-  &__ic { font-size: 24px; }
+  &__ic {
+    flex: none;
+    width: 40px; height: 40px;
+    border-radius: 11px;
+    background: var(--bad-bg);
+    display: flex; align-items: center; justify-content: center;
+    svg { width: 21px; height: 21px; }
+  }
   &__body { display: flex; flex-direction: column; gap: 2px; }
-  &__title { font-size: 14px; font-weight: 700; }
-  &__detail { font-size: 13px; color: var(--text-3); }
+  &__title { font-size: 14px; font-weight: 700; color: var(--text); }
+  &__detail { font-size: 13px; font-weight: 600; color: var(--text-3); }
 }

@@ -1,19 +1,25 @@
 @if (store.seancesANoter().length === 0 && !seanceSel()) {
-  <div class="pwa-empty pwa-rise">
-    <div class="rpe-empty-emoji">✅</div>
-    Tout est à jour !<br>Aucune séance à noter pour le moment.
+  <div class="rpe-empty pwa-rise">
+    <div class="rpe-empty__ic">
+      <svg viewBox="0 0 24 24" fill="none" stroke="var(--green-600)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+    </div>
+    <div class="rpe-empty__t">Tout est à jour !</div>
+    <div class="rpe-empty__s">Aucune séance à noter pour le moment.</div>
   </div>
 } @else if (!seanceSel()) {
   <!-- Liste des séances à noter -->
-  <p class="rpe-intro pwa-rise">Note l'effort ressenti pour chaque séance :</p>
+  <p class="rpe-intro pwa-rise">{{ store.seancesANoter().length }} séance(s) à noter</p>
   <div class="rpe-list pwa-rise">
     @for (s of store.seancesANoter(); track s.id) {
       <button type="button" class="rpe-seance" (click)="choisirSeance(s)">
+        <span class="rpe-seance__icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="var(--green-600)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h3l2.5-6 4 13 2.5-7H21"/></svg>
+        </span>
         <span class="rpe-seance__body">
           <span class="rpe-seance__title">{{ s.titre }}</span>
-          <span class="rpe-seance__date">{{ s.date | date:'EEEE d MMMM' }}@if (s.duree) { · {{ s.duree }} min }</span>
+          <span class="rpe-seance__date">{{ s.date | date:'EEEE d MMMM':'':'fr' }}@if (s.duree) { · {{ s.duree }} min }</span>
         </span>
-        <span class="rpe-seance__chev" aria-hidden="true">›</span>
+        <svg class="rpe-seance__chev" viewBox="0 0 24 24" fill="none" stroke="var(--text-4)" stroke-width="2.4" stroke-linecap="round"><path d="m9 18 6-6-6-6"/></svg>
       </button>
     }
   </div>
@@ -21,17 +27,26 @@
   <!-- Notation d'une séance -->
   <section class="pwa-card pwa-rise">
     <div class="rpe-head">
-      <div>
+      <div class="rpe-head__icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="var(--green-600)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h3l2.5-6 4 13 2.5-7H21"/></svg>
+      </div>
+      <div class="rpe-head__body">
         <div class="rpe-head__title">{{ seanceSel()!.titre }}</div>
-        <div class="rpe-head__date">{{ seanceSel()!.date | date:'EEEE d MMMM' }}</div>
+        <div class="rpe-head__date">{{ seanceSel()!.date | date:'EEEE d MMMM':'':'fr' }}@if (seanceSel()!.duree) { · {{ seanceSel()!.duree }} min }</div>
       </div>
       <button type="button" class="rpe-head__close" (click)="fermer()" aria-label="Changer de séance">✕</button>
     </div>
 
-    <p class="rpe-q">Intensité de l'effort ressenti</p>
-    <div class="pwa-scale pwa-scale--ten">
+    <div class="rpe-row">
+      <span class="rpe-q">Intensité ressentie (RPE)</span>
+      <span class="rpe-val">
+        <span class="rpe-val__num">{{ intensite() || '–' }}</span>
+        <span class="rpe-val__lbl">{{ intensiteLabel() }}</span>
+      </span>
+    </div>
+    <div class="rpe-dots">
       @for (n of NOTES; track n) {
-        <button type="button" class="pwa-scale__btn"
+        <button type="button" class="rpe-dot"
                 [class.is-active]="intensite() === n"
                 [style.background]="intensite() === n ? couleur(n) : null"
                 [style.borderColor]="intensite() === n ? couleur(n) : null"
@@ -39,21 +54,28 @@
                 (click)="setIntensite(n)">{{ n }}</button>
       }
     </div>
-    <div class="rpe-scale-legend"><span>Très facile</span><span>Maximal</span></div>
+    <div class="rpe-legend"><span>Repos</span><span>Effort maximal</span></div>
 
-    <p class="rpe-q">Durée (minutes)</p>
+    <p class="rpe-q rpe-q--mt">Durée (minutes)</p>
     <input class="input input--lg rpe-duree" type="number" inputmode="numeric" min="0" max="300"
            [value]="duree() ?? ''" (input)="setDuree($any($event.target).value)" placeholder="ex. 75">
-
-    @if (charge() !== null) {
-      <p class="rpe-charge">Charge estimée : <strong>{{ charge() }}</strong> <span>u.a.</span></p>
-    }
   </section>
 
-  <button type="button" class="pwa-btn pwa-btn--primary pwa-btn--block rpe-submit"
-          [disabled]="!peutEnvoyer()" (click)="valider()">
-    {{ envoi() ? 'Envoi…' : 'Valider cette séance' }}
-  </button>
+  <div class="rpe-load pwa-rise">
+    <div>
+      <div class="rpe-load__t">Charge estimée</div>
+      <div class="rpe-load__s">RPE × durée</div>
+    </div>
+    <span class="rpe-load__v">{{ charge() ?? '—' }} <span>UA</span></span>
+  </div>
+
+  <div class="rpe-submit-bar">
+    <button type="button" class="pwa-btn pwa-btn--primary pwa-btn--block"
+            [disabled]="!peutEnvoyer()" (click)="valider()">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+      {{ envoi() ? 'Envoi…' : 'Enregistrer le RPE' }}
+    </button>
+  </div>
 }
 
 @if (toast()) {

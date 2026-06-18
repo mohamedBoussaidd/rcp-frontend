@@ -5,11 +5,15 @@ import { AuthService } from '@core/services/auth.service';
 import { JoueurStore } from './joueur.store';
 import { OfflineQueueService } from './offline-queue.service';
 
+/** Onglet actif de la barre de navigation basse (PWA). */
+type OngletNav = 'accueil' | 'historique' | 'conseils' | 'sante' | null;
+
 /**
  * Coquille mobile de l'espace joueur (PWA). Plein écran, sans le chrome desktop
  * (la sidebar staff est masquée par AppComponent sur les routes /joueur).
- * Top bar contextuelle : retour + titre pilotés par `data.title` / `data.home`
- * de la route enfant active.
+ * Top bar contextuelle (retour + titre) sur les écrans secondaires ; barre de
+ * navigation basse (Accueil · Historique · FAB Ressenti · Conseils · Santé) sur
+ * les écrans racines.
  */
 @Component({
   selector: 'app-joueur-layout',
@@ -28,6 +32,10 @@ export class JoueurLayoutComponent implements OnInit {
 
   readonly titre = signal('');
   readonly estHome = signal(true);
+  /** L'écran rend son propre en-tête → on masque le topbar contextuel. */
+  readonly ownHeader = signal(false);
+  /** Onglet de nav basse actif (null = écran secondaire, nav masquée). */
+  readonly onglet = signal<OngletNav>('accueil');
 
   ngOnInit(): void {
     this.store.ensureLoaded();
@@ -43,7 +51,31 @@ export class JoueurLayoutComponent implements OnInit {
     const data = r.snapshot.data;
     this.titre.set(data['title'] ?? '');
     this.estHome.set(!!data['home']);
+    this.ownHeader.set(!!data['ownHeader']);
+    this.onglet.set(this.ongletDeUrl());
   }
+
+  /** Déduit l'onglet de nav basse depuis l'URL (null hors écran racine). */
+  private ongletDeUrl(): OngletNav {
+    const url = this.router.url.split('?')[0].replace(/\/$/, '');
+    if (url === '/joueur') return 'accueil';
+    if (url === '/joueur/historique') return 'historique';
+    if (url === '/joueur/conseils') return 'conseils';
+    if (url === '/joueur/sante') return 'sante';
+    return null;
+  }
+
+  aller(onglet: Exclude<OngletNav, null>): void {
+    const routes: Record<Exclude<OngletNav, null>, string> = {
+      accueil: '/joueur',
+      historique: '/joueur/historique',
+      conseils: '/joueur/conseils',
+      sante: '/joueur/sante',
+    };
+    this.router.navigate([routes[onglet]]);
+  }
+
+  saisirRessenti(): void { this.router.navigate(['/joueur/wellness']); }
 
   retour(): void { this.router.navigate(['/joueur']); }
   deconnexion(): void { this.auth.logout(); }

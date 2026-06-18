@@ -44,6 +44,18 @@ export class JoueurRpeComponent {
   setIntensite(v: number): void { this.intensite.set(v); }
   setDuree(v: string): void { const n = parseInt(v, 10); this.duree.set(isNaN(n) ? null : n); }
 
+  /** Libellé qualitatif de l'intensité ressentie. */
+  readonly intensiteLabel = computed(() => {
+    const v = this.intensite();
+    if (v === 0) return '';
+    if (v <= 1) return 'Très léger';
+    if (v <= 3) return 'Léger';
+    if (v <= 5) return 'Modéré';
+    if (v <= 7) return 'Intense';
+    if (v <= 9) return 'Très intense';
+    return 'Maximal';
+  });
+
   /** Couleur d'une note d'effort (vert → rouge). */
   couleur(v: number): string {
     if (v <= 3) return '#15803D';

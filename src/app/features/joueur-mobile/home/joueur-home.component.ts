@@ -6,9 +6,10 @@ import { AuthService } from '@core/services/auth.service';
 import { InstallPwaComponent } from '@shared/components/install-pwa/install-pwa.component';
 
 /**
- * Écran d'accueil joueur (PWA) : carte « Aujourd'hui » centrée sur les 2 gestes
- * du jour (wellness, sRPE) + déclaration de gêne, puis raccourcis (historique,
- * conseils).
+ * Écran d'accueil joueur (PWA) — refonte « Claude Design ».
+ * En-tête salutation + avatar, héros « Aujourd'hui » (2 gestes du jour : ressenti
+ * + sRPE), déclaration de gêne, prochaine séance, raccourcis suivi et bloc
+ * « Mon corps & santé ».
  */
 @Component({
   selector: 'app-joueur-home',
@@ -22,7 +23,17 @@ export class JoueurHomeComponent {
   store = inject(JoueurStore);
   private auth = inject(AuthService);
 
+  readonly today = new Date();
+
   readonly prenom = computed(() => this.store.profil()?.prenom ?? '');
+
+  /** Initiales pour l'avatar (prénom + nom). */
+  readonly initiales = computed(() => {
+    const p = this.store.profil();
+    const a = (p?.prenom ?? '').trim()[0] ?? '';
+    const b = (p?.nom ?? '').trim()[0] ?? '';
+    return (a + b).toUpperCase() || '⚽';
+  });
 
   deconnexion(): void {
     if (confirm('Se déconnecter ?')) this.auth.logout();
@@ -37,4 +48,17 @@ export class JoueurHomeComponent {
   });
 
   readonly nbConseils = computed(() => this.store.conseils().length);
+  readonly nbDocuments = computed(() => this.store.documents().length);
+
+  /** Une séance de la prochaine est-elle un match ? */
+  estMatch(): boolean {
+    const s = this.store.prochaineSeance();
+    return !!(s && (s.adversaire || s.typeSeance?.code === 'MATCH'));
+  }
+
+  /** Poids le plus récent, formaté « 74,8 kg » (virgule française). */
+  readonly poidsAffiche = computed(() => {
+    const p = this.store.dernierPoids();
+    return p == null ? '—' : `${p.toLocaleString('fr-FR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} kg`;
+  });
 }

@@ -209,6 +209,21 @@
   padding: 40px 16px;
   font-size: 14px;
   line-height: 1.7;
+
+  /* Variante icône-cercle (Claude Design) */
+  &__ic {
+    width: 64px;
+    height: 64px;
+    margin: 0 auto 14px;
+    border-radius: 50%;
+    background: var(--green-50);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    svg { width: 30px; height: 30px; }
+  }
+  &__t { font-size: 16px; font-weight: 800; color: var(--text); }
+  &__s { font-size: 13px; font-weight: 600; color: var(--text-3); margin-top: 4px; }
 }
 
 /* ── Bandeau hors-ligne / resync ── */

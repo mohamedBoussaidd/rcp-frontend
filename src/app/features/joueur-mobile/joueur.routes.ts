@@ -44,6 +44,10 @@ const routes: Routes = [
         path: 'seances', data: { title: 'Mes séances' },
         loadComponent: () => import('./seances/joueur-seances.component').then(m => m.JoueurSeancesComponent)
       },
+      {
+        path: 'sante', data: { title: 'Mon corps & santé', ownHeader: true },
+        loadComponent: () => import('./sante/joueur-sante.component').then(m => m.JoueurSanteComponent)
+      },
       { path: 'calendrier', component: CalendrierComponent, data: { title: 'Calendrier' } },
       { path: '**', redirectTo: '' },
     ],

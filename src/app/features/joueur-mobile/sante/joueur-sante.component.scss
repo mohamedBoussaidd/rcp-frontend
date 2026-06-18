@@ -1,0 +1,103 @@
+/* ═══════════════════════════════════════════════════════
+   HUB « MON CORPS & SANTÉ » — refonte Claude Design
+   ═══════════════════════════════════════════════════════ */
+
+:host { display: block; }
+
+.sante-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 2px 0 14px;
+
+  &__title {
+    margin: 0;
+    font-size: 22px;
+    font-weight: 800;
+    letter-spacing: -0.3px;
+    color: var(--text);
+  }
+}
+
+.sante-avatar {
+  flex: none;
+  width: 40px;
+  height: 40px;
+  border: none;
+  border-radius: var(--r-pill);
+  background: linear-gradient(135deg, var(--green-500), var(--green-700));
+  color: #fff;
+  font-weight: 800;
+  font-size: 14px;
+  box-shadow: var(--shadow-sm);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sante-list { display: flex; flex-direction: column; gap: 10px; }
+
+.sante-row {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  text-decoration: none;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-xl);
+  padding: 15px;
+  box-shadow: var(--shadow-sm);
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 90ms var(--ease-out);
+  &:active { transform: scale(0.99); }
+
+  &__icon {
+    flex: none;
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    background: var(--surface-3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    svg { width: 22px; height: 22px; }
+
+    &--bad { background: var(--bad-bg); }
+    &--ok { background: var(--green-50); }
+    &--info { background: var(--info-bg); }
+  }
+
+  &__body { flex: 1; min-width: 0; }
+
+  &__title {
+    display: block;
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--text);
+  }
+
+  &__sub {
+    display: block;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-3);
+
+    &--mono {
+      font-family: var(--font-num);
+      font-variant-numeric: tabular-nums;
+    }
+  }
+
+  &__badge {
+    flex: none;
+    font-size: 10px;
+    font-weight: 800;
+    color: var(--bad);
+    background: var(--bad-bg);
+    padding: 4px 9px;
+    border-radius: var(--r-pill);
+  }
+}
+
+.sante-chev { flex: none; width: 20px; height: 20px; }

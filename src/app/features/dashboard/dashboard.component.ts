@@ -3,7 +3,7 @@ import { PredictionService, ResumeJoueur } from '@core/services/prediction.servi
 import { PeseesService, PoidsFicheJoueur } from '@core/services/pesees.service';
 import { JoueurService, Joueur } from '@core/services/joueur.service';
 import { TechniqueService, JoueurCompoStats } from '@core/services/technique.service';
-import { DecimalPipe, DatePipe, SlicePipe, NgTemplateOutlet } from '@angular/common';
+import { DecimalPipe, DatePipe, SlicePipe } from '@angular/common';
 import { SeanceService, Seance } from '@core/services/seance.service';
 import { Router } from '@angular/router';
 import { MatSnackBar } from '@angular/material/snack-bar';
@@ -28,7 +28,7 @@ import { DashboardPreparateurComponent } from './dashboard-preparateur/dashboard
   standalone: true,
   styleUrl: './dashboard.component.scss',
   imports: [
-    MatIcon, ChartComponent, FormsModule, DecimalPipe, DatePipe, SlicePipe, RouterLink, NgTemplateOutlet,
+    MatIcon, ChartComponent, FormsModule, DecimalPipe, DatePipe, SlicePipe, RouterLink,
     BadgeRisqueComponent, MatProgressBar,
     MatTable, MatColumnDef, MatHeaderCellDef, MatHeaderCell,
     MatCellDef, MatCell, MatHeaderRowDef, MatHeaderRow, MatRowDef, MatRow,
@@ -48,6 +48,11 @@ export class DashboardComponent implements OnInit {
   seancesAVenir: Seance[] = [];
   readonly aujourdhui = (() => {
     const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  })();
+  readonly demain = (() => {
+    const d = new Date();
+    d.setDate(d.getDate() + 1);
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   })();
 
@@ -72,6 +77,41 @@ export class DashboardComponent implements OnInit {
   triFatigue: 'asc' | 'desc' | null = null;
   triRisque:  'asc' | 'desc' | null = null;
 
+  /* ── Filtre statut de l'effectif ── */
+  filtreStatut: 'tous' | 'actif' | 'blesse' | 'suspendu' | 'prete' | 'inactif' = 'tous';
+  readonly filtresStatut: { key: typeof DashboardComponent.prototype.filtreStatut; label: string }[] = [
+    { key: 'tous',     label: 'Tous' },
+    { key: 'actif',    label: 'Actif' },
+    { key: 'blesse',   label: 'Blessé' },
+    { key: 'suspendu', label: 'Suspendu' },
+    { key: 'prete',    label: 'Prêté' },
+    { key: 'inactif',  label: 'Inactif' },
+  ];
+
+  get effectifFiltre(): ResumeJoueur[] {
+    const q = this.recherche.trim().toLowerCase();
+    return this.joueurs.filter(j => {
+      const st = this.statutMap.get(j.joueur_id) ?? 'actif';
+      if (this.filtreStatut !== 'tous' && st !== this.filtreStatut) return false;
+      if (q && !`${j.prenom} ${j.nom}`.toLowerCase().includes(q)
+            && !`${j.nom} ${j.prenom}`.toLowerCase().includes(q)) return false;
+      return true;
+    });
+  }
+
+  /** Couleur pastel déterministe d'un avatar, dérivée d'une clé (id joueur). */
+  private readonly AVATAR_PALETTE = [
+    { bg: '#dbeafe', fg: '#1d4ed8' }, { bg: '#dcfce7', fg: '#15803d' },
+    { bg: '#cffafe', fg: '#0e7490' }, { bg: '#fce7f3', fg: '#be185d' },
+    { bg: '#ede9fe', fg: '#6d28d9' }, { bg: '#fef3c7', fg: '#b45309' },
+    { bg: '#ffedd5', fg: '#c2410c' }, { bg: '#e0e7ff', fg: '#4338ca' },
+  ];
+  avatarColor(key: string): { bg: string; fg: string } {
+    let h = 0;
+    for (let i = 0; i < key.length; i++) h = (h * 31 + key.charCodeAt(i)) >>> 0;
+    return this.AVATAR_PALETTE[h % this.AVATAR_PALETTE.length];
+  }
+
   /* ── KPIs dérivés ── */
   get nbDisponibles(): number {
     return [...this.statutMap.values()].filter(s => s === 'actif').length;
@@ -88,6 +128,39 @@ export class DashboardComponent implements OnInit {
     if (!this.joueurs.length) return 0;
     const sum = this.joueurs.reduce((a, j) => a + (j.score_risque ?? 0), 0);
     return sum / this.joueurs.length;
+  }
+
+  /* ── Séances groupées par jour (Aujourd'hui / Demain / date) ── */
+  get totalSeances(): number {
+    return this.seancesAujourdhui.length + this.seancesAVenir.length;
+  }
+
+  get seancesParJour(): { date: string; label: string | null; seances: Seance[] }[] {
+    const all = [...this.seancesAujourdhui, ...this.seancesAVenir];
+    const groups = new Map<string, Seance[]>();
+    for (const s of all) {
+      if (!groups.has(s.date)) groups.set(s.date, []);
+      groups.get(s.date)!.push(s);
+    }
+    return [...groups.entries()]
+      .sort((a, b) => a[0].localeCompare(b[0]))
+      .map(([date, seances]) => ({
+        date,
+        label: date === this.aujourdhui ? "Aujourd'hui" : date === this.demain ? 'Demain' : null,
+        seances,
+      }));
+  }
+
+  /** Couleur (texte / fond) d'un chip de type de séance, d'après le libellé. */
+  couleurType(s: Seance): { bg: string; fg: string } {
+    const t = `${s.typeSeance?.code ?? ''} ${s.typeSeance?.libelle ?? ''}`.toLowerCase();
+    if (t.includes('match'))                       return { fg: '#ef4444', bg: '#ef444418' }; // rouge
+    if (t.includes('muscu') || t.includes('force')) return { fg: '#d97706', bg: '#f59e0b18' }; // orange
+    if (t.includes('récup') || t.includes('recup')) return { fg: '#0ea5e9', bg: '#0ea5e918' }; // bleu
+    if (t.includes('vidéo') || t.includes('video')) return { fg: '#7c3aed', bg: '#7c3aed18' }; // violet
+    if (t.includes('soin') || t.includes('méd') || t.includes('med')) return { fg: '#ec4899', bg: '#ec489918' }; // rose
+    if (t.includes('intensif'))                    return { fg: '#6366f1', bg: '#6366f118' }; // indigo
+    return { fg: '#0ea5a0', bg: '#0ea5a018' };                                                // teal (entraînement / défaut)
   }
 
   /* ── Filtrage / tri / pagination ── */

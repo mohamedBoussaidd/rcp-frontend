@@ -1,108 +1,159 @@
-<header class="home-hello pwa-rise">
-  <div class="home-hello__txt">
-    <p class="home-hello__sup">{{ salutation() }}</p>
-    <h1 class="home-hello__name">{{ prenom() || 'Joueur' }} ⚽</h1>
+<!-- En-tête : salutation + avatar -->
+<header class="home-hero pwa-rise">
+  <div>
+    <div class="home-hero__greet">{{ salutation() }},</div>
+    <h1 class="home-hero__name">{{ prenom() || 'Joueur' }}</h1>
+    <div class="home-hero__date">{{ today | date:'EEEE d MMMM':'':'fr' }}</div>
   </div>
-  <button type="button" class="home-logout" (click)="deconnexion()" aria-label="Se déconnecter">⏻</button>
+  <button type="button" class="home-avatar" (click)="deconnexion()" aria-label="Se déconnecter">
+    {{ initiales() }}
+    <span class="home-avatar__dot"></span>
+  </button>
 </header>
 
-<!-- Carte du jour : les 2 gestes quotidiens -->
-<section class="pwa-card home-today pwa-rise">
-  <p class="home-today__label">Aujourd'hui</p>
+<!-- Héros « Aujourd'hui » : les 2 gestes du jour -->
+<section class="home-today pwa-rise">
+  <div class="home-today__head">
+    <span class="home-today__label">Aujourd'hui</span>
+    <span class="home-today__pill">{{ today | date:'d MMM':'':'fr' }}</span>
+  </div>
 
-  <a class="home-task" [class.home-task--done]="store.wellnessFait()" routerLink="/joueur/wellness">
-    <span class="home-task__icon">🌅</span>
-    <span class="home-task__body">
-      <span class="home-task__title">Ressenti du jour</span>
-      <span class="home-task__sub">Sommeil, fatigue, humeur…</span>
+  <a class="home-act" routerLink="/joueur/wellness">
+    <span class="home-act__icon">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"><path d="M12 21s-7-4.5-9.5-9A5 5 0 0 1 12 6a5 5 0 0 1 9.5 6C19 16.5 12 21 12 21z"/></svg>
+    </span>
+    <span class="home-act__body">
+      <span class="home-act__title">Ressenti du jour</span>
+      <span class="home-act__sub">Sommeil, fatigue, humeur…</span>
     </span>
     @if (store.wellnessFait()) {
-      <span class="home-task__state home-task__state--ok">Fait ✓</span>
+      <span class="home-act__tag home-act__tag--done">Fait ✓</span>
     } @else {
-      <span class="home-task__state home-task__state--todo">À faire</span>
+      <span class="home-act__tag home-act__tag--todo">À FAIRE</span>
     }
   </a>
 
-  <a class="home-task" [class.home-task--done]="store.nbSeancesANoter() === 0" routerLink="/joueur/rpe">
-    <span class="home-task__icon">🏃</span>
-    <span class="home-task__body">
-      <span class="home-task__title">Effort des séances</span>
-      <span class="home-task__sub">Note l'intensité ressentie</span>
+  <a class="home-act" routerLink="/joueur/rpe">
+    <span class="home-act__icon">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h3l2.5-6 4 13 2.5-7H21"/></svg>
+    </span>
+    <span class="home-act__body">
+      <span class="home-act__title">Effort des séances</span>
+      <span class="home-act__sub">Intensité ressentie (RPE)</span>
     </span>
     @if (store.nbSeancesANoter() === 0) {
-      <span class="home-task__state home-task__state--ok">À jour ✓</span>
+      <span class="home-act__tag home-act__tag--done">À jour ✓</span>
     } @else {
-      <span class="home-task__state home-task__state--todo">{{ store.nbSeancesANoter() }} à noter</span>
+      <span class="home-act__tag home-act__tag--soft">{{ store.nbSeancesANoter() }} À NOTER</span>
     }
   </a>
 </section>
 
-<!-- Prochaine séance -->
-@if (store.prochaineSeance(); as s) {
-  <a class="pwa-card home-next pwa-rise" routerLink="/joueur/seances">
-    <span class="home-next__ic">{{ s.adversaire ? '⚽' : '📋' }}</span>
-    <span class="home-next__body">
-      <span class="home-next__label">Prochaine séance</span>
-      <span class="home-next__title">
-        @if (s.adversaire) { Match vs {{ s.adversaire }} } @else { {{ s.titre || s.typeSeance.libelle || 'Séance' }} }
-      </span>
-      <span class="home-next__when">{{ s.date | date:'EEEE d MMM' }}@if (s.heureDebut) { · {{ s.heureDebut }} }</span>
-    </span>
-    <span class="home-next__chev" aria-hidden="true">›</span>
-  </a>
-}
-
-<!-- Déclarer une gêne (raccourci vers l'étape gêne du ressenti) -->
-<a class="pwa-card home-gene pwa-rise" routerLink="/joueur/wellness" [queryParams]="{ gene: 1 }">
-  <span class="home-gene__icon">🩹</span>
+<!-- Déclarer une gêne -->
+<a class="home-gene pwa-rise" routerLink="/joueur/wellness" [queryParams]="{ gene: 1 }">
+  <span class="home-gene__icon">
+    <svg viewBox="0 0 24 24" fill="none" stroke="var(--bad)" stroke-width="2" stroke-linecap="round"><path d="M12 9v4m0 4h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg>
+  </span>
   <span class="home-gene__body">
     <span class="home-gene__title">J'ai une gêne / douleur</span>
     <span class="home-gene__sub">
-      @if (store.geneDuJour()) { Gêne signalée aujourd'hui — modifier } @else { Signale où tu as mal sur le corps }
+      @if (store.geneDuJour()) { Gêne signalée aujourd'hui — modifier } @else { Signaler une zone, ça aide le staff }
     </span>
   </span>
-  <span class="home-gene__chev" aria-hidden="true">›</span>
+  <svg class="home-chev" viewBox="0 0 24 24" fill="none" stroke="var(--text-4)" stroke-width="2.4" stroke-linecap="round"><path d="m9 18 6-6-6-6"/></svg>
 </a>
 
-<!-- Raccourcis -->
-<p class="pwa-section-title">Mon suivi</p>
-<div class="home-shortcuts pwa-rise">
-  <a class="home-shortcut" routerLink="/joueur/historique">
-    <span class="home-shortcut__icon">📈</span>
-    <span class="home-shortcut__label">Historique</span>
-  </a>
-  <a class="home-shortcut" routerLink="/joueur/conseils">
-    <span class="home-shortcut__icon">💬</span>
-    <span class="home-shortcut__label">Conseils
-      @if (nbConseils() > 0) { <span class="home-shortcut__badge">{{ nbConseils() }}</span> }
+<!-- Prochaine séance -->
+@if (store.prochaineSeance(); as s) {
+  <h2 class="home-h2">Prochaine séance</h2>
+  <a class="home-next pwa-rise" routerLink="/joueur/seances">
+    <span class="home-next__date">
+      <span class="home-next__day">{{ s.date | date:'d':'':'fr' }}</span>
+      <span class="home-next__mon">{{ s.date | date:'MMM':'':'fr' }}</span>
     </span>
+    <span class="home-next__body">
+      <span class="home-next__meta">
+        @if (estMatch()) {
+          <span class="home-next__badge home-next__badge--match">MATCH</span>
+          @if (s.domicileExterieur) {
+            <span class="home-next__sub2">{{ s.domicileExterieur === 'DOMICILE' ? 'Domicile' : 'Extérieur' }}</span>
+          }
+        } @else {
+          <span class="home-next__badge">{{ s.typeSeance.libelle }}</span>
+        }
+      </span>
+      <span class="home-next__title">
+        @if (estMatch() && s.adversaire) {
+          <span class="home-next__vs">vs</span> {{ s.adversaire }}
+        } @else {
+          {{ s.titre || s.typeSeance.libelle || 'Séance' }}
+        }
+      </span>
+      <span class="home-next__when">
+        {{ s.date | date:'EEEE':'':'fr' }}@if (s.heureDebut) { · {{ s.heureDebut }} }@if (s.terrain) { · {{ s.terrain }} }
+      </span>
+    </span>
+    <svg class="home-chev" viewBox="0 0 24 24" fill="none" stroke="var(--text-4)" stroke-width="2.4" stroke-linecap="round"><path d="m9 18 6-6-6-6"/></svg>
   </a>
-    <a class="home-shortcut" routerLink="/joueur/calendrier">
-    <span class="home-shortcut__icon">📅</span>
-    <span class="home-shortcut__label">Calendrier</span>
+}
+
+<!-- Raccourcis suivi -->
+<div class="home-grid3 pwa-rise">
+  <a class="home-tile" routerLink="/joueur/historique">
+    <svg viewBox="0 0 24 24" fill="none" stroke="var(--green-600)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m7 14 3-4 3 3 4-6"/></svg>
+    <span class="home-tile__label">Historique</span>
+  </a>
+  <a class="home-tile" routerLink="/joueur/conseils">
+    @if (nbConseils() > 0) { <span class="home-tile__badge">{{ nbConseils() }}</span> }
+    <svg viewBox="0 0 24 24" fill="none" stroke="var(--green-600)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.4 8.4 0 0 1-9 8 9 9 0 0 1-3.4-.7L3 20l1.3-4A8.4 8.4 0 0 1 12 3a8.4 8.4 0 0 1 9 8.5z"/></svg>
+    <span class="home-tile__label">Conseils</span>
+  </a>
+  <a class="home-tile" routerLink="/joueur/calendrier">
+    <svg viewBox="0 0 24 24" fill="none" stroke="var(--green-600)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4.5" width="18" height="17" rx="2.5"/><path d="M3 9h18M8 2.5v4M16 2.5v4"/></svg>
+    <span class="home-tile__label">Calendrier</span>
   </a>
 </div>
 
 <!-- Mon corps & santé -->
-<p class="pwa-section-title">Mon corps &amp; santé</p>
-<div class="home-shortcuts pwa-rise">
-  <a class="home-shortcut" routerLink="/joueur/blessures">
-    <span class="home-shortcut__icon">🩼</span>
-    <span class="home-shortcut__label">Mes blessures
-      @if (store.blessureActive()) { <span class="home-shortcut__badge home-shortcut__badge--alert">!</span> }
+<h2 class="home-h2">Mon corps &amp; santé</h2>
+<div class="home-body">
+  <a class="home-row" routerLink="/joueur/blessures">
+    <span class="home-row__icon home-row__icon--bad">
+      <svg viewBox="0 0 24 24" fill="none" stroke="var(--bad)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 2h6v3a2 2 0 0 1 2 2v3l3 1v6l-3-1v3H7v-3l-3 1v-6l3-1V7a2 2 0 0 1 2-2z"/></svg>
     </span>
+    <span class="home-row__body">
+      <span class="home-row__title">Mes blessures</span>
+      <span class="home-row__sub">Suivi &amp; protocole de reprise</span>
+    </span>
+    @if (store.blessureActive()) {
+      <span class="home-row__alert"><span class="home-row__pulse"></span>1 ACTIVE</span>
+    } @else {
+      <svg class="home-chev" viewBox="0 0 24 24" fill="none" stroke="var(--text-4)" stroke-width="2.4" stroke-linecap="round"><path d="m9 18 6-6-6-6"/></svg>
+    }
   </a>
-  <a class="home-shortcut" routerLink="/joueur/poids">
-    <span class="home-shortcut__icon">⚖️</span>
-    <span class="home-shortcut__label">Mon poids</span>
-  </a>
-  <a class="home-shortcut" routerLink="/joueur/documents">
-    <span class="home-shortcut__icon">🗂️</span>
-    <span class="home-shortcut__label">Documents</span>
-  </a>
-  <a class="home-shortcut" routerLink="/joueur/seances">
-    <span class="home-shortcut__icon">📋</span>
-    <span class="home-shortcut__label">Mes séances</span>
+
+  <div class="home-grid2">
+    <a class="home-mini" routerLink="/joueur/poids">
+      <svg viewBox="0 0 24 24" fill="none" stroke="var(--green-600)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 12 8.5 8.5"/></svg>
+      <span class="home-mini__title">Mon poids</span>
+      <span class="home-mini__val">{{ poidsAffiche() }}</span>
+    </a>
+    <a class="home-mini" routerLink="/joueur/documents">
+      <svg viewBox="0 0 24 24" fill="none" stroke="var(--green-600)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>
+      <span class="home-mini__title">Documents</span>
+      <span class="home-mini__val">{{ nbDocuments() }} fichier{{ nbDocuments() > 1 ? 's' : '' }}</span>
+    </a>
+  </div>
+
+  <a class="home-row" routerLink="/joueur/seances">
+    <span class="home-row__icon">
+      <svg viewBox="0 0 24 24" fill="none" stroke="var(--text-2)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 4 6v6c0 5 3.5 8 8 10 4.5-2 8-5 8-10V6z"/></svg>
+    </span>
+    <span class="home-row__body">
+      <span class="home-row__title">Mes séances</span>
+      <span class="home-row__sub">Programme &amp; charge d'entraînement</span>
+    </span>
+    <svg class="home-chev" viewBox="0 0 24 24" fill="none" stroke="var(--text-4)" stroke-width="2.4" stroke-linecap="round"><path d="m9 18 6-6-6-6"/></svg>
   </a>
 </div>
 

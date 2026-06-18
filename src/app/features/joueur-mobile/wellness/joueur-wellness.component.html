@@ -1,84 +1,130 @@
-@if (verrouille()) {
+<!-- Onglets Ressenti / Mode gêne -->
+<div class="well-tabs pwa-rise">
+  <button type="button" class="well-tab" [class.is-active]="tab() === 'ressenti'" (click)="setTab('ressenti')">Ressenti</button>
+  <button type="button" class="well-tab" [class.is-active]="tab() === 'gene'" (click)="setTab('gene')">Mode gêne</button>
+</div>
+
+@if (verrouille() && tab() === 'ressenti') {
   <div class="well-locked pwa-rise">
     <span class="well-locked__ic">✓</span>
-    Ressenti déjà validé aujourd'hui. Tu peux encore signaler une gêne ci-dessous.
+    Ressenti déjà validé aujourd'hui. Passe en « Mode gêne » pour signaler une douleur.
   </div>
 }
 
-<!-- Hooper : 5 lignes de 5 boutons -->
-<section class="pwa-card well-hooper pwa-rise" [class.is-locked]="verrouille()">
-  @for (item of HOOPER; track item.key) {
-    <div class="well-item">
-      <div class="well-item__head">
-        <span class="well-item__label">{{ item.emoji }} {{ item.label }}</span>
-      </div>
-      <div class="pwa-scale">
-        @for (n of NOTES; track n) {
-          <button type="button" class="pwa-scale__btn"
-                  [class.is-active]="noteOf(item.key) === n"
-                  [disabled]="verrouille()"
-                  (click)="setNote(item.key, n)">{{ n }}</button>
+<!-- ════════ ONGLET RESSENTI ════════ -->
+@if (tab() === 'ressenti') {
+  <div class="well-pane pwa-rise">
+    <!-- Humeur : visages -->
+    <section class="pwa-card well-mood">
+      <div class="well-card-title">Humeur générale</div>
+      <div class="well-faces">
+        @for (m of MOODS; track m.val) {
+          <button type="button" class="well-face" [class.is-active]="noteOf('humeur') === m.val"
+                  [disabled]="verrouille()" (click)="setHumeur(m.val)">
+            <span class="well-face__circle" [style.background]="noteOf('humeur') === m.val ? couleurNote(m.val) : null">
+              <svg width="30" height="30" viewBox="0 0 100 100" fill="none">
+                <circle cx="36" cy="42" r="5" [attr.fill]="noteOf('humeur') === m.val ? '#fff' : 'var(--text-3)'"/>
+                <circle cx="64" cy="42" r="5" [attr.fill]="noteOf('humeur') === m.val ? '#fff' : 'var(--text-3)'"/>
+                <path [attr.d]="m.mouth" [attr.stroke]="noteOf('humeur') === m.val ? '#fff' : 'var(--text-3)'" stroke-width="6" stroke-linecap="round" fill="none"/>
+              </svg>
+            </span>
+            <span class="well-face__label" [class.is-active]="noteOf('humeur') === m.val">{{ m.label }}</span>
+          </button>
         }
       </div>
-      <div class="well-item__scale">
-        <span>{{ item.bas }}</span>
-        <span>{{ item.haut }}</span>
-      </div>
-    </div>
-  }
-</section>
+    </section>
 
-<!-- Étape gêne (optionnelle) -->
-<section class="pwa-card well-gene pwa-rise">
-  <div class="well-gene__q">
-    <span class="well-gene__qlabel">🩹 Une douleur ou gêne aujourd'hui ?</span>
-    <div class="well-gene__toggle">
-      <button type="button" [class.is-active]="!geneActive()" (click)="toggleGene(false)">Non</button>
-      <button type="button" [class.is-active]="geneActive()" (click)="toggleGene(true)">Oui</button>
-    </div>
+    <!-- 4 échelles Hooper -->
+    <section class="pwa-card well-scales">
+      @for (s of SCALES; track s.key; let last = $last) {
+        <div class="well-scale" [class.well-scale--last]="last">
+          <div class="well-scale__head">
+            <div class="well-scale__id">
+              <span class="well-scale__emoji">{{ s.emoji }}</span>
+              <span class="well-scale__label">{{ s.label }}</span>
+            </div>
+            <span class="well-scale__val" [style.color]="couleurNote(noteOf(s.key))">{{ noteOf(s.key) }}/5</span>
+          </div>
+          <div class="well-dots">
+            @for (n of NOTES; track n) {
+              <button type="button" class="well-dot"
+                      [class.is-active]="noteOf(s.key) === n"
+                      [style.background]="noteOf(s.key) === n ? couleurNote(n) : null"
+                      [style.borderColor]="noteOf(s.key) === n ? couleurNote(n) : null"
+                      [style.color]="noteOf(s.key) === n ? '#fff' : null"
+                      [disabled]="verrouille()"
+                      (click)="setNote(s.key, n)">{{ n }}</button>
+            }
+          </div>
+          <div class="well-scale__ends"><span>{{ s.bas }}</span><span>{{ s.haut }}</span></div>
+        </div>
+      }
+    </section>
+
+    <!-- Commentaire -->
+    <section class="pwa-card">
+      <div class="well-card-title">Commentaire <span class="well-card-title__opt">· facultatif</span></div>
+      <textarea class="well-textarea" placeholder="Une précision pour le staff ?"
+                [ngModel]="commentaire()" (ngModelChange)="onComment($event)" [disabled]="verrouille()"></textarea>
+    </section>
   </div>
+}
 
-  @if (geneActive()) {
-    <div class="well-gene__detail pwa-rise">
-      <p class="well-gene__hint">Touche la zone qui te gêne sur le corps :</p>
+<!-- ════════ ONGLET MODE GÊNE ════════ -->
+@if (tab() === 'gene') {
+  <div class="well-pane pwa-rise">
+    <section class="pwa-card">
+      <div class="well-card-title">Où as-tu mal ?</div>
       <app-body-map [value]="gForm().zone || null" (valueChange)="setZone($event)"></app-body-map>
-
       @if (gForm().zone) {
-        <p class="well-gene__selected">Zone : <strong>{{ gForm().zone }}</strong></p>
+        <div class="well-zone-pill">Zone : {{ gForm().zone }}</div>
+      } @else {
+        <div class="well-zone-empty">Touche une zone du corps</div>
+      }
+    </section>
 
-        <p class="well-gene__sub">Intensité de la gêne</p>
-        <div class="pwa-scale">
+    @if (gForm().zone) {
+      <section class="pwa-card pwa-rise">
+        <div class="well-scale__head">
+          <div class="well-card-title">Intensité</div>
+          <span class="well-scale__val" [style.color]="couleurNote(gForm().intensite)">{{ gForm().intensite }}/5</span>
+        </div>
+        <div class="well-dots">
           @for (n of NOTES; track n) {
-            <button type="button" class="pwa-scale__btn"
+            <button type="button" class="well-dot"
                     [class.is-active]="gForm().intensite === n"
-                    [style.background]="gForm().intensite === n ? couleurIntensite(n) : null"
-                    [style.borderColor]="gForm().intensite === n ? couleurIntensite(n) : null"
+                    [style.background]="gForm().intensite === n ? couleurNote(n) : null"
+                    [style.borderColor]="gForm().intensite === n ? couleurNote(n) : null"
                     [style.color]="gForm().intensite === n ? '#fff' : null"
                     (click)="setIntensite(n)">{{ n }}</button>
           }
         </div>
-        <div class="well-item__scale"><span>Légère</span><span>Très forte</span></div>
+        <div class="well-scale__ends"><span>Légère</span><span>Très forte</span></div>
+      </section>
 
-        <p class="well-gene__sub">Quand ?</p>
-        <div class="pwa-chips">
+      <section class="pwa-card pwa-rise">
+        <div class="well-card-title">Quand ?</div>
+        <div class="well-moments">
           @for (m of MOMENTS; track m.val) {
-            <button type="button" class="pwa-chip" [class.is-active]="gForm().moment === m.val"
+            <button type="button" class="well-moment" [class.is-active]="gForm().moment === m.val"
                     (click)="setMoment(m.val)">{{ m.label }}</button>
           }
         </div>
-      } @else {
-        <p class="well-gene__empty">Aucune zone sélectionnée.</p>
-      }
-    </div>
-  }
-</section>
+      </section>
+    }
+  </div>
+}
 
-<button type="button" class="pwa-btn pwa-btn--primary pwa-btn--block well-submit"
-        [disabled]="!peutEnvoyer()" (click)="valider()">
-  @if (envoi()) { Envoi… }
-  @else if (verrouille()) { Enregistrer la gêne }
-  @else { Valider mon ressenti }
-</button>
+<!-- Barre d'action fixe -->
+<div class="well-submit-bar">
+  <button type="button" class="pwa-btn pwa-btn--primary pwa-btn--block"
+          [disabled]="!peutEnvoyer()" (click)="valider()">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+    @if (envoi()) { Envoi… }
+    @else if (tab() === 'gene') { Valider la gêne }
+    @else { Valider mon ressenti }
+  </button>
+</div>
 
 @if (toast()) {
   <div class="pwa-toast pwa-pop">✓ Enregistré, merci !</div>
