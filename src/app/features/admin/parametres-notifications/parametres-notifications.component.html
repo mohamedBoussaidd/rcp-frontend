@@ -1,0 +1,223 @@
+<div class="pn">
+  <h1>Notifications — paramètres</h1>
+
+  <div class="pn__onglets">
+    <button [class.actif]="onglet() === 'config'" (click)="onglet.set('config')">Seuils & rappels</button>
+    <button [class.actif]="onglet() === 'routage'" (click)="onglet.set('routage')">Routage</button>
+    <button [class.actif]="onglet() === 'joueur'" (click)="onglet.set('joueur')">Par joueur</button>
+    <button [class.actif]="onglet() === 'droits'" (click)="onglet.set('droits')">Droits d'envoi</button>
+    <button [class.actif]="onglet() === 'perso'" (click)="onglet.set('perso')">Mes préférences</button>
+  </div>
+
+  @if (message()) { <div class="flash">{{ message() }}</div> }
+
+  <!-- ── Seuils & rappels ── -->
+  @if (onglet() === 'config' && config(); as c) {
+    <div class="card section">
+      <h2>Seuils d'alerte
+        <app-info-hint align="left" titre="Seuils d'alerte"
+          texte="Valeurs à partir desquelles un joueur remonte dans le digest « à surveiller ». Propres à cette équipe et modifiables à tout moment."></app-info-hint>
+      </h2>
+      <div class="grille">
+        <label><span class="lbl">ACWR haut
+          <app-info-hint align="left" titre="ACWR — borne haute"
+            texte="ACWR = charge des 7 derniers jours ÷ moyenne des 4 semaines. Au-dessus de ce seuil, la charge augmente trop vite (risque de blessure). Défaut 1,5."></app-info-hint>
+        </span><input type="number" step="0.1" [(ngModel)]="c.seuilAcwrHaut"></label>
+        <label><span class="lbl">ACWR bas
+          <app-info-hint align="left" titre="ACWR — borne basse"
+            texte="Sous ce seuil, le joueur est en sous-charge (reprise, désentraînement). Défaut 0,8."></app-info-hint>
+        </span><input type="number" step="0.1" [(ngModel)]="c.seuilAcwrBas"></label>
+        <label><span class="lbl">Readiness min
+          <app-info-hint align="left" titre="Readiness"
+            texte="Indice de fraîcheur 0–100 calculé depuis le wellness du joueur. Alerte si la readiness passe sous ce seuil."></app-info-hint>
+        </span><input type="number" step="1" [(ngModel)]="c.seuilReadinessMin"></label>
+        <label><span class="lbl">Wellness fatigue ≥
+          <app-info-hint align="left" titre="Fatigue (Hooper)"
+            texte="Item saisi par le joueur, de 1 (bon) à 5 (mauvais). Alerte si la fatigue déclarée atteint ce niveau ou pire."></app-info-hint>
+        </span><input type="number" min="1" max="5" [(ngModel)]="c.seuilWellnessFatigue"></label>
+        <label><span class="lbl">Wellness douleur ≥
+          <app-info-hint align="left" titre="Douleur (Hooper)"
+            texte="De 1 (aucune) à 5 (forte). Alerte si la douleur déclarée atteint ce niveau ou pire."></app-info-hint>
+        </span><input type="number" min="1" max="5" [(ngModel)]="c.seuilWellnessDouleur"></label>
+        <label><span class="lbl">Wellness stress ≥
+          <app-info-hint align="left" titre="Stress (Hooper)"
+            texte="De 1 (détendu) à 5 (très stressé). Alerte si le stress déclaré atteint ce niveau ou pire."></app-info-hint>
+        </span><input type="number" min="1" max="5" [(ngModel)]="c.seuilWellnessStress"></label>
+        <label><span class="lbl">Wellness sommeil ≥
+          <app-info-hint align="left" titre="Sommeil (Hooper)"
+            texte="Échelle où 1 = excellent et 5 = très mauvais. Alerte si le sommeil déclaré atteint ce niveau ou pire."></app-info-hint>
+        </span><input type="number" min="1" max="5" [(ngModel)]="c.seuilWellnessSommeil"></label>
+        <label><span class="lbl">Wellness humeur ≥
+          <app-info-hint align="left" titre="Humeur (Hooper)"
+            texte="Échelle où 1 = bonne et 5 = mauvaise. Alerte si l'humeur déclarée atteint ce niveau ou pire."></app-info-hint>
+        </span><input type="number" min="1" max="5" [(ngModel)]="c.seuilWellnessHumeur"></label>
+        <label><span class="lbl">Poids court (kg)
+          <app-info-hint align="left" titre="Variation de poids — court terme"
+            texte="Écart de poids rapide (jour à jour) déclenchant un signalement, en kilogrammes."></app-info-hint>
+        </span><input type="number" step="0.1" [(ngModel)]="c.seuilPoidsCourt"></label>
+        <label><span class="lbl">Poids moyen (kg)
+          <app-info-hint align="left" titre="Écart au poids de forme"
+            texte="Écart entre le poids actuel et le poids de forme cible déclenchant un signalement dans le digest, en kilogrammes."></app-info-hint>
+        </span><input type="number" step="0.1" [(ngModel)]="c.seuilPoidsMoyen"></label>
+        <label><span class="lbl">Complétion min (%)
+          <app-info-hint align="left" titre="Taux de complétion"
+            texte="Si moins de ce pourcentage de joueurs ont saisi leur wellness du jour, une alerte de complétion remonte au staff."></app-info-hint>
+        </span><input type="number" min="0" max="100" [(ngModel)]="c.seuilCompletionMin"></label>
+      </div>
+
+      <h2>Digests « à surveiller »
+        <app-info-hint align="left" titre="Digest"
+          texte="Un seul résumé groupé des joueurs à surveiller, envoyé au staff aux heures choisies — au lieu d'une notification par alerte. Les cas urgents (gêne) restent envoyés immédiatement."></app-info-hint>
+      </h2>
+      <div class="grille">
+        <label class="switch"><input type="checkbox" [(ngModel)]="c.digestActif"> Digests actifs</label>
+        <label><span class="lbl">Matin
+          <app-info-hint align="left" titre="Digest du matin"
+            texte="Heure d'envoi du résumé matinal — regroupe surtout les wellness saisis le matin même."></app-info-hint>
+        </span><input type="time" [(ngModel)]="c.digestMatinHeure"></label>
+        <label><span class="lbl">Soir
+          <app-info-hint align="left" titre="Digest du soir"
+            texte="Heure d'envoi du résumé du soir — bilan de la journée (charge, séances, ressentis)."></app-info-hint>
+        </span><input type="time" [(ngModel)]="c.digestSoirHeure"></label>
+      </div>
+
+      <h2>Rappels joueur
+        <app-info-hint align="left" titre="Rappels"
+          texte="Notifications automatiques envoyées aux joueurs pour qu'ils complètent leurs saisies. Aux heures / délais définis ici."></app-info-hint>
+      </h2>
+      <div class="grille">
+        <label class="switch"><input type="checkbox" [(ngModel)]="c.rappelWellnessActif"> Rappel wellness</label>
+        <label><span class="lbl">Heure
+          <app-info-hint align="left" titre="Heure du rappel wellness"
+            texte="Heure à laquelle les joueurs n'ayant pas encore saisi leur ressenti du jour sont relancés."></app-info-hint>
+        </span><input type="time" [(ngModel)]="c.rappelWellnessHeure"></label>
+        <label class="switch"><input type="checkbox" [(ngModel)]="c.rappelRpeActif"> Rappel RPE</label>
+        <label><span class="lbl">Délai RPE (h)
+          <app-info-hint align="left" titre="Délai du rappel RPE"
+            texte="Nombre d'heures après la fin de séance avant de rappeler aux joueurs de saisir leur effort ressenti."></app-info-hint>
+        </span><input type="number" min="0" max="24" [(ngModel)]="c.rappelRpeDelaiHeures"></label>
+        <label class="switch"><input type="checkbox" [(ngModel)]="c.rappelSeanceActif"> Rappel séance</label>
+        <label class="switch"><input type="checkbox" [(ngModel)]="c.rappelPoidsActif"> Rappel pesée</label>
+      </div>
+
+      <button class="primaire" (click)="enregistrerConfig()">Enregistrer</button>
+    </div>
+  }
+
+  <!-- ── Routage par rôle ── -->
+  @if (onglet() === 'routage') {
+    <div class="card section">
+      <h2>Qui reçoit quel type
+        <app-info-hint align="left" titre="Routage par rôle"
+          texte="Coche les rôles du staff qui reçoivent chaque type de notification. Ex. : les alertes wellness au médical, la charge au préparateur. « Actif » désactive entièrement un type pour l'équipe."></app-info-hint>
+      </h2>
+      <p class="aide">Coche les rôles qui reçoivent chaque type. La colonne <strong>Actif</strong> est un interrupteur global&nbsp;: décochée, ce type n'est envoyé à <em>personne</em> (même si des rôles sont cochés).</p>
+      <table class="tbl">
+        <thead><tr><th>Type</th>@for (role of roles; track role) { <th>{{ role }}</th> }
+          <th>Actif
+            <app-info-hint align="left" titre="Actif (interrupteur du type)"
+              texte="Interrupteur marche/arrêt de toute la ligne. Coché : le type est envoyé aux rôles cochés. Décoché : ce type est entièrement désactivé pour l'équipe — personne ne le reçoit, quels que soient les rôles cochés."></app-info-hint>
+          </th></tr></thead>
+        <tbody>
+          @for (r of routages(); track r.type) {
+            <tr [class.ligne-off]="!r.actif">
+              <td>{{ libelle(r.type) }}</td>
+              @for (role of roles; track role) {
+                <td class="c"><input type="checkbox" [checked]="aRole(r, role)" [disabled]="!r.actif" (change)="basculerRole(r, role)"></td>
+              }
+              <td class="c"><input type="checkbox" [(ngModel)]="r.actif"></td>
+            </tr>
+          }
+        </tbody>
+      </table>
+      <button class="primaire" (click)="enregistrerRoutage()">Enregistrer</button>
+    </div>
+  }
+
+  <!-- ── Par joueur (matrice) ── -->
+  @if (onglet() === 'joueur') {
+    <div class="card section">
+      <h2>Notifications par joueur
+        <app-info-hint align="left" titre="Couper des notifications à un joueur"
+          texte="Coche/décoche chaque type pour chaque joueur. Ex. : couper le rappel RPE et le rappel séance à un blessé. La ligne « Tout le monde » en haut active/coupe un type pour toute l'équipe d'un coup. Géré par le staff (le joueur ne modifie pas)."></app-info-hint>
+      </h2>
+      <p class="aide">Coche = le joueur reçoit ce type. Utilise la ligne « Tout le monde » pour couper un rappel à toute l'équipe.</p>
+
+      @if (matrice(); as m) {
+        @if (m.joueurs.length === 0) {
+          <p class="aide">Aucun joueur avec un compte relié dans cette équipe.</p>
+        } @else {
+          <div class="matrice-wrap">
+            <table class="tbl matrice">
+              <thead>
+                <tr>
+                  <th class="col-joueur">Joueur</th>
+                  @for (t of m.types; track t) { <th class="c">{{ libelle(t) }}</th> }
+                </tr>
+                <tr class="tous">
+                  <th class="col-joueur">Tout le monde</th>
+                  @for (t of m.types; track t) {
+                    <th class="c"><input type="checkbox" [checked]="colonneToute(t)" (change)="basculerColonne(t)"></th>
+                  }
+                </tr>
+              </thead>
+              <tbody>
+                @for (l of m.joueurs; track l.joueurId) {
+                  <tr>
+                    <td class="col-joueur">{{ l.nom }}</td>
+                    @for (t of m.types; track t) {
+                      <td class="c"><input type="checkbox" [checked]="l.actifs[t]" (change)="basculerCellule(l, t)"></td>
+                    }
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        }
+      }
+    </div>
+  }
+
+  <!-- ── Droits d'envoi joueur ── -->
+  @if (onglet() === 'droits') {
+    <div class="card section">
+      <h2>Droits d'envoi des joueurs
+        <app-info-hint align="left" titre="Droits d'envoi"
+          texte="AUCUN : le joueur ne peut pas écrire. ÉQUIPE : il peut écrire à toute l'équipe (ex. capitaine). CIBLE : il peut en plus choisir des joueurs précis."></app-info-hint>
+      </h2>
+      <p class="aide">Autorise certains joueurs à envoyer des messages, à toute l'équipe (ÉQUIPE) ou à des joueurs ciblés (CIBLE).</p>
+      <table class="tbl">
+        <thead><tr><th>Joueur</th><th>Niveau</th></tr></thead>
+        <tbody>
+          @for (d of droits(); track d.joueurId) {
+            <tr>
+              <td>{{ d.joueurNom }}</td>
+              <td>
+                <select [ngModel]="d.niveau" (ngModelChange)="changerDroit(d, $event)">
+                  @for (n of niveaux; track n) { <option [value]="n">{{ n }}</option> }
+                </select>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+
+  <!-- ── Mes préférences ── -->
+  @if (onglet() === 'perso') {
+    <div class="card section">
+      <h2>Mes notifications
+        <app-info-hint align="left" titre="Mes préférences"
+          texte="Active ou coupe les notifications que TU reçois. Un cadenas « verrouillé » signifie qu'un réglage a été imposé pour toi et n'est pas modifiable ici."></app-info-hint>
+      </h2>
+      @for (p of preferences(); track p.type) {
+        <label class="ligne-pref">
+          <input type="checkbox" [checked]="p.actif" [disabled]="!p.modifiable" (change)="basculerPref(p)">
+          <span>{{ libelle(p.type) }}</span>
+          @if (!p.modifiable) { <em class="verrou">verrouillé</em> }
+        </label>
+      }
+    </div>
+  }
+</div>

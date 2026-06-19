@@ -1,0 +1,24 @@
+<div class="jn">
+  @if (etatPush() === 'a-activer') {
+    <button class="push" (click)="activerPush()">🔔 Activer les notifications sur cet appareil</button>
+  } @else if (etatPush() === 'actif') {
+    <div class="push push--ok">✅ Notifications de l'appareil activées</div>
+  } @else if (etatPush() === 'refuse') {
+    <div class="push push--ko">Notifications bloquées dans le navigateur</div>
+  }
+
+  <h2>Ce que tu reçois
+    <app-info-hint align="left" titre="Tes notifications"
+      texte="La liste des notifications activées pour toi. Ces réglages sont gérés par le staff ; adresse-toi à lui pour les modifier."></app-info-hint>
+  </h2>
+  <p class="note">Réglages gérés par le staff.</p>
+  @for (p of preferences(); track p.type) {
+    <label class="ligne ligne--ro">
+      <span class="lbl">{{ libelle(p.type) }}
+        <app-info-hint align="left" [titre]="libelle(p.type)" [texte]="aide(p.type)"></app-info-hint>
+      </span>
+      <span class="etat" [class.etat--on]="p.actif">{{ p.actif ? 'Activé' : 'Coupé' }}</span>
+    </label>
+  }
+  @if (preferences().length === 0) { <p class="vide">Aucune préférence disponible.</p> }
+</div>

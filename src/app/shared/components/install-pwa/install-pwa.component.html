@@ -14,4 +14,13 @@
       </div>
     }
   }
+
+  @if (install.canInstall() || install.iosInstallable) {
+    <div class="install-pwa-notif">
+      ⚠️ <strong>Important :</strong> après l'installation, <strong>accepte les notifications
+      dès la première demande</strong> — elles sont indispensables au bon fonctionnement
+      (rappels wellness/RPE, messages du staff…). Si tu refuses, il faudra les réactiver
+      à la main dans les réglages du téléphone.
+    </div>
+  }
 }

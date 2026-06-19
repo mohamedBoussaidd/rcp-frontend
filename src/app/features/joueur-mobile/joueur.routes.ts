@@ -49,6 +49,10 @@ const routes: Routes = [
         loadComponent: () => import('./sante/joueur-sante.component').then(m => m.JoueurSanteComponent)
       },
       { path: 'calendrier', component: CalendrierComponent, data: { title: 'Calendrier' } },
+      {
+        path: 'notifications', data: { title: 'Mes notifications' },
+        loadComponent: () => import('./notifications/joueur-notifications.component').then(m => m.JoueurNotificationsComponent)
+      },
       { path: '**', redirectTo: '' },
     ],
   },

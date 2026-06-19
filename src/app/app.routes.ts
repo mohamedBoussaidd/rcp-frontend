@@ -97,6 +97,10 @@ export const routes: Routes = [
     path: 'methodologie', canActivate: [authGuard, roleGuard, contexteGuard], data: { roles: STAFF_PHYSIQUE },
     loadComponent: () => import('./features/admin/methodologie/methodologie.component').then(m => m.MethodologieComponent)
   },
+  {
+    path: 'parametres-notifications', canActivate: [authGuard, roleGuard, contexteGuard], data: { roles: STAFF },
+    loadComponent: () => import('./features/admin/parametres-notifications/parametres-notifications.component').then(m => m.ParametresNotificationsComponent)
+  },
 
   { path: '**', redirectTo: 'dashboard' },
 ];

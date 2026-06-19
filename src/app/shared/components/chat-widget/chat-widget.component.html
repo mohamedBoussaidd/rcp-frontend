@@ -1,0 +1,66 @@
+@if (capacite()?.peutEnvoyer) {
+  <div class="chat">
+    @if (ouvert()) {
+      <div class="chat__panneau">
+        <div class="chat__entete">
+          <strong>Messagerie</strong>
+          <button type="button" class="x" (click)="basculer()" aria-label="Fermer">✕</button>
+        </div>
+
+        <div class="chat__onglets">
+          <button type="button" [class.actif]="onglet() === 'ecrire'" (click)="choisirOnglet('ecrire')">Écrire</button>
+          <button type="button" [class.actif]="onglet() === 'envoyes'" (click)="choisirOnglet('envoyes')">Envoyés</button>
+        </div>
+
+        @if (onglet() === 'ecrire') {
+          <div class="chat__corps">
+            @if (capacite()?.peutCibler) {
+              <div class="mode">
+                <label><input type="radio" name="mode" [checked]="!modeCible()" (change)="modeCible.set(false)"> Toute l'équipe</label>
+                <label><input type="radio" name="mode" [checked]="modeCible()" (change)="modeCible.set(true)"> Choisir</label>
+              </div>
+              @if (modeCible()) {
+                <div class="cibles">
+                  @for (d of destinatairesDispo(); track d.joueurId) {
+                    <label class="puce" [class.puce--on]="cibles().has(d.joueurId)">
+                      <input type="checkbox" [checked]="cibles().has(d.joueurId)" (change)="basculerCible(d.joueurId)">
+                      {{ d.nom }}
+                    </label>
+                  }
+                  @if (destinatairesDispo().length === 0) { <span class="vide">Aucun destinataire</span> }
+                </div>
+              }
+            }
+
+            <input class="champ" type="text" placeholder="Titre (optionnel)"
+                   [ngModel]="titre()" (ngModelChange)="titre.set($event)" maxlength="120">
+            <textarea class="champ champ--zone" rows="4" placeholder="Votre message…"
+                      [ngModel]="corps()" (ngModelChange)="corps.set($event)"></textarea>
+
+            @if (retour()) { <div class="retour">{{ retour() }}</div> }
+
+            <button type="button" class="envoyer" [disabled]="!corps().trim() || envoiEnCours()" (click)="envoyer()">
+              {{ envoiEnCours() ? 'Envoi…' : 'Envoyer' }}
+            </button>
+          </div>
+        } @else {
+          <div class="chat__corps liste-envoyes">
+            @if (envoyes().length === 0) {
+              <div class="vide">Aucun message envoyé</div>
+            } @else {
+              @for (m of envoyes(); track m.threadId || m.createdAt) {
+                <div class="env">
+                  <div class="env__titre">{{ m.titre }}</div>
+                  <div class="env__corps">{{ m.corps }}</div>
+                  <div class="env__date">{{ formatDate(m.createdAt) }}</div>
+                </div>
+              }
+            }
+          </div>
+        }
+      </div>
+    }
+
+    <button type="button" class="chat__bulle" (click)="basculer()" aria-label="Messagerie">💬</button>
+  </div>
+}

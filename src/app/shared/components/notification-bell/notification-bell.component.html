@@ -1,0 +1,53 @@
+<div class="bell" [class.bell--ouvert]="ouvert()">
+  <button type="button" class="bell__btn" (click)="basculer()" aria-label="Notifications">
+    <span class="bell__icone">🔔</span>
+    @if (nonLus() > 0) {
+      <span class="bell__badge">{{ nonLus() > 99 ? '99+' : nonLus() }}</span>
+    }
+  </button>
+
+  @if (ouvert()) {
+    <div class="panneau">
+      <div class="panneau__entete">
+        <strong>Notifications</strong>
+        <button type="button" class="lien" (click)="toutLire()" [disabled]="nonLus() === 0">
+          Tout marquer lu
+        </button>
+      </div>
+
+      @if (etatPush() === 'a-activer') {
+        <div class="push-relance">
+          <span>Activer les notifications de cet appareil&nbsp;?</span>
+          <button type="button" class="btn-push" (click)="activerPush()">Activer</button>
+        </div>
+      }
+
+      <div class="panneau__liste">
+        @if (chargement()) {
+          <div class="vide">Chargement…</div>
+        } @else if (items().length === 0) {
+          <div class="vide">Aucune notification</div>
+        } @else {
+          @for (n of items(); track n.id) {
+            <button type="button" class="item" [class.item--nonlu]="!n.lu"
+                    [class.item--urgent]="n.priorite === 'URGENTE'" (click)="ouvrir(n)">
+              <span class="item__ic">{{ iconeCategorie(n.categorie) }}</span>
+              <span class="item__corps">
+                <span class="item__titre">{{ n.titre }}</span>
+                @if (n.corps) { <span class="item__texte">{{ n.corps }}</span> }
+                <span class="item__meta">
+                  @if (n.emetteurNom) { <em>{{ n.emetteurNom }}</em> · } {{ tempsRelatif(n.createdAt) }}
+                </span>
+              </span>
+              @if (!n.lu) { <span class="item__point"></span> }
+            </button>
+          }
+        }
+      </div>
+
+      <div class="panneau__pied">
+        <button type="button" class="lien" (click)="allerParametres()">Paramètres des notifications</button>
+      </div>
+    </div>
+  }
+</div>

@@ -1,4 +1,4 @@
-import { Component, Input, signal } from '@angular/core';
+import { Component, ElementRef, HostListener, Input, inject, signal } from '@angular/core';
 import { MatIcon } from '@angular/material/icon';
 
 /**
@@ -13,9 +13,6 @@ import { MatIcon } from '@angular/material/icon';
   standalone: true,
   imports: [MatIcon],
   template: `
-    @if (open()) {
-      <div class="hint-scrim" (click)="close($event)"></div>
-    }
     <span class="hint">
       <button type="button" class="hint__btn"
               [attr.aria-label]="'Aide : ' + titre"
@@ -70,6 +67,16 @@ export class InfoHintComponent {
 
   readonly open = signal(false);
 
+  private host = inject(ElementRef);
+
   toggle(e: Event): void { e.stopPropagation(); this.open.update(v => !v); }
   close(e: Event): void { e.stopPropagation(); this.open.set(false); }
+
+  /** Ferme dès qu'on clique hors de la bulle (fiable même à l'intérieur d'un <label>). */
+  @HostListener('document:click', ['$event'])
+  fermerSiDehors(e: MouseEvent): void {
+    if (this.open() && !this.host.nativeElement.contains(e.target)) {
+      this.open.set(false);
+    }
+  }
 }
