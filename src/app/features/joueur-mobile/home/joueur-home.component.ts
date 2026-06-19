@@ -4,6 +4,7 @@ import { DatePipe } from '@angular/common';
 import { JoueurStore } from '../joueur.store';
 import { AuthService } from '@core/services/auth.service';
 import { InstallPwaComponent } from '@shared/components/install-pwa/install-pwa.component';
+import { NotificationBellComponent } from '@shared/components/notification-bell/notification-bell.component';
 
 /**
  * Écran d'accueil joueur (PWA) — refonte « Claude Design ».
@@ -16,7 +17,7 @@ import { InstallPwaComponent } from '@shared/components/install-pwa/install-pwa.
   standalone: true,
   templateUrl: './joueur-home.component.html',
   styleUrl: './joueur-home.component.scss',
-  imports: [RouterLink, DatePipe, InstallPwaComponent],
+  imports: [RouterLink, DatePipe, InstallPwaComponent, NotificationBellComponent],
 })
 export class JoueurHomeComponent {
 

@@ -1,4 +1,4 @@
-import { Component, inject, signal, OnInit, HostListener, ElementRef } from '@angular/core';
+import { Component, inject, signal, OnInit, HostListener, HostBinding, Input, ElementRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import { NotificationService, NotificationItem } from '@core/services/notification.service';
@@ -24,6 +24,9 @@ export class NotificationBellComponent implements OnInit {
   private auth = inject(AuthService);
   private router = inject(Router);
   private host = inject(ElementRef);
+
+  /** Mode intégré au flux (ex. header PWA, à côté de l'avatar) au lieu du flottant fixe. */
+  @Input() @HostBinding('class.inline') inline = false;
 
   readonly nonLus = this.notifs.nonLus;
   readonly etatPush = this.push.etat;

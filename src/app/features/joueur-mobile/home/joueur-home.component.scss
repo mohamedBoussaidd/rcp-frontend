@@ -10,6 +10,10 @@
   align-items: center;
   justify-content: space-between;
   margin: 2px 0 18px;
+  /* pwa-rise garde un transform → contexte d'empilement ; on lève le header (et donc le
+     panneau de la cloche qu'il contient) au-dessus des cartes suivantes. */
+  position: relative;
+  z-index: 20;
 
   &__greet {
     font-size: 13px;
@@ -32,6 +36,13 @@
     font-weight: 600;
     color: var(--text-4);
     text-transform: capitalize;
+  }
+
+  &__actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex: none;
   }
 }
 

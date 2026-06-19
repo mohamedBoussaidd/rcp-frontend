@@ -10,6 +10,9 @@
 }
 
 @if (auth.currentUser()) {
-  <app-notification-bell></app-notification-bell>
+  <!-- En PWA, la cloche est intégrée dans l'en-tête joueur (mode inline) ; ici uniquement en desktop. -->
+  @if (!modeMobile()) {
+    <app-notification-bell></app-notification-bell>
+  }
   <app-chat-widget></app-chat-widget>
 }

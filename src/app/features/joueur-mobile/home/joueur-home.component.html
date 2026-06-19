@@ -5,10 +5,13 @@
     <h1 class="home-hero__name">{{ prenom() || 'Joueur' }}</h1>
     <div class="home-hero__date">{{ today | date:'EEEE d MMMM':'':'fr' }}</div>
   </div>
-  <button type="button" class="home-avatar" (click)="deconnexion()" aria-label="Se déconnecter">
-    {{ initiales() }}
-    <span class="home-avatar__dot"></span>
-  </button>
+  <div class="home-hero__actions">
+    <app-notification-bell [inline]="true"></app-notification-bell>
+    <button type="button" class="home-avatar" (click)="deconnexion()" aria-label="Se déconnecter">
+      {{ initiales() }}
+      <span class="home-avatar__dot"></span>
+    </button>
+  </div>
 </header>
 
 <!-- Héros « Aujourd'hui » : les 2 gestes du jour -->

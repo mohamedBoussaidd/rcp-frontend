@@ -5,6 +5,28 @@
   z-index: 1200;
 }
 
+/* Mode intégré (header PWA, à côté de l'avatar) : dans le flux, panneau vers le bas.
+   position:relative + z-index élevé pour que le panneau passe AU-DESSUS des cartes
+   suivantes (qui créent un contexte d'empilement via leurs animations/transform). */
+:host(.inline) {
+  position: relative;
+  z-index: 1000;
+}
+:host(.inline) .bell__btn {
+  width: 42px;
+  height: 42px;
+  background: transparent;
+  box-shadow: none;
+  font-size: 20px;
+}
+:host(.inline) .bell__btn:hover { transform: none; box-shadow: none; }
+:host(.inline) .panneau {
+  bottom: auto;
+  top: 52px; /* s'ouvre vers le bas, sous la cloche */
+}
+
+.bell { position: relative; } /* ancre le panneau sur la cloche dans les deux modes */
+
 .bell__btn {
   position: relative;
   width: 54px;
