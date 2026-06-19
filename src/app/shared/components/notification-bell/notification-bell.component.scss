@@ -20,9 +20,17 @@
   font-size: 20px;
 }
 :host(.inline) .bell__btn:hover { transform: none; box-shadow: none; }
+/* Panneau : en PWA il ne doit pas déborder à gauche de l'écran. On l'ancre via position:fixed
+   sur le header (qui porte un transform pwa-rise → c'est le bloc conteneur) : largeur quasi
+   pleine avec marges 12px, ouvert sous l'en-tête. Fallback viewport si le transform disparaît. */
 :host(.inline) .panneau {
+  position: fixed;
+  top: 56px;
+  left: 12px;
+  right: 12px;
   bottom: auto;
-  top: 52px; /* s'ouvre vers le bas, sous la cloche */
+  width: auto;
+  max-width: none;
 }
 
 .bell { position: relative; } /* ancre le panneau sur la cloche dans les deux modes */
