@@ -9,7 +9,9 @@ import { MatDialog } from '@angular/material/dialog';
 import {
   CATEGORIES_EXERCICE, Exercice, ExerciceRequest, TechniqueService,
 } from '@core/services/technique.service';
+import { AuthService } from '@core/services/auth.service';
 import { SchemaEditorComponent } from './schema-editor/schema-editor.component';
+import { SchemaViewerDialogComponent } from './schema-viewer-dialog/schema-viewer-dialog.component';
 import { SchemaTactiqueComponent } from './schema-tactique/schema-tactique.component';
 import { PlanDeJeuComponent } from './plan-de-jeu/plan-de-jeu.component';
 import { MatchComponent } from './match/match.component';
@@ -62,6 +64,27 @@ export class PlanningTechniqueComponent implements OnInit {
   private service = inject(TechniqueService);
   private snack = inject(MatSnackBar);
   private dialog = inject(MatDialog);
+  private auth = inject(AuthService);
+
+  /** Peut créer/dupliquer un exercice (permission d'écriture). */
+  canEcrire(): boolean { return this.auth.has('exercices:write'); }
+
+  /** Visualise le schéma d'un exercice en LECTURE SEULE (accessible à tout le staff). */
+  voirSchema(e: Exercice): void {
+    this.dialog.open(SchemaViewerDialogComponent, {
+      panelClass: 'dark-dialog', maxWidth: '95vw',
+      data: { titre: e.nom, schemaJson: e.schemaJson },
+    });
+  }
+
+  /** Duplique un exercice (copie éditable à son nom) sans toucher l'original. */
+  dupliquerExo(e: Exercice): void {
+    this.service.dupliquerExercice(e.id).subscribe({
+      next: () => { this.charger(); this.snack.open('Exercice dupliqué', 'Fermer', { duration: 2500 }); },
+      error: () => this.snack.open('Duplication impossible', 'Fermer', { duration: 3000 }),
+    });
+  }
+
   ouvrirSchema(e: Exercice): void {
     const ref = this.dialog.open(SchemaEditorComponent, {
       width: '95vw', maxWidth: '95vw', panelClass: 'dark-dialog',

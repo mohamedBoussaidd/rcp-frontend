@@ -24,6 +24,7 @@ interface SubNavItem {
   section?: string;      // valeur du query param ?section=
   default?: boolean;     // sous-item actif quand aucune section n'est précisée
   roles?: Role[];
+  perms?: string[];      // visible AUSSI si l'utilisateur détient une de ces permissions (multi-rôle)
   disabled?: boolean;
 }
 
@@ -36,6 +37,7 @@ interface NavModule {
   query?: Params;            // query params par défaut du module
   matches: string[];         // préfixes d'URL qui activent ce module
   roles: Role[];
+  perms?: string[];          // visible AUSSI via permission (union multi-rôle)
   subnav: SubNavItem[];
 }
 
@@ -52,16 +54,17 @@ const ALL_MODULES: NavModule[] = [
     roles: ['SUPER_ADMIN', 'PRESIDENT', 'ENTRAINEUR', 'PREPARATEUR', 'MEDICAL', 'JOUEUR'],
     subnav: [
       { label: 'Séances',          link: '/calendrier' },
-      { label: 'Schémas',          link: '/planning-technique', section: 'schemas',   roles: ['SUPER_ADMIN', 'ENTRAINEUR'] },
-      { label: 'Exercices',        link: '/planning-technique', section: 'exercices', default: true, roles: ['SUPER_ADMIN', 'ENTRAINEUR'] },
-      { label: 'Plan de jeu',      link: '/planning-technique', section: 'planjeu',   roles: ['SUPER_ADMIN', 'ENTRAINEUR'] },
-      { label: 'Match',            link: '/planning-technique', section: 'match',     roles: ['SUPER_ADMIN', 'ENTRAINEUR'] },
+      { label: 'Schémas',          link: '/planning-technique', section: 'schemas',   roles: ['SUPER_ADMIN', 'ENTRAINEUR'], perms: ['schemas:write'] },
+      { label: 'Exercices',        link: '/planning-technique', section: 'exercices', default: true, roles: ['SUPER_ADMIN', 'ENTRAINEUR'], perms: ['exercices:write'] },
+      { label: 'Plan de jeu',      link: '/planning-technique', section: 'planjeu',   roles: ['SUPER_ADMIN', 'ENTRAINEUR'], perms: ['plandejeu:write'] },
+      { label: 'Match',            link: '/planning-technique', section: 'match',     roles: ['SUPER_ADMIN', 'ENTRAINEUR'], perms: ['matchs:write'] },
     ],
   },
   {
     key: 'gps', label: 'GPS', icon: 'fitness_center',
     link: '/vue-seance', matches: ['/vue-seance', '/etat-effectif', '/charge-equipe', '/suivi-subjectif', '/pesees', '/import', '/methodologie', '/parametres'],
     roles: ['SUPER_ADMIN', 'PRESIDENT', 'PREPARATEUR', 'MEDICAL'],
+    perms: ['pesees:write', 'gps:import'],
     subnav: [
       { label: 'État de l\'effectif', link: '/etat-effectif' },
       { label: 'Charge de l\'équipe', link: '/charge-equipe' },
@@ -69,9 +72,9 @@ const ALL_MODULES: NavModule[] = [
       { label: 'Suivi subjectif',   link: '/suivi-subjectif' },
       // { label: 'Comparaison',       link: '/vue-seance', section: 'comparaison', disabled: true },
       // { label: 'Historique joueur', link: '/vue-seance', section: 'historique', disabled: true },
-      { label: 'Pesées',            link: '/pesees',       roles: ['SUPER_ADMIN', 'PRESIDENT', 'PREPARATEUR', 'MEDICAL'] },
-      { label: 'Paramètres',        link: '/parametres',   roles: ['SUPER_ADMIN', 'PRESIDENT', 'PREPARATEUR'] },
-      { label: 'Import Excel',      link: '/import',       roles: ['SUPER_ADMIN', 'PREPARATEUR'] },
+      { label: 'Pesées',            link: '/pesees',       roles: ['SUPER_ADMIN', 'PRESIDENT', 'PREPARATEUR', 'MEDICAL'], perms: ['pesees:write'] },
+      { label: 'Paramètres',        link: '/parametres',   roles: ['SUPER_ADMIN', 'PRESIDENT', 'PREPARATEUR'], perms: ['configuration:write'] },
+      { label: 'Import Excel',      link: '/import',       roles: ['SUPER_ADMIN', 'PREPARATEUR'], perms: ['gps:import'] },
       { label: 'Méthodologie',      link: '/methodologie', roles: ['SUPER_ADMIN', 'PRESIDENT', 'PREPARATEUR', 'MEDICAL'] },
     ],
   },
@@ -94,10 +97,11 @@ const ALL_MODULES: NavModule[] = [
     link: '/admin/clubs', presidentLink: '/mon-club',
     matches: ['/admin', '/mon-club'],
     roles: ['SUPER_ADMIN', 'PRESIDENT', 'ENTRAINEUR', 'PREPARATEUR'],
+    perms: ['club:manage'],
     subnav: [
       { label: 'Clubs',          link: '/admin/clubs', roles: ['SUPER_ADMIN'] },
       { label: 'Comptes du club', link: '/mon-club',   roles: ['SUPER_ADMIN'] },
-      { label: 'Mon club',       link: '/mon-club',    roles: ['PRESIDENT', 'ENTRAINEUR', 'PREPARATEUR'] },
+      { label: 'Mon club',       link: '/mon-club',    roles: ['PRESIDENT', 'ENTRAINEUR', 'PREPARATEUR'], perms: ['club:manage'] },
     ],
   },
 ];
@@ -136,10 +140,21 @@ export class NavSidebarComponent {
     return { path, section };
   });
 
+  /**
+   * Visible si le rôle (legacy) correspond — comportement historique, zéro régression pour les
+   * mono-rôle — OU si l'utilisateur détient une des permissions listées (union multi-rôle).
+   */
+  private visible(roles: Role[] | undefined, perms: string[] | undefined, userRole: Role): boolean {
+    if (!roles && !perms) return true;
+    const byRole = !!roles && roles.includes(userRole);
+    const byPerm = !!perms && perms.some(p => this.auth.has(p));
+    return byRole || byPerm;
+  }
+
   readonly navModules = computed<NavModule[]>(() => {
     const user = this.auth.currentUser();
     if (!user) return [];
-    return ALL_MODULES.filter(m => m.roles.includes(user.role));
+    return ALL_MODULES.filter(m => this.visible(m.roles, m.perms, user.role));
   });
 
   /** Route primaire du module (alternative président si définie). */
@@ -173,7 +188,7 @@ export class NavSidebarComponent {
     const user = this.auth.currentUser();
     const mod = this.activeModule();
     if (!user || !mod) return [];
-    return mod.subnav.filter(s => !s.roles || s.roles.includes(user.role));
+    return mod.subnav.filter(s => this.visible(s.roles, s.perms, user.role));
   });
 
   isSubActive(item: SubNavItem): boolean {

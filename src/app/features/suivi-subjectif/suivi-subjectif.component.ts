@@ -78,7 +78,8 @@ export class SuiviSubjectifComponent implements OnInit {
   // ── Rôle ──
   readonly isJoueur = this.auth.hasRole('JOUEUR');
   readonly isStaff = !this.isJoueur;
-  readonly peutEditerConseils = this.auth.hasRole('MEDICAL', 'PREPARATEUR', 'SUPER_ADMIN');
+  // Getter (et non champ figé) : les permissions sont chargées en async après le boot.
+  get peutEditerConseils(): boolean { return this.auth.canEditerConseils(); }
 
   readonly NOTES_HOOPER = [1, 2, 3, 4, 5];
   readonly NOTES_RPE = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];

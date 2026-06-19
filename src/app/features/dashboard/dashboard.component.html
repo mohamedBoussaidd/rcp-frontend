@@ -1,4 +1,11 @@
-@if (auth.hasRole('PREPARATEUR')) {
+@if (peutBasculer()) {
+  <div class="dash-casquette">
+    <button type="button" class="dash-casquette__btn" [class.dash-casquette__btn--active]="vue === 'prepa'" (click)="vue = 'prepa'">Préparation</button>
+    <button type="button" class="dash-casquette__btn" [class.dash-casquette__btn--active]="vue === 'equipe'" (click)="vue = 'equipe'">Équipe</button>
+  </div>
+}
+
+@if (afficherPrepa()) {
   <app-dashboard-preparateur></app-dashboard-preparateur>
 } @else {
 <div class="screen">

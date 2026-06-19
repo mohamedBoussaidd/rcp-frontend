@@ -239,6 +239,22 @@ export class DashboardComponent implements OnInit {
   private router = inject(Router);
   auth = inject(AuthService);
 
+  /** Casquette active du dashboard pour les profils qui peuvent basculer (prépa + équipe). */
+  vue: 'prepa' | 'equipe' = 'prepa';
+  /** Capacité « entraîneur » (écriture tactique) — ce qu'un préparateur seul n'a PAS. */
+  private aCapaciteEntraineur(): boolean {
+    return this.auth.has('exercices:write') || this.auth.has('schemas:write')
+        || this.auth.has('plandejeu:write') || this.auth.has('matchs:write');
+  }
+  /** Toggle visible seulement si l'utilisateur cumule une capacité prépa ET entraîneur (hors admin club). */
+  peutBasculer(): boolean {
+    return this.auth.has('gps:import') && this.aCapaciteEntraineur() && !this.auth.has('club:manage');
+  }
+  /** Faut-il afficher la vue préparateur ? (toggle si dispo, sinon règle par capability). */
+  afficherPrepa(): boolean {
+    return this.peutBasculer() ? this.vue === 'prepa' : this.auth.estPreparateurVue();
+  }
+
   ngOnInit(): void {
     this.loadEquipe();
     this.loadChargeGraph();

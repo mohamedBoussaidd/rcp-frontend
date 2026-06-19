@@ -4,6 +4,7 @@ import { MatIcon } from '@angular/material/icon';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { Exercice, SchemaTactique, TechniqueService } from '@core/services/technique.service';
+import { AuthService } from '@core/services/auth.service';
 import { SchemaEditorComponent } from '../schema-editor/schema-editor.component';
 import { SchemaMeta, SchemaMetaDialogComponent } from '../schema-meta-dialog/schema-meta-dialog.component';
 import { ExercicePickerDialogComponent } from '../exercice-picker-dialog/exercice-picker-dialog.component';
@@ -28,6 +29,10 @@ export class SchemaTactiqueComponent implements OnInit {
   private service = inject(TechniqueService);
   private dialog = inject(MatDialog);
   private snack = inject(MatSnackBar);
+  private auth = inject(AuthService);
+
+  /** Peut créer/dupliquer un schéma (permission d'écriture). */
+  canEcrire(): boolean { return this.auth.has('schemas:write'); }
 
   schemas = signal<SchemaTactique[]>([]);
   loading = signal(true);
@@ -89,17 +94,35 @@ export class SchemaTactiqueComponent implements OnInit {
     });
   }
 
-  /** Édite un schéma existant : sauvegarde sur place (modifierSchema), nom/catégorie conservés. */
+  /**
+   * Ouvre un schéma dans l'éditeur. Le créateur l'édite sur place (modifierSchema) ; un autre
+   * membre l'édite mais l'enregistrement crée une COPIE à son nom (creerSchema) — l'original
+   * n'est jamais modifié.
+   */
   ouvrir(s: SchemaTactique): void {
+    const enregistrer = s.modifiable
+      ? (json: string, apercu: string) =>
+          this.service.modifierSchema(s.id, { nom: s.nom, categorie: s.categorie, schemaJson: json, apercu })
+      : (json: string, apercu: string) =>
+          this.service.creerSchema({ nom: s.nom + ' (copie)', categorie: s.categorie, schemaJson: json, apercu });
     this.dialog.open(SchemaEditorComponent, {
       width: '95vw', maxWidth: '95vw', panelClass: 'dark-dialog',
-      data: {
-        titre: s.nom,
-        schemaJson: s.schemaJson,
-        enregistrer: (json: string, apercu: string) =>
-          this.service.modifierSchema(s.id, { nom: s.nom, categorie: s.categorie, schemaJson: json, apercu }),
-      },
-    }).afterClosed().subscribe(saved => { if (saved) this.charger(); });
+      data: { titre: s.modifiable ? s.nom : s.nom + ' (copie)', schemaJson: s.schemaJson, enregistrer },
+    }).afterClosed().subscribe(saved => {
+      if (saved) {
+        this.charger();
+        if (!s.modifiable) this.snack.open('Copie créée à votre nom', 'Fermer', { duration: 2500 });
+      }
+    });
+  }
+
+  /** Duplique un schéma (copie éditable à son nom) sans passer par l'éditeur. */
+  dupliquer(s: SchemaTactique, ev: Event): void {
+    ev.stopPropagation();
+    this.service.dupliquerSchema(s.id).subscribe({
+      next: () => { this.charger(); this.snack.open('Schéma dupliqué', 'Fermer', { duration: 2500 }); },
+      error: () => this.snack.open('Duplication impossible', 'Fermer', { duration: 3000 }),
+    });
   }
 
   /** Attache directement ce schéma à un exercice existant (copy-on-attach), sans passer par l'éditeur. */

@@ -2,6 +2,29 @@
   display: block;
 }
 
+/* ── Bascule de casquette (profils multi-rôle : Préparation / Équipe) ── */
+.dash-casquette {
+  display: inline-flex;
+  gap: 4px;
+  margin: 16px 0 0 24px;
+  padding: 3px;
+  background: var(--surface-2, #eef1f6);
+  border-radius: 999px;
+
+  &__btn {
+    border: none;
+    background: transparent;
+    padding: 6px 16px;
+    border-radius: 999px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-3);
+    cursor: pointer;
+
+    &--active { background: var(--surface-1, #fff); color: var(--accent, #3066be); box-shadow: 0 1px 3px rgba(0,0,0,.12); }
+  }
+}
+
 /* ── Haut du dashboard : KPIs 2×2 (gauche) + graphe charge (droite) ── */
 .dash-top {
   display: grid;

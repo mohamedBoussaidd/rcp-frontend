@@ -5,6 +5,19 @@
   </div>
 </div>
 
+@if (peutGererEquipes) {
+  <div class="club-tabs" style="padding:16px 24px 0;display:flex;gap:8px">
+    <button type="button" class="club-tab" [class.club-tab--active]="onglet() === 'membres'" (click)="onglet.set('membres')">Membres &amp; équipes</button>
+    <button type="button" class="club-tab" [class.club-tab--active]="onglet() === 'roles'" (click)="onglet.set('roles')">Rôles &amp; accès</button>
+  </div>
+}
+
+@if (peutGererEquipes && onglet() === 'roles') {
+  <div class="club-content">
+    <app-roles-acces></app-roles-acces>
+  </div>
+} @else {
+
 <div class="club-content">
 
   @if (loading()) {
@@ -200,3 +213,4 @@
 
   }
 </div>
+}

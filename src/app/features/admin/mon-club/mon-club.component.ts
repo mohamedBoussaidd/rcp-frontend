@@ -7,6 +7,7 @@ import {
 } from '@core/services/mon-club.service';
 import { Joueur, JoueurService } from '@core/services/joueur.service';
 import { AuthService } from '@core/services/auth.service';
+import { RolesAccesComponent } from '../roles-acces/roles-acces.component';
 
 const MAX_EQUIPES = 3;
 
@@ -23,12 +24,15 @@ const ROLES_MEMBRES = [
   standalone: true,
   templateUrl: './mon-club.component.html',
   styleUrl: './mon-club.component.scss',
-  imports: [FormsModule, MatCard, MatCardContent, MatCardHeader, MatCardTitle],
+  imports: [FormsModule, MatCard, MatCardContent, MatCardHeader, MatCardTitle, RolesAccesComponent],
 })
 export class MonClubComponent implements OnInit {
 
   readonly rolesMembres = ROLES_MEMBRES;
   readonly maxEquipes = MAX_EQUIPES;
+
+  /** Onglet actif : gestion des comptes/équipes, ou administration des rôles & accès. */
+  readonly onglet = signal<'membres' | 'roles'>('membres');
 
   data = signal<MonClub | null>(null);
   loading = signal(true);
@@ -52,8 +56,9 @@ export class MonClubComponent implements OnInit {
   private joueurService = inject(JoueurService);
   private auth = inject(AuthService);
 
-  /** Gestion des équipes/club : réservée au président et au super-admin. */
-  readonly peutGererEquipes = this.auth.hasRole('PRESIDENT', 'SUPER_ADMIN');
+  /** Gestion des équipes/club : permission club:manage (président + super-admin via bypass).
+   *  Getter car les permissions sont chargées en async après le boot. */
+  get peutGererEquipes(): boolean { return this.auth.canGererClub(); }
 
   // ── Liaison compte JOUEUR ↔ fiche ──
   linkMembreId = signal<string | null>(null);

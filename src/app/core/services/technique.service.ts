@@ -249,6 +249,10 @@ export class TechniqueService {
   supprimerExercice(id: string): Observable<void> {
     return this.http.delete<void>(`/api/exercices/${id}`);
   }
+  /** Duplique un exercice : nouvelle copie éditable attribuée à l'utilisateur courant. */
+  dupliquerExercice(id: string): Observable<Exercice> {
+    return this.http.post<Exercice>(`/api/exercices/${id}/dupliquer`, {});
+  }
 
   sauverSchema(exerciceId: string, schemaJson: string): Observable<Exercice> {
     return this.http.put<Exercice>(`/api/exercices/${exerciceId}/schema`, { schemaJson });
@@ -277,6 +281,10 @@ export class TechniqueService {
   }
   supprimerSchema(id: string): Observable<void> {
     return this.http.delete<void>(`/api/schemas/${id}`);
+  }
+  /** Duplique un schéma : nouvelle copie éditable attribuée à l'utilisateur courant. */
+  dupliquerSchema(id: string): Observable<SchemaTactique> {
+    return this.http.post<SchemaTactique>(`/api/schemas/${id}/dupliquer`, {});
   }
 
   // ── Plan de jeu (document d'identite equipe) ──

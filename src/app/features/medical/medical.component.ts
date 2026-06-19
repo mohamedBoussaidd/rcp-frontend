@@ -281,9 +281,9 @@ export class MedicalComponent implements OnInit {
   momentGeneLabel(v?: string): string   { return v ? (this.MOMENTS_GENE[v] ?? v) : ''; }
   resolutionGeneLabel(r?: string): string { return r === 'CONVERTIE' ? 'Convertie en blessure' : 'Archivée'; }
 
-  get peutTraiterGene(): boolean      { return this.auth.hasRole('MEDICAL', 'PREPARATEUR', 'SUPER_ADMIN'); }
-  get peutVoirHistoriqueGenes(): boolean { return this.auth.hasRole('MEDICAL', 'PREPARATEUR', 'SUPER_ADMIN'); }
-  get peutRouvrirGene(): boolean      { return this.auth.hasRole('MEDICAL', 'SUPER_ADMIN'); }
+  get peutTraiterGene(): boolean      { return this.auth.canTraiterGene(); }
+  get peutVoirHistoriqueGenes(): boolean { return this.auth.canTraiterGene(); }
+  get peutRouvrirGene(): boolean      { return this.auth.canRouvrirGene(); }
 
   traiterGene(w: Wellness): void {
     if (!confirm('Archiver cette gêne ?')) return;

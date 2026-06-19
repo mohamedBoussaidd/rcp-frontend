@@ -131,6 +131,15 @@
                   <button class="btn btn--secondary btn--sm btn--icon" (click)="editerExo(e)" title="Modifier">✎</button>
                   <button class="btn btn--danger btn--sm btn--icon" (click)="supprimerExo(e)" title="Supprimer">✕</button>
                 </div>
+              } @else {
+                <div class="row" style="gap:4px">
+                  @if (e.schemaJson) {
+                    <button class="btn btn--secondary btn--sm btn--icon" (click)="voirSchema(e)" title="Voir le schéma">⬡</button>
+                  }
+                  @if (canEcrire()) {
+                    <button class="btn btn--secondary btn--sm btn--icon" (click)="dupliquerExo(e)" title="Dupliquer à mon nom">⧉</button>
+                  }
+                </div>
               }
             </div>
           </div>
