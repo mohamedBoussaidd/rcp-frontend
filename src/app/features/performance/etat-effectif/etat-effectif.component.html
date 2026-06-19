@@ -1,143 +1,179 @@
-<div class="screen">
+<div class="screen ee">
 
-  <div class="page-head">
-    <div>
-      <h1 class="page-head__title">État de l'effectif</h1>
-      <p class="page-head__sub">Disponibilité, risque, fatigue &amp; ACWR — volume détaillé dans « Charge de l'équipe » · {{ joueurs.length }} joueurs</p>
+  <!-- ══ En-tête ══ -->
+  <div class="ee-head">
+    <div class="ee-head__left">
+      <span class="ee-head__ic"><mat-icon>groups</mat-icon></span>
+      <div>
+        <h1 class="ee-head__title">État de l'effectif</h1>
+        <p class="ee-head__sub">Volumes détaillés dans <strong>Charge de l'équipe</strong></p>
+      </div>
+    </div>
+    <div class="ee-head__right">
+      <span class="ee-count"><mat-icon>group</mat-icon>{{ joueurs.length }}</span>
+      <div class="ee-search">
+        <mat-icon>search</mat-icon>
+        <input [(ngModel)]="recherche" (ngModelChange)="onRecherche()" placeholder="Rechercher un joueur…">
+      </div>
     </div>
   </div>
 
-  <div class="card">
-    <div class="card__header">
-      <h3 class="card__title">Effectif</h3>
-      <div class="row" style="gap:8px;flex-wrap:wrap">
-        <div class="input__wrap" style="width:220px">
-          <span class="input__icon"><mat-icon style="font-size:15px;width:15px;height:15px">search</mat-icon></span>
-          <input class="input" [(ngModel)]="recherche" (ngModelChange)="onRecherche()" placeholder="Rechercher un joueur…">
-        </div>
-        <button class="btn btn--sm" [class.btn--dark]="triFatigue !== null" [class.btn--ghost]="triFatigue === null" (click)="toggleTriFatigue()">
-          Fatigue {{ triFatigue === 'asc' ? '↑' : triFatigue === 'desc' ? '↓' : '↕' }}
-        </button>
-        <button class="btn btn--sm" [class.btn--dark]="triRisque !== null" [class.btn--ghost]="triRisque === null" (click)="toggleTriRisque()">
-          Risque {{ triRisque === 'asc' ? '↑' : triRisque === 'desc' ? '↓' : '↕' }}
-        </button>
+  <!-- ══ KPIs ══ -->
+  <div class="ee-kpis">
+    <div class="card kpi kpi--icon">
+      <span class="kpi__icon kpi__icon--ok"><mat-icon>monitoring</mat-icon></span>
+      <div>
+        <div class="kpi__value">{{ nbDisponibles }}<span class="unit">/{{ joueurs.length }}</span></div>
+        <div class="kpi__label">Disponibles</div>
       </div>
     </div>
 
-    @if (loading) {
-      <div class="card__body"><div class="loading">Chargement des données…</div></div>
-    }
+    <div class="card kpi kpi--icon">
+      <span class="kpi__icon kpi__icon--bad"><mat-icon>shield</mat-icon></span>
+      <div>
+        <div class="kpi__value">{{ nbRisqueEleve }}</div>
+        <div class="kpi__label">Risque élevé</div>
+      </div>
+    </div>
 
-    @if (!loading) {
+    <div class="card kpi kpi--icon">
+      <span class="kpi__icon kpi__icon--warn"><mat-icon>warning</mat-icon></span>
+      <div>
+        <div class="kpi__value">{{ nbFatigueHaute }}</div>
+        <div class="kpi__label">Fatigue haute</div>
+      </div>
+    </div>
+
+    <div class="card kpi kpi--icon">
+      <span class="kpi__icon kpi__icon--info"><mat-icon>balance</mat-icon></span>
+      <div>
+        <div class="kpi__value">{{ nbEcartPoids }}</div>
+        <div class="kpi__label">Écart poids</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ Tableau ══ -->
+  <div class="card ee-card">
+
+    @if (loading) {
+      <div class="loading">Chargement des données…</div>
+    } @else {
 
       <!-- Vue table (desktop) -->
-      <div class="view-table table-wrap">
-        <table mat-table [dataSource]="joueursPagines" class="table">
-
-          <ng-container matColumnDef="joueur">
-            <th mat-header-cell *matHeaderCellDef>Joueur</th>
-            <td mat-cell *matCellDef="let j">
-              <a [routerLink]="['/joueurs', j.joueur_id]" class="player-link">{{ j.prenom }} {{ j.nom }}</a>
-            </td>
-          </ng-container>
-
-          <ng-container matColumnDef="poste">
-            <th mat-header-cell *matHeaderCellDef>Poste</th>
-            <td mat-cell *matCellDef="let j"><span class="badge badge--neutral">{{ j.poste || '—' }}</span></td>
-          </ng-container>
-
-          <ng-container matColumnDef="statut">
-            <th mat-header-cell *matHeaderCellDef>Statut</th>
-            <td mat-cell *matCellDef="let j">
-              @let s = statutMap.get(j.joueur_id);
-              @if (s) {
-                <span [class]="'badge badge--statut-' + s">{{ statutLibelle(s) }}</span>
-              }
-            </td>
-          </ng-container>
-
-          <ng-container matColumnDef="risque">
-            <th mat-header-cell *matHeaderCellDef>Risque blessure</th>
-            <td mat-cell *matCellDef="let j">
-              <app-badge-risque [niveau]="j.niveau_risque" [score]="j.score_risque"></app-badge-risque>
-            </td>
-          </ng-container>
-
-          <ng-container matColumnDef="acwr">
-            <th mat-header-cell *matHeaderCellDef>
-              ACWR <app-info-hint titre="ACWR" [texte]="aideAcwr"></app-info-hint>
-            </th>
-            <td mat-cell *matCellDef="let j">
-              @if (j.acwr != null) {
-                <span class="chip" [class]="'chip--' + acwrClasse(j.acwr)">{{ j.acwr | number:'1.2-2' }}</span>
-              } @else { <span class="muted">—</span> }
-            </td>
-          </ng-container>
-
-          <ng-container matColumnDef="fatigue">
-            <th mat-header-cell *matHeaderCellDef>Alerte intensité</th>
-            <td mat-cell *matCellDef="let j">
-              <mat-progress-bar [value]="j.score_fatigue" [color]="j.score_fatigue > 65 ? 'warn' : 'primary'"></mat-progress-bar>
-              <small class="progress-label">{{ j.niveau_fatigue }}</small>
-            </td>
-          </ng-container>
-
-          <ng-container matColumnDef="poids">
-            <th mat-header-cell *matHeaderCellDef>Poids</th>
-            <td mat-cell *matCellDef="let j">
+      <div class="view-table">
+        <table class="ee-table">
+          <thead>
+            <tr>
+              <th>Joueur</th>
+              <th>Statut</th>
+              <th class="is-sort" (click)="toggleTriRisque()">
+                Risque <span class="sort-ic">{{ triRisque === 'asc' ? '↑' : triRisque === 'desc' ? '↓' : '⇅' }}</span>
+              </th>
+              <th>ACWR <app-info-hint titre="ACWR" [texte]="aideAcwr"></app-info-hint></th>
+              <th class="is-sort" (click)="toggleTriFatigue()">
+                Fatigue <span class="sort-ic">{{ triFatigue === 'asc' ? '↑' : triFatigue === 'desc' ? '↓' : '⇅' }}</span>
+              </th>
+              <th>Poids</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (j of joueursPagines; track j.joueur_id) {
+              @let d = dispo(j);
               @let fiche = poidsMap.get(j.joueur_id);
-              @if (fiche && fiche.ecartKg != null && fiche.ecartKg > 1) {
-                <span class="badge" [class.badge--warn]="fiche.ecartKg <= 3" [class.badge--bad]="fiche.ecartKg > 3">
-                  +{{ fiche.ecartKg | number:'1.1-1' }} kg
-                </span>
-              } @else if (fiche && fiche.dernierPoids != null) {
-                <span class="badge badge--ok">✓ OK</span>
-              }
-            </td>
-          </ng-container>
-
-          <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
-          <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
+              @let ecart = ecartSignificatif(j);
+              <tr class="ee-row" [class.ee-row--risk]="j.niveau_risque === 'ELEVE'" [routerLink]="['/joueurs', j.joueur_id]">
+                <td>
+                  <div class="ee-player">
+                    <span class="ee-avatar">{{ initiales(j) }}</span>
+                    <div>
+                      <div class="ee-player__nom">{{ j.prenom }} {{ j.nom }}</div>
+                      <div class="ee-player__poste">{{ j.poste || '—' }}</div>
+                    </div>
+                  </div>
+                </td>
+                <td>
+                  <span class="ee-status ee-status--{{ d }}"><i></i>{{ dispoLibelle(d) }}</span>
+                </td>
+                <td>
+                  <span class="ee-risk ee-risk--{{ risqueClasse(j.niveau_risque) }}">
+                    {{ risqueLibelle(j.niveau_risque) }} <b>{{ j.score_risque }}</b>
+                  </span>
+                </td>
+                <td>
+                  @if (j.acwr != null) {
+                    <span class="ee-acwr ee-acwr--{{ acwrClasse(j.acwr) }}">{{ j.acwr | number:'1.2-2' }}</span>
+                  } @else { <span class="muted">—</span> }
+                </td>
+                <td>
+                  <div class="ee-fatigue">
+                    <div class="ee-fatigue__head">
+                      <span class="ee-fatigue__lbl ee-fatigue__lbl--{{ fatigueClasse(j.niveau_fatigue) }}">{{ fatigueLibelle(j.niveau_fatigue) }}</span>
+                      <span class="ee-fatigue__pct">{{ j.score_fatigue }}%</span>
+                    </div>
+                    <div class="ee-bar"><span class="ee-bar__fill ee-bar__fill--{{ fatigueClasse(j.niveau_fatigue) }}" [style.width.%]="j.score_fatigue"></span></div>
+                  </div>
+                </td>
+                <td>
+                  <div class="ee-poids">
+                    @if (fiche?.dernierPoids != null) { <span class="ee-poids__kg">{{ fiche!.dernierPoids }} kg</span> }
+                    @if (ecart != null) {
+                      <span class="badge" [class.badge--warn]="ecart <= 3" [class.badge--bad]="ecart > 3">+{{ ecart | number:'1.1-1' }} kg</span>
+                    } @else if (fiche?.dernierPoids != null) {
+                      <span class="badge badge--ok">✓ OK</span>
+                    }
+                  </div>
+                </td>
+              </tr>
+            }
+          </tbody>
         </table>
       </div>
 
       <!-- Vue cards (mobile) -->
       <div class="view-cards">
         @for (j of joueursPagines; track j.joueur_id) {
-          @let s = statutMap.get(j.joueur_id);
-          @let fiche = poidsMap.get(j.joueur_id);
+          @let d = dispo(j);
+          @let ecart = ecartSignificatif(j);
           <a class="joueur-card" [routerLink]="['/joueurs', j.joueur_id]">
-            <div class="joueur-card__nom">{{ j.prenom }} {{ j.nom }}</div>
-            <div class="row row--between">
-              <span class="joueur-card__poste">{{ j.poste || '—' }}</span>
-              @if (s) { <span [class]="'badge badge--statut-' + s" style="font-size:11px">{{ statutLibelle(s) }}</span> }
+            <div class="ee-player">
+              <span class="ee-avatar">{{ initiales(j) }}</span>
+              <div>
+                <div class="ee-player__nom">{{ j.prenom }} {{ j.nom }}</div>
+                <div class="ee-player__poste">{{ j.poste || '—' }}</div>
+              </div>
+              <span class="ee-status ee-status--{{ d }}" style="margin-left:auto"><i></i>{{ dispoLibelle(d) }}</span>
             </div>
             <div class="row" style="gap:6px;flex-wrap:wrap">
-              <app-badge-risque [niveau]="j.niveau_risque" [score]="j.score_risque"></app-badge-risque>
-              @if (j.acwr != null) {
-                <span class="chip" [class]="'chip--' + acwrClasse(j.acwr)">ACWR {{ j.acwr | number:'1.2-2' }}</span>
-              }
-              @if (fiche && fiche.ecartKg != null && fiche.ecartKg > 1) {
-                <span class="badge" [class.badge--warn]="fiche.ecartKg <= 3" [class.badge--bad]="fiche.ecartKg > 3">
-                  +{{ fiche.ecartKg | number:'1.1-1' }} kg
-                </span>
-              }
+              <span class="ee-risk ee-risk--{{ risqueClasse(j.niveau_risque) }}">{{ risqueLibelle(j.niveau_risque) }} <b>{{ j.score_risque }}</b></span>
+              @if (j.acwr != null) { <span class="ee-acwr ee-acwr--{{ acwrClasse(j.acwr) }}">ACWR {{ j.acwr | number:'1.2-2' }}</span> }
+              @if (ecart != null) { <span class="badge" [class.badge--warn]="ecart <= 3" [class.badge--bad]="ecart > 3">+{{ ecart | number:'1.1-1' }} kg</span> }
             </div>
-            <div class="joueur-card__fatigue">
-              <mat-progress-bar [value]="j.score_fatigue" [color]="j.score_fatigue > 65 ? 'warn' : 'primary'"></mat-progress-bar>
-              <small>{{ j.niveau_fatigue }}</small>
+            <div class="ee-fatigue">
+              <div class="ee-fatigue__head">
+                <span class="ee-fatigue__lbl ee-fatigue__lbl--{{ fatigueClasse(j.niveau_fatigue) }}">{{ fatigueLibelle(j.niveau_fatigue) }}</span>
+                <span class="ee-fatigue__pct">{{ j.score_fatigue }}%</span>
+              </div>
+              <div class="ee-bar"><span class="ee-bar__fill ee-bar__fill--{{ fatigueClasse(j.niveau_fatigue) }}" [style.width.%]="j.score_fatigue"></span></div>
             </div>
           </a>
         }
       </div>
 
-      <div style="border-top: 1px solid var(--border)">
-        <mat-paginator
-          [length]="joueursFiltres.length"
-          [pageSize]="pageSize"
-          [pageSizeOptions]="[5, 10, 20]"
-          (page)="onPageChange($event)">
-        </mat-paginator>
+      <!-- Pagination -->
+      <div class="ee-pager">
+        <div class="ee-pager__size">
+          <span>Afficher</span>
+          @for (n of [5, 10, 20]; track n) {
+            <button class="ee-pager__sz" [class.is-active]="pageSize === n" (click)="setPageSize(n)">{{ n }}</button>
+          }
+          <span>par page</span>
+        </div>
+        <div class="ee-pager__nav">
+          <span class="ee-pager__range">{{ rangeDebut }}–{{ rangeFin }} sur {{ total }}</span>
+          <button class="ee-pager__arrow" (click)="pagePrec()" [disabled]="pageIndex === 0"><mat-icon>chevron_left</mat-icon></button>
+          <button class="ee-pager__arrow" (click)="pageSuiv()" [disabled]="pageIndex >= nbPages - 1"><mat-icon>chevron_right</mat-icon></button>
+        </div>
       </div>
 
     }

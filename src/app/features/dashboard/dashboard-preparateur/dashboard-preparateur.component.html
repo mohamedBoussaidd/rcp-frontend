@@ -8,8 +8,19 @@
     </div>
   </div>
 
-  <!-- ══ Bandeau readiness ══ -->
-  <div class="grid grid--kpis" style="margin-bottom:16px">
+  <!-- ══ Alerte wellness non rempli ══ -->
+  @if (!loading && nbNonRemplis > 0) {
+    <a class="wellness-alerte" routerLink="/suivi-subjectif" [queryParams]="{ focus: 'non-remplis' }">
+      <mat-icon>notifications_active</mat-icon>
+      <span><strong>{{ nbNonRemplis }}</strong> joueur{{ nbNonRemplis > 1 ? 's' : '' }} n'{{ nbNonRemplis > 1 ? 'ont' : 'a' }} pas rempli le wellness aujourd'hui</span>
+      <mat-icon class="wellness-alerte__go">chevron_right</mat-icon>
+    </a>
+  }
+
+  <!-- ══ Vue d'ensemble : readiness (KPIs 2×2) + à surveiller ══ -->
+  <div class="prep-overview">
+
+    <div class="prep-overview__kpis">
 
     <div class="card kpi">
       <div class="row row--between">
@@ -62,19 +73,10 @@
       <div class="kpi__sub">joueurs en alerte</div>
     </div>
 
-  </div>
-
-  <!-- ══ Alerte wellness non rempli ══ -->
-  @if (!loading && nbNonRemplis > 0) {
-    <a class="wellness-alerte" routerLink="/suivi-subjectif" [queryParams]="{ focus: 'non-remplis' }">
-      <mat-icon>notifications_active</mat-icon>
-      <span><strong>{{ nbNonRemplis }}</strong> joueur{{ nbNonRemplis > 1 ? 's' : '' }} n'{{ nbNonRemplis > 1 ? 'ont' : 'a' }} pas rempli le wellness aujourd'hui</span>
-      <mat-icon class="wellness-alerte__go">chevron_right</mat-icon>
-    </a>
-  }
+    </div><!-- /prep-overview__kpis -->
 
   <!-- ══ À surveiller aujourd'hui ══ -->
-  <div class="card" style="margin-bottom:16px">
+  <div class="card prep-overview__surv">
     <div class="card__header">
       <h3 class="card__title">À surveiller aujourd'hui</h3>
       <span class="badge badge--neutral">{{ aSurveiller.length }}</span>
@@ -132,7 +134,9 @@
         }
       }
     </div>
-  </div>
+  </div><!-- /prep-overview__surv -->
+
+  </div><!-- /prep-overview -->
 
   <!-- ══ Charge collective + bilan dernière séance ══ -->
   <div class="grid-2" style="margin-bottom:16px">

@@ -496,9 +496,9 @@ mat-progress-bar {
    ════════════════════════════════════════ */
 .card {
   background: var(--surface);
-  border: 1px solid var(--border);
+  border: none;
   border-radius: var(--r-xl);
-  box-shadow: var(--shadow-xs);
+  box-shadow: var(--shadow-sm);
 }
 
 .card--padded {
@@ -747,6 +747,11 @@ mat-progress-bar {
   display: flex;
   flex-direction: column;
   gap: 8px;
+  transition: box-shadow 130ms var(--ease-out), transform 130ms var(--ease-out);
+}
+.kpi:hover {
+  box-shadow: var(--shadow-md);
+  transform: translateY(-2px);
 }
 
 .kpi__label {
@@ -755,6 +760,32 @@ mat-progress-bar {
   color: var(--text-3);
   text-transform: uppercase;
   letter-spacing: 0.04em;
+}
+
+/* Variante KPI à icône : carré teinté à gauche + valeur/label empilés */
+.kpi--icon {
+  flex-direction: row;
+  align-items: center;
+  gap: 14px;
+
+  .kpi__value { font-size: 24px; font-weight: 800; }
+  .kpi__label { text-transform: none; letter-spacing: 0; font-size: 13px; margin-top: 2px; }
+}
+.kpi__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  border-radius: var(--r-md);
+  flex-shrink: 0;
+
+  mat-icon { font-size: 22px; width: 22px; height: 22px; }
+
+  &--ok   { background: var(--ok-bg);   color: var(--green-600); }
+  &--bad  { background: var(--bad-bg);  color: var(--bad); }
+  &--warn { background: var(--warn-bg); color: var(--warn); }
+  &--info { background: var(--info-bg); color: var(--info); }
 }
 
 .kpi__value {
