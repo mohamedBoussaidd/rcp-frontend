@@ -10,6 +10,9 @@
    suivantes (qui créent un contexte d'empilement via leurs animations/transform). */
 :host(.inline) {
   position: relative;
+  /* On annule les offsets du mode flottant : sinon, en position:relative, right/bottom
+     décalent la cloche (84px vers la gauche, 18px vers le haut) → effet « centrée ». */
+  inset: auto;
   z-index: 1000;
 }
 :host(.inline) .bell__btn {
