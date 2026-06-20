@@ -117,6 +117,7 @@ export interface MatchResume {
   resultat?: string;
   score?: string;
   gpsLie: boolean;
+  publie: boolean;
 }
 
 /** Schéma adverse attaché à un match (copie). */
@@ -140,6 +141,7 @@ export interface CompoItem {
   x: number;
   y: number;
   statut: CompoStatut;
+  consigne?: string | null;
 }
 
 /** Joueur à surveiller pour un match (consigne de prépa). */
@@ -159,9 +161,17 @@ export interface MatchDetail {
   modifiable: boolean;
   adversaire: string;
   dateMatch?: string;
+  heureMatch?: string;
   competition?: string;
   domicile: boolean;
   consignes?: string;
+  lieuRdv?: string;
+  heureRdv?: string;
+  couleurMaillot?: string;
+  infosLogistiques?: string;
+  publie: boolean;
+  publieAt?: string;
+  compoVisible: boolean;
   resultat?: string;
   score?: string;
   notesDebrief?: string;
@@ -169,6 +179,7 @@ export interface MatchDetail {
   schemas: SchemaMatch[];
   compo: CompoItem[];
   surveilles: Surveille[];
+  suspendus: string[];
   updatedAt: string;
 }
 
@@ -182,9 +193,14 @@ export interface MatchCreateRequest {
 export interface MatchInfosRequest {
   adversaire: string;
   dateMatch?: string | null;
+  heureMatch?: string | null;
   competition?: string | null;
   domicile: boolean;
   consignes?: string | null;
+  lieuRdv?: string | null;
+  heureRdv?: string | null;
+  couleurMaillot?: string | null;
+  infosLogistiques?: string | null;
 }
 
 export interface MatchDebriefRequest {
@@ -332,8 +348,17 @@ export class TechniqueService {
   supprimerMatchSchema(schemaId: string): Observable<void> {
     return this.http.delete<void>(`/api/matchs/schemas/${schemaId}`);
   }
-  enregistrerCompo(id: string, placements: { joueurId: string; x: number; y: number; statut: CompoStatut }[]): Observable<MatchDetail> {
+  enregistrerCompo(id: string, placements: { joueurId: string; x: number; y: number; statut: CompoStatut; consigne?: string | null }[]): Observable<MatchDetail> {
     return this.http.put<MatchDetail>(`/api/matchs/${id}/compo`, { placements });
+  }
+  publierMatch(id: string, publie: boolean, compoVisible: boolean): Observable<MatchDetail> {
+    return this.http.put<MatchDetail>(`/api/matchs/${id}/publier`, { publie, compoVisible });
+  }
+  definirSuspendus(id: string, joueurIds: string[]): Observable<MatchDetail> {
+    return this.http.put<MatchDetail>(`/api/matchs/${id}/suspendus`, { joueurIds });
+  }
+  compoDernierMatch(id: string): Observable<CompoItem[]> {
+    return this.http.get<CompoItem[]>(`/api/matchs/${id}/compo-dernier-match`);
   }
   sessionsGps(): Observable<SessionGpsOption[]> {
     return this.http.get<SessionGpsOption[]>('/api/matchs/sessions-gps');

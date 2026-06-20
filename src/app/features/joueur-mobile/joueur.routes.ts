@@ -50,6 +50,10 @@ const routes: Routes = [
       },
       { path: 'calendrier', component: CalendrierComponent, data: { title: 'Calendrier' } },
       {
+        path: 'matchs', data: { title: 'Matchs', ownHeader: true },
+        loadComponent: () => import('./matchs/joueur-matchs.component').then(m => m.JoueurMatchsComponent)
+      },
+      {
         path: 'notifications', data: { title: 'Mes notifications' },
         loadComponent: () => import('./notifications/joueur-notifications.component').then(m => m.JoueurNotificationsComponent)
       },

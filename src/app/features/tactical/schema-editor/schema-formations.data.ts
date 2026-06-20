@@ -4,7 +4,12 @@
  * 0→1). Aucune logique, uniquement des constantes.
  */
 
-export interface Formation { nom: string; positions: { x: number; y: number }[]; }
+export interface Formation {
+  nom: string;
+  positions: { x: number; y: number }[];
+  /** Poste attendu par emplacement (même ordre que `positions`), pour l'auto-placement compo. */
+  roles?: string[];
+}
 
 export interface CoupDePiedArrete {
   ball: { x: number; y: number };
@@ -15,32 +20,44 @@ export interface CoupDePiedArrete {
 
 export const FORMATIONS: Formation[] = [
   {
-    nom: '4-3-3', positions: [
+    nom: '4-3-3',
+    roles: ['GK', 'LB', 'DC', 'DC', 'RB', 'MC', 'MDC', 'MC', 'AG', 'ATT', 'AD'],
+    positions: [
       { x: .06, y: .5 }, { x: .20, y: .16 }, { x: .20, y: .39 }, { x: .20, y: .61 }, { x: .20, y: .84 },
       { x: .35, y: .27 }, { x: .35, y: .5 }, { x: .35, y: .73 }, { x: .47, y: .22 }, { x: .47, y: .5 }, { x: .47, y: .78 }]
   },
   {
-    nom: '4-4-2', positions: [
+    nom: '4-4-2',
+    roles: ['GK', 'LB', 'DC', 'DC', 'RB', 'MG', 'MC', 'MC', 'MD', 'ATT', 'ATT'],
+    positions: [
       { x: .06, y: .5 }, { x: .20, y: .16 }, { x: .20, y: .39 }, { x: .20, y: .61 }, { x: .20, y: .84 },
       { x: .35, y: .16 }, { x: .35, y: .39 }, { x: .35, y: .61 }, { x: .35, y: .84 }, { x: .47, y: .4 }, { x: .47, y: .6 }]
   },
   {
-    nom: '4-2-3-1', positions: [
+    nom: '4-2-3-1',
+    roles: ['GK', 'LB', 'DC', 'DC', 'RB', 'MDC', 'MDC', 'AG', 'MC', 'AD', 'ATT'],
+    positions: [
       { x: .06, y: .5 }, { x: .20, y: .16 }, { x: .20, y: .39 }, { x: .20, y: .61 }, { x: .20, y: .84 },
       { x: .30, y: .38 }, { x: .30, y: .62 }, { x: .42, y: .22 }, { x: .42, y: .5 }, { x: .42, y: .78 }, { x: .5, y: .5 }]
   },
   {
-    nom: '3-5-2', positions: [
+    nom: '3-5-2',
+    roles: ['GK', 'DC', 'DC', 'DC', 'MG', 'MC', 'MDC', 'MC', 'MD', 'ATT', 'ATT'],
+    positions: [
       { x: .06, y: .5 }, { x: .20, y: .27 }, { x: .20, y: .5 }, { x: .20, y: .73 },
       { x: .34, y: .1 }, { x: .34, y: .32 }, { x: .34, y: .5 }, { x: .34, y: .68 }, { x: .34, y: .9 }, { x: .47, y: .4 }, { x: .47, y: .6 }]
   },
   {
-    nom: '3-4-3', positions: [
+    nom: '3-4-3',
+    roles: ['GK', 'DC', 'DC', 'DC', 'MG', 'MC', 'MC', 'MD', 'AG', 'ATT', 'AD'],
+    positions: [
       { x: .06, y: .5 }, { x: .20, y: .27 }, { x: .20, y: .5 }, { x: .20, y: .73 },
       { x: .35, y: .16 }, { x: .35, y: .39 }, { x: .35, y: .61 }, { x: .35, y: .84 }, { x: .47, y: .22 }, { x: .47, y: .5 }, { x: .47, y: .78 }]
   },
   {
-    nom: '5-3-2', positions: [
+    nom: '5-3-2',
+    roles: ['GK', 'LB', 'DC', 'DC', 'DC', 'RB', 'MC', 'MDC', 'MC', 'ATT', 'ATT'],
+    positions: [
       { x: .06, y: .5 }, { x: .20, y: .1 }, { x: .20, y: .3 }, { x: .20, y: .5 }, { x: .20, y: .7 }, { x: .20, y: .9 },
       { x: .35, y: .27 }, { x: .35, y: .5 }, { x: .35, y: .73 }, { x: .47, y: .4 }, { x: .47, y: .6 }]
   },

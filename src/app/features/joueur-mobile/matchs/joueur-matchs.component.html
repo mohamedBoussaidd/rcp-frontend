@@ -1,0 +1,322 @@
+<!-- ═══════════ EN-TÊTE INTÉGRÉ (ownHeader) ═══════════ -->
+<header class="jm-appbar">
+  <button class="jm-appbar__back" type="button" (click)="retour()" aria-label="Retour">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+  </button>
+  <div class="jm-appbar__txt">
+    <div class="jm-appbar__eyebrow">{{ detail() ? 'Détail du match' : 'Mes matchs' }}</div>
+    <div class="jm-appbar__title">
+      @if (detail()) { {{ detail()!.domicile ? 'vs' : '@' }} {{ detail()!.adversaire }} }
+      @else { Préparation des matchs }
+    </div>
+  </div>
+  <span class="jm-appbar__net" [class.is-off]="!offline.online()">
+    @if (offline.online()) {
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.55a11 11 0 0 1 14 0"/><path d="M8.5 16.1a6 6 0 0 1 7 0"/><line x1="12" y1="20" x2="12" y2="20"/></svg> En ligne
+    } @else {
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/></svg> Hors-ligne
+    }
+  </span>
+</header>
+
+@if (!detail()) {
+
+  <!-- ═══════════ LISTE ═══════════ -->
+  <div class="jm-scroll">
+    @if (loading()) {
+      <p class="jm-vide">Chargement…</p>
+    } @else if (matchs().length === 0) {
+      <div class="jm-empty">
+        <div class="jm-empty__emoji">📋</div>
+        <p>Aucun match partagé pour l'instant. Le staff t'enverra la prépa avant le match.</p>
+      </div>
+    } @else {
+      <div class="jm-list">
+        @for (m of matchs(); track m.id) {
+          <button class="jm-card" type="button" (click)="ouvrir(m.id)">
+            <div class="jm-card__top">
+              <span class="jm-tag">{{ m.competition || 'Match' }}</span>
+              <span class="jm-tag jm-tag--venue">{{ m.domicile ? 'Domicile' : 'Extérieur' }}</span>
+              <span class="jm-rolechip" [class.on]="m.monStatut === 'TITULAIRE'" [class.muted]="!m.monStatut">{{ statutLabel(m.monStatut) }}</span>
+            </div>
+            <div class="jm-card__main">
+              <span class="jm-card__avatar">{{ iniEquipe(m.adversaire) }}</span>
+              <div class="jm-card__id">
+                <span class="jm-card__adv">{{ m.domicile ? 'vs' : '@' }} {{ m.adversaire }}</span>
+                <span class="jm-card__meta">@if (m.dateMatch) { {{ m.dateMatch | date:'EEEE d MMMM' }} } @else { Date à venir }</span>
+              </div>
+              <svg class="jm-card__chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+            </div>
+          </button>
+        }
+      </div>
+    }
+  </div>
+
+} @else {
+
+  <!-- ═══════════ DÉTAIL ═══════════ -->
+  <div class="jm-scroll">
+
+    <!-- Résumé VS -->
+    <div class="jm-card jm-summary">
+      <div class="jm-summary__tags">
+        <span class="jm-tag jm-tag--strong">{{ detail()!.competition || 'Match' }}</span>
+        <span class="jm-tag jm-tag--venue">{{ detail()!.domicile ? 'Domicile' : 'Extérieur' }}</span>
+      </div>
+      <div class="jm-summary__vs">
+        <div class="jm-summary__team">
+          <div class="jm-summary__logo jm-summary__logo--us">{{ iniEquipe(detail()!.monEquipeNom || 'Mon équipe') }}</div>
+          <div class="jm-summary__name">{{ detail()!.monEquipeNom || 'Mon équipe' }}</div>
+          <div class="jm-summary__sub">Nous</div>
+        </div>
+        <div class="jm-summary__x">VS</div>
+        <div class="jm-summary__team">
+          <div class="jm-summary__logo">{{ iniEquipe(detail()!.adversaire) }}</div>
+          <div class="jm-summary__name">{{ detail()!.adversaire }}</div>
+          <div class="jm-summary__sub">Adversaire</div>
+        </div>
+      </div>
+      @if (detail()!.dateMatch) {
+        <div class="jm-summary__date">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#15803D" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="3"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="16" y1="2" x2="16" y2="6"/></svg>
+          {{ detail()!.dateMatch | date:'EEEE d MMMM' }}@if (detail()!.heureMatch) { · {{ detail()!.heureMatch }} }
+        </div>
+      }
+    </div>
+
+    <!-- HERO : mon rôle -->
+    @if (isGroupe()) {
+      <div class="jm-hero" [class.jm-hero--banc]="!isTitulaire()">
+        <span class="jm-hero__blob"></span>
+        <div class="jm-hero__head">
+          <div>
+            <div class="jm-hero__eyebrow">Mon rôle</div>
+            <div class="jm-hero__role">{{ statutLabel(monStatut()) }}</div>
+            <div class="jm-hero__sub">
+              @if (monPoste()) { {{ monPoste() }} · }
+              @if (isTitulaire()) { Tu démarres } @else if (isRemplacant()) { Sur le banc · Prêt à entrer } @else { Dans le groupe }
+            </div>
+          </div>
+        </div>
+        @if (maConsigneAffichee()) {
+          <div class="jm-hero__consigne">
+            <div class="jm-hero__consigne-tag">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+              {{ consignePerso() ? 'Ta consigne' : "Consignes d'équipe" }}
+            </div>
+            <p class="jm-hero__consigne-txt">{{ maConsigneAffichee() }}</p>
+          </div>
+        }
+      </div>
+    } @else {
+      <div class="jm-card jm-hero-out">
+        <div class="jm-hero-out__head">
+          <div class="jm-hero-out__icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          </div>
+          <div>
+            <div class="jm-hero-out__eyebrow">Mon rôle</div>
+            <div class="jm-hero-out__role">{{ statutLabel(monStatut()) }}</div>
+          </div>
+        </div>
+        <p class="jm-hero-out__txt">
+          @if (maConsigneAffichee()) { {{ maConsigneAffichee() }} }
+          @else { Tu n'es pas dans le groupe pour ce match. Garde le rythme à l'entraînement — ta place se rejoue chaque semaine. }
+        </p>
+      </div>
+    }
+
+    <!-- LOGISTIQUE -->
+    @if (detail()!.heureRdv || detail()!.lieuRdv || detail()!.couleurMaillot || detail()!.infosLogistiques) {
+      <section>
+        <div class="jm-label">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#15803D" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15 14"/></svg>
+          Logistique
+        </div>
+        <div class="jm-card jm-logi">
+          @if (detail()!.heureRdv) {
+            <div class="jm-logi__row">
+              <span class="jm-logi__ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15 14"/></svg></span>
+              <div class="jm-logi__txt"><div class="jm-logi__k">Rendez-vous</div><div class="jm-logi__v">{{ detail()!.heureRdv }}</div></div>
+            </div>
+          }
+          @if (detail()!.lieuRdv) {
+            <div class="jm-logi__row">
+              <span class="jm-logi__ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 6-9 12-9 12s-9-6-9-12a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg></span>
+              <div class="jm-logi__txt"><div class="jm-logi__k">Lieu</div><div class="jm-logi__v">{{ detail()!.lieuRdv }}</div></div>
+            </div>
+          }
+          @if (detail()!.couleurMaillot) {
+            <div class="jm-logi__row">
+              <span class="jm-logi__ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4l4 2-2 4-2-1v9a2 2 0 0 1-2 2H10a2 2 0 0 1-2-2V9L6 10 4 6l4-2 2 2h4z"/></svg></span>
+              <div class="jm-logi__txt"><div class="jm-logi__k">Maillot</div><div class="jm-logi__v">{{ detail()!.couleurMaillot }}</div></div>
+            </div>
+          }
+          @if (detail()!.infosLogistiques) {
+            <div class="jm-logi__row jm-logi__row--top">
+              <span class="jm-logi__ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><line x1="12" y1="11" x2="12" y2="16"/><circle cx="12" cy="8" r=".5" fill="currentColor" stroke-width="1.5"/></svg></span>
+              <div class="jm-logi__txt"><div class="jm-logi__k">Infos</div><div class="jm-logi__v jm-logi__v--note">{{ detail()!.infosLogistiques }}</div></div>
+            </div>
+          }
+        </div>
+      </section>
+    }
+
+    <!-- CONSIGNES D'ÉQUIPE (si une consigne perso a déjà été affichée dans le hero) -->
+    @if (consignePerso() && consignesEquipe().length > 0) {
+      <section>
+        <div class="jm-label">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#15803D" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 9V5a3 3 0 0 0-6 0v4"/><rect x="3" y="9" width="18" height="11" rx="2"/></svg>
+          Consignes d'équipe
+        </div>
+        <div class="jm-card jm-team">
+          @for (ligne of consignesEquipe(); track $index) {
+            <div class="jm-team__row">
+              <span class="jm-team__num">{{ $index + 1 }}</span>
+              <span class="jm-team__txt">{{ ligne }}</span>
+            </div>
+          }
+        </div>
+      </section>
+    }
+
+    <!-- COMPOSITION -->
+    <section>
+      <div class="jm-label jm-label--row">
+        <span class="jm-label__l">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#15803D" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="12" x2="21" y2="12"/><circle cx="12" cy="12" r="2.5"/></svg>
+          Composition
+        </span>
+        @if (!detail()!.compoVisible) { <span class="jm-pillmini">Convoqués</span> }
+      </div>
+
+      @if (detail()!.compoVisible && titulaires().length > 0) {
+        <!-- COMPO COMPLÈTE : terrain -->
+        <div class="jm-card jm-compo">
+          <div class="jm-pitch">
+            <div class="jm-pitch__attack">ADVERSE ↑</div>
+            @for (c of titulaires(); track c.joueurId) {
+              <div class="jm-tk" [class.jm-tk--me]="estMoi(c)" [style.left.%]="c.x * 100" [style.top.%]="c.y * 100" [title]="nomJoueur(c)">
+                <span class="jm-tk__disc">{{ initiales(c) }}</span>
+                <span class="jm-tk__nom">{{ estMoi(c) ? 'TOI' : nomCourt(c) }}</span>
+              </div>
+            }
+          </div>
+
+          @if (remplacants().length > 0) {
+            <div class="jm-bench">
+              <div class="jm-bench__titre">Remplaçants</div>
+              <div class="jm-bench__pills">
+                @for (c of remplacants(); track c.joueurId) {
+                  <span class="jm-bpill" [class.on]="estMoi(c)"><b>{{ initiales(c) }}</b>{{ nomCourt(c) }}</span>
+                }
+              </div>
+            </div>
+          }
+
+          @if (detail()!.nonConvoques.length > 0) {
+            <div class="jm-nonconv">
+              <div class="jm-bench__titre">Non convoqués</div>
+              <div class="jm-nonconv__txt">
+                @for (n of detail()!.nonConvoques; track n.joueurId) {
+                  <span class="jm-nonconv__n">{{ nomCourt(n) }}</span>
+                }
+              </div>
+            </div>
+          }
+        </div>
+      } @else if (titulaires().length > 0 || groupes().length > 0) {
+        <!-- COMPO NON PARTAGÉE : liste des convoqués -->
+        <div class="jm-card jm-conv">
+          <div class="jm-conv__note">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#94A3B8" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><line x1="12" y1="11" x2="12" y2="16"/><circle cx="12" cy="8" r=".5" fill="#94A3B8"/></svg>
+            La compo complète n'est pas encore partagée. Voici le groupe convoqué.
+          </div>
+
+          @if (titulaires().length > 0) {
+            <div class="jm-conv__titre jm-conv__titre--on">Titulaires · {{ titulaires().length }}</div>
+            <div class="jm-conv__list">
+              @for (c of titulaires(); track c.joueurId) {
+                <div class="jm-conv__row" [class.jm-conv__row--me]="estMoi(c)">
+                  <b class="jm-conv__ini" [class.on]="estMoi(c)">{{ initiales(c) }}</b>
+                  <span class="jm-conv__nom">{{ estMoi(c) ? 'Toi' : nomJoueur(c) }}</span>
+                  @if (c.postePrincipal) { <span class="jm-conv__role" [class.on]="estMoi(c)">{{ posteLabel(c.postePrincipal) }}</span> }
+                </div>
+              }
+            </div>
+          }
+
+          @for (g of groupes(); track g.code) {
+            <div class="jm-conv__titre">{{ g.label }} · {{ g.joueurs.length }}</div>
+            <div class="jm-bench__pills">
+              @for (c of g.joueurs; track c.joueurId) {
+                <span class="jm-bpill" [class.on]="estMoi(c)" [class.jm-bpill--out]="g.code === 'SUSPENDU' || g.code === 'REPOS'"><b>{{ initiales(c) }}</b>{{ nomCourt(c) }}</span>
+              }
+            </div>
+          }
+        </div>
+      } @else {
+        <div class="jm-card"><p class="jm-vide" style="margin:0">Compo pas encore définie.</p></div>
+      }
+    </section>
+
+    <!-- JOUEURS À SURVEILLER -->
+    @if (surveillesAdverses().length > 0 || surveillesEquipe().length > 0) {
+      <section>
+        <div class="jm-label">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#B91C1C" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/></svg>
+          Joueurs à surveiller
+        </div>
+        <div class="jm-card jm-watch">
+          @for (s of surveillesAdverses(); track s.id) {
+            <div class="jm-watch__row">
+              <span class="jm-watch__av jm-watch__av--adv">{{ iniEquipe(s.nom) }}</span>
+              <div class="jm-watch__txt"><div class="jm-watch__nom">{{ s.nom }}</div>@if (s.note) { <div class="jm-watch__note">{{ s.note }}</div> }</div>
+            </div>
+          }
+          @for (s of surveillesEquipe(); track s.id) {
+            <div class="jm-watch__row">
+              <span class="jm-watch__av">{{ iniEquipe(s.nom) }}</span>
+              <div class="jm-watch__txt"><div class="jm-watch__nom">{{ s.nom }}</div>@if (s.note) { <div class="jm-watch__note">{{ s.note }}</div> }</div>
+            </div>
+          }
+        </div>
+      </section>
+    }
+
+    <!-- SCHÉMAS -->
+    @if (detail()!.schemas.length > 0) {
+      <section>
+        <div class="jm-label">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#15803D" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 14l3-4 3 3 4-6"/></svg>
+          Schémas
+        </div>
+        <div class="jm-schemas">
+          @for (sc of detail()!.schemas; track sc.id) {
+            <button type="button" class="jm-schema" (click)="ouvrirSchema(sc)">
+              @if (sc.apercu) { <img [src]="sc.apercu" alt="Schéma"> } @else { <div class="jm-schema__vide">Schéma</div> }
+              <span class="jm-schema__play"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></span>
+              <figcaption>{{ sc.titre || 'Schéma' }}</figcaption>
+            </button>
+          }
+        </div>
+      </section>
+    }
+
+    <div class="jm-foot">Disponible hors-ligne</div>
+  </div>
+}
+
+<!-- ═══════════ SCHÉMA EN PLEIN ÉCRAN (lecture / animation) ═══════════ -->
+@if (schemaOuvert(); as sc) {
+  <div class="jm-svoverlay" (click)="fermerSchema()">
+    <div class="jm-svoverlay__head">
+      <span class="jm-svoverlay__titre">{{ sc.titre || 'Schéma' }}</span>
+      <button type="button" class="jm-svoverlay__close" (click)="fermerSchema()" aria-label="Fermer">✕</button>
+    </div>
+    <div class="jm-svoverlay__body" (click)="$event.stopPropagation()">
+      <app-schema-viewer [schemaJson]="sc.schemaJson" [largeur]="viewerLargeur()"></app-schema-viewer>
+    </div>
+  </div>
+}

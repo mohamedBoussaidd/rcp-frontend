@@ -90,6 +90,73 @@ export interface DocumentMedical {
   dateDepot: string;
 }
 
+// ── Matchs partagés (lecture seule, vue joueur) ──
+export interface MatchJoueurResume {
+  id: string;
+  adversaire: string;
+  dateMatch?: string;
+  heureMatch?: string;
+  competition?: string;
+  domicile: boolean;
+  monStatut?: string | null;   // null = non convoqué
+}
+
+export interface CompoItemJoueur {
+  joueurId: string;
+  nom?: string;
+  prenom?: string;
+  postePrincipal?: string;
+  x: number;
+  y: number;
+  statut: 'TITULAIRE' | 'REMPLACANT' | 'RESERVE' | 'REPOS' | 'SUSPENDU';
+  consigne?: string | null;
+}
+
+export interface NomJoueur {
+  joueurId: string;
+  nom?: string;
+  prenom?: string;
+  postePrincipal?: string;
+}
+
+export interface SchemaMatchJoueur {
+  id: string;
+  titre?: string;
+  schemaJson: string;
+  apercu?: string;
+  ordre: number;
+}
+
+export interface SurveilleJoueur {
+  id: string;
+  cible: 'ADVERSE' | 'EQUIPE';
+  joueurId?: string;
+  nom?: string;
+  note?: string;
+}
+
+export interface MatchJoueurDetail {
+  id: string;
+  adversaire: string;
+  monEquipeNom?: string;
+  dateMatch?: string;
+  heureMatch?: string;
+  competition?: string;
+  domicile: boolean;
+  lieuRdv?: string;
+  heureRdv?: string;
+  couleurMaillot?: string;
+  infosLogistiques?: string;
+  consignes?: string;
+  monStatut?: string | null;
+  maConsigne?: string | null;
+  compoVisible: boolean;
+  compo: CompoItemJoueur[];
+  nonConvoques: NomJoueur[];
+  schemas: SchemaMatchJoueur[];
+  surveilles: SurveilleJoueur[];
+}
+
 @Injectable({ providedIn: 'root' })
 export class EspaceJoueurService {
   private readonly base = '/api/moi';
@@ -147,6 +214,14 @@ export class EspaceJoueurService {
   // ── Conseils du staff (lecture) ──
   getConseils(): Observable<Conseil[]> {
     return this.http.get<Conseil[]>(`${this.base}/conseils`);
+  }
+
+  // ── Matchs partagés (lecture seule) ──
+  getMatchs(): Observable<MatchJoueurResume[]> {
+    return this.http.get<MatchJoueurResume[]>(`${this.base}/matchs`);
+  }
+  getMatchDetail(id: string): Observable<MatchJoueurDetail> {
+    return this.http.get<MatchJoueurDetail>(`${this.base}/matchs/${id}`);
   }
 
   // ── Documents médicaux ──
