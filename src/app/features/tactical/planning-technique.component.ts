@@ -15,13 +15,14 @@ import { SchemaViewerDialogComponent } from './schema-viewer-dialog/schema-viewe
 import { SchemaTactiqueComponent } from './schema-tactique/schema-tactique.component';
 import { PlanDeJeuComponent } from './plan-de-jeu/plan-de-jeu.component';
 import { MatchComponent } from './match/match.component';
+import { DiaporamaComponent } from './diaporama/diaporama.component';
 
 @Component({
   selector: 'app-planning-technique',
   standalone: true,
   templateUrl: './planning-technique.component.html',
   styleUrl: './planning-technique.component.scss',
-  imports: [FormsModule, MatIcon, SchemaTactiqueComponent, PlanDeJeuComponent, MatchComponent],
+  imports: [FormsModule, MatIcon, SchemaTactiqueComponent, PlanDeJeuComponent, MatchComponent, DiaporamaComponent],
 })
 export class PlanningTechniqueComponent implements OnInit {
 

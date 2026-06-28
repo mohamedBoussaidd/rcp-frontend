@@ -11,7 +11,7 @@ const STAFF_PHYSIQUE: Role[] = ['SUPER_ADMIN', 'PRESIDENT', 'PREPARATEUR', 'MEDI
 // Permissions d'ÉCRITURE qui ouvrent l'accès AUSSI aux multi-rôles (les lectures sont
 // partagées par tout le staff, elles sur-ouvriraient). Miroir de la nav-sidebar.
 const PERMS_GPS = ['pesees:write', 'gps:import'];
-const PERMS_TACTIQUE = ['schemas:write', 'exercices:write', 'plandejeu:write', 'matchs:write'];
+const PERMS_TACTIQUE = ['schemas:write', 'exercices:write', 'plandejeu:write', 'matchs:write', 'diaporama:write'];
 
 // Lazy loading : chaque écran est chargé à la demande (un chunk par feature)
 // plutôt que dans le bundle initial. Gain de perf au démarrage.

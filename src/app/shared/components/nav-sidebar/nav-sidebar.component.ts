@@ -58,6 +58,7 @@ const ALL_MODULES: NavModule[] = [
       { label: 'Exercices',        link: '/planning-technique', section: 'exercices', default: true, roles: ['SUPER_ADMIN', 'ENTRAINEUR'], perms: ['exercices:write'] },
       { label: 'Plan de jeu',      link: '/planning-technique', section: 'planjeu',   roles: ['SUPER_ADMIN', 'ENTRAINEUR'], perms: ['plandejeu:write'] },
       { label: 'Match',            link: '/planning-technique', section: 'match',     roles: ['SUPER_ADMIN', 'ENTRAINEUR'], perms: ['matchs:write'] },
+      { label: 'Diaporama',        link: '/planning-technique', section: 'diaporama', roles: ['SUPER_ADMIN', 'ENTRAINEUR', 'PREPARATEUR'], perms: ['diaporama:write'] },
     ],
   },
   {

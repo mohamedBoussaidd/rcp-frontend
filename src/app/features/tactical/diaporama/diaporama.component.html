@@ -1,0 +1,171 @@
+<div class="dia">
+
+<!-- ════════════════════════════════ VUE BIBLIOTHÈQUE ════════════════════════════════ -->
+@if (!detail()) {
+  <div class="dia-head">
+    <div>
+      <h1 class="dia-h1">Diaporamas</h1>
+      <p class="dia-sub">{{ resumes().length }} diaporama{{ resumes().length > 1 ? 's' : '' }} · supports de présentation de séance</p>
+    </div>
+    @if (peutEcrire()) {
+      <button class="dia-btn dia-btn--primary" (click)="nouveau()"><mat-icon>add</mat-icon>Nouveau diaporama</button>
+    }
+  </div>
+
+  @if (loading()) {
+    <div class="dia-grid">
+      @for (sk of [1,2,3,4]; track sk) {
+        <div class="dia-card"><div class="dia-card__vignette dia-skel"></div><div class="dia-card__body"><div class="dia-skel-line" style="width:60%"></div><div class="dia-skel-line" style="width:40%;margin-top:10px"></div></div></div>
+      }
+    </div>
+  } @else if (resumes().length === 0) {
+    <div class="dia-empty">
+      <div class="dia-empty__icon"><mat-icon>slideshow</mat-icon></div>
+      <div class="dia-empty__t">Aucun diaporama pour l'instant</div>
+      <div class="dia-empty__s">Créez un support de séance : enchaînez schémas, images, vidéos et textes, puis projetez-le sur la TV du club.</div>
+      @if (peutEcrire()) { <button class="dia-btn dia-btn--primary" style="margin-top:18px" (click)="nouveau()"><mat-icon>add</mat-icon>Nouveau diaporama</button> }
+    </div>
+  } @else {
+    <div class="dia-grid">
+      @for (r of resumes(); track r.id) {
+        <div class="dia-card" (click)="ouvrir(r)">
+          <div class="dia-card__vignette">
+            @if (r.apercu) { <img [src]="r.apercu" alt=""> } @else { <mat-icon class="dia-card__ph">slideshow</mat-icon> }
+            <span class="dia-card__count"><mat-icon>collections</mat-icon>{{ r.nbSlides }}</span>
+          </div>
+          <div class="dia-card__body">
+            <div class="dia-pills">
+              <span class="dia-pill" [class.dia-pill--club]="r.visibilite === 'CLUB'" [class.dia-pill--equipe]="r.visibilite === 'EQUIPE'">{{ r.visibilite === 'CLUB' ? 'Club' : 'Équipe' }}</span>
+              <span class="dia-pill" [class.dia-pill--draft]="r.statut === 'BROUILLON'" [class.dia-pill--ready]="r.statut === 'PUBLIE'">{{ r.statut === 'PUBLIE' ? 'Prêt' : 'Brouillon' }}</span>
+            </div>
+            <div class="dia-card__titre">{{ r.titre }}</div>
+            <div class="dia-card__foot">
+              <span class="dia-card__auteur"><span class="dia-ini">{{ (r.createurNom || '—').slice(0,2) }}</span>{{ r.createurNom || '—' }}</span>
+              <div class="dia-card__acts" (click)="$event.stopPropagation()">
+                <button class="dia-ibtn" (click)="presenter(r)" title="Lancer en plein écran"><mat-icon>play_arrow</mat-icon></button>
+                @if (peutEcrire()) { <button class="dia-ibtn" (click)="dupliquer(r, $event)" title="Dupliquer à mon nom"><mat-icon>content_copy</mat-icon></button> }
+                @if (r.supprimable) { <button class="dia-ibtn dia-ibtn--danger" (click)="supprimerDepuisListe(r, $event)" title="Supprimer"><mat-icon>delete_outline</mat-icon></button> }
+              </div>
+            </div>
+          </div>
+        </div>
+      }
+    </div>
+  }
+}
+
+<!-- ════════════════════════════════ VUE ÉDITEUR ════════════════════════════════ -->
+@if (detail(); as d) {
+  <div class="dia-head">
+    <div class="dia-head__left">
+      <button class="dia-ibtn dia-ibtn--ghost" (click)="retour()" title="Retour"><mat-icon>arrow_back</mat-icon></button>
+      <div>
+        <input class="dia-titre-input" [(ngModel)]="d.titre" (blur)="majMeta()" [disabled]="!d.modifiable" placeholder="Titre du diaporama">
+        <p class="dia-sub">{{ d.createurNom || '—' }} · {{ d.slides.length }} slide{{ d.slides.length > 1 ? 's' : '' }}</p>
+      </div>
+    </div>
+    <div class="dia-head__acts">
+      <button class="dia-btn dia-btn--primary" (click)="presenter()" [disabled]="d.slides.length === 0"><mat-icon>play_arrow</mat-icon>Lancer en plein écran</button>
+      @if (d.supprimable) { <button class="dia-ibtn dia-ibtn--danger" (click)="supprimerDiapo()" title="Supprimer le diaporama"><mat-icon>delete_outline</mat-icon></button> }
+    </div>
+  </div>
+
+  @if (d.modifiable) {
+    <div class="dia-meta">
+      <div class="dia-field">
+        <span class="dia-field__lbl">Visibilité</span>
+        <div class="dia-seg">
+          <button [class.on]="d.visibilite === 'CLUB'" (click)="setVisibilite('CLUB')">Club</button>
+          <button [class.on]="d.visibilite === 'EQUIPE'" (click)="setVisibilite('EQUIPE')">Équipe</button>
+        </div>
+      </div>
+      <div class="dia-field">
+        <span class="dia-field__lbl">Statut</span>
+        <div class="dia-seg">
+          <button [class.on]="d.statut === 'BROUILLON'" (click)="setStatut('BROUILLON')">Brouillon</button>
+          <button [class.on]="d.statut === 'PUBLIE'" (click)="setStatut('PUBLIE')">Prêt</button>
+        </div>
+      </div>
+    </div>
+  } @else {
+    <div class="dia-readonly"><mat-icon>visibility</mat-icon> Vous consultez le diaporama d'un collègue. Dupliquez-le pour l'adapter.</div>
+  }
+
+  <!-- Slides -->
+  <div class="dia-slides" cdkDropList (cdkDropListDropped)="dropSlide($event)">
+    @for (s of d.slides; track s.id) {
+      <div class="dia-slide" cdkDrag [cdkDragDisabled]="!d.modifiable">
+        <div class="dia-slide__handle" cdkDragHandle title="Glisser pour réordonner"><mat-icon>drag_indicator</mat-icon></div>
+        <div class="dia-slide__num">{{ $index + 1 }}</div>
+        <div class="dia-slide__vignette">
+          @if (s.type === 'SCHEMA' && s.apercu) { <img [src]="s.apercu" alt=""> }
+          @else if (s.type === 'IMAGE' && s.imageSrc) { <img [src]="s.imageSrc" alt=""> }
+          @else if (s.type === 'TEXTE') {
+            <div class="dia-slide__txt" [style.background]="styleDe(s).couleurFond || '#0B0E16'" [style.color]="styleDe(s).couleurTexte || '#fff'">Aa</div>
+          }
+          @else { <mat-icon>{{ iconeType(s.type) }}</mat-icon> }
+        </div>
+        <div class="dia-slide__main">
+          <span class="dia-pill dia-pill--type">{{ libelleType(s.type) }}</span>
+          <input class="dia-slide__titre" [(ngModel)]="s.titre" (blur)="majTitreSlide(s)" [disabled]="!d.modifiable"
+                 [placeholder]="s.type === 'VIDEO_LIEN' ? (s.videoUrl || 'Titre') : 'Titre du slide'">
+        </div>
+        @if (d.modifiable) {
+          <div class="dia-slide__acts">
+            @if (s.type === 'SCHEMA') { <button class="dia-ibtn" (click)="editerSchemaSlide(s)" title="Modifier le schéma"><mat-icon>edit</mat-icon></button> }
+            @if (s.type === 'TEXTE') { <button class="dia-ibtn" (click)="editerTexteSlide(s)" title="Modifier le texte"><mat-icon>edit</mat-icon></button> }
+            <button class="dia-ibtn dia-ibtn--danger" (click)="supprimerSlide(s)" title="Supprimer le slide"><mat-icon>delete_outline</mat-icon></button>
+          </div>
+        }
+      </div>
+    } @empty {
+      <div class="dia-empty dia-empty--sm"><div class="dia-empty__t">Aucun slide</div><div class="dia-empty__s">Ajoutez-en un ci-dessous.</div></div>
+    }
+  </div>
+
+  <!-- Ajout de slide — variante B : sélecteur + formulaire contextuel -->
+  @if (d.modifiable) {
+    @if (!ajoutOuvert()) {
+      <button class="dia-add-trigger" (click)="ajoutOuvert.set(true)"><mat-icon>add</mat-icon>Ajouter un slide</button>
+    } @else {
+      <div class="dia-add">
+        <div class="dia-add__tabs">
+          <button [class.on]="typeAjout() === 'SCHEMA'" (click)="typeAjout.set('SCHEMA')"><mat-icon>sports_soccer</mat-icon>Schéma</button>
+          <button [class.on]="typeAjout() === 'IMAGE'" (click)="typeAjout.set('IMAGE')"><mat-icon>image</mat-icon>Image</button>
+          <button [class.on]="typeAjout() === 'VIDEO_LIEN'" (click)="typeAjout.set('VIDEO_LIEN')"><mat-icon>smart_display</mat-icon>Vidéo</button>
+          <button [class.on]="typeAjout() === 'TEXTE'" (click)="typeAjout.set('TEXTE')"><mat-icon>title</mat-icon>Texte</button>
+        </div>
+        <div class="dia-add__form">
+          @switch (typeAjout()) {
+            @case ('SCHEMA') {
+              <button class="dia-btn dia-btn--primary" (click)="ajouterSchemaDessine()">Dessiner un schéma</button>
+              <button class="dia-btn dia-btn--ghost" (click)="ajouterSchemaDepuisBibliotheque()">Choisir dans la bibliothèque</button>
+              <label class="dia-check"><input type="checkbox" [ngModel]="aussiBibliotheque()" (ngModelChange)="aussiBibliotheque.set($event)"> Enregistrer aussi dans la bibliothèque</label>
+            }
+            @case ('IMAGE') {
+              <label class="dia-btn dia-btn--dashed">Téléverser un fichier<input type="file" accept="image/*" hidden #fileImg (change)="ajouterImageFichier(fileImg)"></label>
+              <span class="dia-or">ou</span>
+              <input class="dia-input" [(ngModel)]="urlImage" placeholder="Coller une URL d'image">
+              <button class="dia-btn dia-btn--dark" (click)="ajouterImageUrl()" [disabled]="!urlImage.trim()">Ajouter</button>
+            }
+            @case ('VIDEO_LIEN') {
+              <input class="dia-input" [(ngModel)]="urlVideo" placeholder="Lien YouTube / Vimeo">
+              <button class="dia-btn dia-btn--dark" (click)="ajouterVideo()" [disabled]="!urlVideo.trim()">Ajouter</button>
+            }
+            @case ('TEXTE') {
+              <button class="dia-btn dia-btn--primary" (click)="ajouterTexte()"><mat-icon>title</mat-icon>Composer un slide texte</button>
+              <span class="dia-or">titre, message, consigne — couleur, taille et alignement</span>
+            }
+          }
+        </div>
+        <button class="dia-add__close" (click)="ajoutOuvert.set(false)" title="Fermer"><mat-icon>close</mat-icon></button>
+      </div>
+    }
+  }
+}
+</div>
+
+<!-- ════════════════════════════════ LECTEUR PLEIN ÉCRAN ════════════════════════════════ -->
+@if (presentation(); as p) {
+  <app-diaporama-player [diaporama]="p" (fermer)="fermerPresentation()" />
+}
