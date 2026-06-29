@@ -175,11 +175,11 @@ export class JoueurStore {
 
   // ──────────────────────── Séances à venir ────────────────────────
 
-  /** Séances non annulées à partir d'aujourd'hui, triées chronologiquement. */
+  /** Séances planifiées à partir d'aujourd'hui, triées chronologiquement (réalisées/annulées exclues). */
   readonly prochainesSeances = computed<Seance[]>(() => {
     const auj = this.dateISO(new Date());
     return this.seances()
-      .filter(s => s.statut !== 'ANNULEE' && s.date >= auj)
+      .filter(s => s.statut === 'PLANIFIEE' && s.date >= auj)
       .sort((a, b) => (a.date + (a.heureDebut ?? '')).localeCompare(b.date + (b.heureDebut ?? '')));
   });
 

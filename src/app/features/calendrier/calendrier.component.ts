@@ -315,9 +315,36 @@ export class CalendrierComponent implements OnInit {
 
   marquerRealisee(seance: Seance, event: MouseEvent): void {
     event.stopPropagation();
-    this.seanceService.marquerRealisee(seance.id).subscribe(() => {
-      this.charger();
-      this.snackBar.open('Séance marquée comme réalisée', 'OK', { duration: 3000 });
+    this.seanceService.marquerRealisee(seance.id).subscribe({
+      next: () => {
+        this.charger();
+        this.snackBar.open('Séance marquée comme réalisée', 'OK', { duration: 3000 });
+      },
+      error: e => {
+        const msg = e?.status === 409
+          ? 'Impossible : une séance future ne peut pas être marquée réalisée.'
+          : 'Action impossible';
+        this.snackBar.open(msg, 'OK', { duration: 4000 });
+      },
+    });
+  }
+
+  /** Retour arrière : repasse une séance réalisée en planifiée (bloqué si données GPS attachées). */
+  devaliderSeance(seance: Seance, event: MouseEvent): void {
+    event.stopPropagation();
+    const nom = seance.titre || seance.typeSeance.libelle;
+    if (!confirm(`Repasser "${nom}" en planifiée ?`)) return;
+    this.seanceService.annulerRealisation(seance.id).subscribe({
+      next: () => {
+        this.charger();
+        this.snackBar.open('Séance repassée en planifiée', 'OK', { duration: 3000 });
+      },
+      error: e => {
+        const msg = e?.status === 409
+          ? 'Impossible : des données GPS sont attachées. Supprime-les d\'abord.'
+          : 'Action impossible';
+        this.snackBar.open(msg, 'OK', { duration: 4000 });
+      },
     });
   }
 

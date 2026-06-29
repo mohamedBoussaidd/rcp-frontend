@@ -175,6 +175,11 @@ export class SeanceService {
     return this.http.patch<Seance>(`${this.base}/${id}/realiser`, {});
   }
 
+  /** Retour arrière : repasse une séance réalisée en planifiée (409 si données GPS attachées). */
+  annulerRealisation(id: string): Observable<Seance> {
+    return this.http.patch<Seance>(`${this.base}/${id}/devalider`, {});
+  }
+
   getTypeSeances(): Observable<TypeSeance[]> {
     return this.http.get<TypeSeance[]>(this.baseTypes);
   }

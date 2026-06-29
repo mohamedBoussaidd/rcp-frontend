@@ -333,8 +333,9 @@ export class DashboardComponent implements OnInit {
   loadSeancesAujourdhui(): void {
     this.seanceService.getAll().subscribe({
       next: data => {
+        // « À venir » est piloté par le statut : une séance réalisée (ou annulée) en sort.
         const aVenir = data
-          .filter(s => s.date >= this.aujourdhui && s.statut !== 'ANNULEE')
+          .filter(s => s.date >= this.aujourdhui && s.statut === 'PLANIFIEE')
           .sort((a, b) =>
             a.date.localeCompare(b.date) || (a.heureDebut ?? '').localeCompare(b.heureDebut ?? ''));
         this.seancesAujourdhui = aVenir.filter(s => s.date === this.aujourdhui);

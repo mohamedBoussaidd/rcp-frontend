@@ -323,15 +323,16 @@ export class DashboardPreparateurComponent implements OnInit {
   loadSeances(): void {
     this.seanceService.getAll().subscribe({
       next: data => {
+        // « À venir » est piloté par le statut : une séance réalisée (ou annulée) en sort.
         const aVenir = data
-          .filter(s => s.date >= this.aujourdhui && s.statut !== 'ANNULEE')
+          .filter(s => s.date >= this.aujourdhui && s.statut === 'PLANIFIEE')
           .sort((a, b) => a.date.localeCompare(b.date) || (a.heureDebut ?? '').localeCompare(b.heureDebut ?? ''));
         this.seancesAujourdhui = aVenir.filter(s => s.date === this.aujourdhui);
         this.seancesAVenir = aVenir.filter(s => s.date > this.aujourdhui).slice(0, 3);
 
-        // Dernière séance passée réalisée → bilan prévu/réalisé
+        // Dernière séance réalisée → bilan prévu/réalisé (une séance faite aujourd'hui y bascule).
         const passees = data
-          .filter(s => s.date < this.aujourdhui && s.statut !== 'ANNULEE')
+          .filter(s => s.statut === 'REALISEE')
           .sort((a, b) => b.date.localeCompare(a.date) || (b.heureDebut ?? '').localeCompare(a.heureDebut ?? ''));
         this.derniereSeance = passees[0] ?? null;
         if (this.derniereSeance) {

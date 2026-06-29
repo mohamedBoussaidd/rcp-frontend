@@ -112,7 +112,12 @@
                 <div class="lc-actions">
                   @if (seance.statut === 'PLANIFIEE') {
                     <button class="btn-edit" (click)="editerSeance(seance, $event)" matTooltip="Modifier">✎</button>
-                    <button class="btn-realise" (click)="marquerRealisee(seance, $event)" matTooltip="Marquer comme réalisée">✓</button>
+                    @if (seance.date <= today) {
+                      <button class="btn-realise" (click)="marquerRealisee(seance, $event)" matTooltip="Marquer comme réalisée">✓</button>
+                    }
+                  }
+                  @if (seance.statut === 'REALISEE') {
+                    <button class="btn-devalider" (click)="devaliderSeance(seance, $event)" matTooltip="Repasser en planifiée">↩</button>
                   }
                   <button class="btn-suppr" (click)="supprimerSeance(seance, $event)" matTooltip="Supprimer">✕</button>
                 </div>
@@ -218,7 +223,12 @@
       <div class="seance-actions">
         @if (seance.statut === 'PLANIFIEE') {
           <button class="btn-edit" (click)="editerSeance(seance, $event)" matTooltip="Modifier">✎</button>
-          <button class="btn-realise" (click)="marquerRealisee(seance, $event)" matTooltip="Marquer comme réalisée">✓</button>
+          @if (seance.date <= today) {
+            <button class="btn-realise" (click)="marquerRealisee(seance, $event)" matTooltip="Marquer comme réalisée">✓</button>
+          }
+        }
+        @if (seance.statut === 'REALISEE') {
+          <button class="btn-devalider" (click)="devaliderSeance(seance, $event)" matTooltip="Repasser en planifiée">↩</button>
         }
         <button class="btn-suppr" (click)="supprimerSeance(seance, $event)" matTooltip="Supprimer">✕</button>
       </div>

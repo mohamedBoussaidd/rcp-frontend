@@ -403,23 +403,31 @@
   position: absolute;
   top: 6px; right: 6px;
   display: flex;
-  gap: 3px;
-  opacity: 0;
+  gap: 4px;
+  opacity: .6;
   transition: opacity .15s;
 }
-.btn-realise, .btn-suppr, .btn-edit {
-  width: 20px; height: 20px;
-  border-radius: 4px;
+.btn-realise, .btn-suppr, .btn-edit, .btn-devalider {
+  width: 30px; height: 30px;
+  border-radius: 7px;
   border: none;
   cursor: pointer;
-  font-size: 0.7rem;
+  font-size: 1.05rem;
+  line-height: 1;
   font-weight: 700;
   display: flex; align-items: center; justify-content: center;
   font-family: inherit;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, .08);
+  transition: filter .12s, transform .12s;
 }
-.btn-realise { background: var(--success-bg); color: var(--success); }
-.btn-suppr   { background: var(--danger-bg);  color: var(--danger); }
-.btn-edit    { background: var(--copper-soft); color: var(--copper); }
+.btn-realise:hover, .btn-suppr:hover, .btn-edit:hover, .btn-devalider:hover {
+  filter: brightness(.94);
+  transform: translateY(-1px);
+}
+.btn-realise   { background: var(--success-bg); color: var(--success); }
+.btn-suppr     { background: var(--danger-bg);  color: var(--danger); }
+.btn-edit      { background: var(--copper-soft); color: var(--copper); }
+.btn-devalider { background: var(--warn-bg);    color: var(--warn); }
 
 /* ══════════ Responsive ══════════ */
 @media (max-width: 1024px) {
