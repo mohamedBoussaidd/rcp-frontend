@@ -30,6 +30,7 @@ export class JoueurDetailComponent implements OnInit {
 
   joueur: Joueur | null = null;
   risque: any = null;
+  chargeCible: any = null;
   fatigue: NiveauFatigue | null = null;
   /** Résumé d'équipe chargé UNE fois (porte l'ACWR, charges aiguë/chronique, readiness…). */
   resumeEquipe: ResumeJoueur[] = [];
@@ -241,6 +242,8 @@ export class JoueurDetailComponent implements OnInit {
   /** Phrase d'explication du score de risque (cohérente avec le badge). */
   get riskPhrase(): string {
     if (!this.risque) return '';
+    // Phrase probabiliste explicable fournie par le back (sans ML), si disponible.
+    if (this.risque.phrase) return this.risque.phrase;
     const t = this.riskTone(this.risque.score_risque);
     return t === 'alert' ? 'Niveau élevé — surveillance rapprochée et charge individualisée recommandées.'
       : t === 'warn'     ? 'Niveau modéré — maintenir le monitoring et adapter le volume.'
@@ -368,6 +371,7 @@ export class JoueurDetailComponent implements OnInit {
   private chargerJoueur(id: string): void {
     this.joueur    = null;
     this.risque    = null;
+    this.chargeCible = null;
     this.fatigue   = null;
     this.gpsData   = [];
     this.pesees    = [];
@@ -382,6 +386,7 @@ export class JoueurDetailComponent implements OnInit {
       this.currentIndex = this.joueursList.findIndex(p => p.id === j.id);
     });
     this.predictionService.getRisque(id).subscribe(r => this.risque = r);
+    this.predictionService.getChargeCible(id).subscribe(c => this.chargeCible = c);
     this.predictionService.getFatigue(id).subscribe(f => this.fatigue = f);
     this.joueurService.getHistoriqueGps(id).subscribe({
       next: data => {

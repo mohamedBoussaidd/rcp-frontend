@@ -1,0 +1,75 @@
+<div class="comparaison">
+  <header class="page-head">
+    <h1>Comparaison des saisons</h1>
+    <p class="sub">Compare les saisons de l'équipe côte à côte. L'historique est conservé d'une saison à l'autre.</p>
+  </header>
+
+  @if (loading) { <p class="muted">Chargement…</p> }
+
+  @if (!loading && saisons.length === 0) {
+    <p class="muted">Aucune saison enregistrée pour le moment.</p>
+  }
+
+  @if (!loading && saisons.length > 0) {
+    <div class="selecteur">
+      @for (s of saisons; track s.id) {
+        <label class="chip" [class.on]="estSelectionnee(s.id)">
+          <input type="checkbox" [checked]="estSelectionnee(s.id)" (change)="basculer(s.id)">
+          {{ s.libelle }}
+        </label>
+      }
+    </div>
+
+    @if (colonnes.length === 0) {
+      <p class="muted">Sélectionne au moins une saison à comparer.</p>
+    } @else {
+      <div class="table-wrap">
+        <table class="compare">
+          <thead>
+            <tr>
+              <th>Indicateur</th>
+              @for (b of colonnes; track b.saisonId) { <th>{{ b.libelle }}</th> }
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Période</td>
+              @for (b of colonnes; track b.saisonId) {
+                <td>{{ b.dateDebut | date:'dd/MM/yy' }} → {{ b.dateFin | date:'dd/MM/yy' }}</td>
+              }
+            </tr>
+            <tr>
+              <td>Statut</td>
+              @for (b of colonnes; track b.saisonId) { <td>{{ b.statut }}</td> }
+            </tr>
+            <tr>
+              <td>Durée (jours)</td>
+              @for (b of colonnes; track b.saisonId) { <td>{{ b.jours }}</td> }
+            </tr>
+            <tr>
+              <td>Effectif</td>
+              @for (b of colonnes; track b.saisonId) { <td>{{ b.effectifCount }}</td> }
+            </tr>
+            <tr>
+              <td>Séances</td>
+              @for (b of colonnes; track b.saisonId) { <td>{{ b.nbSeances }}</td> }
+            </tr>
+            <tr>
+              <td>Séances / semaine</td>
+              @for (b of colonnes; track b.saisonId) { <td>{{ seancesParSemaine(b) | number:'1.1-1' }}</td> }
+            </tr>
+            <tr>
+              <td>Blessures</td>
+              @for (b of colonnes; track b.saisonId) { <td>{{ b.nbBlessures }}</td> }
+            </tr>
+            <tr>
+              <td>Blessures / mois</td>
+              @for (b of colonnes; track b.saisonId) { <td>{{ blessuresParMois(b) | number:'1.1-1' }}</td> }
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="hint">Les bilans de performance détaillés (km parcourus, charge moyenne par joueur) viendront enrichir cette vue.</p>
+    }
+  }
+</div>

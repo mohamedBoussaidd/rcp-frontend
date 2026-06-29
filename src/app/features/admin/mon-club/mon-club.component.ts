@@ -60,6 +60,15 @@ export class MonClubComponent implements OnInit {
    *  Getter car les permissions sont chargées en async après le boot. */
   get peutGererEquipes(): boolean { return this.auth.canGererClub(); }
 
+  /** Gestion des comptes (membres:manage) : président, entraîneur en chef, entraîneur. */
+  get peutGererMembres(): boolean { return this.auth.canGererMembres(); }
+
+  /** Rôles attribuables : un gestionnaire d'équipe (sans club:manage) ne crée pas d'entraîneur
+   *  (rang égal au sien) — le backend le refuse aussi. */
+  get rolesCreables() {
+    return this.peutGererEquipes ? this.rolesMembres : this.rolesMembres.filter(r => r.value !== 'ENTRAINEUR');
+  }
+
   // ── Liaison compte JOUEUR ↔ fiche ──
   linkMembreId = signal<string | null>(null);
   ficheChoisie = signal<string>('');

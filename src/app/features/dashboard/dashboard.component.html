@@ -5,6 +5,19 @@
   </div>
 }
 
+<!-- Outil de test : date simulée (SUPER_ADMIN + dev uniquement, jamais en production) -->
+@if (peutSimulerDate()) {
+  <div class="date-simulee">
+    <mat-icon>science</mat-icon>
+    <span class="date-simulee__label">Date simulée (test)</span>
+    <input type="date" [value]="dateSimulee() ?? ''" (change)="changerDateSimulee($any($event.target).value)">
+    @if (dateSimulee()) {
+      <button type="button" class="date-simulee__reset" (click)="changerDateSimulee('')">Date réelle</button>
+      <span class="date-simulee__on">simulation active</span>
+    }
+  </div>
+}
+
 @if (afficherPrepa()) {
   <app-dashboard-preparateur></app-dashboard-preparateur>
 } @else {

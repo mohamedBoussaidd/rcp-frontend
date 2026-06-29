@@ -255,8 +255,24 @@
                       <div class="pf-risk__txt">
                         <div class="pf-risk__label">Risque blessure</div>
                         <span class="pf-badge pf-badge--dot" [class]="'tone-' + riskTone(risque.score_risque)"><span class="pf-dot"></span>{{ risque.niveau }}</span>
+                        @if (risque.probabilite != null) {
+                          <span class="pf-badge">~{{ risque.probabilite }} % à 7 j</span>
+                        }
+                        @if (risque.source) {
+                          <span class="pf-badge">source {{ risque.source }}</span>
+                        }
                         <div class="pf-risk__phrase">{{ riskPhrase }}</div>
                       </div>
+                    </div>
+                  }
+
+                  @if (chargeCible?.disponible) {
+                    <div class="pf-gauge">
+                      <div class="pf-gauge__head">
+                        <span class="pf-gauge__label">Charge cible semaine</span>
+                        @if (chargeCible.source) { <span class="pf-badge">source {{ chargeCible.source }}</span> }
+                      </div>
+                      <div class="pf-gauge__phrase">{{ chargeCible.phrase }}</div>
                     </div>
                   }
 

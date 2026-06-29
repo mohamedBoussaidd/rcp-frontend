@@ -42,9 +42,14 @@ export class LoginComponent {
       },
       error: (err) => {
         this.loading.set(false);
-        this.erreur.set(err.status === 401
-          ? 'Email ou mot de passe incorrect.'
-          : 'Connexion impossible. Réessayez.');
+        if (err.status === 401) {
+          this.erreur.set('Email ou mot de passe incorrect.');
+        } else if (err.status === 403) {
+          // Compte désactivé (ex. joueur écarté de l'effectif de la saison).
+          this.erreur.set(typeof err.error === 'string' ? err.error : 'Compte désactivé — contactez votre club.');
+        } else {
+          this.erreur.set('Connexion impossible. Réessayez.');
+        }
       },
     });
   }

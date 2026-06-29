@@ -4,6 +4,7 @@ import { MatIcon } from '@angular/material/icon';
 import { AuthService } from '@core/services/auth.service';
 import { ContexteService } from '@core/services/contexte.service';
 import { MonClubService } from '@core/services/mon-club.service';
+import { SaisonContexteService } from '@core/services/saison-contexte.service';
 
 /**
  * Bandeau « contexte actif » (Club · Équipe) affiché dans le shell pour les rôles
@@ -21,6 +22,7 @@ export class BarreContexteComponent implements OnInit {
 
   auth = inject(AuthService);
   contexte = inject(ContexteService);
+  saison = inject(SaisonContexteService);
   private monClub = inject(MonClubService);
   private router = inject(Router);
 
@@ -38,6 +40,16 @@ export class BarreContexteComponent implements OnInit {
   /** Visible uniquement pour les rôles à contexte (et si un club est actif). */
   get visible(): boolean {
     return this.auth.hasRole('SUPER_ADMIN', 'PRESIDENT') && !!this.contexte.clubActif();
+  }
+
+  /** Bandeau « saison active » : tout le staff (hors joueur) dès qu'une saison est entrée. */
+  get saisonVisible(): boolean {
+    return !this.auth.hasRole('JOUEUR') && !!this.saison.saisonActive();
+  }
+
+  /** Ouvre le sélecteur de saison (changer de saison / consulter l'historique). */
+  changerSaison(): void {
+    this.router.navigate(['/choix-saison']);
   }
 
   get estSuperAdmin(): boolean {

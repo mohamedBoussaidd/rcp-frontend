@@ -1,0 +1,144 @@
+<div class="ms-wrap">
+  <header class="ms-head">
+    <div>
+      <h1>Modèles de semaine</h1>
+      <p class="ms-sub">Gabarits hebdomadaires réutilisables — instanciez-les sur une plage pour générer les séances.</p>
+    </div>
+    <div class="ms-head__actions">
+      <a routerLink="/calendrier" class="ms-btn ms-btn--ghost">← Planning</a>
+      <button class="ms-btn ms-btn--primary" (click)="nouveau()">+ Nouveau modèle</button>
+    </div>
+  </header>
+
+  @if (message) { <div class="ms-toast">{{ message }}</div> }
+
+  <!-- ══ Liste des modèles ══ -->
+  @if (loading) {
+    <p class="ms-muted">Chargement…</p>
+  } @else if (!modeles.length) {
+    <p class="ms-muted">Aucun modèle pour l'instant. Créez-en un (ex. « Semaine championnat », « Semaine de prépa »).</p>
+  } @else {
+    <div class="ms-grid">
+      @for (m of modeles; track m.id) {
+        <article class="ms-card">
+          <div class="ms-card__head">
+            <h2>{{ m.nom }}</h2>
+            <span class="ms-pill">{{ m.creneaux.length }} séance(s)</span>
+          </div>
+          @if (m.description) { <p class="ms-card__desc">{{ m.description }}</p> }
+          <ul class="ms-creneaux">
+            @for (c of m.creneaux; track c.id) {
+              <li>
+                <strong>{{ nomJour(c.jourSemaine) }}</strong>
+                @if (c.heureDebut) { <span>· {{ c.heureDebut }}</span> }
+                <span>· {{ c.typeSeanceLibelle }}</span>
+                @if (c.terrain) { <span class="ms-muted">· {{ c.terrain }}</span> }
+                @if (c.objectif) { <em class="ms-obj">{{ c.objectif }}</em> }
+              </li>
+            }
+          </ul>
+          <div class="ms-card__actions">
+            <button class="ms-btn ms-btn--primary" (click)="ouvrirInstanciation(m)">Instancier</button>
+            <button class="ms-btn" (click)="modifier(m)">Éditer</button>
+            <button class="ms-btn" (click)="dupliquer(m)">Dupliquer</button>
+            <button class="ms-btn ms-btn--danger" (click)="supprimer(m)">Supprimer</button>
+          </div>
+        </article>
+      }
+    </div>
+  }
+
+  <!-- ══ Éditeur de modèle ══ -->
+  @if (edition) {
+    <div class="ms-modal" (click)="annulerEdition()">
+      <div class="ms-modal__panel" (click)="$event.stopPropagation()">
+        <h2>{{ editionId ? 'Modifier le modèle' : 'Nouveau modèle' }}</h2>
+
+        <label class="ms-field">
+          <span>Nom</span>
+          <input [(ngModel)]="edition.nom" placeholder="Ex. Semaine championnat" />
+        </label>
+        <label class="ms-field">
+          <span>Description</span>
+          <input [(ngModel)]="edition.description" placeholder="Optionnel" />
+        </label>
+
+        <div class="ms-creneaux-edit">
+          <div class="ms-creneaux-edit__head">
+            <h3>Créneaux</h3>
+            <button class="ms-btn" (click)="ajouterCreneau()">+ Ajouter un créneau</button>
+          </div>
+
+          @if (!edition.creneaux.length) {
+            <p class="ms-muted">Aucun créneau. Ajoutez les séances type de la semaine.</p>
+          }
+
+          @for (c of edition.creneaux; track $index) {
+            <div class="ms-row">
+              <select [(ngModel)]="c.jourSemaine" title="Jour">
+                @for (j of jours; track j.v) { <option [ngValue]="j.v">{{ j.l }}</option> }
+              </select>
+              <input type="time" [(ngModel)]="c.heureDebut" title="Heure" />
+              <select [(ngModel)]="c.typeSeanceId" title="Type de séance">
+                @for (t of types; track t.id) { <option [ngValue]="t.id">{{ t.libelle }}</option> }
+              </select>
+              <input type="number" [(ngModel)]="c.dureeMinutes" placeholder="min" class="ms-num" title="Durée (min)" />
+              <select [(ngModel)]="c.terrain" class="ms-terrain" title="Terrain">
+                <option [ngValue]="null">— Terrain</option>
+                <option value="SYNTHETIQUE">Synthétique</option>
+                <option value="HERBE">Herbe</option>
+                <option value="HERBE_GRASSE">Herbe grasse</option>
+                <option value="PARQUET">Parquet</option>
+                <option value="GOUDRON">Goudron</option>
+                <option value="FORET">Forêt</option>
+              </select>
+              <input [(ngModel)]="c.objectif" placeholder="Objectif / charge cible" class="ms-obj-in" title="Objectif / charge cible" />
+              <button class="ms-btn ms-btn--danger ms-btn--icon" (click)="retirerCreneau($index)" title="Retirer">✕</button>
+            </div>
+          }
+        </div>
+
+        <div class="ms-modal__actions">
+          <button class="ms-btn" (click)="annulerEdition()">Annuler</button>
+          <button class="ms-btn ms-btn--primary" (click)="enregistrer()">Enregistrer</button>
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- ══ Instanciation ══ -->
+  @if (instancieId) {
+    <div class="ms-modal" (click)="annulerInstanciation()">
+      <div class="ms-modal__panel ms-modal__panel--sm" (click)="$event.stopPropagation()">
+        <h2>Instancier le modèle</h2>
+        <p class="ms-muted">Génère les séances sur la plage choisie. Les séances déjà réalisées ne sont jamais modifiées.</p>
+
+        <label class="ms-field">
+          <span>Du</span>
+          <input type="date" [(ngModel)]="instDebut" />
+        </label>
+        <label class="ms-field">
+          <span>Au</span>
+          <input type="date" [(ngModel)]="instFin" />
+        </label>
+        <label class="ms-check">
+          <input type="checkbox" [(ngModel)]="instRemplacer" />
+          <span>Remplacer les séances déjà posées (hors réalisées)</span>
+        </label>
+
+        @if (instResult) {
+          <div class="ms-result">
+            {{ instResult.creees }} créée(s) ·
+            {{ instResult.remplacees }} remplacée(s) ·
+            {{ instResult.ignorees }} ignorée(s)
+          </div>
+        }
+
+        <div class="ms-modal__actions">
+          <button class="ms-btn" (click)="annulerInstanciation()">Fermer</button>
+          <button class="ms-btn ms-btn--primary" (click)="lancerInstanciation()">Générer</button>
+        </div>
+      </div>
+    </div>
+  }
+</div>

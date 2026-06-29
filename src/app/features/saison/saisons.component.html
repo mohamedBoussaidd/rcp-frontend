@@ -1,0 +1,161 @@
+<div class="saisons">
+  <header class="page-head">
+    <div>
+      <h1>Saisons</h1>
+      <p class="sub">Ouvre, clôture et structure tes saisons (périodes + effectif). La saison borne tous les calculs de charge et de risque.</p>
+    </div>
+    <button class="btn-primary" (click)="showForm = !showForm">
+      <mat-icon>add</mat-icon> Ouvrir une saison
+    </button>
+  </header>
+
+  <!-- Saison active (clairement identifiée) -->
+  @if (!loading) {
+    @if (saisonActive) {
+      <div class="saison-active">
+        <mat-icon>play_circle</mat-icon>
+        <span>Saison active : <strong>{{ saisonActive.libelle }}</strong>
+          @if (saisonActive.periodeCourante) { · période {{ saisonActive.periodeCourante.libelle }} }
+        </span>
+      </div>
+    } @else {
+      <div class="saison-active saison-active--aucune">
+        <mat-icon>pause_circle</mat-icon>
+        <span>Aucune saison active. Les indicateurs sont en sommeil tant qu'aucune saison n'est en cours.</span>
+      </div>
+    }
+  }
+
+  @if (message) { <div class="flash ok">{{ message }}</div> }
+  @if (erreur)  { <div class="flash ko">{{ erreur }}</div> }
+
+  <!-- Formulaire nouvelle saison -->
+  @if (showForm) {
+    <section class="card form-saison">
+      <h2>Nouvelle saison</h2>
+      <div class="grid">
+        <label>Libellé
+          <input type="text" [(ngModel)]="form.libelle" placeholder="2026-2027">
+        </label>
+        <label>Début
+          <input type="date" [(ngModel)]="form.dateDebut">
+        </label>
+        <label>Fin
+          <input type="date" [(ngModel)]="form.dateFin">
+        </label>
+        <label class="check">
+          <input type="checkbox" [(ngModel)]="form.genererPeriodes">
+          Générer les périodes par défaut (ajustables ensuite)
+        </label>
+      </div>
+      <p class="hint">Ouvrir une nouvelle saison clôture automatiquement la saison en cours de l'équipe. Les blessures en cours sont conservées et suivent le joueur.</p>
+      <div class="actions">
+        <button class="btn-primary" (click)="ouvrir()">Ouvrir</button>
+        <button class="btn-ghost" (click)="showForm = false">Annuler</button>
+      </div>
+    </section>
+  }
+
+  <div class="layout">
+    <!-- Liste des saisons -->
+    <aside class="liste">
+      @if (loading) { <p class="muted">Chargement…</p> }
+      @for (s of saisons; track s.id) {
+        <button class="saison-item" [class.active]="selected?.id === s.id" (click)="selectionner(s)">
+          <div class="ligne1">
+            <span class="lib">{{ s.libelle }}</span>
+            <span class="badge {{ badgeStatut(s) }}">{{ s.statut }}</span>
+          </div>
+          <div class="ligne2">
+            {{ s.dateDebut | date:'dd/MM/yy' }} → {{ s.dateFin | date:'dd/MM/yy' }}
+            · {{ s.effectifCount }} joueur(s)
+          </div>
+          @if (s.periodeCourante) {
+            <div class="ligne3">Période : {{ s.periodeCourante.libelle }}</div>
+          }
+        </button>
+      }
+      @if (!loading && saisons.length === 0) {
+        <p class="muted">Aucune saison. Ouvre-en une pour commencer.</p>
+      }
+    </aside>
+
+    <!-- Détail saison sélectionnée -->
+    <section class="detail">
+      @if (!selected) {
+        <p class="muted">Sélectionne une saison pour gérer ses périodes et son effectif.</p>
+      } @else {
+        <div class="detail-head">
+          <h2>{{ selected.libelle }} <span class="badge {{ badgeStatut(selected) }}">{{ selected.statut }}</span></h2>
+          <div class="actions">
+            @if (selected.statut !== 'CLOTUREE') {
+              <button class="btn-ghost" (click)="cloturer(selected)"><mat-icon>lock</mat-icon> Clôturer</button>
+            }
+            <button class="btn-danger" (click)="supprimer(selected)"><mat-icon>delete</mat-icon> Supprimer</button>
+          </div>
+        </div>
+
+        <!-- Périodes -->
+        <div class="bloc">
+          <div class="bloc-head">
+            <h3>Périodes</h3>
+            <div class="actions">
+              <button class="btn-ghost" (click)="genererPeriodes()"><mat-icon>auto_fix_high</mat-icon> Générer par défaut</button>
+              <button class="btn-ghost" (click)="ajouterPeriode()"><mat-icon>add</mat-icon> Ajouter</button>
+            </div>
+          </div>
+          <table class="periodes">
+            <thead>
+              <tr><th>Type</th><th>Libellé</th><th>Début</th><th>Fin</th><th></th></tr>
+            </thead>
+            <tbody>
+              @for (p of periodesEdit; track $index) {
+                <tr>
+                  <td>
+                    <select [(ngModel)]="p.type">
+                      @for (t of TYPES; track t.value) { <option [value]="t.value">{{ t.label }}</option> }
+                    </select>
+                  </td>
+                  <td><input type="text" [(ngModel)]="p.libelle" [placeholder]="labelType(p.type)"></td>
+                  <td><input type="date" [(ngModel)]="p.dateDebut"></td>
+                  <td><input type="date" [(ngModel)]="p.dateFin"></td>
+                  <td><button class="icon-btn" (click)="retirerPeriode($index)"><mat-icon>close</mat-icon></button></td>
+                </tr>
+              }
+              @if (periodesEdit.length === 0) {
+                <tr><td colspan="5" class="muted">Aucune période. « Générer par défaut » ou « Ajouter ».</td></tr>
+              }
+            </tbody>
+          </table>
+          <div class="actions"><button class="btn-primary" (click)="enregistrerPeriodes()">Enregistrer les périodes</button></div>
+        </div>
+
+        <!-- Effectif -->
+        <div class="bloc">
+          <div class="bloc-head">
+            <h3>Effectif ({{ selectedJoueurIds.size }})</h3>
+            <div class="actions">
+              <button class="btn-ghost" (click)="reconduire()"><mat-icon>group_add</mat-icon> Reconduire la saison précédente</button>
+            </div>
+          </div>
+
+          @if (reconduction && reconduction.saisonPrecedenteId) {
+            <p class="hint">Joueurs de « {{ reconduction.saisonPrecedenteLibelle }} » pré-cochés ci-dessous. Décoche les joueurs transférés, puis enregistre.</p>
+          }
+
+          <div class="joueurs-grid">
+            @for (j of joueurs; track j.id) {
+              <label class="joueur-chip" [class.on]="estDansEffectif(j)">
+                <input type="checkbox" [checked]="estDansEffectif(j)" (change)="basculer(j)">
+                <span class="nom">{{ j.prenom }} {{ j.nom }}</span>
+                @if (j.postePrincipal) { <span class="poste">{{ j.postePrincipal }}</span> }
+              </label>
+            }
+            @if (joueurs.length === 0) { <p class="muted">Aucun joueur dans la base.</p> }
+          </div>
+          <div class="actions"><button class="btn-primary" (click)="enregistrerEffectif()">Enregistrer l'effectif</button></div>
+        </div>
+      }
+    </section>
+  </div>
+</div>

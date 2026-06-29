@@ -1,0 +1,49 @@
+<div class="choix">
+  <div class="choix__head">
+    <h1 class="choix__title">Choisir la saison</h1>
+    <p class="choix__sub">Entrez dans la saison en cours pour accéder au suivi. Les saisons clôturées restent consultables.</p>
+  </div>
+
+  @if (loading()) {
+    <div class="choix__empty">Chargement…</div>
+  } @else {
+
+    @if (enCours; as s) {
+      <div class="saison-card saison-card--active">
+        <div class="saison-card__top">
+          <span class="badge badge--encours">En cours</span>
+          <span class="saison-card__name">{{ s.libelle }}</span>
+        </div>
+        <div class="saison-card__dates">
+          {{ s.dateDebut | date:'dd/MM/yyyy' }} → {{ s.dateFin | date:'dd/MM/yyyy' }}
+          @if (s.effectifCount) { <span class="dot">·</span> {{ s.effectifCount }} joueurs }
+        </div>
+        <label class="check">
+          <input type="checkbox" [ngModel]="rememberChoix()" (ngModelChange)="rememberChoix.set($event)">
+          <span>Entrer directement dans cette saison aux prochaines connexions</span>
+        </label>
+        <button class="btn-primary" (click)="entrer(s)">
+          <mat-icon>login</mat-icon> Entrer dans la saison
+        </button>
+      </div>
+    } @else {
+      <div class="choix__empty">
+        Aucune saison en cours pour ce club.
+        <button class="link" (click)="creer()">Créer une saison</button>
+      </div>
+    }
+
+    @if (cloturees.length) {
+      <div class="choix__section">Saisons précédentes (lecture seule)</div>
+      <div class="saison-list">
+        @for (s of cloturees; track s.id) {
+          <button class="saison-row" (click)="consulter()">
+            <span class="saison-row__name">{{ s.libelle }}</span>
+            <span class="saison-row__dates">{{ s.dateDebut | date:'yyyy' }}–{{ s.dateFin | date:'yyyy' }}</span>
+            <mat-icon>chevron_right</mat-icon>
+          </button>
+        }
+      </div>
+    }
+  }
+</div>

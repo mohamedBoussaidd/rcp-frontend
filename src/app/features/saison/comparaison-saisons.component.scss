@@ -1,0 +1,26 @@
+:host { display: block; padding: 1.25rem; }
+
+.page-head {
+  margin-bottom: 1rem;
+  h1 { margin: 0; font-size: 1.5rem; }
+  .sub { margin: .25rem 0 0; color: var(--text-muted, #64748B); font-size: .9rem; }
+}
+
+.selecteur { display: flex; flex-wrap: wrap; gap: .5rem; margin-bottom: 1rem; }
+.chip {
+  display: inline-flex; align-items: center; gap: .4rem; padding: .4rem .7rem;
+  border: 1px solid var(--border, #E5E9EF); border-radius: 999px; cursor: pointer; font-size: .85rem;
+  &.on { border-color: var(--primary, #15803D); background: #F0FDF4; }
+}
+
+.table-wrap { overflow-x: auto; }
+table.compare {
+  width: 100%; border-collapse: collapse; font-size: .9rem;
+  th, td { text-align: left; padding: .55rem .7rem; border-bottom: 1px solid var(--border, #E5E9EF); }
+  thead th { color: var(--text-muted, #64748B); font-weight: 600; }
+  td:first-child, th:first-child { color: var(--text-muted, #64748B); font-weight: 600; white-space: nowrap; }
+  tbody tr:hover { background: var(--surface-2, #f8fafc); }
+}
+
+.muted { color: var(--text-muted, #64748B); font-size: .9rem; }
+.hint  { color: var(--text-muted, #64748B); font-size: .82rem; margin-top: .8rem; }

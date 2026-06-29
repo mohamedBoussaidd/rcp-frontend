@@ -1,5 +1,9 @@
 /* Context pills — rendus inline dans la navbar */
-
+:host {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
 .context-pill {
   display: inline-flex;
   align-items: center;

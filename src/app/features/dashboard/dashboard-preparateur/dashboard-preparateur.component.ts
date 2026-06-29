@@ -1,5 +1,5 @@
 import { Component, OnInit, inject } from '@angular/core';
-import { DecimalPipe, DatePipe, SlicePipe } from '@angular/common';
+import { DecimalPipe, DatePipe, SlicePipe, LowerCasePipe } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { MatIcon } from '@angular/material/icon';
 import { MatDialog } from '@angular/material/dialog';
@@ -13,6 +13,7 @@ import { PredictionService, ResumeJoueur, RapportSeance } from '@core/services/p
 import { SeanceService, Seance } from '@core/services/seance.service';
 import { JoueurService } from '@core/services/joueur.service';
 import { SuiviSubjectifService, Wellness } from '@core/services/suivi-subjectif.service';
+import { SaisonService, Saison, PeriodeType } from '@core/services/saison.service';
 import { PresenceDialogComponent } from '../../performance/presence-dialog/presence-dialog.component';
 import { InfoHintComponent } from '@shared/components/info-hint/info-hint.component';
 
@@ -30,7 +31,7 @@ type Semaines = 4 | 8 | 12;
   standalone: true,
   templateUrl: './dashboard-preparateur.component.html',
   styleUrl: './dashboard-preparateur.component.scss',
-  imports: [DecimalPipe, DatePipe, SlicePipe, RouterLink, MatIcon, ChartComponent, InfoHintComponent],
+  imports: [DecimalPipe, DatePipe, SlicePipe, LowerCasePipe, RouterLink, MatIcon, ChartComponent, InfoHintComponent],
 })
 export class DashboardPreparateurComponent implements OnInit {
 
@@ -38,7 +39,41 @@ export class DashboardPreparateurComponent implements OnInit {
   private seanceService = inject(SeanceService);
   private joueurService = inject(JoueurService);
   private suivi = inject(SuiviSubjectifService);
+  private saisonService = inject(SaisonService);
   private dialog = inject(MatDialog);
+
+  /* ── Saison / période courante (bandeau) ── */
+  saisonCourante: Saison | null = null;
+  infoPeriodeOuverte = false;
+
+  get periodeType(): PeriodeType | 'AUCUNE' {
+    return this.saisonCourante?.periodeCourante?.type ?? 'AUCUNE';
+  }
+  get periodeLabel(): string {
+    return this.saisonCourante?.periodeCourante?.libelle ?? 'Hors période définie';
+  }
+  /** Explication contextuelle « ce qu'on surveille » selon la période. */
+  get explicationPeriode(): string {
+    switch (this.periodeType) {
+      case 'PREPARATION':
+        return "Phase de montée en charge. On ne surveille pas l'ACWR (pas de référence stable) "
+          + "mais la progressivité de la charge et le ressenti (wellness/RPE). Une charge élevée est attendue.";
+      case 'COMPETITION':
+        return "Phase de compétition. Surveillance complète : ACWR (écarts de charge), fatigue, "
+          + "readiness et risque de blessure.";
+      case 'TREVE':
+        return "Trêve : pas d'entraînement attendu. Les alertes de charge et de fatigue sont "
+          + "suspendues, les joueurs n'apparaissent pas « à surveiller ».";
+      case 'REPRISE':
+        return "Reprise après trêve : l'ACWR est neutralisé le temps que la référence se "
+          + "reconstruise. On suit la progressivité et le ressenti.";
+      case 'INTERSAISON':
+        return "Intersaison : hors charge, aucun suivi actif.";
+      default:
+        return "Aucune période n'est définie pour aujourd'hui. Définis les périodes de la saison "
+          + "pour adapter la surveillance (préparation, championnat, trêve…).";
+    }
+  }
 
   joueurs: ResumeJoueur[] = [];
   statutMap = new Map<string, string>();
@@ -109,6 +144,10 @@ export class DashboardPreparateurComponent implements OnInit {
     this.loadCharge();
     this.loadSeances();
     this.loadWellnessJour();
+    this.saisonService.getCourante().subscribe({
+      next: s => (this.saisonCourante = s),
+      error: () => {},
+    });
   }
 
   /** Joueurs (effectif actif) n'ayant pas saisi leur wellness aujourd'hui. */
@@ -135,7 +174,14 @@ export class DashboardPreparateurComponent implements OnInit {
   }
 
   /* ── À surveiller ── */
+  /** États « hors charge » : le joueur ne doit jamais remonter dans « à surveiller ». */
+  private estSilence(j: ResumeJoueur): boolean {
+    return j.etat === 'INACTIF' || j.etat === 'HORS_CHARGE'
+        || j.etat === 'HORS_SAISON' || j.etat === 'BLESSE';
+  }
+
   private priorite(j: ResumeJoueur): number {
+    if (this.estSilence(j)) return 0;
     let p = 0;
     if (j.niveau_risque === 'ELEVE') p += 100;
     else if (j.niveau_risque === 'MODERE') p += 40;

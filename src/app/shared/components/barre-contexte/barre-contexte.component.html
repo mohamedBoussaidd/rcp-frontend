@@ -1,3 +1,14 @@
+@if (saisonVisible) {
+  <button class="context-pill context-pill--saison" (click)="changerSaison()" title="Changer de saison">
+    <mat-icon class="context-pill__chev">event</mat-icon>
+    <span class="context-pill__content">
+      <span class="context-pill__label">Saison</span>
+      <span class="context-pill__value">{{ saison.saisonActive()!.libelle }}</span>
+    </span>
+    <mat-icon class="context-pill__chev">expand_more</mat-icon>
+  </button>
+}
+
 @if (visible) {
   <button class="context-pill" (click)="estSuperAdmin && retourAdmin()" [title]="estSuperAdmin ? 'Retour administration' : 'Club actif'">
     <span class="context-pill__crest">{{ contexte.clubActif()!.nom.substring(0, 3).toUpperCase() }}</span>
@@ -24,6 +35,5 @@
         <span class="context-pill__value">{{ contexte.libelleEquipe() }}</span>
       }
     </span>
-    <mat-icon class="context-pill__chev">expand_more</mat-icon>
   </div>
 }

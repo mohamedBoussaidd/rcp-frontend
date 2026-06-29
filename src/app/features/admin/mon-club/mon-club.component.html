@@ -107,7 +107,7 @@
               <label class="f"><span>Rôle *</span>
                 <select class="param-input wide" [(ngModel)]="membreForm.role" name="mrole">
                   <option value="" disabled>Choisir…</option>
-                  @for (r of rolesMembres; track r.value) {
+                  @for (r of rolesCreables; track r.value) {
                     <option [value]="r.value">{{ r.label }}</option>
                   }
                 </select></label>
@@ -156,7 +156,7 @@
                   <div class="membre-edit">
                     <label class="f"><span>Rôle</span>
                       <select class="param-input wide" [(ngModel)]="editMembreForm.role" name="mrole-{{m.id}}">
-                        @for (r of rolesMembres; track r.value) { <option [value]="r.value">{{ r.label }}</option> }
+                        @for (r of rolesCreables; track r.value) { <option [value]="r.value">{{ r.label }}</option> }
                       </select></label>
                     <label class="f"><span>Équipe</span>
                       <select class="param-input wide" [(ngModel)]="editMembreForm.equipeId" name="meq-{{m.id}}">

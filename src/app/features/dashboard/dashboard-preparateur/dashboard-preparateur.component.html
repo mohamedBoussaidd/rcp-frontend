@@ -8,6 +8,29 @@
     </div>
   </div>
 
+  <!-- ══ Bandeau période de saison ══ -->
+  @if (saisonCourante) {
+    <div class="periode-bandeau periode-bandeau--{{ periodeType | lowercase }}">
+      <div class="periode-bandeau__main">
+        <mat-icon>event_note</mat-icon>
+        <div>
+          <span class="periode-bandeau__lib">{{ periodeLabel }}</span>
+          <span class="periode-bandeau__saison">Saison {{ saisonCourante.libelle }}</span>
+        </div>
+      </div>
+      <button class="periode-bandeau__more" (click)="infoPeriodeOuverte = !infoPeriodeOuverte">
+        En savoir plus
+        <mat-icon>{{ infoPeriodeOuverte ? 'expand_less' : 'expand_more' }}</mat-icon>
+      </button>
+    </div>
+    @if (infoPeriodeOuverte) {
+      <div class="periode-info">
+        <p><strong>Ce qu'on surveille en ce moment :</strong> {{ explicationPeriode }}</p>
+        <p class="periode-info__note">Un joueur sans donnée récente (séance/RPE), en trêve ou blessé n'est pas compté dans les alertes ni dans « à surveiller » : ses indicateurs restent neutres tant qu'il n'a pas de charge récente.</p>
+      </div>
+    }
+  }
+
   <!-- ══ Alerte wellness non rempli ══ -->
   @if (!loading && nbNonRemplis > 0) {
     <a class="wellness-alerte" routerLink="/suivi-subjectif" [queryParams]="{ focus: 'non-remplis' }">

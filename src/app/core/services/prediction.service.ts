@@ -20,7 +20,16 @@ export interface ResumeJoueur {
   monotonie?: number | null;       // indice de Foster (8 sem.)
   sprint_niveau?: 'POSSIBLE' | 'PROBABLE' | null;  // fatigue neuromusculaire (orientation)
   sprint_message?: string | null;
+  // Contexte temporel (saison / période / fraîcheur)
+  etat?: EtatJoueur | null;
+  periode_type?: PeriodeType | null;
+  periode_libelle?: string | null;
+  jours_inactif?: number | null;
+  blessure_jours_restants?: number | null;
 }
+
+export type EtatJoueur = 'EN_CHARGE' | 'REPRISE' | 'INACTIF' | 'HORS_CHARGE' | 'HORS_SAISON' | 'BLESSE';
+export type PeriodeType = 'PREPARATION' | 'COMPETITION' | 'TREVE' | 'REPRISE' | 'INTERSAISON';
 
 export interface RisqueBlessure {
   joueur_id: string;
@@ -28,6 +37,31 @@ export interface RisqueBlessure {
   prenom: string;
   score_risque: number;
   niveau: 'FAIBLE' | 'MODERE' | 'ELEVE';
+  // Sortie probabiliste explicable (sans ML)
+  probabilite?: number | null;        // risque estimé à 7 jours (%)
+  phrase?: string | null;             // phrase explicative prête à afficher
+  facteur_dominant?: string | null;
+  tendance?: 'HAUSSE' | 'BAISSE' | 'STABLE' | null;
+  source?: 'GPS' | 'RPE' | 'MIXTE' | null;
+  // Contexte temporel
+  etat?: EtatJoueur | null;
+  periode_type?: PeriodeType | null;
+  periode_libelle?: string | null;
+  jours_inactif?: number | null;
+}
+
+export interface ChargeCible {
+  joueur_id: string;
+  disponible: boolean;
+  source?: 'GPS' | 'RPE' | 'MIXTE' | null;
+  unite?: 'km' | 'sRPE' | null;
+  chronique?: number | null;
+  acwr_actuel?: number | null;
+  cible_min?: number | null;
+  cible_ideal?: number | null;
+  cible_haute?: number | null;
+  plafond?: number | null;
+  phrase: string;
 }
 
 export interface NiveauFatigue {
@@ -147,6 +181,10 @@ export class PredictionService {
 
   getFatigue(joueurId: string): Observable<NiveauFatigue> {
     return this.http.get<NiveauFatigue>(`${this.base}/fatigue/${joueurId}`);
+  }
+
+  getChargeCible(joueurId: string): Observable<ChargeCible> {
+    return this.http.get<ChargeCible>(`${this.base}/charge-cible/${joueurId}`);
   }
 
   getChargeCollective(semaines: 4 | 8 | 12 = 4): Observable<ChargeCollective> {

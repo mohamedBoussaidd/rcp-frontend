@@ -125,6 +125,8 @@ export class AuthService {
   canRouvrirGene(): boolean     { return this.has('wellness:reopen'); }
   canEditerConseils(): boolean  { return this.has('conseils:write'); }
   canGererClub(): boolean       { return this.has('club:manage'); }
+  /** Gestion des comptes (staff & joueurs) de son périmètre : président, entraîneur en chef, entraîneur. */
+  canGererMembres(): boolean    { return this.has('membres:manage') || this.has('club:manage'); }
 
   /**
    * Variante « préparateur » du dashboard (vue readiness/charge) : pilotée par capability,

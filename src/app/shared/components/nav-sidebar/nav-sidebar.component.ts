@@ -50,15 +50,18 @@ const ALL_MODULES: NavModule[] = [
   },
   {
     key: 'planning', label: 'Planning', icon: 'calendar_month',
-    link: '/calendrier', matches: ['/calendrier', '/planning-technique'],
+    link: '/calendrier', matches: ['/calendrier', '/planning-technique', '/modeles-semaine', '/saisons', '/comparaison-saisons'],
     roles: ['SUPER_ADMIN', 'PRESIDENT', 'ENTRAINEUR', 'PREPARATEUR', 'MEDICAL', 'JOUEUR'],
     subnav: [
+      { label: 'Saisons',          link: '/saisons', roles: ['SUPER_ADMIN', 'PRESIDENT', 'ENTRAINEUR', 'PREPARATEUR'], perms: ['saison:manage'] },
+      { label: 'Modèles de semaine', link: '/modeles-semaine', roles: ['SUPER_ADMIN', 'PRESIDENT', 'ENTRAINEUR', 'PREPARATEUR'], perms: ['seances:write'] },
       { label: 'Séances',          link: '/calendrier' },
       { label: 'Schémas',          link: '/planning-technique', section: 'schemas',   roles: ['SUPER_ADMIN', 'ENTRAINEUR'], perms: ['schemas:write'] },
       { label: 'Exercices',        link: '/planning-technique', section: 'exercices', default: true, roles: ['SUPER_ADMIN', 'ENTRAINEUR'], perms: ['exercices:write'] },
       { label: 'Plan de jeu',      link: '/planning-technique', section: 'planjeu',   roles: ['SUPER_ADMIN', 'ENTRAINEUR'], perms: ['plandejeu:write'] },
       { label: 'Match',            link: '/planning-technique', section: 'match',     roles: ['SUPER_ADMIN', 'ENTRAINEUR'], perms: ['matchs:write'] },
       { label: 'Diaporama',        link: '/planning-technique', section: 'diaporama', roles: ['SUPER_ADMIN', 'ENTRAINEUR', 'PREPARATEUR'], perms: ['diaporama:write'] },
+      { label: 'Comparaison saisons', link: '/comparaison-saisons', roles: ['SUPER_ADMIN', 'PRESIDENT', 'ENTRAINEUR', 'PREPARATEUR', 'MEDICAL'] },
     ],
   },
   {
@@ -97,12 +100,12 @@ const ALL_MODULES: NavModule[] = [
     key: 'admin', label: 'Admin', icon: 'admin_panel_settings',
     link: '/admin/clubs', presidentLink: '/mon-club',
     matches: ['/admin', '/mon-club'],
-    roles: ['SUPER_ADMIN', 'PRESIDENT', 'ENTRAINEUR', 'PREPARATEUR'],
-    perms: ['club:manage'],
+    roles: ['SUPER_ADMIN', 'PRESIDENT', 'ENTRAINEUR'],
+    perms: ['club:manage', 'membres:manage'],
     subnav: [
       { label: 'Clubs',          link: '/admin/clubs', roles: ['SUPER_ADMIN'] },
       { label: 'Comptes du club', link: '/mon-club',   roles: ['SUPER_ADMIN'] },
-      { label: 'Mon club',       link: '/mon-club',    roles: ['PRESIDENT', 'ENTRAINEUR', 'PREPARATEUR'], perms: ['club:manage'] },
+      { label: 'Mon club',       link: '/mon-club',    roles: ['PRESIDENT', 'ENTRAINEUR'], perms: ['club:manage', 'membres:manage'] },
     ],
   },
 ];

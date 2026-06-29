@@ -1,4 +1,4 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, OnInit, inject, isDevMode } from '@angular/core';
 import { PredictionService, ResumeJoueur } from '@core/services/prediction.service';
 import { PeseesService, PoidsFicheJoueur } from '@core/services/pesees.service';
 import { JoueurService, Joueur } from '@core/services/joueur.service';
@@ -20,6 +20,7 @@ import { RouterLink } from '@angular/router';
 import { BadgeRisqueComponent } from '@shared/components/badge-risque/badge-risque.component';
 import { MatProgressBar } from '@angular/material/progress-bar';
 import { AuthService } from '@core/services/auth.service';
+import { DateSimuleeService } from '@core/services/date-simulee.service';
 import { DashboardPreparateurComponent } from './dashboard-preparateur/dashboard-preparateur.component';
 
 @Component({
@@ -237,7 +238,23 @@ export class DashboardComponent implements OnInit {
   private snackBar = inject(MatSnackBar);
   private dialog = inject(MatDialog);
   private router = inject(Router);
+  private dateSimuleeService = inject(DateSimuleeService);
   auth = inject(AuthService);
+
+  /**
+   * Outil de test « date simulée » : disponible pour TOUS les rôles mais UNIQUEMENT en build
+   * de développement (isDevMode) → jamais présent dans le build de production.
+   */
+  peutSimulerDate(): boolean { return isDevMode(); }
+
+  /** Date simulée active (outil de test temporalité), ou null = date réelle. */
+  dateSimulee(): string | null { return this.dateSimuleeService.get(); }
+
+  /** Change la date simulée et recharge l'app pour que toutes les vues refetch avec le nouvel en-tête. */
+  changerDateSimulee(valeur: string): void {
+    this.dateSimuleeService.set(valeur || null);
+    window.location.reload();
+  }
 
   /** Casquette active du dashboard pour les profils qui peuvent basculer (prépa + équipe). */
   vue: 'prepa' | 'equipe' = 'prepa';
@@ -246,9 +263,13 @@ export class DashboardComponent implements OnInit {
     return this.auth.has('exercices:write') || this.auth.has('schemas:write')
         || this.auth.has('plandejeu:write') || this.auth.has('matchs:write');
   }
-  /** Toggle visible seulement si l'utilisateur cumule une capacité prépa ET entraîneur (hors admin club). */
+  /**
+   * Toggle visible si l'utilisateur cumule une capacité prépa ET entraîneur (hors admin club),
+   * OU s'il a un accès complet (super-admin / admin club) — pour pouvoir consulter les deux vues.
+   */
   peutBasculer(): boolean {
-    return this.auth.has('gps:import') && this.aCapaciteEntraineur() && !this.auth.has('club:manage');
+    if (this.auth.hasRole('SUPER_ADMIN') || this.auth.has('club:manage')) return true;
+    return this.auth.has('gps:import') && this.aCapaciteEntraineur();
   }
   /** Faut-il afficher la vue préparateur ? (toggle si dispo, sinon règle par capability). */
   afficherPrepa(): boolean {
@@ -256,6 +277,11 @@ export class DashboardComponent implements OnInit {
   }
 
   ngOnInit(): void {
+    // Accès complet (super-admin / admin club) : on garde l'écran « Équipe » par défaut,
+    // mais le toggle permet désormais d'aller voir la vue « Préparation ».
+    if (this.auth.hasRole('SUPER_ADMIN') || this.auth.has('club:manage')) {
+      this.vue = 'equipe';
+    }
     this.loadEquipe();
     this.loadChargeGraph();
     this.loadPoids();

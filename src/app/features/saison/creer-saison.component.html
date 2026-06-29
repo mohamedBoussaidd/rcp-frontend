@@ -1,0 +1,41 @@
+<div class="gate">
+  <div class="gate__card">
+    <div class="gate__icon"><mat-icon>event_available</mat-icon></div>
+    <h1 class="gate__title">Créer une saison</h1>
+    <p class="gate__sub">
+      Aucune saison n'est en cours pour ce club. Ouvrez une saison pour activer le suivi
+      (charge, risque, alertes) : les calculs sont bornés à la saison.
+    </p>
+
+    @if (erreur()) {
+      <div class="gate__error">{{ erreur() }}</div>
+    }
+
+    <div class="gate__form">
+      <label class="field">
+        <span class="field__label">Libellé</span>
+        <input class="field__input" type="text" [(ngModel)]="form.libelle" placeholder="2026-2027">
+      </label>
+
+      <div class="field-row">
+        <label class="field">
+          <span class="field__label">Début</span>
+          <input class="field__input" type="date" [(ngModel)]="form.dateDebut">
+        </label>
+        <label class="field">
+          <span class="field__label">Fin</span>
+          <input class="field__input" type="date" [(ngModel)]="form.dateFin">
+        </label>
+      </div>
+
+      <label class="check">
+        <input type="checkbox" [(ngModel)]="form.genererPeriodes">
+        <span>Générer les périodes par défaut (préparation, championnat, trêve, reprise)</span>
+      </label>
+    </div>
+
+    <button class="gate__cta" (click)="creer()" [disabled]="enCours()">
+      {{ enCours() ? 'Création…' : 'Ouvrir la saison' }}
+    </button>
+  </div>
+</div>
