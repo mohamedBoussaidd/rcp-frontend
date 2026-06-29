@@ -74,6 +74,9 @@
               <th class="is-sort" (click)="toggleTriFatigue()">
                 Fatigue <span class="sort-ic">{{ triFatigue === 'asc' ? '↑' : triFatigue === 'desc' ? '↓' : '⇅' }}</span>
               </th>
+              <th class="is-sort" (click)="toggleTriPresence()">
+                Présence <span class="sort-ic">{{ triPresence === 'asc' ? '↑' : triPresence === 'desc' ? '↓' : '⇅' }}</span>
+              </th>
               <th>Poids</th>
             </tr>
           </thead>
@@ -113,6 +116,11 @@
                     </div>
                     <div class="ee-bar"><span class="ee-bar__fill ee-bar__fill--{{ fatigueClasse(j.niveau_fatigue) }}" [style.width.%]="j.score_fatigue"></span></div>
                   </div>
+                </td>
+                <td>
+                  @if (tauxPresence(j) != null) {
+                    <span class="ee-presence ee-presence--{{ presenceClasse(tauxPresence(j)) }}">{{ tauxPresence(j) }}%</span>
+                  } @else { <span class="muted">—</span> }
                 </td>
                 <td>
                   <div class="ee-poids">

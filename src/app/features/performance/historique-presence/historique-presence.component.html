@@ -1,0 +1,173 @@
+<div class="hp-page">
+
+  <!-- En-tête + filtres -->
+  <section class="hp-bar">
+    <div class="hp-bar__top">
+      <div class="hp-title">
+        <h1><mat-icon>fact_check</mat-icon> Historique de présence</h1>
+        <p class="hp-sub">
+          @if (vue === 'equipe') {
+            <strong>{{ nbSeances }}</strong> entraînement{{ nbSeances > 1 ? 's' : '' }}
+            @if (tauxMoyen != null) { · taux moyen <strong>{{ tauxMoyen }}%</strong> }
+          } @else if (joueurNom) {
+            Assiduité de <strong>{{ joueurNom }}</strong>
+          } @else {
+            Sélectionnez un joueur
+          }
+          @if (equipe?.saisonLibelle && !(du || au)) { · {{ equipe?.saisonLibelle }} }
+        </p>
+      </div>
+
+      <!-- Toggle Équipe / Joueur -->
+      <div class="hp-toggle">
+        <button [class.on]="vue === 'equipe'" (click)="setVue('equipe')">Équipe</button>
+        <button [class.on]="vue === 'joueur'" (click)="setVue('joueur')">Joueur</button>
+      </div>
+    </div>
+
+    <div class="hp-filters">
+      <div class="hp-field">
+        <label>Saison</label>
+        <select [(ngModel)]="saisonId" (ngModelChange)="onFiltreChange()" [disabled]="!!(du || au)">
+          @for (s of saisons; track s.id) {
+            <option [ngValue]="s.id">{{ s.libelle }}@if (s.statut === 'EN_COURS') { (en cours) }</option>
+          }
+        </select>
+      </div>
+
+      @if (vue === 'joueur') {
+        <div class="hp-field">
+          <label>Joueur</label>
+          <select [(ngModel)]="joueurId" (ngModelChange)="onFiltreChange()">
+            <option [ngValue]="null">— Choisir —</option>
+            @for (j of joueurs; track j.id) {
+              <option [ngValue]="j.id">{{ j.nom }} {{ j.prenom }}</option>
+            }
+          </select>
+        </div>
+      }
+
+      <div class="hp-field">
+        <label>Du</label>
+        <input type="date" [(ngModel)]="du" (ngModelChange)="onFiltreChange()">
+      </div>
+      <div class="hp-field">
+        <label>Au</label>
+        <input type="date" [(ngModel)]="au" (ngModelChange)="onFiltreChange()">
+      </div>
+      @if (du || au) {
+        <button class="hp-reset" (click)="resetPeriode()">↻ Période</button>
+      }
+    </div>
+    <p class="hp-hint">Une période (Du/Au) renseignée prime sur la saison sélectionnée.</p>
+  </section>
+
+  @if (loading) {
+    <p class="hp-empty">Chargement…</p>
+  }
+
+  <!-- ─────────────── Mode ÉQUIPE ─────────────── -->
+  @else if (vue === 'equipe') {
+    @if (nbSeances === 0) {
+      <p class="hp-empty">Aucun entraînement comptabilisé sur la fenêtre sélectionnée.</p>
+    } @else {
+      <div class="hp-kpis">
+        <div class="hp-kpi">
+          <span class="hp-kpi__lbl">Entraînements</span>
+          <span class="hp-kpi__val">{{ nbSeances }}</span>
+        </div>
+        <div class="hp-kpi">
+          <span class="hp-kpi__lbl">Taux moyen</span>
+          <span class="hp-kpi__val hp-taux--{{ tauxMoyen != null ? tauxTone(tauxMoyen) : '' }}">{{ tauxMoyen != null ? tauxMoyen + '%' : '—' }}</span>
+        </div>
+        <div class="hp-kpi">
+          <span class="hp-kpi__lbl">Déclarés par joueur</span>
+          <span class="hp-kpi__val">{{ totalDeclares }}</span>
+        </div>
+      </div>
+
+      <section class="hp-tablewrap">
+        <table class="hp-table">
+          <thead>
+            <tr>
+              <th class="sortable" (click)="trier('date')">Date @if (triCol === 'date') { <span>{{ triDesc ? '▾' : '▴' }}</span> }</th>
+              <th>Séance</th>
+              <th class="num sortable" (click)="trier('presents')">Présents @if (triCol === 'presents') { <span>{{ triDesc ? '▾' : '▴' }}</span> }</th>
+              <th class="num sortable" (click)="trier('absents')">Absents @if (triCol === 'absents') { <span>{{ triDesc ? '▾' : '▴' }}</span> }</th>
+              <th class="num">Excusés</th>
+              <th class="num">Retards</th>
+              <th class="num">Blessés</th>
+              <th class="num">Déclarés</th>
+              <th class="num sortable" (click)="trier('taux')">Taux @if (triCol === 'taux') { <span>{{ triDesc ? '▾' : '▴' }}</span> }</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (l of lignes; track l.seanceId) {
+              <tr>
+                <td>{{ l.date | date:'EEE dd/MM/yy' }}</td>
+                <td class="hp-titre">
+                  {{ l.titre }}
+                  @if (l.type) { <span class="hp-type">{{ l.type }}</span> }
+                </td>
+                <td class="num">{{ l.presents }}<span class="hp-eff">/{{ l.effectif }}</span></td>
+                <td class="num">{{ l.absents || '—' }}</td>
+                <td class="num">{{ l.excuses || '—' }}</td>
+                <td class="num">{{ l.retards || '—' }}</td>
+                <td class="num">{{ l.blesses || '—' }}</td>
+                <td class="num">{{ l.declaresJoueur || '—' }}</td>
+                <td class="num"><span class="hp-pill hp-taux--{{ tauxTone(l.taux) }}">{{ l.taux }}%</span></td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </section>
+    }
+  }
+
+  <!-- ─────────────── Mode JOUEUR ─────────────── -->
+  @else {
+    @if (!joueurId) {
+      <p class="hp-empty">Choisissez un joueur dans le filtre ci-dessus.</p>
+    } @else if (!joueurBilan || joueurBilan.nbSeances === 0) {
+      <p class="hp-empty">Aucun entraînement comptabilisé pour ce joueur sur la fenêtre sélectionnée.</p>
+    } @else {
+      <section class="hp-bilan">
+        <div class="hp-bilan__taux">
+          <span class="hp-bilan__pct hp-taux--{{ tauxTone(joueurBilan.taux) }}">{{ joueurBilan.taux }}%</span>
+          <span class="hp-bilan__lbl">de présence · {{ joueurBilan.presents }}/{{ joueurBilan.nbSeances }} séances</span>
+        </div>
+        <div class="hp-bilan__chips">
+          <span class="hp-chip hp-chip--no">{{ joueurBilan.absents }} abs.</span>
+          <span class="hp-chip hp-chip--ex">{{ joueurBilan.excuses }} excusé{{ joueurBilan.excuses > 1 ? 's' : '' }}</span>
+          <span class="hp-chip hp-chip--rt">{{ joueurBilan.retards }} retard{{ joueurBilan.retards > 1 ? 's' : '' }}</span>
+        </div>
+        @if (joueurBilan.recents > 0) {
+          <p class="hp-recent">⚠ {{ joueurBilan.recents }} absence(s)/retard(s) sur les 14 derniers jours</p>
+        }
+      </section>
+
+      @if (evenements.length) {
+        <section class="hp-tablewrap">
+          <table class="hp-table">
+            <thead>
+              <tr><th>Date</th><th>Statut</th><th>Séance</th><th>Source</th><th>Commentaire</th></tr>
+            </thead>
+            <tbody>
+              @for (e of evenements; track e.seanceId) {
+                <tr>
+                  <td>{{ e.date | date:'EEE dd/MM/yy' }}</td>
+                  <td><span class="hp-st hp-st--{{ e.statut.toLowerCase() }}">{{ libelleStatut(e.statut) }}</span></td>
+                  <td>{{ e.titre }}</td>
+                  <td>@if (e.source === 'JOUEUR') { <span class="hp-src">déclaré joueur</span> } @else { <span class="hp-src hp-src--staff">staff</span> }</td>
+                  <td class="hp-note">@if (e.note) { « {{ e.note }} » }</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </section>
+      } @else {
+        <p class="hp-empty">Aucune absence, excuse ni retard sur la fenêtre — présence complète. 👍</p>
+      }
+    }
+  }
+</div>

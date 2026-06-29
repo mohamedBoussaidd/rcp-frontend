@@ -1,11 +1,11 @@
 import { Component, OnInit, inject, isDevMode } from '@angular/core';
 import { PredictionService, ResumeJoueur } from '@core/services/prediction.service';
 import { PeseesService, PoidsFicheJoueur } from '@core/services/pesees.service';
-import { JoueurService, Joueur } from '@core/services/joueur.service';
+import { JoueurService, Joueur, AssiduiteJoueur } from '@core/services/joueur.service';
 import { TechniqueService, JoueurCompoStats } from '@core/services/technique.service';
 import { DecimalPipe, DatePipe, SlicePipe } from '@angular/common';
-import { SeanceService, Seance } from '@core/services/seance.service';
-import { Router } from '@angular/router';
+import { SeanceService, Seance, ResumeAppel } from '@core/services/seance.service';
+import { Router, RouterLink } from '@angular/router';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatDialog } from '@angular/material/dialog';
 import { JoueurFormDialogComponent } from '../joueur/joueur-form-dialog/joueur-form-dialog.component';
@@ -14,11 +14,7 @@ import { PresenceDialogComponent } from '../performance/presence-dialog/presence
 import { ApexChart, ApexAxisChartSeries, ApexXAxis, ApexStroke, ApexDataLabels, ApexTitleSubtitle, ApexTheme, ApexGrid, ApexYAxis, ApexFill, ApexMarkers, ChartComponent } from 'ng-apexcharts';
 import { MatIcon } from '@angular/material/icon';
 import { FormsModule } from '@angular/forms';
-import { MatTable, MatColumnDef, MatHeaderCellDef, MatHeaderCell, MatCellDef, MatCell, MatHeaderRowDef, MatHeaderRow, MatRowDef, MatRow } from '@angular/material/table';
-import { MatPaginator, PageEvent } from '@angular/material/paginator';
-import { RouterLink } from '@angular/router';
-import { BadgeRisqueComponent } from '@shared/components/badge-risque/badge-risque.component';
-import { MatProgressBar } from '@angular/material/progress-bar';
+import { PageEvent } from '@angular/material/paginator';
 import { AuthService } from '@core/services/auth.service';
 import { DateSimuleeService } from '@core/services/date-simulee.service';
 import { DashboardPreparateurComponent } from './dashboard-preparateur/dashboard-preparateur.component';
@@ -29,12 +25,8 @@ import { DashboardPreparateurComponent } from './dashboard-preparateur/dashboard
   standalone: true,
   styleUrl: './dashboard.component.scss',
   imports: [
-    MatIcon, ChartComponent, FormsModule, DecimalPipe, DatePipe, SlicePipe, RouterLink,
-    BadgeRisqueComponent, MatProgressBar,
-    MatTable, MatColumnDef, MatHeaderCellDef, MatHeaderCell,
-    MatCellDef, MatCell, MatHeaderRowDef, MatHeaderRow, MatRowDef, MatRow,
-    MatPaginator,
-    DashboardPreparateurComponent,
+    MatIcon, ChartComponent, FormsModule, DecimalPipe, DatePipe, SlicePipe,
+    DashboardPreparateurComponent, RouterLink,
   ]
 })
 export class DashboardComponent implements OnInit {
@@ -47,6 +39,8 @@ export class DashboardComponent implements OnInit {
   // ── Séances du jour / semaine ──
   seancesAujourdhui: Seance[] = [];
   seancesAVenir: Seance[] = [];
+  /** Résumé d'appel par séance (effectif/dispo/présents…), pour la card du jour + pastille « X/Y dispo ». */
+  resumesAppel = new Map<string, ResumeAppel>();
   readonly aujourdhui = (() => {
     const d = new Date();
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -61,6 +55,7 @@ export class DashboardComponent implements OnInit {
   panelJoueur: Joueur | null = null;
   panelResume: ResumeJoueur | null = null;
   panelStats: JoueurCompoStats | null = null;
+  panelAssiduite: AssiduiteJoueur | null = null;
   panelOnglet: 'profil' | 'gps' | 'performances' = 'profil';
   panelLoading = false;
   statsCompo: JoueurCompoStats[] = [];
@@ -310,6 +305,11 @@ export class DashboardComponent implements OnInit {
     this.panelResume = resume;
     this.panelOnglet = 'profil';
     this.panelStats = this.statsCompo.find(s => s.joueurId === resume.joueur_id) ?? null;
+    this.panelAssiduite = null;
+    this.joueurService.getAssiduite(resume.joueur_id).subscribe({
+      next: a => this.panelAssiduite = a,
+      error: () => this.panelAssiduite = null,
+    });
     const deja = this.joueursComplets.find(j => j.id === resume.joueur_id);
     if (deja) { this.panelJoueur = deja; this.panelLoading = false; return; }
     this.joueurService.getById(resume.joueur_id).subscribe({
@@ -318,7 +318,11 @@ export class DashboardComponent implements OnInit {
     });
   }
 
-  fermerPanel(): void { this.panelJoueur = null; this.panelResume = null; }
+  fermerPanel(): void { this.panelJoueur = null; this.panelResume = null; this.panelAssiduite = null; }
+
+  libelleAssiduite(statut: string): string {
+    return ({ PRESENT: 'Présent', ABSENT: 'Absent', EXCUSE: 'Excusé', RETARD: 'Retard' } as Record<string, string>)[statut] ?? statut;
+  }
 
   statutLibelle(s: string): string {
     return ({ actif: 'Actif', blesse: 'Blessé', suspendu: 'Suspendu', prete: 'Prêté' } as Record<string,string>)[s] ?? s;
@@ -335,10 +339,40 @@ export class DashboardComponent implements OnInit {
             a.date.localeCompare(b.date) || (a.heureDebut ?? '').localeCompare(b.heureDebut ?? ''));
         this.seancesAujourdhui = aVenir.filter(s => s.date === this.aujourdhui);
         this.seancesAVenir = aVenir.filter(s => s.date > this.aujourdhui).slice(0, 7);
+        this.chargerResumesAppel();
       },
       error: () => {}
     });
   }
+
+  /** Charge les résumés d'appel des entraînements affichés (hors matchs) pour les pastilles + la card. */
+  private chargerResumesAppel(): void {
+    const ids = [...this.seancesAujourdhui, ...this.seancesAVenir]
+      .filter(s => !s.adversaire)
+      .map(s => s.id);
+    if (!ids.length) { this.resumesAppel = new Map(); return; }
+    this.seanceService.getResumes(ids).subscribe({
+      next: rs => this.resumesAppel = new Map(rs.map(r => [r.seanceId, r])),
+      error: () => {}
+    });
+  }
+
+  /** Résumé d'appel d'une séance (pour la pastille « X/Y dispo »). */
+  resumeDe(seanceId: string): ResumeAppel | undefined { return this.resumesAppel.get(seanceId); }
+
+  /** Y a-t-il un appel (entraînement) aujourd'hui dont on peut afficher la répartition ? */
+  get appelDuJour(): boolean {
+    return this.seancesAujourdhui.some(s => !s.adversaire && this.resumesAppel.has(s.id));
+  }
+  private cumulAujourdhui(champ: keyof ResumeAppel): number {
+    return this.seancesAujourdhui
+      .filter(s => !s.adversaire)
+      .reduce((a, s) => a + ((this.resumesAppel.get(s.id)?.[champ] as number) ?? 0), 0);
+  }
+  get presentsAujourdhui(): number { return this.cumulAujourdhui('presents'); }
+  get absentsAujourdhui():  number { return this.cumulAujourdhui('absents');  }
+  get excusesAujourdhui():  number { return this.cumulAujourdhui('excuses');  }
+  get retardsAujourdhui():  number { return this.cumulAujourdhui('retards');  }
 
   allerPresence(seance: Seance): void {
     this.dialog.open(PresenceDialogComponent, {

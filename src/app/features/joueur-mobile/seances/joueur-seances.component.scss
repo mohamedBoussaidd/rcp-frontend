@@ -55,6 +55,34 @@
 .se-detail__title { font-size: 12px; font-weight: 700; color: var(--text-3); text-transform: uppercase; letter-spacing: 0.05em; margin: 0 0 8px; }
 .se-vide { font-size: 13px; color: var(--text-3); margin: 4px 0 0; }
 
+/* ── Ma présence (auto-déclaration) ── */
+.se-presence { margin: 0 0 14px; }
+.se-presence__btns { display: flex; gap: 8px; }
+.se-pz {
+  flex: 1;
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--text-2);
+  font-family: var(--font); font-size: 13.5px; font-weight: 700;
+  border-radius: var(--r-md);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 90ms var(--ease-out);
+  &:active { transform: scale(0.96); }
+  &:disabled { opacity: 0.55; }
+  &--ok.is-on { border-color: var(--green-600); background: var(--green-50); color: var(--green-700); }
+  &--no.is-on { border-color: var(--danger, #dc2626); background: rgba(220, 38, 38, 0.08); color: var(--danger, #dc2626); }
+}
+.se-presence__note {
+  width: 100%; box-sizing: border-box; margin-top: 8px;
+  padding: 8px 10px; resize: vertical;
+  border: 1px solid var(--border); border-radius: var(--r-md);
+  background: var(--surface); color: var(--text); font-family: var(--font); font-size: 13px;
+}
+.se-presence__hint { margin: 6px 0 0; font-size: 11.5px; color: var(--text-3); }
+
 .se-exos { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; counter-reset: exo; }
 .se-exos li {
   display: flex; align-items: center; gap: 10px;

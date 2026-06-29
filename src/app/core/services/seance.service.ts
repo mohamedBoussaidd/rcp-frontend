@@ -1,6 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable } from 'rxjs';
+import { Observable, of } from 'rxjs';
 
 export interface TypeSeance {
   id: string;
@@ -97,11 +97,27 @@ export interface LignePresence {
   poste?: string;
   statut: StatutPresence | null;
   note?: string;
+  /** Dérivé du statut médical : le joueur est blessé (affiché à part, non compté en absence). */
+  blesse?: boolean;
+  /** Origine de la saisie : 'STAFF' (appel) ou 'JOUEUR' (auto-déclaration PWA), null si non renseigné. */
+  source?: 'STAFF' | 'JOUEUR' | null;
 }
 
 export interface FeuillePresence {
   seanceId: string;
   lignes: LignePresence[];
+}
+
+/** Résumé chiffré de l'appel d'une séance (dashboard / pastille « X/Y dispo »). */
+export interface ResumeAppel {
+  seanceId: string;
+  effectif: number;
+  presents: number;
+  blesses: number;
+  absents: number;
+  excuses: number;
+  retards: number;
+  dispo: number;
 }
 
 export interface SeanceCreate {
@@ -180,6 +196,12 @@ export class SeanceService {
   // ── Présence ──
   getFeuille(seanceId: string): Observable<FeuillePresence> {
     return this.http.get<FeuillePresence>(`${this.base}/${seanceId}/presence`);
+  }
+
+  /** Résumés d'appel (effectif/dispo/présents…) de plusieurs séances, pour le dashboard. */
+  getResumes(seanceIds: string[]): Observable<ResumeAppel[]> {
+    if (!seanceIds.length) return of([]);
+    return this.http.get<ResumeAppel[]>(`${this.base}/presence/resumes`, { params: { ids: seanceIds.join(',') } });
   }
 
   savePresenceJoueur(seanceId: string, joueurId: string, statut: StatutPresence, note?: string): Observable<LignePresence> {

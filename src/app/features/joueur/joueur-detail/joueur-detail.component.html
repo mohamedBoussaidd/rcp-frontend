@@ -291,6 +291,27 @@
                   }
                 </section>
               }
+
+              @if (assiduite && assiduite.nbSeances > 0) {
+                <section class="pf-card pf-assiduite">
+                  <div class="pf-card__head"><span class="pf-card__bullet"></span><h2>Assiduité — entraînements</h2></div>
+                  <div class="pf-assiduite__taux">
+                    <span class="pf-assiduite__pct">{{ assiduite.taux }}%</span>
+                    <span class="pf-assiduite__lbl">de présence · {{ assiduite.presents }}/{{ assiduite.nbSeances }} séances@if (assiduite.saisonLibelle) { · {{ assiduite.saisonLibelle }} }</span>
+                  </div>
+                  <div class="pf-assiduite__chips">
+                    <span class="pf-ac pf-ac--no">{{ assiduite.absents }} abs.</span>
+                    <span class="pf-ac pf-ac--ex">{{ assiduite.excuses }} excusé{{ assiduite.excuses > 1 ? 's' : '' }}</span>
+                    <span class="pf-ac pf-ac--rt">{{ assiduite.retards }} retard{{ assiduite.retards > 1 ? 's' : '' }}</span>
+                  </div>
+                  @if (assiduite.recents > 0) {
+                    <p class="pf-assiduite__recent">⚠ {{ assiduite.recents }} absence(s)/retard(s) sur les 14 derniers jours</p>
+                  }
+                  <a class="pf-assiduite__link" [routerLink]="['/presence']" [queryParams]="{ mode: 'joueur', joueurId: assiduite.joueurId }">
+                    Voir l'historique de présence →
+                  </a>
+                </section>
+              }
             </div>
           </div>
 

@@ -8,6 +8,31 @@
   text-transform: capitalize;
 }
 
+.sc-head-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.sc-appel-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  border-radius: var(--r-pill);
+  border: 1px solid var(--green-600);
+  background: var(--green-50);
+  color: var(--green-700);
+  font-family: var(--font);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: opacity 0.15s;
+
+  &:hover { opacity: 0.85; }
+}
+
 .sc-vide {
   padding: 24px 4px;
   color: var(--text-3);

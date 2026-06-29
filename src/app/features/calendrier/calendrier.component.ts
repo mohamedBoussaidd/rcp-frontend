@@ -61,7 +61,7 @@ export class CalendrierComponent implements OnInit {
   seances: Seance[] = [];
 
   // Mode d'affichage : Liste (défaut) ou Calendrier (Jour / Semaine / Mois).
-  vue: Vue = 'liste';
+  vue: Vue = 'calendrier';
   sousVue: SousVue = 'semaine';
   /** Filtre par type (code) ; null = Tous. */
   typeFiltre: string | null = null;
@@ -301,15 +301,15 @@ export class CalendrierComponent implements OnInit {
       ? this.espaceJoueur.getContenuSeance(seance.id)
       : this.seanceService.getContenu(seance.id);
     contenu$.subscribe({
-      next: contenu => this.ouvrirContenuDialog(titre, seance.date, contenu),
-      error: () => this.ouvrirContenuDialog(titre, seance.date, null),
+      next: contenu => this.ouvrirContenuDialog(titre, seance.date, contenu, seance),
+      error: () => this.ouvrirContenuDialog(titre, seance.date, null, seance),
     });
   }
 
-  private ouvrirContenuDialog(titre: string, date: string, contenu: any): void {
+  private ouvrirContenuDialog(titre: string, date: string, contenu: any, seance: Seance): void {
     this.dialog.open(SeanceContenuDialogComponent, {
       width: '900px', maxWidth: '96vw', panelClass: 'app-dialog',
-      data: { titre, date, contenu },
+      data: { titre, date, contenu, seance },
     });
   }
 

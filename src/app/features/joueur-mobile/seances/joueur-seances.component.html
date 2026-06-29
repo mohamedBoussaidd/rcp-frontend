@@ -33,6 +33,29 @@
 
         @if (ouvert() === s.id) {
           <div class="se-detail pwa-rise">
+            @if (!estMatch(s)) {
+              <div class="se-presence">
+                <p class="se-detail__title">Ma présence</p>
+                <div class="se-presence__btns">
+                  <button type="button" class="se-pz se-pz--ok"
+                          [class.is-on]="!monStatut(s) || monStatut(s) === 'PRESENT'"
+                          [disabled]="enregistrement() === s.id"
+                          (click)="declarer(s, 'PRESENT')">✓ Présent</button>
+                  <button type="button" class="se-pz se-pz--no"
+                          [class.is-on]="monStatut(s) === 'ABSENT'"
+                          [disabled]="enregistrement() === s.id"
+                          (click)="declarer(s, 'ABSENT')">✕ Absent</button>
+                </div>
+                @if (monStatut(s) === 'ABSENT') {
+                  <textarea class="se-presence__note" rows="2" maxlength="280"
+                            placeholder="Une raison ? (optionnel)"
+                            [(ngModel)]="commentaires[s.id]" (blur)="declarer(s, 'ABSENT')"></textarea>
+                }
+                @if (monStatut(s)) {
+                  <p class="se-presence__hint">Déclaré comme {{ monStatut(s) === 'PRESENT' ? 'présent' : 'absent' }} — le staff est informé.</p>
+                }
+              </div>
+            }
             @if (s.objectif) { <p class="se-objectif">🎯 {{ s.objectif }}</p> }
 
             @if (contenu(s.id); as c) {

@@ -8,7 +8,12 @@
         @if (data.contenu) { · {{ data.contenu.exercices.length }} exercice(s) · {{ data.contenu.dureeTotaleMinutes }} min }
       </span>
     </div>
-    <button type="button" class="form-card__close" (click)="fermer()" aria-label="Fermer">✕</button>
+    <div class="sc-head-actions">
+      @if (peutFaireAppel) {
+        <button type="button" class="sc-appel-btn" (click)="ouvrirAppel()">📋 Appel</button>
+      }
+      <button type="button" class="form-card__close" (click)="fermer()" aria-label="Fermer">✕</button>
+    </div>
   </div>
 
   <div class="form-card__body">

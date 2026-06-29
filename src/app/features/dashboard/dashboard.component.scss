@@ -2,6 +2,62 @@
   display: block;
 }
 
+/* ── Répartition d'appel du jour (card Disponibles) ── */
+.kpi__appel {
+  display: flex; flex-wrap: wrap; gap: 4px 6px; margin-top: 6px;
+}
+.appel-seg {
+  font-size: 11px; font-weight: 700; padding: 1px 7px; border-radius: 999px;
+  &--ok { background: #22c55e18; color: #16a34a; }
+  &--no { background: #ef444418; color: #dc2626; }
+  &--ex { background: #6366f118; color: #6366f1; }
+  &--rt { background: #f59e0b18; color: #d97706; }
+}
+
+/* ── Assiduité dans le panneau joueur (onglet Performances) ── */
+.pa-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.pa-title { font-size: 13px; font-weight: 700; color: var(--text-2); }
+.pa-taux {
+  font-size: 18px; font-weight: 800;
+  &--ok { color: #16a34a; } &--warn { color: #d97706; } &--bad { color: #dc2626; }
+}
+.pa-sub { font-size: 12px; color: var(--text-3); margin-top: 2px; }
+.pa-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.pa-chip {
+  font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px;
+  &--no { background: #ef444418; color: #dc2626; }
+  &--ex { background: #6366f118; color: #6366f1; }
+  &--rt { background: #f59e0b18; color: #d97706; }
+}
+.pa-recent { margin: 8px 0 0; font-size: 12px; font-weight: 600; color: #d97706; }
+.pa-link {
+  display: inline-block; margin: 10px 0 0; font-size: 12px; font-weight: 700;
+  color: var(--accent, #6366f1); text-decoration: none;
+  &:hover { text-decoration: underline; }
+}
+.pa-hist {
+  list-style: none; margin: 10px 0 0; padding: 0; display: flex; flex-direction: column; gap: 5px;
+  li { display: flex; align-items: center; gap: 8px; font-size: 12px; flex-wrap: wrap; }
+  &__date { font-weight: 700; color: var(--text-2); min-width: 40px; }
+  &__st {
+    font-weight: 700; padding: 1px 7px; border-radius: 999px; font-size: 10.5px;
+    &--absent { background: #ef444418; color: #dc2626; }
+    &--excuse { background: #6366f118; color: #6366f1; }
+    &--retard { background: #f59e0b18; color: #d97706; }
+    &--present { background: #22c55e18; color: #16a34a; }
+  }
+  &__titre { color: var(--text-2); }
+  &__note { font-style: italic; color: var(--text-3); }
+}
+
+/* ── Pastille « X/Y dispo » sur une séance à venir ── */
+.seance-jour__dispo {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-size: 12px; font-weight: 600; color: var(--text-2);
+  margin-top: 2px;
+  mat-icon { font-size: 15px; width: 15px; height: 15px; }
+}
+
 /* ── Outil de test : date simulée ── */
 .date-simulee {
   display: flex; align-items: center; gap: 8px; flex-wrap: wrap;

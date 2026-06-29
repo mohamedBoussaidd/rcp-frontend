@@ -3,8 +3,15 @@ import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { Joueur, GpsPoint } from './joueur.service';
 import { Blessure } from './blessure.service';
-import { Seance, ContenuSeance } from './seance.service';
+import { Seance, ContenuSeance, StatutPresence, LignePresence } from './seance.service';
 import { Conseil } from './conseil.service';
+
+/** Ce que le joueur a déjà déclaré pour une séance (pré-remplissage des boutons PWA). */
+export interface MaDeclaration {
+  seanceId: string;
+  statut: StatutPresence;
+  note?: string;
+}
 
 export interface MaPesee {
   date: string;
@@ -193,6 +200,17 @@ export class EspaceJoueurService {
   /** Contenu (exercices + schémas) d'une séance de mon équipe (lecture seule). */
   getContenuSeance(seanceId: string): Observable<ContenuSeance> {
     return this.http.get<ContenuSeance>(`${this.base}/seances/${seanceId}/exercices`);
+  }
+
+  // ── Présence (auto-déclaration) ──
+  /** Mes déclarations déjà saisies, pour pré-remplir les boutons. */
+  getMesDeclarations(): Observable<MaDeclaration[]> {
+    return this.http.get<MaDeclaration[]>(`${this.base}/presences`);
+  }
+
+  /** Je me déclare présent/absent pour une séance (+ commentaire optionnel). */
+  declarerPresence(seanceId: string, statut: StatutPresence, commentaire?: string): Observable<LignePresence> {
+    return this.http.post<LignePresence>(`${this.base}/seances/${seanceId}/presence`, { statut, commentaire });
   }
 
   // ── Wellness (ressenti quotidien) ──

@@ -1,7 +1,7 @@
 import { Component, OnInit, HostListener, inject, ViewChild } from '@angular/core';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { MatDialog } from '@angular/material/dialog';
-import { JoueurService, Joueur, GpsPoint } from '@core/services/joueur.service';
+import { JoueurService, Joueur, GpsPoint, AssiduiteJoueur } from '@core/services/joueur.service';
 import { PredictionService, NiveauFatigue, ResumeJoueur } from '@core/services/prediction.service';
 import { PeseesService, Pesee } from '@core/services/pesees.service';
 import { SuiviSubjectifService, Wellness, Rpe } from '@core/services/suivi-subjectif.service';
@@ -23,7 +23,7 @@ import { ChargeVueComponent } from '@shared/components/charge-vue/charge-vue.com
     MatIcon,
     MatTabGroup, MatTab, MatTabContent,
     ChartComponent, DecimalPipe, DatePipe,
-    ChargeVueComponent
+    ChargeVueComponent, RouterLink
   ]
 })
 export class JoueurDetailComponent implements OnInit {
@@ -38,6 +38,9 @@ export class JoueurDetailComponent implements OnInit {
   get resume(): ResumeJoueur | null {
     return this.joueur ? (this.resumeEquipe.find(r => r.joueur_id === this.joueur!.id) ?? null) : null;
   }
+
+  // ── Assiduité (présence aux entraînements, saison active) ──
+  assiduite: AssiduiteJoueur | null = null;
 
   // ── Parcours médical (blessure active + protocole de reprise) ──
   blessureActive: Blessure | null = null;
@@ -368,6 +371,10 @@ export class JoueurDetailComponent implements OnInit {
     });
   }
 
+  libelleAssiduite(statut: string): string {
+    return ({ PRESENT: 'Présent', ABSENT: 'Absent', EXCUSE: 'Excusé', RETARD: 'Retard' } as Record<string, string>)[statut] ?? statut;
+  }
+
   private chargerJoueur(id: string): void {
     this.joueur    = null;
     this.risque    = null;
@@ -377,9 +384,14 @@ export class JoueurDetailComponent implements OnInit {
     this.pesees    = [];
     this.blessureActive = null;
     this.rtpEtapes = [];
+    this.assiduite = null;
     this.gpsLoading = true;
 
     this.chargerParcoursMedical(id);
+    this.joueurService.getAssiduite(id).subscribe({
+      next: a => this.assiduite = a,
+      error: () => this.assiduite = null,
+    });
 
     this.joueurService.getById(id).subscribe(j => {
       this.joueur = j;

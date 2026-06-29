@@ -25,6 +25,12 @@
         <span class="pd-kpi__val">{{ nbPresents }}</span>
         <span class="pd-kpi__lbl">Présents</span>
       </div>
+      @if (nbBlesses > 0) {
+        <div class="pd-kpi pd-kpi--blesse">
+          <span class="pd-kpi__val">{{ nbBlesses }}</span>
+          <span class="pd-kpi__lbl">Blessés</span>
+        </div>
+      }
       <div class="pd-kpi pd-kpi--retard">
         <span class="pd-kpi__val">{{ nbRetards }}</span>
         <span class="pd-kpi__lbl">Retards</span>
@@ -58,8 +64,13 @@
         @for (ligne of lignes; track ligne.joueurId) {
           <li class="pd-item" [class.pd-item--saving]="saving.has(ligne.joueurId)">
             <div class="pd-item__info">
-              <span class="pd-item__nom">{{ ligne.prenom }} {{ ligne.nom }}</span>
+              <span class="pd-item__nom">
+                {{ ligne.prenom }} {{ ligne.nom }}
+                @if (ligne.blesse) { <span class="pd-tag pd-tag--blesse">Blessé</span> }
+                @if (ligne.source === 'JOUEUR') { <span class="pd-tag pd-tag--joueur">déclaré joueur</span> }
+              </span>
               <span class="pd-item__poste">{{ ligne.poste || '—' }}</span>
+              @if (ligne.note) { <span class="pd-item__note">« {{ ligne.note }} »</span> }
             </div>
             <div class="pd-item__btns">
               @for (s of statuts; track s.val) {

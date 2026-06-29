@@ -32,11 +32,13 @@ export class PresenceDialogComponent implements OnInit {
 
   get seance(): Seance { return this.data.seance; }
 
-  get nbPresents():  number { return this.lignes.filter(l => l.statut === 'PRESENT').length;  }
-  get nbAbsents():   number { return this.lignes.filter(l => l.statut === 'ABSENT').length;   }
-  get nbExcuses():   number { return this.lignes.filter(l => l.statut === 'EXCUSE').length;   }
-  get nbRetards():   number { return this.lignes.filter(l => l.statut === 'RETARD').length;   }
-  get nbNonRens():   number { return this.lignes.filter(l => !l.statut).length;               }
+  // Les blessés (dérivés du médical) sont comptés à part et exclus des présents.
+  get nbPresents():  number { return this.lignes.filter(l => !l.blesse && l.statut === 'PRESENT').length; }
+  get nbAbsents():   number { return this.lignes.filter(l => !l.blesse && l.statut === 'ABSENT').length;  }
+  get nbExcuses():   number { return this.lignes.filter(l => !l.blesse && l.statut === 'EXCUSE').length;  }
+  get nbRetards():   number { return this.lignes.filter(l => !l.blesse && l.statut === 'RETARD').length;  }
+  get nbBlesses():   number { return this.lignes.filter(l => l.blesse).length;                           }
+  get nbNonRens():   number { return this.lignes.filter(l => !l.statut).length;                          }
 
   dialogRef = inject<MatDialogRef<PresenceDialogComponent>>(MatDialogRef);
   data = inject<PresenceDialogData>(MAT_DIALOG_DATA);

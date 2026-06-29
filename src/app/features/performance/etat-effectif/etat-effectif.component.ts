@@ -6,7 +6,7 @@ import { MatIcon } from '@angular/material/icon';
 
 import { PredictionService, ResumeJoueur } from '@core/services/prediction.service';
 import { PeseesService, PoidsFicheJoueur } from '@core/services/pesees.service';
-import { JoueurService } from '@core/services/joueur.service';
+import { JoueurService, AssiduiteResume } from '@core/services/joueur.service';
 import { InfoHintComponent } from '@shared/components/info-hint/info-hint.component';
 
 type Dispo = 'disponible' | 'incertain' | 'indisponible';
@@ -32,6 +32,7 @@ export class EtatEffectifComponent implements OnInit {
   joueurs: ResumeJoueur[] = [];
   poidsMap = new Map<string, PoidsFicheJoueur>();
   statutMap = new Map<string, string>();
+  assiduiteMap = new Map<string, AssiduiteResume>();
   loading = true;
 
   pageIndex = 0;
@@ -39,6 +40,7 @@ export class EtatEffectifComponent implements OnInit {
   recherche = '';
   triFatigue: 'asc' | 'desc' | null = null;
   triRisque: 'asc' | 'desc' | null = null;
+  triPresence: 'asc' | 'desc' | null = null;
 
   readonly aideAcwr = "Ratio charge aiguë / chronique (Gabbett) : charge des 7 derniers jours "
     + "vs moyenne des 4 semaines précédentes. Optimal 0.8–1.3 ; au-dessus de 1.5, risque accru.";
@@ -47,6 +49,25 @@ export class EtatEffectifComponent implements OnInit {
     this.loadEquipe();
     this.loadPoids();
     this.loadStatuts();
+    this.loadAssiduite();
+  }
+
+  loadAssiduite(): void {
+    this.joueurService.getAssiduiteEquipe().subscribe({
+      next: data => { this.assiduiteMap = new Map(data.map(a => [a.joueurId, a])); },
+      error: () => {},
+    });
+  }
+
+  /** Taux de présence du joueur (entraînements, saison active), null si inconnu. */
+  tauxPresence(j: ResumeJoueur): number | null {
+    return this.assiduiteMap.get(j.joueur_id)?.taux ?? null;
+  }
+  presenceClasse(taux: number | null): string {
+    if (taux == null) return 'neutral';
+    if (taux >= 90) return 'ok';
+    if (taux >= 75) return 'warn';
+    return 'bad';
   }
 
   loadEquipe(): void {
@@ -129,6 +150,9 @@ export class EtatEffectifComponent implements OnInit {
     } else if (this.triFatigue) {
       const dir = this.triFatigue === 'asc' ? 1 : -1;
       liste = liste.sort((a, b) => dir * ((a.score_fatigue ?? 0) - (b.score_fatigue ?? 0)));
+    } else if (this.triPresence) {
+      const dir = this.triPresence === 'asc' ? 1 : -1;
+      liste = liste.sort((a, b) => dir * ((this.tauxPresence(a) ?? 101) - (this.tauxPresence(b) ?? 101)));
     }
     return liste;
   }
@@ -147,6 +171,7 @@ export class EtatEffectifComponent implements OnInit {
   pageSuiv(): void { if (this.pageIndex < this.nbPages - 1) this.pageIndex++; }
 
   onRecherche(): void { this.pageIndex = 0; }
-  toggleTriFatigue(): void { this.triRisque = null; this.triFatigue = this.triFatigue === 'desc' ? 'asc' : 'desc'; this.pageIndex = 0; }
-  toggleTriRisque(): void { this.triFatigue = null; this.triRisque = this.triRisque === 'desc' ? 'asc' : 'desc'; this.pageIndex = 0; }
+  toggleTriFatigue(): void { this.triRisque = null; this.triPresence = null; this.triFatigue = this.triFatigue === 'desc' ? 'asc' : 'desc'; this.pageIndex = 0; }
+  toggleTriRisque(): void { this.triFatigue = null; this.triPresence = null; this.triRisque = this.triRisque === 'desc' ? 'asc' : 'desc'; this.pageIndex = 0; }
+  toggleTriPresence(): void { this.triFatigue = null; this.triRisque = null; this.triPresence = this.triPresence === 'asc' ? 'desc' : 'asc'; this.pageIndex = 0; }
 }

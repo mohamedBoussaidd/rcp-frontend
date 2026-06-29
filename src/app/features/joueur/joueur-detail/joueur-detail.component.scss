@@ -1,5 +1,37 @@
 :host { display: block; }
 
+/* ── Bloc Assiduité (entraînements) ── */
+.pf-assiduite {
+  &__taux { display: flex; align-items: baseline; gap: 8px; margin: 4px 0 10px; }
+  &__pct { font-size: 30px; font-weight: 800; color: var(--text); line-height: 1; }
+  &__lbl { font-size: 12.5px; color: var(--text-3); }
+  &__chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  &__recent { margin: 10px 0 0; font-size: 12.5px; font-weight: 600; color: #d97706; }
+  &__link {
+    display: inline-block; margin: 12px 0 0; font-size: 12.5px; font-weight: 700;
+    color: var(--accent, #6366f1); text-decoration: none;
+    &:hover { text-decoration: underline; }
+  }
+}
+.pf-ac {
+  font-size: 11.5px; font-weight: 700; padding: 2px 9px; border-radius: 999px;
+  &--no { background: #ef444418; color: #dc2626; }
+  &--ex { background: #6366f118; color: #6366f1; }
+  &--rt { background: #f59e0b18; color: #d97706; }
+}
+.pf-ah {
+  &__date { font-weight: 700; color: var(--text-2); min-width: 42px; }
+  &__st {
+    font-weight: 700; padding: 1px 7px; border-radius: 999px; font-size: 11px;
+    &--absent { background: #ef444418; color: #dc2626; }
+    &--excuse { background: #6366f118; color: #6366f1; }
+    &--retard { background: #f59e0b18; color: #d97706; }
+    &--present { background: #22c55e18; color: #16a34a; }
+  }
+  &__titre { color: var(--text-2); }
+  &__note { font-style: italic; color: var(--text-3); }
+}
+
 /* ── Onglet Suivi subjectif ── */
 .ws-head { display: flex; justify-content: flex-end; margin-bottom: 14px; }
 .ws-toggle {

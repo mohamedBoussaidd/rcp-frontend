@@ -83,6 +83,11 @@ export const routes: Routes = [
     loadComponent: () => import('./features/performance/charge-equipe/charge-equipe.component').then(m => m.ChargeEquipeComponent)
   },
   {
+    path: 'presence', canActivate: [authGuard, roleGuard, contexteGuard, saisonGuard],
+    data: { roles: ['SUPER_ADMIN', 'PRESIDENT', 'ENTRAINEUR', 'PREPARATEUR'], perms: ['presence:write'] },
+    loadComponent: () => import('./features/performance/historique-presence/historique-presence.component').then(m => m.HistoriquePresenceComponent)
+  },
+  {
     path: 'vue-seance/:id', canActivate: [authGuard, roleGuard, contexteGuard, saisonGuard], data: { roles: STAFF_PHYSIQUE, perms: PERMS_GPS },
     loadComponent: () => import('./features/performance/vue-seance/vue-seance.component').then(m => m.VueSeanceComponent)
   },

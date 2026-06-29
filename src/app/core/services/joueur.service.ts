@@ -46,6 +46,41 @@ export interface Joueur {
   dateArriveeClub?: string;
 }
 
+/** Un événement d'assiduité (absence/excuse/retard passé). */
+export interface EvenementAssiduite {
+  seanceId: string;
+  date: string;
+  titre: string;
+  statut: 'PRESENT' | 'ABSENT' | 'EXCUSE' | 'RETARD';
+  note?: string;
+  source?: string;
+}
+
+/** Résumé léger d'assiduité par joueur (colonne triable de l'effectif). */
+export interface AssiduiteResume {
+  joueurId: string;
+  taux: number;
+  absents: number;
+  retards: number;
+  excuses: number;
+  recents: number;
+}
+
+/** Bilan d'assiduité d'un joueur sur la saison active (entraînements). */
+export interface AssiduiteJoueur {
+  joueurId: string;
+  saisonId?: string;
+  saisonLibelle?: string;
+  nbSeances: number;
+  presents: number;
+  absents: number;
+  excuses: number;
+  retards: number;
+  taux: number;
+  recents: number;
+  historique: EvenementAssiduite[];
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -81,6 +116,16 @@ export class JoueurService {
 
   getHistoriqueGps(id: string): Observable<GpsPoint[]> {
     return this.http.get<GpsPoint[]>(`${this.base}/${id}/gps`);
+  }
+
+  /** Bilan d'assiduité du joueur (entraînements de la saison active) : taux, compteurs, historique. */
+  getAssiduite(id: string): Observable<AssiduiteJoueur> {
+    return this.http.get<AssiduiteJoueur>(`${this.base}/${id}/assiduite`);
+  }
+
+  /** Assiduité (résumé léger) de tout l'effectif du périmètre, pour la colonne triable. */
+  getAssiduiteEquipe(): Observable<AssiduiteResume[]> {
+    return this.http.get<AssiduiteResume[]>(`${this.base}/assiduite-equipe`);
   }
 
   /** Fiche vitesse (vmax/vmoy km/h) des joueurs de l'équipe. Mise en cache (1 appel réseau). */

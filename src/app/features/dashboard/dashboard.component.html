@@ -67,6 +67,14 @@
               <span class="badge badge--ok">Aucun blessé</span>
             }
           </div>
+          @if (appelDuJour) {
+            <div class="kpi__appel">
+              <span class="appel-seg appel-seg--ok">{{ presentsAujourdhui }} présents</span>
+              @if (absentsAujourdhui > 0) { <span class="appel-seg appel-seg--no">{{ absentsAujourdhui }} absent{{ absentsAujourdhui > 1 ? 's' : '' }}</span> }
+              @if (excusesAujourdhui > 0) { <span class="appel-seg appel-seg--ex">{{ excusesAujourdhui }} excusé{{ excusesAujourdhui > 1 ? 's' : '' }}</span> }
+              @if (retardsAujourdhui > 0) { <span class="appel-seg appel-seg--rt">{{ retardsAujourdhui }} en retard</span> }
+            </div>
+          }
         </div>
       </div>
 
@@ -169,6 +177,11 @@
                 @if (s.terrain) {
                   <span class="seance-jour__terrain muted">
                     <mat-icon>place</mat-icon>{{ s.terrain }}
+                  </span>
+                }
+                @if (!s.adversaire && resumeDe(s.id); as r) {
+                  <span class="seance-jour__dispo" [title]="r.dispo + ' disponibles prévus sur ' + r.effectif">
+                    <mat-icon>groups</mat-icon>{{ r.dispo }}/{{ r.effectif }} dispo
                   </span>
                 }
               </div>
@@ -474,6 +487,30 @@
               </div>
             } @else {
               <div class="empty-state" style="padding:24px">Aucune donnée de match disponible.</div>
+            }
+
+            <!-- Assiduité (entraînements) -->
+            @if (panelAssiduite && panelAssiduite.nbSeances > 0) {
+              <div class="metric-card" style="margin-top:14px">
+                <div class="pa-head">
+                  <span class="pa-title">Assiduité — entraînements</span>
+                  <span class="pa-taux pa-taux--{{ panelAssiduite.taux >= 90 ? 'ok' : panelAssiduite.taux >= 75 ? 'warn' : 'bad' }}">{{ panelAssiduite.taux }}%</span>
+                </div>
+                <div class="pa-sub">{{ panelAssiduite.presents }}/{{ panelAssiduite.nbSeances }} séances présentes</div>
+                <div class="pa-chips">
+                  <span class="pa-chip pa-chip--no">{{ panelAssiduite.absents }} abs.</span>
+                  <span class="pa-chip pa-chip--ex">{{ panelAssiduite.excuses }} excusé{{ panelAssiduite.excuses > 1 ? 's' : '' }}</span>
+                  <span class="pa-chip pa-chip--rt">{{ panelAssiduite.retards }} retard{{ panelAssiduite.retards > 1 ? 's' : '' }}</span>
+                </div>
+                @if (panelAssiduite.recents > 0) {
+                  <p class="pa-recent">⚠ {{ panelAssiduite.recents }} sur les 14 derniers jours</p>
+                }
+                <a class="pa-link" [routerLink]="['/presence']" [queryParams]="{ mode: 'joueur', joueurId: panelAssiduite.joueurId }">
+                  Voir l'historique de présence →
+                </a>
+              </div>
+            } @else {
+              <div class="empty-state" style="padding:16px">Aucune séance d'entraînement comptabilisée.</div>
             }
           }
         }

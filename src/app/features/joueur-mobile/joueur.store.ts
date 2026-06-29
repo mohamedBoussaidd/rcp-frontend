@@ -1,12 +1,12 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
 import {
   EspaceJoueurService, Wellness, Rpe, WellnessRequest, RpeRequest,
-  MaPesee, RtpEtape, DocumentMedical,
+  MaPesee, RtpEtape, DocumentMedical, MaDeclaration,
 } from '@core/services/espace-joueur.service';
 import { Joueur } from '@core/services/joueur.service';
 import { Conseil } from '@core/services/conseil.service';
 import { Blessure } from '@core/services/blessure.service';
-import { Seance, ContenuSeance } from '@core/services/seance.service';
+import { Seance, ContenuSeance, StatutPresence } from '@core/services/seance.service';
 import { Observable, of, tap, catchError, throwError } from 'rxjs';
 import { OfflineQueueService } from './offline-queue.service';
 
@@ -56,6 +56,7 @@ export class JoueurStore {
   readonly pesees = signal<MaPesee[]>([]);
   readonly blessures = signal<Blessure[]>([]);
   readonly documents = signal<DocumentMedical[]>([]);
+  readonly declarations = signal<MaDeclaration[]>([]);
   readonly loading = signal(true);
   readonly nonLie = signal(false);
 
@@ -81,6 +82,7 @@ export class JoueurStore {
     this.api.getPesees().subscribe({ next: d => this.pesees.set(d), error: () => { } });
     this.api.getBlessures().subscribe({ next: d => this.blessures.set(d), error: () => { } });
     this.api.getDocumentsMedicaux().subscribe({ next: d => this.documents.set(d), error: () => { } });
+    this.api.getMesDeclarations().subscribe({ next: d => this.declarations.set(d), error: () => { } });
   }
 
   // ──────────────────────── Dérivés (état du jour) ────────────────────────
@@ -186,6 +188,19 @@ export class JoueurStore {
 
   contenuSeance(seanceId: string): Observable<ContenuSeance> {
     return this.api.getContenuSeance(seanceId);
+  }
+
+  /** Statut déjà déclaré par le joueur pour une séance (null = rien déclaré → présent par défaut). */
+  maDeclaration(seanceId: string): StatutPresence | null {
+    return this.declarations().find(d => d.seanceId === seanceId)?.statut ?? null;
+  }
+
+  /** Je me déclare présent/absent pour une séance ; met à jour le cache local en optimiste. */
+  declarerPresence(seanceId: string, statut: StatutPresence, commentaire?: string): Observable<unknown> {
+    return this.api.declarerPresence(seanceId, statut, commentaire).pipe(
+      tap(() => this.declarations.update(list =>
+        [{ seanceId, statut, note: commentaire }, ...list.filter(d => d.seanceId !== seanceId)])),
+    );
   }
 
   // ──────────────────────── Poids ────────────────────────
