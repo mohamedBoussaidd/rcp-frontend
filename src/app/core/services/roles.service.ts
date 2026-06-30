@@ -9,6 +9,8 @@ export interface RoleDef {
   code: string;
   libelle: string;
   systeme: boolean;
+  /** Rôle sans club (prédéfini système OU global custom) — non éditable par un président. */
+  global: boolean;
   permissions: string[];
   nbAffectations: number;
 }
@@ -58,5 +60,28 @@ export class RolesService {
 
   definirRoles(membreId: string, roles: AffectationItem[]): Observable<Affectation[]> {
     return this.http.put<Affectation[]>(`${this.base}/membres/${membreId}`, { roles });
+  }
+
+  // ── Rôles GLOBAUX (super-admin) : prédéfinis + globaux custom, hors de tout club ──
+  private readonly baseGlobal = '/api/admin/roles-globaux';
+
+  catalogueGlobal(): Observable<PermissionCat[]> {
+    return this.http.get<PermissionCat[]>(`${this.baseGlobal}/catalogue`);
+  }
+
+  listerGlobaux(): Observable<RoleDef[]> {
+    return this.http.get<RoleDef[]>(this.baseGlobal);
+  }
+
+  creerGlobal(req: RoleUpsert): Observable<RoleDef> {
+    return this.http.post<RoleDef>(this.baseGlobal, req);
+  }
+
+  modifierGlobal(id: string, req: RoleUpsert): Observable<RoleDef> {
+    return this.http.put<RoleDef>(`${this.baseGlobal}/${id}`, req);
+  }
+
+  supprimerGlobal(id: string): Observable<void> {
+    return this.http.delete<void>(`${this.baseGlobal}/${id}`);
   }
 }

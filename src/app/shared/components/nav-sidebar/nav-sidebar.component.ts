@@ -111,6 +111,7 @@ const ALL_MODULES: NavModule[] = [
     perms: ['club:manage', 'membres:manage'],
     subnav: [
       { label: 'Clubs',          link: '/admin/clubs', roles: ['SUPER_ADMIN'] },
+      { label: 'Rôles globaux',  link: '/admin/roles-globaux', roles: ['SUPER_ADMIN'] },
       { label: 'Comptes du club', link: '/mon-club',   roles: ['SUPER_ADMIN'] },
       { label: 'Mon club',       link: '/mon-club',    roles: ['PRESIDENT', 'ENTRAINEUR'], perms: ['club:manage', 'membres:manage'] },
     ],

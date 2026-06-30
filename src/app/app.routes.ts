@@ -26,6 +26,10 @@ export const routes: Routes = [
     loadComponent: () => import('./features/admin/admin-clubs/admin-clubs.component').then(m => m.AdminClubsComponent)
   },
   {
+    path: 'admin/roles-globaux', canActivate: [authGuard, roleGuard], data: { roles: ['SUPER_ADMIN'] },
+    loadComponent: () => import('./features/admin/roles-globaux/roles-globaux.component').then(m => m.RolesGlobauxComponent)
+  },
+  {
     path: 'mon-club', canActivate: [authGuard, roleGuard], data: { roles: ['PRESIDENT', 'ENTRAINEUR', 'SUPER_ADMIN'], perms: ['club:manage', 'membres:manage'] },
     loadComponent: () => import('./features/admin/mon-club/mon-club.component').then(m => m.MonClubComponent)
   },

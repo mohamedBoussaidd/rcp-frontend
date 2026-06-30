@@ -45,7 +45,8 @@
                   <label class="ra-pick" [class.ra-pick--on]="roleMembreActif(r.id)">
                     <input type="checkbox" [checked]="roleMembreActif(r.id)" (change)="toggleRoleMembre(r.id)">
                     <span>{{ r.libelle }}</span>
-                    @if (!r.systeme) { <span class="ra-tag">custom</span> }
+                    @if (r.global && !r.systeme) { <span class="ra-tag">global</span> }
+                    @else if (!r.systeme) { <span class="ra-tag">custom</span> }
                   </label>
                 }
               </div>
@@ -106,13 +107,14 @@
         <div class="ra-role">
           <div class="ra-role__id">
             <span class="ra-role__nom">{{ r.libelle }}</span>
-            <span class="ra-chip" [class.ra-chip--sys]="r.systeme">{{ r.systeme ? 'Système' : 'Custom' }}</span>
+            <span class="ra-chip" [class.ra-chip--sys]="r.systeme">{{ r.systeme ? 'Système' : (r.global ? 'Global' : 'Custom') }}</span>
           </div>
           <div class="ra-role__meta">
             {{ r.permissions.length }} permission{{ r.permissions.length > 1 ? 's' : '' }} ·
             {{ r.nbAffectations }} attribution{{ r.nbAffectations > 1 ? 's' : '' }}
+            @if (r.global && !r.systeme) { · <span class="ra-role__note">géré par l'admin</span> }
           </div>
-          @if (!r.systeme) {
+          @if (!r.systeme && !r.global) {
             <div class="ra-role__actions">
               <button class="ra-btn ra-btn--ghost ra-btn--sm" (click)="editerRole(r)">Modifier</button>
               <button class="ra-btn ra-btn--danger ra-btn--sm" (click)="supprimerRole(r)">Supprimer</button>

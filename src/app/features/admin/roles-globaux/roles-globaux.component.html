@@ -1,0 +1,76 @@
+<div class="ra">
+
+  @if (loading()) {
+    <div class="ra__loading">Chargement…</div>
+  }
+
+  <section class="ra-card">
+    <div class="ra-card__head">
+      <div>
+        <h3 class="ra-card__title">Rôles prédéfinis &amp; globaux</h3>
+        <p class="ra-card__sub">
+          Éditez les permissions des rôles <strong>prédéfinis</strong> (communs à tous les clubs) et créez des
+          rôles <strong>globaux</strong> réutilisables. Les présidents pourront les attribuer dans leur club,
+          sans pouvoir les modifier.
+        </p>
+      </div>
+      <button class="ra-btn" (click)="nouveauRole()">+ Nouveau rôle global</button>
+    </div>
+
+    <!-- Éditeur (création / édition) -->
+    @if (roleEditId() !== null) {
+      <div class="ra-role-editor">
+        @if (editSysteme()) {
+          <div class="ra-warn">⚠️ Rôle prédéfini — toute modification s’applique à <strong>tous les clubs</strong>. Le nom et les permissions sont éditables, pas le code interne.</div>
+        }
+        <div class="ra-field">
+          <label>Nom du rôle</label>
+          <input type="text" [ngModel]="roleLibelle()" (ngModelChange)="roleLibelle.set($event)" placeholder="ex. Analyste vidéo, Adjoint…">
+        </div>
+
+        <div class="ra-matrice">
+          @for (g of modules(); track g.module) {
+            <div class="ra-matrice__group">
+              <div class="ra-matrice__module">{{ g.module }}</div>
+              <div class="ra-matrice__perms">
+                @for (p of g.perms; track p.code) {
+                  <label class="ra-perm" [class.ra-perm--on]="permActive(p.code)">
+                    <input type="checkbox" [checked]="permActive(p.code)" (change)="togglePerm(p.code)">
+                    <span>{{ p.libelle }}</span>
+                  </label>
+                }
+              </div>
+            </div>
+          }
+        </div>
+
+        <div class="ra-editor__actions">
+          <button class="ra-btn" [disabled]="savingRole()" (click)="enregistrerRole()">Enregistrer le rôle</button>
+          <button class="ra-btn ra-btn--ghost" (click)="annulerRole()">Annuler</button>
+        </div>
+      </div>
+    }
+
+    <div class="ra-list">
+      @for (r of roles(); track r.id) {
+        <div class="ra-role">
+          <div class="ra-role__id">
+            <span class="ra-role__nom">{{ r.libelle }}</span>
+            <span class="ra-chip" [class.ra-chip--sys]="r.systeme">{{ r.systeme ? 'Prédéfini' : 'Global' }}</span>
+          </div>
+          <div class="ra-role__meta">
+            {{ r.permissions.length }} permission{{ r.permissions.length > 1 ? 's' : '' }} ·
+            {{ r.nbAffectations }} attribution{{ r.nbAffectations > 1 ? 's' : '' }}
+          </div>
+          <div class="ra-role__actions">
+            <button class="ra-btn ra-btn--ghost ra-btn--sm" (click)="editerRole(r)">Modifier</button>
+            @if (!r.systeme) {
+              <button class="ra-btn ra-btn--danger ra-btn--sm" (click)="supprimerRole(r)">Supprimer</button>
+            }
+          </div>
+        </div>
+      }
+    </div>
+  </section>
+
+</div>
