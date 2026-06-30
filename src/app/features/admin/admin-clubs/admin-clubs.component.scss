@@ -1,88 +1,108 @@
 :host { display: block; }
 
-.form-section-title {
-  font-size: 11px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: .05em;
-  color: var(--green-700);
-  margin: 0 0 10px;
-}
-
-.form-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
-}
-
-.form-grid--4 {
-  grid-template-columns: repeat(4, 1fr);
-}
-
 /* ── Grille clubs ── */
 .clubs-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 16px;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 18px;
 }
 
 .club-card {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--r-xl);
-  padding: 16px;
+  padding: 18px;
   display: flex;
   flex-direction: column;
-  gap: 12px;
   box-shadow: var(--shadow-xs);
   transition: box-shadow 160ms var(--ease-out), border-color 160ms var(--ease-out);
 
   &:hover { box-shadow: var(--shadow-md); border-color: var(--border-strong); }
+
+  &__top { display: flex; align-items: flex-start; gap: 13px; }
+
+  &__crest {
+    width: 46px; height: 46px; border-radius: 12px; flex: none;
+    display: grid; place-items: center; font-weight: 800; font-size: 16px; color: #fff;
+  }
+
+  &__head { flex: 1; min-width: 0; padding-top: 2px; }
+
+  &__nom {
+    font-size: 16px; font-weight: 800; color: var(--text); letter-spacing: -0.01em; line-height: 1.2;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+
+  &__date {
+    display: flex; align-items: center; gap: 6px; margin-top: 5px;
+    font-size: 12px; color: var(--text-4); font-weight: 500;
+    svg { color: var(--text-4); }
+    .num { color: var(--text-3); font-size: 11.5px; }
+  }
+
+  &__stats { display: flex; gap: 10px; margin: 16px 0 14px; }
+
+  &__pres {
+    display: flex; align-items: center; gap: 7px;
+    font-size: 12.5px; color: var(--text-2); font-weight: 600;
+    svg { color: var(--text-4); flex: none; }
+  }
+  &__mail { color: var(--text-4); font-weight: 500; font-size: 11.5px; margin-left: auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  &__foot {
+    display: flex; align-items: center; gap: 8px;
+    margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--border);
+  }
+
+  &__enter { flex: 1; }
+  &__enter:hover { background: var(--green-600); }
 }
 
-.club-card__head {
-  display: flex;
-  align-items: center;
+.dot { width: 6px; height: 6px; border-radius: 50%; display: inline-block; }
+
+.club-stat {
+  flex: 1;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  padding: 9px 12px;
+
+  &__val { font-size: 18px; font-weight: 600; color: var(--text); }
+  &__val small { color: var(--text-4); font-size: 12px; }
+  &__lbl { font-size: 11px; color: var(--text-4); font-weight: 600; }
+}
+
+/* ── État vide ── */
+.empty-club {
+  text-align: center;
+  padding: 70px 20px;
+  border: 1px dashed var(--border-strong);
+  box-shadow: none;
+
+  &__icon {
+    width: 56px; height: 56px; border-radius: 14px; margin: 0 auto 16px;
+    display: grid; place-items: center; background: var(--green-50); color: var(--green-600);
+  }
+  &__title { font-size: 17px; font-weight: 800; color: var(--text); }
+  &__sub { margin: 6px 0 18px; font-size: 13.5px; color: var(--text-3); }
+}
+
+/* ── Modale création : grille de champs + section président ── */
+.form-grid {
+  display: grid;
   gap: 12px;
+  &--2 { grid-template-columns: 1fr 1fr; }
 }
 
-.club-card__crest {
-  width: 40px;
-  height: 40px;
-  border-radius: 10px;
-  background: var(--slate-900);
-  color: white;
-  display: grid;
-  place-items: center;
-  font-weight: 800;
-  font-size: 13px;
-  flex-shrink: 0;
+.modal-section {
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+
+  &__title { font-size: 12.5px; font-weight: 800; color: var(--text); }
+  &__sub { margin: 3px 0 14px; font-size: 12px; color: var(--text-4); }
 }
 
-.club-card__nom {
-  font-size: 15px;
-  font-weight: 700;
-  color: var(--text);
-  letter-spacing: -0.01em;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.club-card__info {
-  display: grid;
-  grid-template-columns: auto 1fr;
-  gap: 5px 12px;
-  font-size: 12.5px;
-  color: var(--text-2);
-  align-items: center;
-}
-
-/* ── Responsive ── */
-@media (max-width: 800px) {
-  .form-grid--4 { grid-template-columns: 1fr 1fr; }
-}
-
-@media (max-width: 560px) {
-  .form-grid, .form-grid--4 { grid-template-columns: 1fr; }
+@media (max-width: 520px) {
+  .form-grid--2 { grid-template-columns: 1fr; }
 }

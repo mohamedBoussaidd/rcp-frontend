@@ -42,7 +42,35 @@ export class RolesGlobauxComponent implements OnInit {
   roleLibelle = signal('');
   permSel = signal<Set<string>>(new Set());
   editSysteme = signal(false);
+  editCode = signal('');
   savingRole = signal(false);
+
+  /** Filtre de recherche dans la matrice de permissions (habillage). */
+  permSearch = signal('');
+
+  /** Nombre de permissions sélectionnées (compteur « x / total »). */
+  readonly nbPermSel = computed(() => this.permSel().size);
+
+  /** Modules filtrés par la recherche (ne masque pas la sélection sous-jacente). */
+  readonly modulesAffiches = computed<ModuleGroup[]>(() => {
+    const q = this.permSearch().trim().toLowerCase();
+    const base = this.modules();
+    if (!q) return base;
+    return base
+      .map(g => ({ module: g.module, perms: g.perms.filter(p => p.libelle.toLowerCase().includes(q)) }))
+      .filter(g => g.perms.length > 0);
+  });
+
+  moduleSelCount(g: ModuleGroup): number { return g.perms.filter(p => this.permSel().has(p.code)).length; }
+  moduleAllChecked(g: ModuleGroup): boolean { return g.perms.length > 0 && g.perms.every(p => this.permSel().has(p.code)); }
+  toggleModule(g: ModuleGroup): void {
+    const all = this.moduleAllChecked(g);
+    this.permSel.update(s => {
+      const n = new Set(s);
+      for (const p of g.perms) { all ? n.delete(p.code) : n.add(p.code); }
+      return n;
+    });
+  }
 
   ngOnInit(): void {
     this.rolesSvc.catalogueGlobal().subscribe({ next: c => this.catalogue.set(c) });
@@ -62,6 +90,8 @@ export class RolesGlobauxComponent implements OnInit {
     this.roleLibelle.set('');
     this.permSel.set(new Set());
     this.editSysteme.set(false);
+    this.editCode.set('');
+    this.permSearch.set('');
   }
 
   editerRole(r: RoleDef): void {
@@ -69,6 +99,8 @@ export class RolesGlobauxComponent implements OnInit {
     this.roleLibelle.set(r.libelle);
     this.permSel.set(new Set(r.permissions));
     this.editSysteme.set(r.systeme);
+    this.editCode.set(r.code);
+    this.permSearch.set('');
   }
 
   annulerRole(): void { this.roleEditId.set(null); }

@@ -1,6 +1,5 @@
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { MatCard, MatCardContent, MatCardHeader, MatCardTitle } from '@angular/material/card';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import {
   Equipe, Membre, MembreCreateRequest, MonClub, MonClubService,
@@ -24,7 +23,7 @@ const ROLES_MEMBRES = [
   standalone: true,
   templateUrl: './mon-club.component.html',
   styleUrl: './mon-club.component.scss',
-  imports: [FormsModule, MatCard, MatCardContent, MatCardHeader, MatCardTitle, RolesAccesComponent],
+  imports: [FormsModule, RolesAccesComponent],
 })
 export class MonClubComponent implements OnInit {
 
@@ -51,6 +50,13 @@ export class MonClubComponent implements OnInit {
   readonly membres = computed(() => this.data()?.membres ?? []);
   readonly equipesPleines = computed(() => this.equipes().length >= MAX_EQUIPES);
 
+  // ── Habillage (compteurs, avatar, contexte modale liaison) ──
+  readonly staffCount = computed(() => this.membres().filter(m => m.role !== 'JOUEUR').length);
+  readonly joueursCount = computed(() => this.membres().filter(m => m.role === 'JOUEUR').length);
+  initiales(m: { prenom?: string; nom?: string }): string {
+    return ((m.prenom?.[0] ?? '') + (m.nom?.[0] ?? '')).toUpperCase() || '?';
+  }
+
   private service = inject(MonClubService);
   private snack = inject(MatSnackBar);
   private joueurService = inject(JoueurService);
@@ -72,6 +78,9 @@ export class MonClubComponent implements OnInit {
   // ── Liaison compte JOUEUR ↔ fiche ──
   linkMembreId = signal<string | null>(null);
   ficheChoisie = signal<string>('');
+
+  /** Membre dont la modale de liaison de fiche est ouverte. */
+  readonly membreEnLien = computed(() => this.membres().find(m => m.id === this.linkMembreId()) ?? null);
 
   /** Fiches déjà reliées à un compte (pour ne proposer que les libres). */
   private readonly fichesLiees = computed(() =>
@@ -143,6 +152,9 @@ export class MonClubComponent implements OnInit {
   editingMembreId = signal<string | null>(null);
   editMembreForm: { role: string; specialite: string; equipeId: string; actif: boolean } =
     { role: '', specialite: '', equipeId: '', actif: true };
+
+  /** Membre dont la modale d'édition est ouverte. */
+  readonly membreEnEdition = computed(() => this.membres().find(m => m.id === this.editingMembreId()) ?? null);
 
   editerMembre(m: Membre): void {
     this.editingMembreId.set(m.id);

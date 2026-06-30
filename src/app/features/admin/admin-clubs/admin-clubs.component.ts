@@ -30,6 +30,16 @@ export class AdminClubsComponent implements OnInit {
   private router = inject(Router);
   private snack = inject(MatSnackBar);
 
+  /** Palette d'avatars (habillage) — couleur déterministe dérivée du nom. */
+  private readonly palette = ['#15803D', '#1D4ED8', '#B45309', '#0E7490', '#7C3AED', '#BE185D'];
+
+  initiales(nom: string): string { return (nom ?? '').trim().substring(0, 2).toUpperCase() || '?'; }
+  couleurClub(nom: string): string {
+    let h = 0;
+    for (let i = 0; i < (nom ?? '').length; i++) { h = (h * 31 + nom.charCodeAt(i)) >>> 0; }
+    return this.palette[h % this.palette.length];
+  }
+
   entrer(c: Club): void {
     this.clubService.getEquipes(c.id).subscribe({
       next: equipes => { this.contexte.entrerClub({ id: c.id, nom: c.nom }, equipes); this.router.navigate(['/dashboard']); },

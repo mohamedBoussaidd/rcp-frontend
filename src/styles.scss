@@ -1741,3 +1741,295 @@ mat-progress-bar {
     display: none;
   }
 }
+
+/* ════════════════════════════════════════
+   ADMINISTRATION — primitives partagées
+   (Clubs / Rôles globaux / Mon club)
+   ════════════════════════════════════════ */
+.screen--admin { max-width: 1180px; }
+
+/* En-tête de page admin (kicker + titre + sous-titre) */
+.adm-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 20px;
+  margin-bottom: 22px;
+  flex-wrap: wrap;
+}
+.adm-head__title { font: 800 26px/1.1 var(--font); letter-spacing: -0.02em; color: var(--text); margin: 9px 0 0; }
+.adm-head__sub   { font-size: 14px; color: var(--text-3); font-weight: 500; margin: 6px 0 0; max-width: 640px; line-height: 1.45; }
+.adm-head__sub strong { color: var(--text-2); }
+
+.adm-kicker {
+  display: inline-flex;
+  align-items: center;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--green-600);
+  background: var(--green-50);
+  border: 1px solid var(--green-200);
+  padding: 3px 9px;
+  border-radius: var(--r-pill);
+}
+
+/* Badges nature de rôle / type de membre */
+.adm-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11.5px;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: var(--r-pill);
+  border: 1px solid transparent;
+  white-space: nowrap;
+
+  svg { width: 12px; height: 12px; }
+
+  &--pre    { color: var(--text-2);   background: var(--surface-3); border-color: var(--border); }
+  &--global { color: var(--info);     background: var(--info-bg);   border-color: var(--info-bd); }
+  &--system { color: var(--text-2);   background: var(--surface-3); border-color: var(--border); }
+  &--custom { color: var(--green-600); background: var(--green-50); border-color: var(--green-200); }
+  &--staff  { color: var(--text-2);   background: var(--surface-3); }
+  &--player { color: var(--info);     background: var(--info-bg); }
+  &--off    { color: var(--bad);      background: var(--bad-bg);    border-color: var(--bad-bd); }
+  &--warn   { color: var(--warn);     background: var(--warn-bg);   border-color: var(--warn-bd); }
+}
+
+/* Bouton icône carré */
+.ic-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border: 1px solid var(--border-strong);
+  background: var(--surface);
+  border-radius: var(--r-md);
+  cursor: pointer;
+  color: var(--text-3);
+  transition: all 120ms var(--ease-out);
+
+  &:hover { background: var(--surface-2); color: var(--text); }
+  svg { width: 15px; height: 15px; }
+
+  &--lg { width: 36px; height: 36px; }
+  &--danger { border-color: var(--bad-bd); color: var(--bad); }
+  &--danger:hover { background: var(--bad-bg); }
+}
+
+/* Avatar initiales (membres / attribution) */
+.adm-avatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  border-radius: var(--r-md);
+  flex: none;
+  font-size: 14px;
+  font-weight: 800;
+  color: #fff;
+  background: linear-gradient(140deg, var(--text-2), var(--slate-900));
+
+  &--sm { width: 38px; height: 38px; font-size: 13px; border-radius: var(--r-md); }
+}
+
+/* Bandeau d'avertissement (édition d'un prédéfini) */
+.adm-warn {
+  display: flex;
+  gap: 11px;
+  padding: 12px 14px;
+  background: var(--warn-bg);
+  border: 1px solid var(--warn-bd);
+  border-radius: var(--r-lg);
+
+  svg { width: 18px; height: 18px; color: var(--warn); flex: none; margin-top: 1px; }
+  p, div { font-size: 12.5px; color: #92400E; line-height: 1.5; margin: 0; }
+  strong { color: #78350F; }
+}
+
+/* États de chargement (squelettes) */
+@keyframes adm-shimmer { 0% { background-position: -400px 0; } 100% { background-position: 400px 0; } }
+.adm-skel-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(330px, 1fr)); gap: 18px; }
+.adm-skel-card {
+  height: 210px;
+  border-radius: var(--r-xl);
+  border: 1px solid var(--border);
+  background: linear-gradient(90deg, #F1F4F9 25%, #E9EDF3 37%, #F1F4F9 63%);
+  background-size: 800px 100%;
+  animation: adm-shimmer 1.4s infinite linear;
+}
+
+/* Tableau de rôles (écran Rôles globaux) */
+.role-table {
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid var(--border);
+}
+.role-table__head,
+.role-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 130px 116px 132px 96px;
+  gap: 12px;
+  align-items: center;
+}
+.role-table__head {
+  padding: 13px 20px;
+  background: var(--surface-2);
+  border-bottom: 1px solid var(--border);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-3);
+}
+.role-row {
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--border);
+
+  &:last-child { border-bottom: 0; }
+  &:hover { background: var(--surface-2); }
+
+  &__id { display: flex; align-items: center; gap: 12px; min-width: 0; }
+  &__avatar {
+    width: 38px; height: 38px; border-radius: var(--r-md); flex: none;
+    display: flex; align-items: center; justify-content: center;
+    background: var(--surface-2); border: 1px solid var(--border); color: var(--text-3);
+    svg { width: 17px; height: 17px; }
+  }
+  &__txt { min-width: 0; }
+  &__name { font-size: 14px; font-weight: 700; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  &__code { font-size: 11px; color: var(--text-4); }
+  &__sub  { font-size: 11.5px; color: var(--text-3); }
+  &__num  { font-size: 14px; font-weight: 600; color: var(--text); }
+  &__num small, &__unit { color: var(--text-4); font-size: 11.5px; font-weight: 500; }
+  &__act  { display: flex; justify-content: flex-end; gap: 7px; }
+}
+.ta-r { text-align: right; }
+
+/* Matrice de permissions (cartes par module) — Rôles globaux + Rôles & accès */
+.pm-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(380px, 1fr)); gap: 14px; }
+.pm-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  overflow: hidden;
+
+  &__head {
+    display: flex; align-items: center; gap: 10px;
+    padding: 11px 13px; background: var(--surface-2); border-bottom: 1px solid var(--border);
+  }
+  &__icon { display: flex; color: var(--text-3); svg { width: 16px; height: 16px; } }
+  &__name { flex: 1; font-size: 13px; font-weight: 700; color: var(--text); }
+  &__count { font-size: 11.5px; font-weight: 600; color: var(--text-3); }
+  &__all {
+    border: 0; background: transparent; cursor: pointer;
+    font: 700 11.5px var(--font); color: var(--green-600);
+    padding: 3px 7px; border-radius: var(--r-sm);
+    &:hover { background: var(--green-50); }
+  }
+  &__body { padding: 5px 6px; }
+}
+.pm-perm {
+  display: flex; align-items: center; gap: 11px;
+  padding: 8px 9px; border-radius: var(--r-sm); cursor: pointer; user-select: none;
+
+  &:hover { background: var(--surface-2); }
+  input { width: 17px; height: 17px; accent-color: var(--green-600); cursor: pointer; flex: none; }
+  span { font-size: 12.5px; color: var(--text-2); font-weight: 500; line-height: 1.3; }
+  &--on span { color: var(--text); }
+}
+.pm-empty { grid-column: 1 / -1; text-align: center; color: var(--text-3); padding: 28px; font-size: 13px; }
+
+/* Modale éditeur de rôle (matrice) */
+.modal--wide { max-width: 960px; max-height: calc(100vh - 80px); }
+.re-head { padding: 20px 24px 16px; border-bottom: 1px solid var(--border); flex: none; }
+.re-head__top { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+.re-kicker { font-size: 11px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--text-3); }
+.re-nameline { display: flex; align-items: center; gap: 10px; margin-top: 8px; }
+.re-name {
+  font: 800 22px/1.2 var(--font); letter-spacing: -0.01em; color: var(--text);
+  border: 0; border-bottom: 2px solid transparent; outline: none; padding: 2px 0;
+  min-width: 280px; background: transparent;
+  &:focus { border-bottom-color: var(--green-600); }
+}
+.re-code { font-size: 11.5px; color: var(--text-3); margin-top: 6px; }
+.re-searchrow { display: flex; align-items: center; gap: 12px; margin-top: 16px; }
+.re-search {
+  display: flex; align-items: center; gap: 8px; flex: 1;
+  padding: 9px 13px; background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--r-lg);
+  svg { width: 16px; height: 16px; color: var(--text-4); flex: none; }
+  input { border: 0; outline: none; background: transparent; font: 500 13px var(--font); color: var(--text); width: 100%; }
+}
+.re-counter { font-size: 12.5px; font-weight: 600; color: var(--text-3); white-space: nowrap; }
+.re-counter .num { color: var(--green-600); font-size: 14px; }
+.re-body { padding: 18px 24px; overflow-y: auto; background: var(--surface-2); flex: 1; }
+.re-foot { padding: 14px 24px; border-top: 1px solid var(--border); display: flex; justify-content: flex-end; gap: 10px; background: var(--surface); flex: none; }
+
+/* Cartes & lignes de liste admin (Rôles & accès, Mon club) */
+.adm-card {
+  border: 1px solid var(--border);
+  overflow: hidden;
+
+  &__head {
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    padding: 16px 20px; border-bottom: 1px solid var(--border);
+  }
+  &__title { margin: 0; font-size: 15px; font-weight: 800; color: var(--text); }
+  &__sub { margin: 4px 0 0; font-size: 12.5px; color: var(--text-3); font-weight: 500; }
+  &__count { font-size: 12px; font-weight: 600; color: var(--text-3); }
+  &__body { padding: 12px 16px; display: flex; flex-direction: column; gap: 8px; }
+}
+.adm-card__sub .t-sys  { color: var(--text-2); font-weight: 700; }
+.adm-card__sub .t-glob { color: var(--info); font-weight: 700; }
+.adm-card__sub .t-cust { color: var(--green-600); font-weight: 700; }
+
+.adm-row {
+  display: flex; align-items: center; gap: 13px;
+  padding: 12px 13px; border: 1px solid var(--border); border-radius: var(--r-lg); background: var(--surface-2);
+
+  &__id { min-width: 0; }
+  &__id--grow { flex: 1; }
+  &__id--fixed { min-width: 150px; flex: none; }
+  &__nameline { display: flex; align-items: center; gap: 9px; flex-wrap: wrap; }
+  &__name { font-size: 14px; font-weight: 700; color: var(--text); }
+  &__mail { font-size: 11.5px; color: var(--text-3); margin-top: 2px; }
+  &__meta { font-size: 12px; color: var(--text-3); margin-top: 3px; }
+  &__chips { flex: 1; display: flex; flex-wrap: wrap; gap: 6px; }
+  &__none { font-size: 12px; color: var(--text-3); font-style: italic; }
+  &__act { display: flex; gap: 7px; flex: none; }
+  &__lock {
+    display: flex; align-items: center; gap: 5px; flex: none;
+    font-size: 11px; color: var(--text-3); font-weight: 600;
+    svg { width: 13px; height: 13px; }
+  }
+}
+
+/* Modales formulaire (plus étroites que la modale par défaut) */
+.modal--form { max-width: 520px; }
+.modal--narrow { max-width: 460px; }
+
+/* Liste de cases à cocher (attribution de rôles, choix de fiche) */
+.pick-list { display: flex; flex-direction: column; gap: 6px; }
+.pick {
+  display: flex; align-items: center; gap: 12px;
+  padding: 11px 12px; border: 1px solid var(--border); border-radius: var(--r-lg); cursor: pointer;
+
+  &:hover { background: var(--surface-2); }
+  &--on { border-color: var(--green-200); background: var(--green-50); }
+  input { width: 18px; height: 18px; accent-color: var(--green-600); cursor: pointer; flex: none; }
+  &__name { flex: 1; font-size: 13.5px; font-weight: 700; color: var(--text); }
+  &__sub { font-size: 12px; color: var(--text-3); }
+}
+
+@media (max-width: 860px) {
+  .pm-grid { grid-template-columns: 1fr; }
+  .role-table__head { display: none; }
+  .role-row { grid-template-columns: 1fr auto; row-gap: 6px; }
+  .role-row__id { grid-column: 1 / -1; }
+  .adm-row { flex-wrap: wrap; }
+}

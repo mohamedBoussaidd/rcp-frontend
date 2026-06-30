@@ -1,216 +1,292 @@
-<div class="page-head" style="padding:24px 24px 0;margin-bottom:0">
-  <div>
-    <h1 class="page-head__title">Mon club</h1>
-    <p class="page-head__sub">{{ data()?.clubNom || 'Gestion des équipes et du roster' }}</p>
-  </div>
-</div>
+<div class="screen screen--admin mon-club">
 
-@if (peutGererEquipes) {
-  <div class="club-tabs" style="padding:16px 24px 0;display:flex;gap:8px">
-    <button type="button" class="club-tab" [class.club-tab--active]="onglet() === 'membres'" (click)="onglet.set('membres')">Membres &amp; équipes</button>
-    <button type="button" class="club-tab" [class.club-tab--active]="onglet() === 'roles'" (click)="onglet.set('roles')">Rôles &amp; accès</button>
+  <!-- ══ En-tête + onglets ══ -->
+  <div class="mc-head">
+    <div>
+      <h1 class="adm-head__title">Mon club</h1>
+      <p class="adm-head__sub">{{ data()?.clubNom || 'Membres, équipes et attribution des accès' }}</p>
+    </div>
+    @if (peutGererEquipes) {
+      <div class="segmented">
+        <button type="button" [class.is-active]="onglet() === 'membres'" (click)="onglet.set('membres')">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/></svg>
+          Membres &amp; équipes
+        </button>
+        <button type="button" [class.is-active]="onglet() === 'roles'" (click)="onglet.set('roles')">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 2l-2 2m-7.6 7.6a5 5 0 1 1-7 7 5 5 0 0 1 7-7zm0 0L15 8m0 0l3 3"/></svg>
+          Rôles &amp; accès
+        </button>
+      </div>
+    }
   </div>
-}
 
-@if (peutGererEquipes && onglet() === 'roles') {
-  <div class="club-content">
+  @if (peutGererEquipes && onglet() === 'roles') {
     <app-roles-acces></app-roles-acces>
-  </div>
-} @else {
-
-<div class="club-content">
-
-  @if (loading()) {
-    <p class="empty-state">Chargement…</p>
+  } @else if (loading()) {
+    <div class="card card--padded"><div class="loading">Chargement…</div></div>
   } @else {
 
-    <!-- ── Équipes (président / super-admin) ── -->
-    @if (peutGererEquipes) {
-    <mat-card>
-      <mat-card-header class="card-head">
-        <mat-card-title>Équipes ({{ equipes().length }} / {{ maxEquipes }})</mat-card-title>
-        @if (!equipesPleines()) {
-          <button class="btn btn--primary" (click)="showEquipeForm.set(!showEquipeForm())">
-            {{ showEquipeForm() ? 'Annuler' : '+ Ajouter une équipe' }}
-          </button>
-        } @else {
-          <span class="max-hint">Maximum atteint</span>
-        }
-      </mat-card-header>
-      <mat-card-content>
+    <div class="mc-stack">
 
-        @if (showEquipeForm()) {
-          <form class="inline-form" (ngSubmit)="creerEquipe()">
-            <label class="f"><span>Nom *</span>
-              <input class="param-input wide" [(ngModel)]="equipeForm.nom" name="enom" placeholder="Seniors A"></label>
-            <label class="f"><span>Catégorie</span>
-              <input class="param-input wide" [(ngModel)]="equipeForm.categorie" name="ecat" placeholder="U19, Équipe B…"></label>
-            <button type="submit" class="btn btn--primary" [disabled]="savingEquipe() || !equipeForm.nom">
-              {{ savingEquipe() ? '…' : 'Créer' }}
-            </button>
-          </form>
-        }
-
-        @if (equipes().length === 0) {
-          <p class="empty-state">Aucune équipe. Créez-en une.</p>
-        } @else {
-          <div class="equipes-grid">
-            @for (e of equipes(); track e.id) {
-              <div class="equipe-card">
-                @if (editingEquipeId() === e.id) {
-                  <input class="param-input wide" [(ngModel)]="editEquipeForm.nom" name="eqnom-{{e.id}}" placeholder="Nom">
-                  <input class="param-input wide" [(ngModel)]="editEquipeForm.categorie" name="eqcat-{{e.id}}" placeholder="Catégorie">
-                  <div class="row-actions">
-                    <button class="btn-mini" (click)="enregistrerEquipe(e)">✓ Enregistrer</button>
-                    <button class="btn-mini" (click)="annulerEditEquipe()">Annuler</button>
-                  </div>
-                } @else {
-                  <div class="equipe-head">
-                    <span class="equipe-nom">{{ e.nom }}</span>
-                    <div class="row-actions">
-                      <button class="btn-mini" (click)="editerEquipe(e)" title="Modifier">✎</button>
-                      <button class="btn-icon-danger" (click)="supprimerEquipe(e)" title="Supprimer">✕</button>
-                    </div>
-                  </div>
-                  @if (e.categorie) { <span class="equipe-cat">{{ e.categorie }}</span> }
-                  <span class="equipe-membres">{{ e.nbMembres }} membre(s)</span>
-                }
-              </div>
+      <!-- ══ Équipes ══ -->
+      @if (peutGererEquipes) {
+        <div class="card adm-card">
+          <div class="adm-card__head">
+            <div class="adm-card__titleline">
+              <h2 class="adm-card__title">Équipes</h2>
+              <span class="adm-card__count num">{{ equipes().length }} / {{ maxEquipes }}</span>
+            </div>
+            @if (!equipesPleines()) {
+              <button class="btn btn--primary btn--sm" (click)="showEquipeForm.set(!showEquipeForm())">
+                {{ showEquipeForm() ? 'Annuler' : '+ Nouvelle équipe' }}
+              </button>
+            } @else {
+              <span class="adm-badge adm-badge--warn">
+                <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                Maximum de 3 équipes atteint
+              </span>
             }
           </div>
-        }
-      </mat-card-content>
-    </mat-card>
-    }
+          <div class="adm-card__body">
+            @if (equipes().length === 0 && !showEquipeForm()) {
+              <div class="empty-state">Aucune équipe. Créez-en une.</div>
+            }
 
-    <!-- ── Membres ── -->
-    <mat-card>
-      <mat-card-header class="card-head">
-        <mat-card-title>Membres du staff ({{ membres().length }})</mat-card-title>
-        <button class="btn btn--primary" (click)="showMembreForm.set(!showMembreForm())">
-          {{ showMembreForm() ? 'Annuler' : '+ Ajouter un membre' }}
-        </button>
-      </mat-card-header>
-      <mat-card-content>
-
-        @if (showMembreForm()) {
-          <form class="member-form" (ngSubmit)="creerMembre()">
-            <div class="form-grid">
-              <label class="f"><span>Prénom *</span>
-                <input class="param-input wide" [(ngModel)]="membreForm.prenom" name="mprenom"></label>
-              <label class="f"><span>Nom *</span>
-                <input class="param-input wide" [(ngModel)]="membreForm.nom" name="mnom"></label>
-              <label class="f"><span>Email *</span>
-                <input class="param-input wide" type="email" [(ngModel)]="membreForm.email" name="memail"></label>
-              <label class="f"><span>Mot de passe *</span>
-                <input class="param-input wide" type="text" [(ngModel)]="membreForm.motDePasse" name="mmdp"></label>
-              <label class="f"><span>Rôle *</span>
-                <select class="param-input wide" [(ngModel)]="membreForm.role" name="mrole">
-                  <option value="" disabled>Choisir…</option>
-                  @for (r of rolesCreables; track r.value) {
-                    <option [value]="r.value">{{ r.label }}</option>
-                  }
-                </select></label>
-              <label class="f"><span>Spécialité</span>
-                <input class="param-input wide" [(ngModel)]="membreForm.specialite" name="mspe" placeholder="kiné, ostéo…"></label>
-              <label class="f"><span>Équipe</span>
-                <select class="param-input wide" [(ngModel)]="membreForm.equipeId" name="mequipe">
-                  <option value="">— Aucune —</option>
-                  @for (e of equipes(); track e.id) {
-                    <option [value]="e.id">{{ e.nom }}</option>
-                  }
-                </select></label>
-              @if (membreForm.role === 'JOUEUR') {
-                <label class="f"><span>Fiche joueur à lier</span>
-                  <select class="param-input wide" [(ngModel)]="membreForm.joueurId" name="mfiche">
-                    <option value="">— Aucune (à lier plus tard) —</option>
-                    @for (j of fichesLibres(); track j.id) {
-                      <option [value]="j.id">{{ j.prenom }} {{ j.nom }}</option>
-                    }
-                  </select></label>
-              }
-            </div>
-            <div class="form-actions">
-              <button type="submit" class="btn btn--primary" [disabled]="savingMembre()">
-                {{ savingMembre() ? 'Création…' : 'Créer le membre' }}
-              </button>
-            </div>
-          </form>
-        }
-
-        @if (membres().length === 0) {
-          <p class="empty-state">Aucun membre.</p>
-        } @else {
-          <div class="membres-grid">
-            @for (m of membres(); track m.id) {
-              <div class="membre-card" [class.inactif]="!m.actif">
-                <div class="membre-head">
-                  <span class="membre-nom">{{ m.prenom }} {{ m.nom }}</span>
-                  <div class="row-actions">
-                    <button class="btn-mini" (click)="editerMembre(m)" title="Modifier">✎</button>
-                    <button class="btn-icon-danger" (click)="supprimerMembre(m)" title="Retirer">✕</button>
+            @for (e of equipes(); track e.id) {
+              @if (editingEquipeId() === e.id) {
+                <div class="team-draft">
+                  <input class="input" [(ngModel)]="editEquipeForm.nom" name="eqnom-{{e.id}}" placeholder="Nom">
+                  <input class="input" [(ngModel)]="editEquipeForm.categorie" name="eqcat-{{e.id}}" placeholder="Catégorie">
+                  <button class="btn btn--primary btn--sm" (click)="enregistrerEquipe(e)">Enregistrer</button>
+                  <button class="btn btn--secondary btn--sm" (click)="annulerEditEquipe()">Annuler</button>
+                </div>
+              } @else {
+                <div class="team-row">
+                  <div class="team-row__icon">
+                    <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
                   </div>
+                  <div class="team-row__txt">
+                    <div class="team-row__name">{{ e.nom }}</div>
+                    <div class="team-row__cat">{{ e.categorie || 'Sans catégorie' }} · <span class="num">{{ e.nbMembres }}</span> membre(s)</div>
+                  </div>
+                  <button class="ic-btn" (click)="editerEquipe(e)" title="Renommer">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4z"/></svg>
+                  </button>
+                  <button class="ic-btn ic-btn--danger" (click)="supprimerEquipe(e)" title="Supprimer">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg>
+                  </button>
+                </div>
+              }
+            }
+
+            @if (showEquipeForm()) {
+              <form class="team-draft team-draft--new" (ngSubmit)="creerEquipe()">
+                <input class="input" [(ngModel)]="equipeForm.nom" name="enom" placeholder="Nom de l'équipe">
+                <input class="input" [(ngModel)]="equipeForm.categorie" name="ecat" placeholder="Catégorie (U19, Équipe B…)">
+                <button type="submit" class="btn btn--primary btn--sm" [disabled]="savingEquipe() || !equipeForm.nom">
+                  {{ savingEquipe() ? '…' : 'Enregistrer' }}
+                </button>
+                <button type="button" class="btn btn--secondary btn--sm" (click)="showEquipeForm.set(false)">Annuler</button>
+              </form>
+            }
+          </div>
+        </div>
+      }
+
+      <!-- ══ Membres ══ -->
+      <div class="card adm-card">
+        <div class="adm-card__head">
+          <div class="adm-card__titleline">
+            <h2 class="adm-card__title">Membres</h2>
+            <span class="adm-card__count"><span class="num">{{ staffCount() }}</span> staff · <span class="num">{{ joueursCount() }}</span> joueurs</span>
+          </div>
+          <button class="btn btn--primary btn--sm" (click)="showMembreForm.set(true)">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M12 5v14M5 12h14"/></svg>
+            Ajouter un membre
+          </button>
+        </div>
+        <div class="adm-card__body">
+          @if (membres().length === 0) {
+            <div class="empty-state">Aucun membre.</div>
+          }
+
+          @for (m of membres(); track m.id) {
+            <div class="member-row" [class.is-inactive]="!m.actif">
+              <div class="adm-avatar">{{ initiales(m) }}</div>
+              <div class="member-row__body">
+                <div class="member-row__top">
+                  <span class="member-row__name">{{ m.prenom }} {{ m.nom }}</span>
+                  @if (m.role === 'JOUEUR') {
+                    <span class="adm-badge adm-badge--player">JOUEUR</span>
+                  } @else {
+                    <span class="adm-badge adm-badge--staff">STAFF</span>
+                  }
+                  @if (!m.actif) { <span class="adm-badge adm-badge--off">Inactif</span> }
+                </div>
+                <div class="member-row__mail num">{{ m.email }}</div>
+                <div class="member-row__meta">
+                  <span class="adm-badge adm-badge--custom">{{ labelRole(m.role) }}</span>
+                  <span class="member-row__dim">· {{ nomEquipe(m.equipeId) }}</span>
+                  @if (m.specialite) { <span class="member-row__dim">· {{ m.specialite }}</span> }
                 </div>
 
-                @if (editingMembreId() === m.id) {
-                  <div class="membre-edit">
-                    <label class="f"><span>Rôle</span>
-                      <select class="param-input wide" [(ngModel)]="editMembreForm.role" name="mrole-{{m.id}}">
-                        @for (r of rolesCreables; track r.value) { <option [value]="r.value">{{ r.label }}</option> }
-                      </select></label>
-                    <label class="f"><span>Équipe</span>
-                      <select class="param-input wide" [(ngModel)]="editMembreForm.equipeId" name="meq-{{m.id}}">
-                        <option value="">— Aucune —</option>
-                        @for (e of equipes(); track e.id) { <option [value]="e.id">{{ e.nom }}</option> }
-                      </select></label>
-                    <label class="f"><span>Spécialité</span>
-                      <input class="param-input wide" [(ngModel)]="editMembreForm.specialite" name="mspe-{{m.id}}"></label>
-                    <label class="f check"><input type="checkbox" [(ngModel)]="editMembreForm.actif" name="mact-{{m.id}}"> <span>Compte actif</span></label>
-                    <div class="row-actions">
-                      <button class="btn-mini" (click)="enregistrerMembre(m)">✓ Enregistrer</button>
-                      <button class="btn-mini" (click)="annulerEditMembre()">Annuler</button>
+                @if (m.role === 'JOUEUR') {
+                  @if (m.joueurId) {
+                    <div class="fiche-tag fiche-tag--ok">
+                      <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 11l-3 3-2-2"/></svg>
+                      <span>Fiche reliée — {{ nomFiche(m.joueurId) }}</span>
+                      <button class="link-btn" (click)="delier(m)">Détacher</button>
                     </div>
-                  </div>
-                } @else {
-                  <span class="badge-role">{{ labelRole(m.role) }}{{ m.actif ? '' : ' · inactif' }}</span>
-                  <div class="membre-info">
-                    <span class="info-label">Email</span><span>{{ m.email }}</span>
-                    <span class="info-label">Équipe</span><span>{{ nomEquipe(m.equipeId) }}</span>
-                    @if (m.specialite) { <span class="info-label">Spécialité</span><span>{{ m.specialite }}</span> }
-                  </div>
-
-                  <!-- Liaison à une fiche joueur (comptes JOUEUR) -->
-                  @if (m.role === 'JOUEUR') {
-                    <div class="fiche-lien">
-                      @if (m.joueurId) {
-                        <span class="fiche-lien__ok">🔗 Fiche : {{ nomFiche(m.joueurId) }}</span>
-                        <button class="btn-mini" (click)="delier(m)">Détacher</button>
-                      } @else if (linkMembreId() === m.id) {
-                        <select class="param-input wide" [ngModel]="ficheChoisie()" (ngModelChange)="ficheChoisie.set($event)" name="lf-{{m.id}}">
-                          <option value="">— Choisir une fiche —</option>
-                          @for (j of fichesLibres(); track j.id) {
-                            <option [value]="j.id">{{ j.prenom }} {{ j.nom }}</option>
-                          }
-                        </select>
-                        <div class="row-actions">
-                          <button class="btn-mini" [disabled]="!ficheChoisie()" (click)="lier(m)">✓ Lier</button>
-                          <button class="btn-mini" (click)="creerEtLier(m)">+ Créer la fiche</button>
-                          <button class="btn-mini" (click)="ouvrirLien(m)">Annuler</button>
-                        </div>
-                      } @else {
-                        <span class="fiche-lien__none">Aucune fiche reliée</span>
-                        <button class="btn-mini" (click)="ouvrirLien(m)">Lier une fiche</button>
-                      }
+                  } @else {
+                    <div class="fiche-tag fiche-tag--none">
+                      <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><path d="M15 3h6v6M10 14 21 3"/></svg>
+                      <span>Aucune fiche reliée</span>
+                      <button class="link-btn link-btn--solid" (click)="ouvrirLien(m)">Relier une fiche</button>
                     </div>
                   }
                 }
               </div>
-            }
-          </div>
-        }
-      </mat-card-content>
-    </mat-card>
 
+              <div class="member-row__act">
+                <button class="ic-btn" (click)="editerMembre(m)" title="Éditer">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4z"/></svg>
+                </button>
+                <button class="ic-btn ic-btn--danger" (click)="supprimerMembre(m)" title="Retirer">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg>
+                </button>
+              </div>
+            </div>
+          }
+        </div>
+      </div>
+
+    </div>
   }
+
+  <!-- ══ Modale : création d'un membre ══ -->
+  @if (showMembreForm()) {
+    <div class="modal-scrim is-open" (click)="showMembreForm.set(false)">
+      <div class="modal modal--form" (click)="$event.stopPropagation()">
+        <div class="modal__head">
+          <h3 class="modal__title">Ajouter un membre</h3>
+          <button class="ic-btn" (click)="showMembreForm.set(false)" title="Fermer">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M18 6 6 18M6 6l12 12"/></svg>
+          </button>
+        </div>
+        <form (ngSubmit)="creerMembre()">
+          <div class="modal__body">
+            <div class="form-grid form-grid--2">
+              <div class="field"><label class="field__label">Prénom *</label><input class="input" [(ngModel)]="membreForm.prenom" name="mprenom"></div>
+              <div class="field"><label class="field__label">Nom *</label><input class="input" [(ngModel)]="membreForm.nom" name="mnom"></div>
+              <div class="field" style="grid-column:1/-1"><label class="field__label">Email *</label><input class="input" type="email" [(ngModel)]="membreForm.email" name="memail" placeholder="membre@club.fr"></div>
+              <div class="field" style="grid-column:1/-1"><label class="field__label">Mot de passe *</label><input class="input" type="text" [(ngModel)]="membreForm.motDePasse" name="mmdp"></div>
+              <div class="field"><label class="field__label">Rôle *</label>
+                <select class="select" [(ngModel)]="membreForm.role" name="mrole">
+                  <option value="" disabled>Choisir…</option>
+                  @for (r of rolesCreables; track r.value) { <option [value]="r.value">{{ r.label }}</option> }
+                </select>
+              </div>
+              <div class="field"><label class="field__label">Équipe</label>
+                <select class="select" [(ngModel)]="membreForm.equipeId" name="mequipe">
+                  <option value="">— Aucune —</option>
+                  @for (e of equipes(); track e.id) { <option [value]="e.id">{{ e.nom }}</option> }
+                </select>
+              </div>
+              <div class="field" style="grid-column:1/-1"><label class="field__label">Spécialité</label><input class="input" [(ngModel)]="membreForm.specialite" name="mspe" placeholder="ex. Préparation athlétique, Attaquant…"></div>
+              @if (membreForm.role === 'JOUEUR') {
+                <div class="field" style="grid-column:1/-1"><label class="field__label">Fiche joueur à lier</label>
+                  <select class="select" [(ngModel)]="membreForm.joueurId" name="mfiche">
+                    <option value="">— Aucune (à lier plus tard) —</option>
+                    @for (j of fichesLibres(); track j.id) { <option [value]="j.id">{{ j.prenom }} {{ j.nom }}</option> }
+                  </select>
+                </div>
+              }
+            </div>
+          </div>
+          <div class="modal__foot">
+            <button type="button" class="btn btn--secondary" (click)="showMembreForm.set(false)">Annuler</button>
+            <button type="submit" class="btn btn--primary" [disabled]="savingMembre()">{{ savingMembre() ? 'Création…' : 'Enregistrer' }}</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  }
+
+  <!-- ══ Modale : édition d'un membre ══ -->
+  @if (membreEnEdition(); as m) {
+    <div class="modal-scrim is-open" (click)="annulerEditMembre()">
+      <div class="modal modal--form" (click)="$event.stopPropagation()">
+        <div class="modal__head">
+          <h3 class="modal__title">{{ m.prenom }} {{ m.nom }}</h3>
+          <button class="ic-btn" (click)="annulerEditMembre()" title="Fermer">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M18 6 6 18M6 6l12 12"/></svg>
+          </button>
+        </div>
+        <div class="modal__body">
+          <div class="form-grid form-grid--2">
+            <div class="field"><label class="field__label">Rôle</label>
+              <select class="select" [(ngModel)]="editMembreForm.role" name="emrole">
+                @for (r of rolesCreables; track r.value) { <option [value]="r.value">{{ r.label }}</option> }
+              </select>
+            </div>
+            <div class="field"><label class="field__label">Équipe</label>
+              <select class="select" [(ngModel)]="editMembreForm.equipeId" name="emeq">
+                <option value="">— Aucune —</option>
+                @for (e of equipes(); track e.id) { <option [value]="e.id">{{ e.nom }}</option> }
+              </select>
+            </div>
+            <div class="field" style="grid-column:1/-1"><label class="field__label">Spécialité</label><input class="input" [(ngModel)]="editMembreForm.specialite" name="emspe"></div>
+            <label class="check-row" style="grid-column:1/-1">
+              <input type="checkbox" [(ngModel)]="editMembreForm.actif" name="emact">
+              <span>Compte actif</span>
+            </label>
+          </div>
+        </div>
+        <div class="modal__foot">
+          <button type="button" class="btn btn--secondary" (click)="annulerEditMembre()">Annuler</button>
+          <button type="button" class="btn btn--primary" (click)="enregistrerMembre(m)">Enregistrer</button>
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- ══ Modale : relier une fiche joueur ══ -->
+  @if (membreEnLien(); as m) {
+    <div class="modal-scrim is-open" (click)="ouvrirLien(m)">
+      <div class="modal modal--narrow" (click)="$event.stopPropagation()">
+        <div class="modal__head">
+          <div>
+            <h3 class="modal__title">Relier une fiche joueur</h3>
+            <p class="adm-card__sub">Compte de {{ m.prenom }} {{ m.nom }}</p>
+          </div>
+          <button class="ic-btn" (click)="ouvrirLien(m)" title="Fermer">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M18 6 6 18M6 6l12 12"/></svg>
+          </button>
+        </div>
+        <div class="modal__body">
+          @if (fichesLibres().length > 0) {
+            <div class="pick-list">
+              @for (j of fichesLibres(); track j.id) {
+                <div class="fiche-pick">
+                  <div class="fiche-pick__av">{{ (j.prenom[0] || '') + (j.nom[0] || '') }}</div>
+                  <div class="fiche-pick__txt">
+                    <div class="fiche-pick__name">{{ j.prenom }} {{ j.nom }}</div>
+                    <div class="fiche-pick__pos">{{ j.postePrincipal || 'Fiche libre' }}</div>
+                  </div>
+                  <button class="btn btn--sm fiche-pick__btn" (click)="ficheChoisie.set(j.id); lier(m)">Relier</button>
+                </div>
+              }
+            </div>
+          } @else {
+            <div class="empty-state" style="padding:24px 0">Aucune fiche libre disponible.</div>
+          }
+          <button class="btn btn--full create-fiche" (click)="creerEtLier(m)">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 5v14M5 12h14"/></svg>
+            Créer une fiche et relier
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+
 </div>
-}

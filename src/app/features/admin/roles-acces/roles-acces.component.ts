@@ -50,10 +50,38 @@ export class RolesAccesComponent implements OnInit {
   permSel = signal<Set<string>>(new Set());
   savingRole = signal(false);
 
+  /** Filtre de recherche dans la matrice de permissions (habillage). */
+  permSearch = signal('');
+  readonly nbPermSel = computed(() => this.permSel().size);
+
+  /** Modules filtrés par la recherche (ne masque pas la sélection sous-jacente). */
+  readonly modulesAffiches = computed<ModuleGroup[]>(() => {
+    const q = this.permSearch().trim().toLowerCase();
+    const base = this.modules();
+    if (!q) return base;
+    return base
+      .map(g => ({ module: g.module, perms: g.perms.filter(p => p.libelle.toLowerCase().includes(q)) }))
+      .filter(g => g.perms.length > 0);
+  });
+
+  moduleSelCount(g: ModuleGroup): number { return g.perms.filter(p => this.permSel().has(p.code)).length; }
+  moduleAllChecked(g: ModuleGroup): boolean { return g.perms.length > 0 && g.perms.every(p => this.permSel().has(p.code)); }
+  toggleModule(g: ModuleGroup): void {
+    const all = this.moduleAllChecked(g);
+    this.permSel.update(s => {
+      const n = new Set(s);
+      for (const p of g.perms) { all ? n.delete(p.code) : n.add(p.code); }
+      return n;
+    });
+  }
+
   // ── Attribution de rôles à un membre ──
   membreEditId = signal<string | null>(null);
   rolesSel = signal<Set<string>>(new Set());
   savingAffectation = signal(false);
+
+  /** Membre dont la modale d'attribution est ouverte. */
+  readonly membreEnEdition = computed(() => this.staff().find(m => m.id === this.membreEditId()) ?? null);
 
   ngOnInit(): void {
     this.rolesSvc.catalogue().subscribe({ next: c => this.catalogue.set(c) });
@@ -81,18 +109,23 @@ export class RolesAccesComponent implements OnInit {
 
   rolesDuMembre(m: Membre): Affectation[] { return this.affs()[m.id] ?? []; }
 
+  /** Initiales pour l'avatar (habillage). */
+  initiales(m: Membre): string { return ((m.prenom?.[0] ?? '') + (m.nom?.[0] ?? '')).toUpperCase(); }
+
   // ─────────────── Rôles custom ───────────────
 
   nouveauRole(): void {
     this.roleEditId.set('new');
     this.roleLibelle.set('');
     this.permSel.set(new Set());
+    this.permSearch.set('');
   }
 
   editerRole(r: RoleDef): void {
     this.roleEditId.set(r.id);
     this.roleLibelle.set(r.libelle);
     this.permSel.set(new Set(r.permissions));
+    this.permSearch.set('');
   }
 
   annulerRole(): void { this.roleEditId.set(null); }
