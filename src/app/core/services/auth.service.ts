@@ -46,14 +46,21 @@ export class AuthService {
    */
   readonly permissions = signal<string[]>([]);
 
+  /**
+   * Modules ACTIFS du club pour le contexte actif (couche packs / abonnement). Pilote le masquage
+   * des écrans et entrées de menu des modules non souscrits — la sécurité reste côté backend (403).
+   * SUPER_ADMIN reçoit tous les modules.
+   */
+  readonly modules = signal<string[]>([]);
+
   constructor() {
-    // (Re)charge les permissions au boot et à chaque changement de contexte (club/équipe),
-    // car elles sont scopées par équipe. L'effect est asynchrone → pas de cycle DI avec
-    // l'interceptor de contexte qui injecte AuthService.
+    // (Re)charge permissions ET modules actifs au boot et à chaque changement de contexte
+    // (club/équipe), car ils sont scopés par club/équipe. L'effect est asynchrone → pas de cycle DI
+    // avec l'interceptor de contexte qui injecte AuthService.
     effect(() => {
       this.contexte.clubActif();
       this.contexte.equipesActives();
-      if (this.isAuthenticated()) this.loadPermissions();
+      if (this.isAuthenticated()) { this.loadPermissions(); this.loadModules(); }
     });
     // Rafraîchit le profil (dont le rôle « principal ») au démarrage : un admin a pu changer le
     // rôle pendant que l'utilisateur était déconnecté. Différé (microtask) pour éviter le cycle DI.
@@ -62,7 +69,7 @@ export class AuthService {
 
   login(email: string, motDePasse: string): Observable<LoginResponse> {
     return this.http.post<LoginResponse>(`${this.base}/login`, { email, motDePasse }).pipe(
-      tap(res => { this.store(res); this.loadPermissions(); })
+      tap(res => { this.store(res); this.loadPermissions(); this.loadModules(); })
     );
   }
 
@@ -71,6 +78,7 @@ export class AuthService {
     localStorage.removeItem(AuthService.USER_KEY);
     this.currentUser.set(null);
     this.permissions.set([]);
+    this.modules.set([]);
     // Purge le contexte de navigation (club/équipes) : sinon le contexte d'un compte précédent
     // (ex. super-admin entré dans un club démo) « fuite » sur la session suivante.
     this.contexte.reinitialiser();
@@ -82,6 +90,14 @@ export class AuthService {
     this.http.get<string[]>('/api/me/permissions').subscribe({
       next: perms => this.permissions.set(perms),
       error: () => this.permissions.set([]),
+    });
+  }
+
+  /** Recharge les modules actifs du club (pour le contexte actif). */
+  loadModules(): void {
+    this.http.get<string[]>('/api/me/modules').subscribe({
+      next: mods => this.modules.set(mods),
+      error: () => this.modules.set([]),
     });
   }
 
@@ -113,6 +129,16 @@ export class AuthService {
   /** Possède-t-il la permission (code `module:action`) dans le contexte actif ? */
   has(code: string): boolean {
     return this.permissions().includes(code);
+  }
+
+  /**
+   * Le club a-t-il le MODULE fonctionnel activé (couche pack/abonnement) ? Ex. {@code gps},
+   * {@code medical}, {@code presence}. Tant que la liste n'est pas chargée, on renvoie true
+   * (fail-open) pour ne pas masquer l'UI à tort au boot : le backend reste seul juge (403).
+   */
+  hasModule(code: string): boolean {
+    const mods = this.modules();
+    return mods.length === 0 || mods.includes(code);
   }
 
   /** Droits par module — miroir EXACT des règles backend (hasAuthority). */

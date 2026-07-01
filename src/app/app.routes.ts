@@ -3,6 +3,7 @@ import { authGuard } from '@core/guards/auth.guard';
 import { roleGuard } from '@core/guards/role.guard';
 import { contexteGuard } from '@core/guards/contexte.guard';
 import { saisonGuard } from '@core/guards/saison.guard';
+import { moduleGuard } from '@core/guards/module.guard';
 import { Role } from '@core/services/auth.service';
 
 // Groupes de rôles alignés sur la sidebar (nav-sidebar.component.ts) et la
@@ -30,11 +31,15 @@ export const routes: Routes = [
     loadComponent: () => import('./features/admin/roles-globaux/roles-globaux.component').then(m => m.RolesGlobauxComponent)
   },
   {
+    path: 'admin/abonnements', canActivate: [authGuard, roleGuard], data: { roles: ['SUPER_ADMIN'] },
+    loadComponent: () => import('./features/admin/abonnements/abonnements.component').then(m => m.AbonnementsComponent)
+  },
+  {
     path: 'mon-club', canActivate: [authGuard, roleGuard], data: { roles: ['PRESIDENT', 'ENTRAINEUR', 'SUPER_ADMIN'], perms: ['club:manage', 'membres:manage'] },
     loadComponent: () => import('./features/admin/mon-club/mon-club.component').then(m => m.MonClubComponent)
   },
   {
-    path: 'medical', canActivate: [authGuard, roleGuard, contexteGuard, saisonGuard], data: { roles: ['ENTRAINEUR', 'PREPARATEUR', 'MEDICAL', 'PRESIDENT', 'SUPER_ADMIN'] },
+    path: 'medical', canActivate: [authGuard, roleGuard, contexteGuard, saisonGuard, moduleGuard], data: { roles: ['ENTRAINEUR', 'PREPARATEUR', 'MEDICAL', 'PRESIDENT', 'SUPER_ADMIN'], module: 'medical' },
     loadComponent: () => import('./features/medical/medical.component').then(m => m.MedicalComponent)
   },
   {
@@ -46,12 +51,14 @@ export const routes: Routes = [
     path: 'joueur', canActivate: [authGuard, roleGuard], data: { roles: ['JOUEUR'] },
     loadChildren: () => import('./features/joueur-mobile/joueur.routes').then(m => m.default)
   },
+  // Suivi subjectif (wellness / sRPE) : rangé côté PRÉPA (module wellness), plus derrière une
+  // permission GPS. Accès staff physique + joueur ; gaté par le module « Ressenti & RPE ».
   {
-    path: 'suivi-subjectif', canActivate: [authGuard, roleGuard, contexteGuard, saisonGuard], data: { roles: [...STAFF_PHYSIQUE, 'JOUEUR'], perms: PERMS_GPS },
+    path: 'suivi-subjectif', canActivate: [authGuard, roleGuard, contexteGuard, saisonGuard, moduleGuard], data: { roles: [...STAFF_PHYSIQUE, 'JOUEUR'], module: 'wellness' },
     loadComponent: () => import('./features/suivi-subjectif/suivi-subjectif.component').then(m => m.SuiviSubjectifComponent)
   },
   {
-    path: 'mes-blessures', canActivate: [authGuard, roleGuard], data: { roles: ['JOUEUR'] },
+    path: 'mes-blessures', canActivate: [authGuard, roleGuard, moduleGuard], data: { roles: ['JOUEUR'], module: 'medical' },
     loadComponent: () => import('./features/mes-blessures/mes-blessures.component').then(m => m.MesBlessuresComponent)
   },
   {
@@ -59,7 +66,7 @@ export const routes: Routes = [
     loadComponent: () => import('@shared/components/rechargement/rechargement.component').then(m => m.RechargementComponent)
   },
   {
-    path: 'planning-technique', canActivate: [authGuard, roleGuard, contexteGuard, saisonGuard], data: { roles: ['ENTRAINEUR', 'SUPER_ADMIN'], perms: PERMS_TACTIQUE },
+    path: 'planning-technique', canActivate: [authGuard, roleGuard, contexteGuard, saisonGuard, moduleGuard], data: { roles: ['ENTRAINEUR', 'SUPER_ADMIN'], perms: PERMS_TACTIQUE, modulesAny: ['tactique', 'match', 'diaporama'] },
     loadComponent: () => import('./features/tactical/planning-technique.component').then(m => m.PlanningTechniqueComponent)
   },
   {
@@ -71,28 +78,28 @@ export const routes: Routes = [
     loadComponent: () => import('./features/joueur/joueur-detail/joueur-detail.component').then(m => m.JoueurDetailComponent)
   },
   {
-    path: 'import', canActivate: [authGuard, roleGuard, contexteGuard, saisonGuard], data: { roles: ['SUPER_ADMIN', 'PREPARATEUR'], perms: ['gps:import'] },
+    path: 'import', canActivate: [authGuard, roleGuard, contexteGuard, saisonGuard, moduleGuard], data: { roles: ['SUPER_ADMIN', 'PREPARATEUR'], perms: ['gps:import'], module: 'gps' },
     loadComponent: () => import('./features/performance/import/import.component').then(m => m.ImportComponent)
   },
   {
-    path: 'vue-seance', canActivate: [authGuard, roleGuard, contexteGuard, saisonGuard], data: { roles: STAFF_PHYSIQUE, perms: PERMS_GPS },
+    path: 'vue-seance', canActivate: [authGuard, roleGuard, contexteGuard, saisonGuard, moduleGuard], data: { roles: STAFF_PHYSIQUE, perms: PERMS_GPS, module: 'gps' },
     loadComponent: () => import('./features/performance/vue-seance/vue-seance.component').then(m => m.VueSeanceComponent)
   },
   {
-    path: 'etat-effectif', canActivate: [authGuard, roleGuard, contexteGuard, saisonGuard], data: { roles: STAFF_PHYSIQUE, perms: PERMS_GPS },
+    path: 'etat-effectif', canActivate: [authGuard, roleGuard, contexteGuard, saisonGuard, moduleGuard], data: { roles: STAFF_PHYSIQUE, perms: PERMS_GPS, module: 'prepa_physique' },
     loadComponent: () => import('./features/performance/etat-effectif/etat-effectif.component').then(m => m.EtatEffectifComponent)
   },
   {
-    path: 'charge-equipe', canActivate: [authGuard, roleGuard, contexteGuard, saisonGuard], data: { roles: STAFF_PHYSIQUE, perms: PERMS_GPS },
+    path: 'charge-equipe', canActivate: [authGuard, roleGuard, contexteGuard, saisonGuard, moduleGuard], data: { roles: STAFF_PHYSIQUE, perms: PERMS_GPS, module: 'gps' },
     loadComponent: () => import('./features/performance/charge-equipe/charge-equipe.component').then(m => m.ChargeEquipeComponent)
   },
   {
-    path: 'presence', canActivate: [authGuard, roleGuard, contexteGuard, saisonGuard],
-    data: { roles: ['SUPER_ADMIN', 'PRESIDENT', 'ENTRAINEUR', 'PREPARATEUR'], perms: ['presence:write'] },
+    path: 'presence', canActivate: [authGuard, roleGuard, contexteGuard, saisonGuard, moduleGuard],
+    data: { roles: ['SUPER_ADMIN', 'PRESIDENT', 'ENTRAINEUR', 'PREPARATEUR'], perms: ['presence:write'], module: 'presence' },
     loadComponent: () => import('./features/performance/historique-presence/historique-presence.component').then(m => m.HistoriquePresenceComponent)
   },
   {
-    path: 'vue-seance/:id', canActivate: [authGuard, roleGuard, contexteGuard, saisonGuard], data: { roles: STAFF_PHYSIQUE, perms: PERMS_GPS },
+    path: 'vue-seance/:id', canActivate: [authGuard, roleGuard, contexteGuard, saisonGuard, moduleGuard], data: { roles: STAFF_PHYSIQUE, perms: PERMS_GPS, module: 'gps' },
     loadComponent: () => import('./features/performance/vue-seance/vue-seance.component').then(m => m.VueSeanceComponent)
   },
   {
@@ -100,7 +107,7 @@ export const routes: Routes = [
     loadComponent: () => import('./features/calendrier/calendrier.component').then(m => m.CalendrierComponent)
   },
   {
-    path: 'pesees', canActivate: [authGuard, roleGuard, contexteGuard, saisonGuard], data: { roles: STAFF_PHYSIQUE, perms: PERMS_GPS },
+    path: 'pesees', canActivate: [authGuard, roleGuard, contexteGuard, saisonGuard, moduleGuard], data: { roles: STAFF_PHYSIQUE, perms: PERMS_GPS, module: 'pesees' },
     loadComponent: () => import('./features/performance/pesees/pesees.component').then(m => m.PeseesComponent)
   },
   {
@@ -132,11 +139,11 @@ export const routes: Routes = [
     loadComponent: () => import('./features/admin/parametres/parametres.component').then(m => m.ParametresComponent)
   },
   {
-    path: 'methodologie', canActivate: [authGuard, roleGuard, contexteGuard, saisonGuard], data: { roles: STAFF_PHYSIQUE, perms: PERMS_GPS },
+    path: 'methodologie', canActivate: [authGuard, roleGuard, contexteGuard, saisonGuard, moduleGuard], data: { roles: STAFF_PHYSIQUE, perms: PERMS_GPS, module: 'prepa_physique' },
     loadComponent: () => import('./features/admin/methodologie/methodologie.component').then(m => m.MethodologieComponent)
   },
   {
-    path: 'parametres-notifications', canActivate: [authGuard, roleGuard, contexteGuard], data: { roles: STAFF },
+    path: 'parametres-notifications', canActivate: [authGuard, roleGuard, contexteGuard, moduleGuard], data: { roles: STAFF, module: 'notifications' },
     loadComponent: () => import('./features/admin/parametres-notifications/parametres-notifications.component').then(m => m.ParametresNotificationsComponent)
   },
 

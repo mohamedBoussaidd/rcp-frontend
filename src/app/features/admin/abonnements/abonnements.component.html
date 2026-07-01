@@ -1,0 +1,160 @@
+<div class="ab">
+
+  <!-- En-tête -->
+  <div class="ab-head">
+    <div>
+      <p class="ab-kicker">Administration commerciale</p>
+      <h1 class="ab-title">Packs &amp; modules</h1>
+      <p class="ab-sub">Définis les offres (avec leur prix) et attribue à chaque club son pack + ses options.</p>
+    </div>
+    <button class="btn btn--primary" (click)="ouvrirNouveauPack()">+ Nouveau pack</button>
+  </div>
+
+  @if (loading()) {
+    <div class="ab-loading">Chargement…</div>
+  } @else {
+
+    <!-- ══ Catalogue des packs ══ -->
+    <section class="ab-section">
+      <h2 class="ab-section__title">Catalogue des packs</h2>
+      <div class="ab-packs">
+        @for (p of packs(); track p.code) {
+          <div class="ab-pack">
+            <div class="ab-pack__top">
+              <div>
+                <div class="ab-pack__name">{{ p.libelle }}
+                  @if (p.predefini) { <span class="badge ab-badge--pre">Prédéfini</span> }
+                  @if (!p.actif) { <span class="badge ab-badge--off">Inactif</span> }
+                </div>
+                @if (p.description) { <div class="ab-pack__desc">{{ p.description }}</div> }
+              </div>
+              <div class="ab-pack__price">
+                @if (p.prixMensuel != null) { {{ p.prixMensuel }} €<small>/mois</small> }
+                @else { <span class="ab-pack__noprice">Prix non défini</span> }
+              </div>
+            </div>
+            <div class="ab-pack__mods">
+              @for (code of p.modules; track code) {
+                <span class="ab-chip">{{ libelleModule(code) }}</span>
+              }
+              @if (p.modules.length === 0) { <span class="ab-pack__nomods">Socle uniquement</span> }
+            </div>
+            <div class="ab-pack__actions">
+              <button class="btn btn--sm" (click)="ouvrirEditionPack(p)">Éditer</button>
+              @if (!p.predefini) {
+                <button class="btn btn--sm ab-btn--danger" (click)="supprimerPack(p)">Supprimer</button>
+              }
+            </div>
+          </div>
+        }
+      </div>
+    </section>
+
+    <!-- ══ Attribution par club ══ -->
+    <section class="ab-section">
+      <h2 class="ab-section__title">Clubs</h2>
+      <div class="ab-clubs">
+        @for (c of clubs(); track c.id) {
+          <div class="ab-club">
+            <div class="ab-club__row">
+              <div class="ab-club__id">
+                <span class="ab-avatar">{{ (c.nom || '?').substring(0, 2).toUpperCase() }}</span>
+                <div>
+                  <div class="ab-club__name">{{ c.nom }}</div>
+                  <div class="ab-club__meta">Pack : <strong>{{ libellePack(abonnement(c.id)?.packCode) }}</strong></div>
+                </div>
+              </div>
+              <div class="ab-club__act">
+                <label class="ab-field">
+                  <span>Pack</span>
+                  <select [ngModel]="abonnement(c.id)?.packCode ?? ''" (ngModelChange)="changerPack(c.id, $event)"
+                          (click)="toggleClub(c); $event.stopPropagation()">
+                    @for (p of packs(); track p.code) { <option [value]="p.code">{{ p.libelle }}</option> }
+                  </select>
+                </label>
+                <button class="btn btn--sm" (click)="toggleClub(c)">
+                  {{ clubOuvert() === c.id ? 'Masquer' : 'Modules' }}
+                </button>
+              </div>
+            </div>
+
+            @if (clubOuvert() === c.id) {
+              @if (abonnement(c.id); as ab) {
+                <div class="ab-matrix">
+                  @for (m of ab.modules; track m.code) {
+                    @if (m.socle) {
+                      <div class="ab-mod ab-mod--socle" [title]="m.description">
+                        <span class="ab-mod__name">{{ m.libelle }}</span>
+                        <span class="ab-mod__src">Socle</span>
+                      </div>
+                    } @else {
+                      <button class="ab-mod" [class.on]="m.actif" [title]="m.description"
+                              (click)="toggleModule(c.id, m.code, !m.actif)">
+                        <span class="ab-mod__name">{{ m.libelle }}</span>
+                        <span class="ab-mod__src ab-src--{{ m.source | lowercase }}">{{ sourceLabel(m.source) }}</span>
+                      </button>
+                    }
+                  }
+                </div>
+                <p class="ab-hint">Un clic active/désactive le module pour ce club. « Ajout » / « Retiré » = surcharge manuelle par-dessus le pack.</p>
+              } @else {
+                <div class="ab-loading ab-loading--sm">Chargement de l'abonnement…</div>
+              }
+            }
+          </div>
+        }
+      </div>
+    </section>
+  }
+
+  <!-- ══ Modale pack ══ -->
+  @if (showPackForm()) {
+    <div class="ab-overlay" (click)="fermerPackForm()">
+      <div class="ab-modal" (click)="$event.stopPropagation()">
+        <div class="ab-modal__head">
+          <h3>{{ editingPackCode() ? 'Modifier le pack' : 'Nouveau pack' }}</h3>
+          <button class="ab-modal__close" (click)="fermerPackForm()">×</button>
+        </div>
+        <div class="ab-modal__body">
+          <div class="ab-form2">
+            <label class="ab-field">
+              <span>Libellé</span>
+              <input type="text" [(ngModel)]="packForm.libelle" maxlength="120" placeholder="Ex. Prépa + GPS">
+            </label>
+            <label class="ab-field">
+              <span>Prix mensuel (€)</span>
+              <input type="number" min="0" step="1" [(ngModel)]="packForm.prixMensuel" placeholder="Non défini">
+            </label>
+          </div>
+          <label class="ab-field">
+            <span>Description</span>
+            <textarea rows="2" [(ngModel)]="packForm.description" placeholder="À qui s'adresse ce pack…"></textarea>
+          </label>
+          <label class="ab-check">
+            <input type="checkbox" [(ngModel)]="packForm.actif"> Pack actif (proposable)
+          </label>
+
+          <p class="ab-form__lbl">Modules inclus</p>
+          <div class="ab-picklist">
+            @for (m of activables(); track m.code) {
+              <button type="button" class="ab-pick" [class.on]="packForm.modules.has(m.code)"
+                      [title]="m.description" (click)="togglePackModule(m.code)">
+                <span class="ab-pick__check">{{ packForm.modules.has(m.code) ? '✓' : '' }}</span>
+                <span>{{ m.libelle }}</span>
+              </button>
+            }
+          </div>
+          <p class="ab-hint">Les modules socle (planning, effectif, administration) sont toujours inclus.
+            La Préparation physique exige au moins le Ressenti/RPE ou le GPS.</p>
+        </div>
+        <div class="ab-modal__foot">
+          <button class="btn" (click)="fermerPackForm()">Annuler</button>
+          <button class="btn btn--primary" [disabled]="savingPack()" (click)="enregistrerPack()">
+            {{ savingPack() ? 'Enregistrement…' : 'Enregistrer' }}
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+
+</div>

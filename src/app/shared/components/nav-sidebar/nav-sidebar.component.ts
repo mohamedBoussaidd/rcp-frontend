@@ -25,6 +25,7 @@ interface SubNavItem {
   default?: boolean;     // sous-item actif quand aucune section n'est précisée
   roles?: Role[];
   perms?: string[];      // visible AUSSI si l'utilisateur détient une de ces permissions (multi-rôle)
+  module?: string;       // masqué si ce MODULE fonctionnel n'est pas actif pour le club (pack)
   disabled?: boolean;
 }
 
@@ -38,6 +39,8 @@ interface NavModule {
   matches: string[];         // préfixes d'URL qui activent ce module
   roles: Role[];
   perms?: string[];          // visible AUSSI via permission (union multi-rôle)
+  module?: string;           // masqué si ce MODULE n'est pas actif (couche pack/abonnement)
+  modulesAny?: string[];     // conteneur : visible si AU MOINS un de ces modules est actif
   subnav: SubNavItem[];
 }
 
@@ -54,32 +57,33 @@ const ALL_MODULES: NavModule[] = [
     roles: ['SUPER_ADMIN', 'PRESIDENT', 'ENTRAINEUR', 'PREPARATEUR', 'MEDICAL', 'JOUEUR'],
     subnav: [
       { label: 'Séances',          link: '/calendrier' },
-      { label: 'Schémas',          link: '/planning-technique', section: 'schemas',   roles: ['SUPER_ADMIN', 'ENTRAINEUR'], perms: ['schemas:write'] },
-      { label: 'Exercices',        link: '/planning-technique', section: 'exercices', default: true, roles: ['SUPER_ADMIN', 'ENTRAINEUR'], perms: ['exercices:write'] },
-      { label: 'Plan de jeu',      link: '/planning-technique', section: 'planjeu',   roles: ['SUPER_ADMIN', 'ENTRAINEUR'], perms: ['plandejeu:write'] },
-      { label: 'Match',            link: '/planning-technique', section: 'match',     roles: ['SUPER_ADMIN', 'ENTRAINEUR'], perms: ['matchs:write'] },
-      { label: 'Diaporama',        link: '/planning-technique', section: 'diaporama', roles: ['SUPER_ADMIN', 'ENTRAINEUR', 'PREPARATEUR'], perms: ['diaporama:write'] },
+      { label: 'Schémas',          link: '/planning-technique', section: 'schemas',   roles: ['SUPER_ADMIN', 'ENTRAINEUR'], perms: ['schemas:write'], module: 'tactique' },
+      { label: 'Exercices',        link: '/planning-technique', section: 'exercices', default: true, roles: ['SUPER_ADMIN', 'ENTRAINEUR'], perms: ['exercices:write'], module: 'tactique' },
+      { label: 'Plan de jeu',      link: '/planning-technique', section: 'planjeu',   roles: ['SUPER_ADMIN', 'ENTRAINEUR'], perms: ['plandejeu:write'], module: 'tactique' },
+      { label: 'Match',            link: '/planning-technique', section: 'match',     roles: ['SUPER_ADMIN', 'ENTRAINEUR'], perms: ['matchs:write'], module: 'match' },
+      { label: 'Diaporama',        link: '/planning-technique', section: 'diaporama', roles: ['SUPER_ADMIN', 'ENTRAINEUR', 'PREPARATEUR'], perms: ['diaporama:write'], module: 'diaporama' },
       { label: 'Saisons',          link: '/saisons', roles: ['SUPER_ADMIN', 'PRESIDENT', 'ENTRAINEUR', 'PREPARATEUR'], perms: ['saison:manage'] },
       { label: 'Modèles de semaine', link: '/modeles-semaine', roles: ['SUPER_ADMIN', 'PRESIDENT', 'ENTRAINEUR', 'PREPARATEUR'], perms: ['seances:write'] },
       { label: 'Comparaison saisons', link: '/comparaison-saisons', roles: ['SUPER_ADMIN', 'PRESIDENT', 'ENTRAINEUR', 'PREPARATEUR', 'MEDICAL'] },
     ],
   },
   {
-    key: 'gps', label: 'Performance', icon: 'fitness_center',
+    key: 'performance', label: 'Performance', icon: 'fitness_center',
     link: '/vue-seance', matches: ['/vue-seance', '/etat-effectif', '/charge-equipe', '/suivi-subjectif', '/pesees', '/import', '/methodologie', '/parametres'],
     roles: ['SUPER_ADMIN', 'PRESIDENT', 'PREPARATEUR', 'MEDICAL'],
     perms: ['pesees:write', 'gps:import'],
+    modulesAny: ['gps', 'prepa_physique', 'wellness', 'pesees'],
     subnav: [
-      { label: 'État de l\'effectif', link: '/etat-effectif' },
-      { label: 'Charge d\'entrainement', link: '/charge-equipe' },
-      { label: 'Vue séance',        link: '/vue-seance' },
-      { label: 'RPE/sRPE',   link: '/suivi-subjectif' },
+      { label: 'État de l\'effectif', link: '/etat-effectif', module: 'prepa_physique' },
+      { label: 'Charge d\'entrainement', link: '/charge-equipe', module: 'gps' },
+      { label: 'Vue séance',        link: '/vue-seance', module: 'gps' },
+      { label: 'RPE/sRPE',   link: '/suivi-subjectif', module: 'wellness' },
       // { label: 'Comparaison',       link: '/vue-seance', section: 'comparaison', disabled: true },
       // { label: 'Historique joueur', link: '/vue-seance', section: 'historique', disabled: true },
-      { label: 'Pesées',            link: '/pesees',       roles: ['SUPER_ADMIN', 'PRESIDENT', 'PREPARATEUR', 'MEDICAL'], perms: ['pesees:write'] },
+      { label: 'Pesées',            link: '/pesees',       roles: ['SUPER_ADMIN', 'PRESIDENT', 'PREPARATEUR', 'MEDICAL'], perms: ['pesees:write'], module: 'pesees' },
       { label: 'Paramètres',        link: '/parametres',   roles: ['SUPER_ADMIN', 'PRESIDENT', 'PREPARATEUR'], perms: ['configuration:write'] },
-      { label: 'Import GPS',      link: '/import',       roles: ['SUPER_ADMIN', 'PREPARATEUR'], perms: ['gps:import'] },
-      { label: 'Méthodologie',      link: '/methodologie', roles: ['SUPER_ADMIN', 'PRESIDENT', 'PREPARATEUR', 'MEDICAL'] },
+      { label: 'Import GPS',      link: '/import',       roles: ['SUPER_ADMIN', 'PREPARATEUR'], perms: ['gps:import'], module: 'gps' },
+      { label: 'Méthodologie',      link: '/methodologie', roles: ['SUPER_ADMIN', 'PRESIDENT', 'PREPARATEUR', 'MEDICAL'], module: 'prepa_physique' },
     ],
   },
   {
@@ -87,19 +91,21 @@ const ALL_MODULES: NavModule[] = [
     link: '/presence', matches: ['/presence'],
     roles: ['SUPER_ADMIN', 'PRESIDENT', 'ENTRAINEUR', 'PREPARATEUR'],
     perms: ['presence:write'],
+    module: 'presence',
     subnav: [],
   },
   {
     key: 'medical', label: 'Médical', icon: 'healing',
     link: '/medical', query: { section: 'alertes' }, matches: ['/medical', '/mon-espace', '/suivi-subjectif', '/mes-blessures'],
     roles: ['SUPER_ADMIN', 'PRESIDENT', 'ENTRAINEUR', 'PREPARATEUR', 'MEDICAL', 'JOUEUR'],
+    module: 'medical',
     subnav: [
-      { label: 'Alertes',                       link: '/medical', section: 'alertes', default: true, roles: ['SUPER_ADMIN', 'PRESIDENT', 'ENTRAINEUR', 'PREPARATEUR', 'MEDICAL'] },
-      { label: 'Blessures',                     link: '/medical', section: 'blessures', roles: ['SUPER_ADMIN', 'PRESIDENT', 'ENTRAINEUR', 'PREPARATEUR', 'MEDICAL'] },
-      { label: 'Bilan blessures',               link: '/medical', section: 'bilan', roles: ['SUPER_ADMIN', 'PRESIDENT', 'ENTRAINEUR', 'PREPARATEUR', 'MEDICAL'] },
-      { label: 'Documents',                     link: '/medical', section: 'documents', roles: ['SUPER_ADMIN', 'PRESIDENT', 'ENTRAINEUR', 'PREPARATEUR', 'MEDICAL'] },
-      { label: 'Mon suivi',                     link: '/suivi-subjectif', roles: ['JOUEUR'] },
-      { label: 'Mes blessures',                 link: '/mes-blessures', roles: ['JOUEUR'] },
+      { label: 'Alertes',                       link: '/medical', section: 'alertes', default: true, roles: ['SUPER_ADMIN', 'PRESIDENT', 'ENTRAINEUR', 'PREPARATEUR', 'MEDICAL'], module: 'medical' },
+      { label: 'Blessures',                     link: '/medical', section: 'blessures', roles: ['SUPER_ADMIN', 'PRESIDENT', 'ENTRAINEUR', 'PREPARATEUR', 'MEDICAL'], module: 'medical' },
+      { label: 'Bilan blessures',               link: '/medical', section: 'bilan', roles: ['SUPER_ADMIN', 'PRESIDENT', 'ENTRAINEUR', 'PREPARATEUR', 'MEDICAL'], module: 'medical' },
+      { label: 'Documents',                     link: '/medical', section: 'documents', roles: ['SUPER_ADMIN', 'PRESIDENT', 'ENTRAINEUR', 'PREPARATEUR', 'MEDICAL'], module: 'medical' },
+      { label: 'Mon suivi',                     link: '/suivi-subjectif', roles: ['JOUEUR'], module: 'wellness' },
+      { label: 'Mes blessures',                 link: '/mes-blessures', roles: ['JOUEUR'], module: 'medical' },
       { label: 'Mon espace',                    link: '/mon-espace', roles: ['JOUEUR'] },
     ],
   },
@@ -111,6 +117,7 @@ const ALL_MODULES: NavModule[] = [
     perms: ['club:manage', 'membres:manage'],
     subnav: [
       { label: 'Clubs',          link: '/admin/clubs', roles: ['SUPER_ADMIN'] },
+      { label: 'Packs & modules', link: '/admin/abonnements', roles: ['SUPER_ADMIN'] },
       { label: 'Rôles globaux',  link: '/admin/roles-globaux', roles: ['SUPER_ADMIN'] },
       { label: 'Comptes du club', link: '/mon-club',   roles: ['SUPER_ADMIN'] },
       { label: 'Mon club',       link: '/mon-club',    roles: ['PRESIDENT', 'ENTRAINEUR'], perms: ['club:manage', 'membres:manage'] },
@@ -163,22 +170,55 @@ export class NavSidebarComponent {
     return byRole || byPerm;
   }
 
+  /**
+   * Visible du point de vue MODULE (couche pack/abonnement) : `module` = ce module doit être actif ;
+   * `modulesAny` = au moins un des modules doit l'être (conteneurs mixtes comme « Performance »).
+   * Sans contrainte de module → toujours visible.
+   */
+  private moduleVisible(module?: string, modulesAny?: string[]): boolean {
+    if (module && !this.auth.hasModule(module)) return false;
+    if (modulesAny && !modulesAny.some(m => this.auth.hasModule(m))) return false;
+    return true;
+  }
+
   readonly navModules = computed<NavModule[]>(() => {
     const user = this.auth.currentUser();
     if (!user) return [];
-    return ALL_MODULES.filter(m => this.visible(m.roles, m.perms, user.role));
+    return ALL_MODULES.filter(m =>
+      this.visible(m.roles, m.perms, user.role) && this.moduleVisible(m.module, m.modulesAny));
   });
 
-  /** Route primaire du module (alternative président si définie). */
-  moduleLink(m: NavModule): string {
+  /**
+   * Cible d'atterrissage du conteneur (chemin + query), résolue selon les MODULES actifs.
+   * Un conteneur mixte comme « Performance » a un lien par défaut (ex. /vue-seance, GPS) qui peut
+   * être fermé par le pack : si l'écran par défaut n'est pas souscrit, on vise le 1er sous-item
+   * réellement ouvert (module actif + rôle), pour ne jamais atterrir sur une route bloquée par le
+   * moduleGuard. Pour un club complet, l'écran par défaut reste accessible → comportement inchangé.
+   */
+  private landingTarget(m: NavModule): { link: string; query: Params } {
     const user = this.auth.currentUser();
     // Lien primaire alternatif (/mon-club) pour le staff non super-admin.
-    if (m.presidentLink && user && user.role !== 'SUPER_ADMIN') return m.presidentLink;
-    return m.link;
+    if (m.presidentLink && user && user.role !== 'SUPER_ADMIN') return { link: m.presidentLink, query: {} };
+
+    const defaut = { link: m.link, query: m.query ?? {} };
+    if (user && m.subnav.length) {
+      const accessible = (s: SubNavItem) =>
+        this.visible(s.roles, s.perms, user.role) && this.moduleVisible(s.module);
+      const parDefaut = m.subnav.find(s => s.link === m.link);
+      if (parDefaut && accessible(parDefaut)) return defaut;
+      const premier = m.subnav.find(accessible);
+      if (premier) return { link: premier.link, query: premier.section ? { section: premier.section } : {} };
+    }
+    return defaut;
+  }
+
+  /** Route primaire du module (alternative président si définie ; repli sur 1er écran souscrit). */
+  moduleLink(m: NavModule): string {
+    return this.landingTarget(m).link;
   }
 
   moduleQuery(m: NavModule): Params {
-    return m.query ?? {};
+    return this.landingTarget(m).query;
   }
 
   /**
@@ -200,7 +240,19 @@ export class NavSidebarComponent {
     const user = this.auth.currentUser();
     const mod = this.activeModule();
     if (!user || !mod) return [];
-    return mod.subnav.filter(s => this.visible(s.roles, s.perms, user.role));
+    const visibles = mod.subnav.filter(s =>
+      this.visible(s.roles, s.perms, user.role) && this.moduleVisible(s.module));
+    // Dédoublonne les items menant à la même destination (même lien + section) : ex. « Comptes du
+    // club » (super-admin) et « Mon club » (président) pointent tous deux sur /mon-club, et un
+    // super-admin — qui détient toutes les permissions — les voyait s'afficher ET s'activer tous
+    // les deux. On garde le 1er visible pour n'avoir qu'une entrée active.
+    const vues = new Set<string>();
+    return visibles.filter(s => {
+      const cle = s.link + '?' + (s.section ?? '');
+      if (vues.has(cle)) return false;
+      vues.add(cle);
+      return true;
+    });
   });
 
   isSubActive(item: SubNavItem): boolean {

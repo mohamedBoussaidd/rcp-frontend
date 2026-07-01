@@ -1,0 +1,222 @@
+:host { display: block; }
+
+.ab {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 20px 16px 60px;
+  font-family: 'Manrope', sans-serif;
+}
+
+/* En-tête */
+.ab-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+.ab-kicker {
+  margin: 0 0 4px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: #15803D;
+}
+.ab-title { margin: 0; font-size: 24px; font-weight: 800; color: #0F172A; }
+.ab-sub { margin: 4px 0 0; color: #64748B; font-size: 14px; }
+
+.ab-loading { padding: 40px; text-align: center; color: #64748B; }
+.ab-loading--sm { padding: 16px; }
+
+/* Sections */
+.ab-section { margin-top: 28px; }
+.ab-section__title {
+  margin: 0 0 12px;
+  font-size: 16px;
+  font-weight: 700;
+  color: #0F172A;
+}
+
+/* Cartes de pack */
+.ab-packs {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 14px;
+}
+.ab-pack {
+  border: 1px solid #E5E9EF;
+  border-radius: 14px;
+  background: #fff;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.ab-pack__top { display: flex; justify-content: space-between; gap: 10px; }
+.ab-pack__name { font-weight: 800; color: #0F172A; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.ab-pack__desc { margin-top: 4px; font-size: 13px; color: #64748B; }
+.ab-pack__price { font-size: 18px; font-weight: 800; color: #15803D; white-space: nowrap; }
+.ab-pack__price small { font-size: 12px; font-weight: 600; color: #64748B; }
+.ab-pack__noprice { font-size: 12px; font-weight: 600; color: #94A3B8; }
+.ab-pack__mods { display: flex; flex-wrap: wrap; gap: 6px; }
+.ab-pack__nomods { font-size: 12px; color: #94A3B8; }
+.ab-pack__actions { display: flex; gap: 8px; margin-top: auto; }
+
+.ab-chip {
+  font-size: 12px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: #F1F5F9;
+  color: #334155;
+  font-weight: 600;
+}
+
+.ab-badge--pre { background: #DCFCE7; color: #15803D; }
+.ab-badge--off { background: #FEE2E2; color: #B91C1C; }
+
+/* Clubs */
+.ab-clubs { display: flex; flex-direction: column; gap: 10px; }
+.ab-club {
+  border: 1px solid #E5E9EF;
+  border-radius: 14px;
+  background: #fff;
+  overflow: hidden;
+}
+.ab-club__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 16px;
+  flex-wrap: wrap;
+}
+.ab-club__id { display: flex; align-items: center; gap: 12px; }
+.ab-avatar {
+  width: 40px; height: 40px;
+  border-radius: 10px;
+  display: grid; place-items: center;
+  background: #15803D;
+  color: #fff;
+  font-weight: 800;
+  font-size: 14px;
+}
+.ab-club__name { font-weight: 700; color: #0F172A; }
+.ab-club__meta { font-size: 13px; color: #64748B; }
+.ab-club__act { display: flex; align-items: flex-end; gap: 10px; }
+
+.ab-field { display: flex; flex-direction: column; gap: 4px; }
+.ab-field > span { font-size: 12px; font-weight: 600; color: #64748B; }
+.ab-field select,
+.ab-field input,
+.ab-field textarea {
+  border: 1px solid #CBD5E1;
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-family: inherit;
+  font-size: 14px;
+  color: #0F172A;
+  background: #fff;
+}
+
+/* Matrice de modules d'un club */
+.ab-matrix {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: 8px;
+  padding: 0 16px 12px;
+}
+.ab-mod {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  border: 1px solid #E5E9EF;
+  border-radius: 10px;
+  padding: 9px 12px;
+  background: #F8FAFC;
+  cursor: pointer;
+  font-family: inherit;
+  text-align: left;
+  transition: border-color .12s, background .12s;
+}
+.ab-mod:hover { border-color: #CBD5E1; }
+.ab-mod.on { background: #ECFDF3; border-color: #86EFAC; }
+.ab-mod--socle { cursor: default; opacity: .8; }
+.ab-mod__name { font-weight: 600; font-size: 13px; color: #0F172A; }
+.ab-mod__src {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: #E2E8F0;
+  color: #475569;
+}
+.ab-src--pack { background: #DBEAFE; color: #1D4ED8; }
+.ab-src--manuel_on { background: #DCFCE7; color: #15803D; }
+.ab-src--manuel_off { background: #FEE2E2; color: #B91C1C; }
+.ab-src--inactif { background: #F1F5F9; color: #94A3B8; }
+
+.ab-hint { margin: 0 16px 14px; font-size: 12px; color: #94A3B8; }
+
+/* Modale */
+.ab-overlay {
+  position: fixed; inset: 0;
+  background: rgba(15, 23, 42, .45);
+  display: grid; place-items: center;
+  z-index: 1000;
+  padding: 16px;
+}
+.ab-modal {
+  width: min(640px, 100%);
+  max-height: 90vh;
+  overflow: auto;
+  background: #fff;
+  border-radius: 16px;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, .2);
+}
+.ab-modal__head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid #EEF2F6;
+}
+.ab-modal__head h3 { margin: 0; font-size: 17px; font-weight: 800; color: #0F172A; }
+.ab-modal__close { border: none; background: none; font-size: 24px; cursor: pointer; color: #64748B; line-height: 1; }
+.ab-modal__body { padding: 18px 20px; display: flex; flex-direction: column; gap: 14px; }
+.ab-modal__foot {
+  display: flex; justify-content: flex-end; gap: 10px;
+  padding: 14px 20px;
+  border-top: 1px solid #EEF2F6;
+}
+.ab-form2 { display: grid; grid-template-columns: 1fr 180px; gap: 12px; }
+.ab-check { display: flex; align-items: center; gap: 8px; font-size: 14px; color: #334155; }
+.ab-form__lbl { margin: 4px 0 0; font-weight: 700; font-size: 13px; color: #0F172A; }
+
+.ab-picklist {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 8px;
+}
+.ab-pick {
+  display: flex; align-items: center; gap: 8px;
+  border: 1px solid #E5E9EF;
+  border-radius: 10px;
+  padding: 9px 12px;
+  background: #fff;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 13px;
+  color: #0F172A;
+  text-align: left;
+}
+.ab-pick.on { background: #ECFDF3; border-color: #86EFAC; }
+.ab-pick__check {
+  width: 18px; height: 18px;
+  border-radius: 5px;
+  border: 1px solid #CBD5E1;
+  display: grid; place-items: center;
+  font-size: 12px; color: #15803D; font-weight: 800;
+}
+.ab-pick.on .ab-pick__check { border-color: #15803D; background: #DCFCE7; }
+
+.ab-btn--danger { color: #B91C1C; }
