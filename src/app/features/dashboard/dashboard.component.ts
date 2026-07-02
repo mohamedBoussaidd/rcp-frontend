@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, isDevMode } from '@angular/core';
+import { Component, OnInit, inject } from '@angular/core';
 import { PredictionService, ResumeJoueur } from '@core/services/prediction.service';
 import { PeseesService, PoidsFicheJoueur } from '@core/services/pesees.service';
 import { JoueurService, Joueur, AssiduiteJoueur } from '@core/services/joueur.service';
@@ -237,10 +237,10 @@ export class DashboardComponent implements OnInit {
   auth = inject(AuthService);
 
   /**
-   * Outil de test « date simulée » : disponible pour TOUS les rôles mais UNIQUEMENT en build
-   * de développement (isDevMode) → jamais présent dans le build de production.
+   * Outil « voyage dans la saison » : réservé au SUPER_ADMIN (prod incluse). Le backend n'honore de
+   * toute façon l'en-tête X-Date-Simulee que pour un super-admin ; ceci ne fait qu'exposer le contrôle.
    */
-  peutSimulerDate(): boolean { return isDevMode(); }
+  peutSimulerDate(): boolean { return this.auth.hasRole('SUPER_ADMIN'); }
 
   /** Date simulée active (outil de test temporalité), ou null = date réelle. */
   dateSimulee(): string | null { return this.dateSimuleeService.get(); }

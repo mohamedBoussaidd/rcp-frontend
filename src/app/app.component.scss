@@ -8,3 +8,34 @@
   flex: 1;
   background: var(--bg);
 }
+
+/* Bandeau « voyage dans la saison » (date simulée, super-admin) : lecture seule. */
+.bandeau-simulation {
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 6px 16px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #3a2c00;
+  background: #ffd54f;
+  border-bottom: 1px solid #e0a800;
+
+  &__txt { line-height: 1.4; }
+
+  &__quit {
+    border: 1px solid #3a2c00;
+    background: transparent;
+    color: #3a2c00;
+    border-radius: 6px;
+    padding: 2px 10px;
+    font-weight: 600;
+    cursor: pointer;
+
+    &:hover { background: rgba(0, 0, 0, 0.08); }
+  }
+}

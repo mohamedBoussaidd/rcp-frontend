@@ -1,3 +1,10 @@
+@if (bandeauSimulation()) {
+  <div class="bandeau-simulation" role="status">
+    <span class="bandeau-simulation__txt">🕓 Vue au {{ dateSimulee() | date:'dd/MM/yyyy' }} — lecture seule (voyage dans la saison)</span>
+    <button type="button" class="bandeau-simulation__quit" (click)="quitterSimulation()">Quitter</button>
+  </div>
+}
+
 @if (auth.currentUser() && !modeMobile()) {
   <div class="app-shell">
     <app-nav-sidebar></app-nav-sidebar>
