@@ -4,7 +4,7 @@
     <!-- ── Barre : fil d'ariane + toggle d'onglets ── -->
     <div class="jd-toolbar">
       <div class="jd-crumb">
-        <button class="jd-crumb__back" (click)="retourDashboard()">← Effectif</button>
+        <button class="jd-crumb__back" (click)="retourEffectif()">← Effectif</button>
         <span class="jd-crumb__sep">/</span>
         <span class="jd-crumb__name">{{ joueur.prenom }} {{ joueur.nom }}</span>
         <span class="jd-crumb__sep">/</span>
@@ -500,6 +500,17 @@
           </div>
         </ng-template>
       </mat-tab>
+
+      <!-- ══ Onglet Suivi individuel (entretiens) — gaté par entretien:read ══ -->
+      @if (peutSuivi) {
+        <mat-tab label="Suivi individuel">
+          <ng-template matTabContent>
+            @if (!leaving) {
+              <app-suivi-individuel [joueurId]="joueur.id" [joueurNom]="joueur.prenom + ' ' + joueur.nom"></app-suivi-individuel>
+            }
+          </ng-template>
+        </mat-tab>
+      }
 
     </mat-tab-group>
 

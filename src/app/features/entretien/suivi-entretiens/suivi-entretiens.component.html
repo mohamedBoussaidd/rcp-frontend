@@ -1,0 +1,71 @@
+<div class="se">
+  <section class="se-card">
+    <div class="se__head">
+      <div>
+        <h1>Suivi des entretiens</h1>
+        <p class="se__sub">Un coup d'œil sur l'effectif : dernier échange, cadence, et qui n'a pas été vu depuis trop longtemps.</p>
+      </div>
+      <div class="se__tri">
+        <button [class.is-active]="tri === 'dernier'" (click)="changerTri('dernier')">À relancer</button>
+        <button [class.is-active]="tri === 'nb90'" (click)="changerTri('nb90')">Plus actifs</button>
+        <button [class.is-active]="tri === 'nom'" (click)="changerTri('nom')">Nom</button>
+      </div>
+    </div>
+
+    <div class="se__legend">
+      <span><i class="se__key se__key--ok"></i>&lt; 4 semaines</span>
+      <span><i class="se__key se__key--warn"></i>4–6 semaines</span>
+      <span><i class="se__key se__key--bad"></i>&gt; 6 semaines / jamais</span>
+    </div>
+
+    @if (chargement) {
+      <p class="se__empty">Chargement…</p>
+    } @else if (lignes.length === 0) {
+      <p class="se__empty">Aucun joueur dans l'effectif de la saison active.</p>
+    } @else {
+      <div class="se__tablewrap">
+        <table class="se__table">
+          <thead>
+            <tr>
+              <th class="se__th-dot"></th>
+              <th>Joueur</th>
+              <th>Dernier entretien</th>
+              <th class="c">30 j</th>
+              <th class="c">90 j</th>
+              <th>Par type</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (l of lignes; track l.joueurId) {
+              <tr (click)="ouvrirFiche(l)">
+                <td class="c"><span class="se__dot se__dot--{{ tone(l.dernierEntretien) }}"></span></td>
+                <td class="se__name">
+                  <div>
+                    <div class="se__player">{{ l.prenom }} {{ l.nom }}</div>
+                    @if (l.postePrincipal) { <div class="se__poste">{{ l.postePrincipal }}</div> }
+                  </div>
+                </td>
+                <td>
+                  @if (l.dernierEntretien) {
+                    <span class="num se__date">{{ l.dernierEntretien | date:'d MMM y':'':'fr' }}</span>
+                    <span class="se__ago se__ago--{{ tone(l.dernierEntretien) }}">· il y a {{ joursDepuis(l.dernierEntretien) }} j</span>
+                  } @else {
+                    <span class="se__never">Jamais</span>
+                  }
+                </td>
+                <td class="c num">{{ l.nb30j }}</td>
+                <td class="c num">{{ l.nb90j }}</td>
+                <td class="se__types num">
+                  @if (l.nbTerrain) { <span title="Terrain">🥅 {{ l.nbTerrain }}</span> }
+                  @if (l.nbVideo) { <span title="Vidéo">🎬 {{ l.nbVideo }}</span> }
+                  @if (l.nbDiscussion) { <span title="Discussion">💬 {{ l.nbDiscussion }}</span> }
+                  @if (!l.nbTerrain && !l.nbVideo && !l.nbDiscussion) { <span class="se__muted">—</span> }
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  </section>
+</div>

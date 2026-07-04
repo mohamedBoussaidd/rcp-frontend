@@ -95,6 +95,14 @@ const ALL_MODULES: NavModule[] = [
     subnav: [],
   },
   {
+    key: 'suivi', label: 'Suivi individuel', icon: 'psychology',
+    link: '/suivi-entretiens', matches: ['/suivi-entretiens'],
+    roles: ['SUPER_ADMIN', 'PRESIDENT', 'ENTRAINEUR', 'PREPARATEUR', 'MEDICAL'],
+    perms: ['entretien:read'],
+    module: 'suivi_individuel',
+    subnav: [],
+  },
+  {
     key: 'medical', label: 'Médical', icon: 'healing',
     link: '/medical', query: { section: 'alertes' }, matches: ['/medical', '/mon-espace', '/suivi-subjectif', '/mes-blessures'],
     roles: ['SUPER_ADMIN', 'PRESIDENT', 'ENTRAINEUR', 'PREPARATEUR', 'MEDICAL', 'JOUEUR'],

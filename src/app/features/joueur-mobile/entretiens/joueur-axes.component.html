@@ -1,0 +1,68 @@
+<div class="ja">
+  @if (message()) { <div class="ja__toast">✓ {{ message() }}</div> }
+
+  @if (chargement()) {
+    <p class="ja__loading">Chargement…</p>
+  } @else if (axes().length === 0) {
+    <div class="ja__void">
+      <span class="ja__void-emoji">🎯</span>
+      <p>Aucun axe de travail pour le moment.</p>
+      <small>Ton staff définira ici tes objectifs de progression.</small>
+    </div>
+  } @else {
+    @for (a of axes(); track a.id) {
+      <div class="ja-card">
+        <div class="ja-card__head">
+          <span class="cat-chip cat-chip--{{ a.categorie.toLowerCase() }}">{{ CAT_LABELS[a.categorie] }}</span>
+          <span class="ja-card__lib">{{ a.libelle }}</span>
+        </div>
+
+        <div class="ja-notes">
+          <div class="ja-note ja-note--staff" [class.is-empty]="a.derniereNoteStaff == null">
+            <span class="ja-note__lbl">Staff</span>
+            @if (a.derniereNoteStaff != null) {
+              <span class="ja-note__val">{{ a.derniereNoteStaff }}<small>/5</small>
+                @if (a.derniereTendanceStaff) { <span class="ja-tend">{{ TEND_ICONS[a.derniereTendanceStaff] }}</span> }
+              </span>
+            } @else {
+              <span class="ja-note__empty">Pas encore partagé</span>
+            }
+          </div>
+          <div class="ja-note ja-note--moi">
+            <span class="ja-note__lbl">Moi</span>
+            @if (a.maDerniereAutoEvalNote != null) {
+              <span class="ja-note__val">{{ a.maDerniereAutoEvalNote }}<small>/5</small></span>
+              @if (a.maDerniereAutoEvalDate) { <span class="ja-note__date">le {{ a.maDerniereAutoEvalDate | date:'d MMM':'':'fr' }}</span> }
+            } @else {
+              <span class="ja-note__empty">Pas encore</span>
+            }
+          </div>
+        </div>
+
+        @if (dejaEvalueeCetteSemaine(a)) {
+          <div class="ja-locked">✓ Déjà auto-évalué cette semaine</div>
+        } @else {
+          <button class="ja-card__cta" (click)="ouvrir(a.id)">
+            {{ axeActif() === a.id ? 'Fermer' : 'M\'auto-évaluer' }}
+          </button>
+
+          @if (axeActif() === a.id) {
+            <div class="ja-eval">
+              <div class="ja-eval__lbl">Ma note cette semaine</div>
+              <div class="ja-stars">
+                @for (n of [1,2,3,4,5]; track n) {
+                  <button type="button" class="ja-star" [class.on]="note >= n" (click)="note = n">★</button>
+                }
+              </div>
+              <textarea [(ngModel)]="commentaire" rows="2" placeholder="Un commentaire ? (optionnel)"></textarea>
+              @if (erreur()) { <p class="ja-err">{{ erreur() }}</p> }
+              <button class="ja-send" [disabled]="envoi()" (click)="envoyer(a)">
+                {{ envoi() ? 'Envoi…' : 'Envoyer mon auto-évaluation' }}
+              </button>
+            </div>
+          }
+        }
+      </div>
+    }
+  }
+</div>

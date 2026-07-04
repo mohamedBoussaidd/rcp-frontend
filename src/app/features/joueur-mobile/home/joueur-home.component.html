@@ -119,6 +119,16 @@
     <svg viewBox="0 0 24 24" fill="none" stroke="var(--green-600)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4.5" width="18" height="17" rx="2.5"/><path d="M3 9h18M8 2.5v4M16 2.5v4"/></svg>
     <span class="home-tile__label">Calendrier</span>
   </a>
+  @if (peutSuivi()) {
+    <a class="home-tile" routerLink="/joueur/axes">
+      <svg viewBox="0 0 24 24" fill="none" stroke="var(--green-600)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r="1"/></svg>
+      <span class="home-tile__label">Mes axes</span>
+    </a>
+    <a class="home-tile" routerLink="/joueur/entretiens">
+      <svg viewBox="0 0 24 24" fill="none" stroke="var(--green-600)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.4 8.4 0 0 1-9 8 9 9 0 0 1-3.4-.7L3 20l1.3-4A8.4 8.4 0 0 1 12 3a8.4 8.4 0 0 1 9 8.5z"/><path d="M8 10h8M8 13.5h5"/></svg>
+      <span class="home-tile__label">Entretiens</span>
+    </a>
+  }
 </div>
 
 <!-- Mon corps & santé -->

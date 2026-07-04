@@ -1,0 +1,259 @@
+<div class="si">
+
+  <!-- En-tête condensé (l'identité du joueur est déjà portée par le hero de la fiche) -->
+  <div class="si__bar">
+    <div class="si__bar-txt">
+      <span class="si__dot"></span>
+      <div>
+        <div class="si__title-row">
+          <h2>Suivi individuel</h2>
+          @if (sansCompte) {
+            <span class="si__hint" title="Aucun compte joueur lié à cette fiche : un entretien partagé sera visible dès l'activation du compte.">
+              ⓘ Fiche sans compte lié
+            </span>
+          }
+        </div>
+        <p class="si__sub">Axes de travail, progression et entretiens individuels.</p>
+      </div>
+    </div>
+    @if (peutEcrireEntretien) {
+      <button class="si__cta" (click)="ouvrirSaisie()">+ Nouvel entretien</button>
+    }
+  </div>
+
+  <!-- Bandeau KPI -->
+  @if (!chargement) {
+    <div class="si-kpis">
+      <div class="si-kpi">
+        <div class="si-kpi__label">Axes actifs</div>
+        <div class="si-kpi__value">{{ nbAxesActifs }}</div>
+        <div class="si-kpi__sub">{{ nbAcquis > 0 ? nbAcquis + ' acquis' : 'aucun acquis' }}</div>
+      </div>
+      <div class="si-kpi">
+        <div class="si-kpi__label">Entretiens</div>
+        <div class="si-kpi__value">{{ nbEntretiens }}</div>
+        <div class="si-kpi__sub">
+          {{ joursDernierEntretien == null ? 'aucun pour l\'instant' : 'dernier il y a ' + joursDernierEntretien + ' j' }}
+        </div>
+      </div>
+      <div class="si-kpi">
+        <div class="si-kpi__label">Note staff moy.</div>
+        <div class="si-kpi__value si-kpi__value--ok">{{ fmt1(noteStaffMoyenne) }}<small>/5</small></div>
+        <div class="si-kpi__sub">moyenne des axes notés</div>
+      </div>
+      <div class="si-kpi">
+        <div class="si-kpi__label">Écart staff↔joueur</div>
+        <div class="si-kpi__value" [class.si-kpi__value--warn]="ecartStaffJoueur != null">{{ fmt1(ecartStaffJoueur) }}</div>
+        <div class="si-kpi__sub">{{ ecartSens }}</div>
+      </div>
+    </div>
+  }
+
+  <!-- Grille : axes (gauche) + progression (droite) -->
+  <div class="si-grid">
+
+    <!-- ══ Axes de travail ══ -->
+    <section class="si-card">
+      <div class="si-card__head">
+        <span class="si-card__dot"></span>
+        <div class="si-card__titles">
+          <h3>Axes de travail</h3>
+          <span class="si-card__sub">note staff vs auto-évaluation joueur</span>
+        </div>
+      </div>
+
+      @if (axes.length === 0) {
+        <p class="si-empty">Aucun axe de travail défini pour ce joueur.</p>
+      } @else {
+        <div class="si-axes">
+          @for (a of axesVisibles; track a.id) {
+            @if (a.statut === 'EN_COURS') {
+              <div class="si-axe">
+                <div class="si-axe__top">
+                  <span class="cat-chip cat-chip--{{ a.categorie | lowercase }}">{{ categorieLabel(a.categorie) }}</span>
+                  <span class="si-axe__lib">{{ a.libelle }}</span>
+                  <span class="si-axe__count">💬 {{ a.nbEntretiens }}</span>
+                  @if (peutEcrireAxe) {
+                    <div class="si-axe__actions">
+                      <button (click)="changerStatutAxe(a, 'ACQUIS')" title="Marquer acquis">✓</button>
+                      <button (click)="supprimerAxe(a)" title="Archiver / supprimer">✕</button>
+                    </div>
+                  }
+                </div>
+                <div class="si-axe__gauges">
+                  <div class="si-gcol">
+                    <div class="si-gcol__head">
+                      <span>Staff @if (a.derniereTendance) { <span class="si-tend si-tend--{{ TEND_TONE[a.derniereTendance] }}">{{ TEND_ICONS[a.derniereTendance] }}</span> }</span>
+                      <span class="num si-gcol__staff">{{ a.derniereNote != null ? a.derniereNote + '/5' : '—' }}</span>
+                    </div>
+                    <div class="si-gauge"><i [style.width.%]="(a.derniereNote ?? 0) * 20"></i></div>
+                  </div>
+                  <div class="si-gcol">
+                    <div class="si-gcol__head">
+                      <span>Moi</span>
+                      <span class="num" [class.si-gcol__empty]="a.derniereAutoEvalNote == null">{{ a.derniereAutoEvalNote != null ? a.derniereAutoEvalNote + '/5' : '—' }}</span>
+                    </div>
+                    <div class="si-gauge"><i class="is-moi" [style.width.%]="(a.derniereAutoEvalNote ?? 0) * 20"></i></div>
+                  </div>
+                  <div class="si-delta" [class.is-muted]="ecartAxe(a) == null">
+                    <div class="num si-delta__val">{{ ecartAxe(a) != null ? 'Δ' + ecartAxe(a) : '—' }}</div>
+                    <div class="si-delta__lbl">{{ ecartAxeSens(a) }}</div>
+                  </div>
+                </div>
+              </div>
+            } @else {
+              <div class="si-axe si-axe--done">
+                <span class="cat-chip cat-chip--{{ a.categorie | lowercase }}">{{ categorieLabel(a.categorie) }}</span>
+                <span class="si-axe__lib">{{ a.libelle }}</span>
+                @if (a.statut === 'ACQUIS') {
+                  <span class="si-badge si-badge--ok">● Acquis</span>
+                } @else {
+                  <span class="si-badge si-badge--muted">Archivé</span>
+                }
+                @if (a.derniereNote != null) { <span class="num si-axe__final">{{ a.derniereNote }}/5</span> }
+              </div>
+            }
+          }
+
+          @if (axes.length > 3) {
+            <div class="si-pager">
+              <div class="si-pager__sizes">
+                <span>Afficher</span>
+                @for (t of TAILLES_PAGE; track t) {
+                  <button [class.is-active]="axesTaille === t" (click)="setAxesTaille(t)">{{ t }}</button>
+                }
+              </div>
+              <div class="si-pager__nav">
+                <button [disabled]="axesPage === 0" (click)="axesPagePrec()" aria-label="Page précédente">←</button>
+                <span class="num si-pager__pos">{{ axesPage + 1 }} / {{ axesNbPages }}</span>
+                <button [disabled]="axesPage >= axesNbPages - 1" (click)="axesPageSuiv()" aria-label="Page suivante">→</button>
+              </div>
+            </div>
+          }
+
+          @if (peutEcrireAxe) {
+            <div class="si-newaxe">
+              <input type="text" [(ngModel)]="nouvelAxe.libelle" name="axeLib" placeholder="Nouvel axe — ex. Jeu de tête défensif" (keyup.enter)="creerAxe()" />
+              <select [(ngModel)]="nouvelAxe.categorie" name="axeCat">
+                @for (c of CATEGORIES; track c.value) { <option [value]="c.value">{{ c.label }}</option> }
+              </select>
+              <button class="si-newaxe__ok" (click)="creerAxe()">Ajouter</button>
+            </div>
+          }
+        </div>
+      }
+    </section>
+
+    <!-- ══ Progression ══ -->
+    <section class="si-card">
+      <div class="si-card__head">
+        <span class="si-card__dot"></span>
+        <div class="si-card__titles">
+          <h3>Progression</h3>
+          <span class="si-card__sub">notes staff 1–5 dans le temps</span>
+        </div>
+      </div>
+      @if (chartOptions.series.length > 0) {
+        <apx-chart
+          [series]="chartOptions.series" [chart]="chartOptions.chart" [xaxis]="chartOptions.xaxis"
+          [yaxis]="chartOptions.yaxis" [stroke]="chartOptions.stroke" [markers]="chartOptions.markers"
+          [legend]="chartOptions.legend" [tooltip]="chartOptions.tooltip" [grid]="chartOptions.grid"
+          [dataLabels]="chartOptions.dataLabels" [colors]="chartOptions.colors">
+        </apx-chart>
+        <div class="si-legend">
+          @for (l of legende; track l.name) {
+            <span class="si-legend__item"><i [style.background]="l.color"></i>{{ l.name }}</span>
+          }
+        </div>
+      } @else {
+        <p class="si-empty">Pas encore de notes pour tracer une courbe de progression.</p>
+      }
+    </section>
+  </div>
+
+  <!-- ══ Timeline des entretiens ══ -->
+  <section class="si-card">
+    <div class="si-card__head">
+      <span class="si-card__dot"></span>
+      <div class="si-card__titles">
+        <h3>Timeline des entretiens</h3>
+        <span class="si-card__sub">antichronologique</span>
+      </div>
+    </div>
+
+    @if (chargement) {
+      <p class="si-empty">Chargement…</p>
+    } @else if (entretiens.length === 0) {
+      <p class="si-empty">Aucun entretien enregistré. Clique sur « Nouvel entretien » pour commencer.</p>
+    } @else {
+      <div class="si-timeline">
+        @for (e of entretiensVisibles; track e.id) {
+          <article class="si-ent">
+            <span class="si-ent__dot si-ent__dot--{{ e.type | lowercase }}">{{ TYPE_ICONS[e.type] }}</span>
+            <div class="si-ent__body">
+              <div class="si-ent__head">
+                <span class="si-ent__type">{{ TYPE_LABELS[e.type] }}</span>
+                @if (e.partage) {
+                  <span class="si-badge si-badge--share">● Partagé</span>
+                } @else {
+                  <span class="si-badge si-badge--muted">● Privé</span>
+                }
+                <span class="si-ent__spacer"></span>
+                <span class="num si-ent__date">{{ e.dateEntretien | date:'d MMM y':'':'fr' }} · il y a {{ joursDepuis(e.dateEntretien) }} j</span>
+              </div>
+
+              @if (e.meneParNom) { <div class="si-ent__by">Mené par <b>{{ e.meneParNom }}</b></div> }
+              @if (e.notes) { <p class="si-ent__notes">{{ e.notes }}</p> }
+
+              @if (e.axes.length > 0) {
+                <div class="si-ent__axes">
+                  @for (l of e.axes; track l.id) {
+                    <div class="si-ent__axe">
+                      <span class="cat-chip cat-chip--{{ (l.categorie || 'TECHNIQUE') | lowercase }}">{{ categorieLabel(l.categorie) }}</span>
+                      <div class="si-ent__axe-txt">
+                        <b>{{ l.axeLibelle }}</b>
+                        @if (l.commentaire) { <span class="si-ent__axe-cmt">« {{ l.commentaire }} »</span> }
+                      </div>
+                      @if (l.note != null) { <span class="num si-ent__axe-note" [class.is-bad]="l.note < 3">{{ l.note }}/5</span> }
+                      @if (l.tendance) { <span class="si-tend si-tend--{{ TEND_TONE[l.tendance] }}">{{ TEND_ICONS[l.tendance] }}</span> }
+                    </div>
+                  }
+                </div>
+              }
+
+              <div class="si-ent__foot">
+                @if (e.videoUrl) { <a class="si-ent__video" [href]="e.videoUrl" target="_blank" rel="noopener">▶ Voir la vidéo</a> }
+                <span class="si-ent__spacer"></span>
+                @if (peutEditer(e)) {
+                  <div class="si-ent__actions">
+                    @if (peutEcrireEntretien) { <button (click)="ouvrirSaisie(e)">Modifier</button> }
+                    @if (peutEcrireEntretien) {
+                      <button (click)="basculerPartage(e)">{{ e.partage ? 'Rendre privé' : 'Partager' }}</button>
+                    }
+                    <button class="is-danger" (click)="supprimerEntretien(e)">Supprimer</button>
+                  </div>
+                }
+              </div>
+            </div>
+          </article>
+        }
+      </div>
+
+      @if (entretiens.length > 3) {
+        <div class="si-pager">
+          <div class="si-pager__sizes">
+            <span>Afficher</span>
+            @for (t of TAILLES_PAGE; track t) {
+              <button [class.is-active]="entTaille === t" (click)="setEntTaille(t)">{{ t }}</button>
+            }
+          </div>
+          <div class="si-pager__nav">
+            <button [disabled]="entPage === 0" (click)="entPagePrec()" aria-label="Page précédente">←</button>
+            <span class="num si-pager__pos">{{ entPage + 1 }} / {{ entNbPages }}</span>
+            <button [disabled]="entPage >= entNbPages - 1" (click)="entPageSuiv()" aria-label="Page suivante">→</button>
+          </div>
+        </div>
+      }
+    }
+  </section>
+</div>

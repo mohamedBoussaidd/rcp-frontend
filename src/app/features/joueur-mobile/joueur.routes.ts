@@ -45,6 +45,15 @@ const routes: Routes = [
         loadComponent: () => import('./seances/joueur-seances.component').then(m => m.JoueurSeancesComponent)
       },
       {
+        path: 'axes', data: { title: 'Mes axes de travail' },
+        loadComponent: () => import('./entretiens/joueur-axes.component').then(m => m.JoueurAxesComponent)
+      },
+      {
+        // Chemin aligné sur le lien des notifications (NotificationProducer.entretienPartage).
+        path: 'entretiens', data: { title: 'Mes entretiens' },
+        loadComponent: () => import('./entretiens/joueur-entretiens.component').then(m => m.JoueurEntretiensComponent)
+      },
+      {
         path: 'sante', data: { title: 'Mon corps & santé', ownHeader: true },
         loadComponent: () => import('./sante/joueur-sante.component').then(m => m.JoueurSanteComponent)
       },

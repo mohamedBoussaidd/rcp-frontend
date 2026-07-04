@@ -1,8 +1,10 @@
-import { Component, OnInit, HostListener, inject, ViewChild } from '@angular/core';
+import { Component, OnInit, HostListener, inject, ViewChild, ApplicationRef } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { MatDialog } from '@angular/material/dialog';
 import { JoueurService, Joueur, GpsPoint, AssiduiteJoueur } from '@core/services/joueur.service';
+import { AuthService } from '@core/services/auth.service';
 import { couleurTheme } from '@core/services/theme.service';
+import { SuiviIndividuelComponent } from '../suivi-individuel/suivi-individuel.component';
 import { PredictionService, NiveauFatigue, ResumeJoueur } from '@core/services/prediction.service';
 import { PeseesService, Pesee } from '@core/services/pesees.service';
 import { SuiviSubjectifService, Wellness, Rpe } from '@core/services/suivi-subjectif.service';
@@ -24,7 +26,7 @@ import { ChargeVueComponent } from '@shared/components/charge-vue/charge-vue.com
     MatIcon,
     MatTabGroup, MatTab, MatTabContent,
     ChartComponent, DecimalPipe, DatePipe,
-    ChargeVueComponent, RouterLink
+    ChargeVueComponent, RouterLink, SuiviIndividuelComponent
   ]
 })
 export class JoueurDetailComponent implements OnInit {
@@ -48,8 +50,8 @@ export class JoueurDetailComponent implements OnInit {
   rtpEtapes: RtpEtape[] = [];
   readonly PARCOURS: { statut: string; label: string }[] = [
     { statut: 'INDISPONIBLE', label: 'Indisponible' },
-    { statut: 'EN_REPRISE',   label: 'En reprise' },
-    { statut: 'RETABLI',      label: 'Rétabli' },
+    { statut: 'EN_REPRISE', label: 'En reprise' },
+    { statut: 'RETABLI', label: 'Rétabli' },
   ];
 
   get parcoursIndex(): number {
@@ -90,72 +92,80 @@ export class JoueurDetailComponent implements OnInit {
     fill: ApexFill;
     legend: ApexLegend;
   } = {
-    series: [],
-    chart: { type: 'area', height: 220, toolbar: { show: false }, zoom: { enabled: false }, background: 'transparent' },
-    xaxis: { categories: [] },
-    // Poids : trait plein ; Cible : trait rouge pointillé.
-    stroke: { curve: 'smooth', width: [3, 2], dashArray: [0, 5] },
-    markers: { size: [4, 0] },
-    tooltip: { theme: 'light', y: { formatter: (v: number) => `${v.toFixed(1)} kg` } },
-    yaxis: { labels: { formatter: (v: number) => `${v.toFixed(0)} kg` } },
-    dataLabels: { enabled: false },
-    colors: [couleurTheme(), '#ef4444'],
-    annotations: {},
-    // Dégradé vert sous la courbe : foncé près de la ligne (poids actuel), s'éclaircissant vers le bas.
-    fill: {
-      type: ['gradient', 'solid'],
-      gradient: { shadeIntensity: 1, opacityFrom: 0.55, opacityTo: 0.04, stops: [0, 100] },
-    },
-    legend: { show: true, position: 'top', horizontalAlign: 'right', fontWeight: 600 },
-  };
+      series: [],
+      chart: { type: 'area', height: 220, toolbar: { show: false }, zoom: { enabled: false }, background: 'transparent' },
+      xaxis: { categories: [] },
+      // Poids : trait plein ; Cible : trait rouge pointillé.
+      stroke: { curve: 'smooth', width: [3, 2], dashArray: [0, 5] },
+      markers: { size: [4, 0] },
+      tooltip: { theme: 'light', y: { formatter: (v: number) => `${v.toFixed(1)} kg` } },
+      yaxis: { labels: { formatter: (v: number) => `${v.toFixed(0)} kg` } },
+      dataLabels: { enabled: false },
+      colors: [couleurTheme(), '#ef4444'],
+      annotations: {},
+      // Dégradé vert sous la courbe : foncé près de la ligne (poids actuel), s'éclaircissant vers le bas.
+      fill: {
+        type: ['gradient', 'solid'],
+        gradient: { shadeIntensity: 1, opacityFrom: 0.55, opacityTo: 0.04, stops: [0, 100] },
+      },
+      legend: { show: true, position: 'top', horizontalAlign: 'right', fontWeight: 600 },
+    };
 
   joueursList: Joueur[] = [];
   currentIndex = -1;
 
   activeTab = 0;
-  readonly tabLabels = ['Profil', 'GPS & Charge', 'Suivi subjectif'];
+  /** Passe à true juste avant de quitter la fiche : démonte l'onglet lazy « Suivi individuel »
+   *  (et son graphe) de façon anticipée pour éviter un crash ApexCharts au démontage de la route. */
+  leaving = false;
+  private readonly baseTabLabels = ['Profil', 'GPS & Charge', 'Suivi subjectif'];
+  /** L'onglet « Suivi individuel » (dernier) n'apparaît qu'avec la permission entretien:read. */
+  get peutSuivi(): boolean { return this.auth.has('entretien:read'); }
+  get tabLabels(): string[] {
+    return this.peutSuivi ? [...this.baseTabLabels, 'Suivi individuel'] : this.baseTabLabels;
+  }
 
   /** Bascule d'onglet via le toggle segmenté (le mat-tab-group suit selectedIndex). */
   allerOnglet(i: number): void { this.activeTab = i; }
 
   readonly POSTES: Record<string, string> = {
-    gardien:             'Gardien',
-    defenseur_central:   'Défenseur central',
-    lateral_droit:       'Latéral droit',
-    lateral_gauche:      'Latéral gauche',
-    milieu_defensif:     'Milieu défensif',
-    milieu_central:      'Milieu central',
-    milieu_offensif:     'Milieu offensif',
-    ailier_droit:        'Ailier droit',
-    ailier_gauche:       'Ailier gauche',
-    attaquant:           'Attaquant',
-    avant_centre:        'Avant-centre',
+    gardien: 'Gardien',
+    defenseur_central: 'Défenseur central',
+    lateral_droit: 'Latéral droit',
+    lateral_gauche: 'Latéral gauche',
+    milieu_defensif: 'Milieu défensif',
+    milieu_central: 'Milieu central',
+    milieu_offensif: 'Milieu offensif',
+    ailier_droit: 'Ailier droit',
+    ailier_gauche: 'Ailier gauche',
+    attaquant: 'Attaquant',
+    avant_centre: 'Avant-centre',
   };
 
   readonly PROFILS: Record<string, string> = {
-    explosif_leger:        'Explosif léger',
-    pivot_costaud:         'Pivot costaud',
-    box_to_box:            'Box to box',
-    sentinelle:            'Sentinelle',
-    lateral_offensif:      'Latéral offensif',
-    central_rapide:        'Central rapide',
-    central_costaud:       'Central costaud',
-    renard_surfaces:       'Renard des surfaces',
-    attaquant_profondeur:  'Attaquant en profondeur',
+    explosif_leger: 'Explosif léger',
+    pivot_costaud: 'Pivot costaud',
+    box_to_box: 'Box to box',
+    sentinelle: 'Sentinelle',
+    lateral_offensif: 'Latéral offensif',
+    central_rapide: 'Central rapide',
+    central_costaud: 'Central costaud',
+    renard_surfaces: 'Renard des surfaces',
+    attaquant_profondeur: 'Attaquant en profondeur',
   };
 
   readonly PIEDS: Record<string, string> = {
-    droit:       'Droit',
-    gauche:      'Gauche',
-    ambidextre:  'Ambidextre',
+    droit: 'Droit',
+    gauche: 'Gauche',
+    ambidextre: 'Ambidextre',
   };
 
   readonly STATUTS: Record<string, string> = {
-    actif:     'Actif',
-    blesse:    'Blessé',
-    suspendu:  'Suspendu',
-    prete:     'Prêté',
-    inactif:   'Inactif',
+    actif: 'Actif',
+    blesse: 'Blessé',
+    suspendu: 'Suspendu',
+    prete: 'Prêté',
+    inactif: 'Inactif',
   };
 
   get alerteSurpoids(): { ecart: number; pointsRisque: number; plafonne: boolean } | null {
@@ -169,13 +179,13 @@ export class JoueurDetailComponent implements OnInit {
   get imc(): { valeur: number; categorie: string; classe: string } | null {
     if (!this.joueur?.poidsActuel || !this.joueur?.taille) return null;
     const tailleM = Number(this.joueur.taille) / 100;
-    const valeur  = Number(this.joueur.poidsActuel) / (tailleM * tailleM);
+    const valeur = Number(this.joueur.poidsActuel) / (tailleM * tailleM);
     let categorie: string;
     let classe: string;
-    if (valeur < 18.5)      { categorie = 'Insuffisance pondérale'; classe = 'imc-bas'; }
-    else if (valeur < 25)   { categorie = 'Poids normal';           classe = 'imc-normal'; }
-    else if (valeur < 30)   { categorie = 'Surpoids';               classe = 'imc-surpoids'; }
-    else                    { categorie = 'Obésité';                 classe = 'imc-obesite'; }
+    if (valeur < 18.5) { categorie = 'Insuffisance pondérale'; classe = 'imc-bas'; }
+    else if (valeur < 25) { categorie = 'Poids normal'; classe = 'imc-normal'; }
+    else if (valeur < 30) { categorie = 'Surpoids'; classe = 'imc-surpoids'; }
+    else { categorie = 'Obésité'; classe = 'imc-obesite'; }
     return { valeur: Math.round(valeur * 10) / 10, categorie, classe };
   }
 
@@ -200,11 +210,11 @@ export class JoueurDetailComponent implements OnInit {
   /** Tonalité sémantique liée au statut administratif du joueur. */
   get statutTone(): 'ok' | 'warn' | 'alert' | 'neutral' {
     switch (this.joueur?.statut) {
-      case 'blesse':   return 'alert';
+      case 'blesse': return 'alert';
       case 'suspendu': return 'warn';
-      case 'prete':    return 'neutral';
-      case 'inactif':  return 'neutral';
-      default:         return 'ok';
+      case 'prete': return 'neutral';
+      case 'inactif': return 'neutral';
+      default: return 'ok';
     }
   }
 
@@ -224,9 +234,9 @@ export class JoueurDetailComponent implements OnInit {
     return 'Surcharge';
   }
 
-  riskTone(score: number):    'ok' | 'warn' | 'alert' { return score < 35 ? 'ok' : score < 60 ? 'warn' : 'alert'; }
+  riskTone(score: number): 'ok' | 'warn' | 'alert' { return score < 35 ? 'ok' : score < 60 ? 'warn' : 'alert'; }
   fatigueTone(score: number): 'ok' | 'warn' | 'alert' { return score < 40 ? 'ok' : score < 65 ? 'warn' : 'alert'; }
-  ecartTone(ecart: number):   'ok' | 'warn' | 'alert' {
+  ecartTone(ecart: number): 'ok' | 'warn' | 'alert' {
     const a = Math.abs(ecart);
     if (a <= 1) return 'ok';
     return ecart > 2 ? 'alert' : 'warn';
@@ -250,8 +260,8 @@ export class JoueurDetailComponent implements OnInit {
     if (this.risque.phrase) return this.risque.phrase;
     const t = this.riskTone(this.risque.score_risque);
     return t === 'alert' ? 'Niveau élevé — surveillance rapprochée et charge individualisée recommandées.'
-      : t === 'warn'     ? 'Niveau modéré — maintenir le monitoring et adapter le volume.'
-      : 'Niveau faible — disponibilité optimale pour la charge collective.';
+      : t === 'warn' ? 'Niveau modéré — maintenir le monitoring et adapter le volume.'
+        : 'Niveau faible — disponibilité optimale pour la charge collective.';
   }
 
   /** Cercle de progression du donut de risque (r = 36). */
@@ -275,25 +285,31 @@ export class JoueurDetailComponent implements OnInit {
     legend: ApexLegend;
     tooltip: ApexTooltip;
   } = {
-    series: [],
-    chart: { type: 'line', height: 320, toolbar: { show: false }, zoom: { enabled: false }, background: 'transparent', foreColor: '#94a3b8' },
-    xaxis: { categories: [], labels: { style: { colors: '#94a3b8', fontSize: '11px' } } },
-    yaxis: ([
-      { min: 0, max: 25, tickAmount: 5, title: { text: 'Hooper /25', style: { color: '#94a3b8' } }, labels: { style: { colors: '#cbd5e1' } } },
-      { opposite: true, min: 0, title: { text: 'sRPE (UA)', style: { color: couleurTheme() } }, labels: { style: { colors: couleurTheme() } } },
-    ] as unknown as ApexYAxis),
-    plotOptions: { bar: { columnWidth: '45%', borderRadius: 4, colors: { ranges: [
-      { from: 0,  to: 11, color: '#22c55e' },
-      { from: 12, to: 16, color: '#f59e0b' },
-      { from: 17, to: 25, color: '#ef4444' },
-    ] } } },
-    dataLabels: { enabled: false },
-    stroke: { width: [0, 3], curve: 'smooth' },
-    markers: { size: [0, 5], colors: [couleurTheme()], strokeColors: '#fff', strokeWidth: 2 },
-    colors: ['#cbd5e1', couleurTheme()],
-    legend: { show: false },
-    tooltip: { shared: true, intersect: false, theme: 'light' },
-  };
+      series: [],
+      chart: { type: 'line', height: 320, toolbar: { show: false }, zoom: { enabled: false }, background: 'transparent', foreColor: '#94a3b8' },
+      xaxis: { categories: [], labels: { style: { colors: '#94a3b8', fontSize: '11px' } } },
+      yaxis: ([
+        { min: 0, max: 25, tickAmount: 5, title: { text: 'Hooper /25', style: { color: '#94a3b8' } }, labels: { style: { colors: '#cbd5e1' } } },
+        { opposite: true, min: 0, title: { text: 'sRPE (UA)', style: { color: couleurTheme() } }, labels: { style: { colors: couleurTheme() } } },
+      ] as unknown as ApexYAxis),
+      plotOptions: {
+        bar: {
+          columnWidth: '45%', borderRadius: 4, colors: {
+            ranges: [
+              { from: 0, to: 11, color: '#22c55e' },
+              { from: 12, to: 16, color: '#f59e0b' },
+              { from: 17, to: 25, color: '#ef4444' },
+            ]
+          }
+        }
+      },
+      dataLabels: { enabled: false },
+      stroke: { width: [0, 3], curve: 'smooth' },
+      markers: { size: [0, 5], colors: [couleurTheme()], strokeColors: '#fff', strokeWidth: 2 },
+      colors: ['#cbd5e1', couleurTheme()],
+      legend: { show: false },
+      tooltip: { shared: true, intersect: false, theme: 'light' },
+    };
 
   @ViewChild('suiviChart') private suiviChart?: ChartComponent;
 
@@ -301,7 +317,7 @@ export class JoueurDetailComponent implements OnInit {
     const rows = [...this.serieWellness].reverse(); // ordre chronologique
     const series: ApexAxisChartSeries = [
       { name: 'Hooper', type: 'column', data: rows.map(j => j.hooper) },
-      { name: 'sRPE',   type: 'line',   data: rows.map(j => j.charge) },
+      { name: 'sRPE', type: 'line', data: rows.map(j => j.charge) },
     ];
     const categories = rows.map(j => { const d = new Date(j.date); return `${d.getDate()}/${d.getMonth() + 1}`; });
     this.suiviChartOptions = {
@@ -322,9 +338,29 @@ export class JoueurDetailComponent implements OnInit {
   private blessureService = inject(BlessureService);
   private blessureSuiviService = inject(BlessureSuiviService);
   private dialog = inject(MatDialog);
+  private auth = inject(AuthService);
+  private appRef = inject(ApplicationRef);
 
-  retourDashboard(): void {
-    this.router.navigate(['/dashboard']);
+  retourEffectif(): void {
+    // Retour vers « État de l'effectif » si l'utilisateur y a accès (staff physique/GPS),
+    // sinon repli sur le dashboard (évite un blocage par les gardes de rôle/module). Le nettoyage
+    // du graphe de l'onglet Suivi est fait par le canDeactivate (prepareLeave) → aucune précaution ici.
+    const dest = (this.auth.has('pesees:write') || this.auth.has('gps:import')) ? '/etat-effectif' : '/dashboard';
+    window.location.href = dest;
+    // this.router.navigate([dest]);
+  }
+
+  /**
+   * Appelé par le `canDeactivate` de la route AVANT tout départ de la fiche (bouton Effectif, menu,
+   * retour navigateur…). Démonte l'onglet lazy « Suivi individuel » (et son graphe ApexCharts) PENDANT
+   * que le DOM est encore attaché — le `tick()` synchrone détruit le graphe proprement — pour éviter le
+   * crash « Cannot read properties of undefined (reading 'node') » qui survenait au démontage de la route
+   * (le portail Material détache le DOM avant le nettoyage du graphe) et avortait la navigation.
+   */
+  prepareLeave(): boolean {
+    this.leaving = true;
+    this.appRef.tick();
+    return true;
   }
 
   onTabChange(index: number): void {
@@ -352,7 +388,7 @@ export class JoueurDetailComponent implements OnInit {
     const tag = (e.target as HTMLElement).tagName;
     if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
     if (e.key === 'ArrowLeft' && this.joueurPrecedent) this.naviguerVers(this.joueurPrecedent);
-    if (e.key === 'ArrowRight' && this.joueurSuivant)  this.naviguerVers(this.joueurSuivant);
+    if (e.key === 'ArrowRight' && this.joueurSuivant) this.naviguerVers(this.joueurSuivant);
   }
 
   ngOnInit(): void {
@@ -363,12 +399,19 @@ export class JoueurDetailComponent implements OnInit {
     // ACWR & indicateurs préparateur : pas d'endpoint par joueur → résumé d'équipe chargé une seule fois.
     this.predictionService.getResumeEquipe().subscribe({
       next: liste => this.resumeEquipe = liste,
-      error: () => {},
+      error: () => { },
     });
 
     this.route.paramMap.subscribe(params => {
       const id = params.get('id')!;
       this.chargerJoueur(id);
+    });
+
+    // Deep-link depuis la vue équipe « Suivi des entretiens » : ?tab=suivi ouvre l'onglet dédié.
+    this.route.queryParamMap.subscribe(q => {
+      if (q.get('tab') === 'suivi' && this.peutSuivi) {
+        this.activeTab = this.tabLabels.length - 1;
+      }
     });
   }
 
@@ -377,12 +420,12 @@ export class JoueurDetailComponent implements OnInit {
   }
 
   private chargerJoueur(id: string): void {
-    this.joueur    = null;
-    this.risque    = null;
+    this.joueur = null;
+    this.risque = null;
     this.chargeCible = null;
-    this.fatigue   = null;
-    this.gpsData   = [];
-    this.pesees    = [];
+    this.fatigue = null;
+    this.gpsData = [];
+    this.pesees = [];
     this.blessureActive = null;
     this.rtpEtapes = [];
     this.assiduite = null;
@@ -414,16 +457,16 @@ export class JoueurDetailComponent implements OnInit {
         this.pesees = [...data].reverse(); // du plus ancien au plus récent
         this.buildPoidsChart();
       },
-      error: () => {}
+      error: () => { }
     });
 
     this.suiviService.getWellness(id).subscribe({
       next: d => { this.wellnessHisto = d; if (this.activeTab === 2) this.buildSuiviChart(); },
-      error: () => {},
+      error: () => { },
     });
     this.suiviService.getRpe(id).subscribe({
       next: d => { this.rpeHisto = d; if (this.activeTab === 2) this.buildSuiviChart(); },
-      error: () => {},
+      error: () => { },
     });
   }
 
@@ -462,8 +505,10 @@ export class JoueurDetailComponent implements OnInit {
   itemColor(v: number): string { return v <= 2 ? '#22c55e' : v === 3 ? '#f59e0b' : '#ef4444'; }
 
   /** Série des N derniers jours (du plus récent au plus ancien) : Hooper + sRPE + gêne. */
-  get serieWellness(): { date: string; hooper: number | null; rpe: number | null; charge: number | null;
-                         gene: boolean; geneZone: string | null; geneIntensite: number | null; geneTraitee: boolean }[] {
+  get serieWellness(): {
+    date: string; hooper: number | null; rpe: number | null; charge: number | null;
+    gene: boolean; geneZone: string | null; geneIntensite: number | null; geneTraitee: boolean
+  }[] {
     const wByDate = new Map(this.wellnessHisto.map(w => [w.date, w]));
     const rpeByDate = new Map<string, number>();
     const chargeByDate = new Map<string, number>();
@@ -567,11 +612,11 @@ export class JoueurDetailComponent implements OnInit {
         if (active) {
           this.blessureSuiviService.listerRtp(active.id).subscribe({
             next: etapes => this.rtpEtapes = etapes,
-            error: () => {},
+            error: () => { },
           });
         }
       },
-      error: () => {},
+      error: () => { },
     });
   }
 
@@ -579,10 +624,10 @@ export class JoueurDetailComponent implements OnInit {
     if (this.pesees.length === 0) return;
     const labels = this.pesees.map(p => {
       const d = new Date(p.date);
-      return `${d.getDate().toString().padStart(2,'0')}/${(d.getMonth()+1).toString().padStart(2,'0')}`;
+      return `${d.getDate().toString().padStart(2, '0')}/${(d.getMonth() + 1).toString().padStart(2, '0')}`;
     });
     const valeurs = this.pesees.map(p => p.poids);
-    const cible   = this.joueur?.poidsFormeCible;
+    const cible = this.joueur?.poidsFormeCible;
     // Poids = aire verte dégradée ; Cible = ligne rouge pointillée traversant le graphe.
     const series: ApexAxisChartSeries = [
       { name: 'Poids', type: 'area', data: valeurs },

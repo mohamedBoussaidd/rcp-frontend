@@ -51,6 +51,9 @@ export class JoueurHomeComponent {
   readonly nbConseils = computed(() => this.store.conseils().length);
   readonly nbDocuments = computed(() => this.store.documents().length);
 
+  /** Module « Suivi individuel » actif pour le club → raccourcis axes/entretiens visibles. */
+  readonly peutSuivi = computed(() => this.auth.hasModule('suivi_individuel'));
+
   /** Une séance de la prochaine est-elle un match ? */
   estMatch(): boolean {
     const s = this.store.prochaineSeance();

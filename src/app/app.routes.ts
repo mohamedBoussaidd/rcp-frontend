@@ -5,6 +5,8 @@ import { contexteGuard } from '@core/guards/contexte.guard';
 import { saisonGuard } from '@core/guards/saison.guard';
 import { moduleGuard } from '@core/guards/module.guard';
 import { Role } from '@core/services/auth.service';
+// Import de type uniquement (effacé à la compilation → ne casse pas le lazy loading).
+import type { JoueurDetailComponent } from './features/joueur/joueur-detail/joueur-detail.component';
 
 // Groupes de rôles alignés sur la sidebar (nav-sidebar.component.ts) et la
 // matrice serveur (SecurityConfig.java). Le staff exclut JOUEUR et ADMINISTRATIF.
@@ -75,6 +77,7 @@ export const routes: Routes = [
   },
   {
     path: 'joueurs/:id', canActivate: [authGuard, roleGuard, contexteGuard, saisonGuard], data: { roles: STAFF },
+    canDeactivate: [(c: JoueurDetailComponent) => c.prepareLeave()],
     loadComponent: () => import('./features/joueur/joueur-detail/joueur-detail.component').then(m => m.JoueurDetailComponent)
   },
   {
@@ -97,6 +100,11 @@ export const routes: Routes = [
     path: 'presence', canActivate: [authGuard, roleGuard, contexteGuard, saisonGuard, moduleGuard],
     data: { roles: ['SUPER_ADMIN', 'PRESIDENT', 'ENTRAINEUR', 'PREPARATEUR'], perms: ['presence:write'], module: 'presence' },
     loadComponent: () => import('./features/performance/historique-presence/historique-presence.component').then(m => m.HistoriquePresenceComponent)
+  },
+  {
+    path: 'suivi-entretiens', canActivate: [authGuard, roleGuard, contexteGuard, saisonGuard, moduleGuard],
+    data: { roles: STAFF, perms: ['entretien:read'], module: 'suivi_individuel' },
+    loadComponent: () => import('./features/entretien/suivi-entretiens/suivi-entretiens.component').then(m => m.SuiviEntretiensComponent)
   },
   {
     path: 'vue-seance/:id', canActivate: [authGuard, roleGuard, contexteGuard, saisonGuard, moduleGuard], data: { roles: STAFF_PHYSIQUE, perms: PERMS_GPS, module: 'gps' },

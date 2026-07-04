@@ -1,0 +1,60 @@
+.se {
+  padding: 24px 32px 96px;
+  max-width: 1100px;
+  margin: 0 auto;
+
+  @media (max-width: 768px) { padding: 16px 16px 96px; }
+}
+
+.se-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-2xl);
+  box-shadow: var(--shadow-sm);
+  padding: 22px;
+}
+
+.se {
+  &__head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 16px;
+    h1 { margin: 0 0 5px; font-size: 1.2rem; font-weight: 800; letter-spacing: -.02em; color: var(--text); } }
+  &__sub { margin: 0; color: var(--text-3); font-size: .82rem; max-width: 60ch; line-height: 1.5; }
+
+  /* Segmented de tri */
+  &__tri { display: inline-flex; background: var(--surface-3); border: 1px solid var(--border); border-radius: 999px; padding: 3px; gap: 2px;
+    button { border: none; background: transparent; border-radius: 999px; padding: 7px 14px; cursor: pointer; font: inherit;
+      font-size: .78rem; font-weight: 600; color: var(--text-3); transition: all .16s var(--ease-out);
+      &:hover { color: var(--text-2); }
+      &.is-active { background: var(--surface); color: var(--text); box-shadow: var(--shadow-xs); } } }
+
+  /* Légende */
+  &__legend { display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 16px; font-size: .76rem; color: var(--text-3);
+    span { display: inline-flex; align-items: center; gap: 6px; } }
+  &__key { width: 9px; height: 9px; border-radius: 50%; display: block;
+    &--ok { background: var(--ok); } &--warn { background: var(--warn); } &--bad { background: var(--bad); } }
+
+  &__empty { color: var(--text-3); font-size: .86rem; }
+
+  &__tablewrap { overflow-x: auto; border: 1px solid var(--border); border-radius: var(--r-xl); }
+  &__table { width: 100%; border-collapse: collapse; min-width: 720px; font-size: .88rem;
+    thead th { text-align: left; padding: 11px 14px; font-size: .68rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em;
+      color: var(--text-3); background: var(--surface-2); }
+    th.c, td.c { text-align: center; }
+    th.se__th-dot { width: 40px; }
+    tbody tr { cursor: pointer; border-top: 1px solid var(--border); transition: background .14s var(--ease-out);
+      &:hover { background: var(--surface-2); } }
+    td { padding: 12px 14px; color: var(--text); vertical-align: middle; } }
+
+  &__dot { width: 11px; height: 11px; border-radius: 50%; display: inline-block;
+    &--ok { background: var(--ok); } &--warn { background: var(--warn); } &--bad { background: var(--bad); } }
+
+  &__player { font-weight: 700; font-size: .9rem; }
+  &__poste { font-weight: 400; font-size: .76rem; color: var(--text-3); margin-top: 1px; }
+
+  &__date { font-size: .84rem; }
+  &__ago { font-size: .78rem; font-weight: 600; margin-left: 4px;
+    &--ok { color: var(--text-3); } &--warn { color: var(--warn); } &--bad { color: var(--bad); } }
+  &__never { display: inline-flex; align-items: center; font-size: .72rem; font-weight: 600; padding: 3px 9px; border-radius: 999px;
+    background: var(--bad-bg); color: var(--t-alert-fg); border: 1px solid var(--bad-bd); }
+  &__types { display: inline-flex; gap: 10px; color: var(--text-2); font-size: .82rem; }
+  &__muted { color: var(--text-4); }
+}

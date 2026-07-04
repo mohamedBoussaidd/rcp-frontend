@@ -1,0 +1,110 @@
+<form [formGroup]="form" (ngSubmit)="enregistrer()" class="ed">
+
+  <!-- En-tête -->
+  <div class="ed__head">
+    <div>
+      <div class="ed__title">{{ editMode ? 'Modifier l\'entretien' : 'Nouvel entretien' }}</div>
+      <div class="ed__subtitle">{{ data.joueurNom }}</div>
+    </div>
+    <button type="button" class="ed__close" (click)="annuler()" title="Fermer">✕</button>
+  </div>
+
+  <!-- Corps -->
+  <div class="ed__body">
+
+    <!-- Type -->
+    <div class="ed__field">
+      <label>Type</label>
+      <div class="ed__seg">
+        @for (t of TYPES; track t.value) {
+          <button type="button" class="ed__seg-btn" [class.is-active]="form.value.type === t.value"
+                  (click)="form.get('type')!.setValue(t.value)">{{ t.emoji }} {{ t.label }}</button>
+        }
+      </div>
+    </div>
+
+    <!-- Date + lien vidéo -->
+    <div class="ed__row">
+      <div class="ed__field">
+        <label>Date</label>
+        <input type="date" formControlName="dateEntretien" class="ed__mono" />
+      </div>
+      <div class="ed__field">
+        <label>Lien vidéo <span class="ed__opt">(optionnel)</span></label>
+        <input type="url" formControlName="videoUrl" placeholder="https://…" />
+      </div>
+    </div>
+
+    <!-- Notes -->
+    <div class="ed__field">
+      <label>Notes générales <span class="ed__opt">(optionnel)</span></label>
+      <textarea formControlName="notes" rows="3" placeholder="Ce qui s'est dit, l'état d'esprit, le contexte…"></textarea>
+    </div>
+
+    <!-- Axes -->
+    <div class="ed__field">
+      <div class="ed__axes-head">
+        <label>Axes travaillés</label>
+        <button type="button" class="ed__add" (click)="ajouterLigne()">+ Ajouter un axe</button>
+      </div>
+
+      @if (axes.length === 0) {
+        <p class="ed__empty">Aucun axe pour cet entretien. Ajoute-en un pour noter la progression.</p>
+      }
+
+      @for (ligne of lignesFG; track $index; let i = $index) {
+        <div class="ed__ligne" [class.ed__ligne--new]="estNouvelAxe(i)" [formGroup]="ligne">
+          <div class="ed__ligne-top">
+            <select formControlName="axeTravailId" class="ed__select">
+              <option value="">➕ Nouvel axe…</option>
+              @for (a of data.axesExistants; track a.id) {
+                <option [value]="a.id">{{ a.libelle }} — {{ catLabel(a.categorie) }}</option>
+              }
+            </select>
+            @if (estNouvelAxe(i)) {
+              <input type="text" formControlName="nouvelAxeLibelle" class="ed__newlib" placeholder="Libellé du nouvel axe" />
+              <select formControlName="nouvelAxeCategorie" class="ed__newcat">
+                @for (c of CATEGORIES; track c.value) { <option [value]="c.value">{{ c.label }}</option> }
+              </select>
+            }
+            <button type="button" class="ed__del" (click)="retirerLigne(i)" title="Retirer">✕</button>
+          </div>
+
+          <div class="ed__ligne-eval">
+            <div class="ed__note-lbl">Note</div>
+            <div class="ed__stars">
+              @for (n of [1,2,3,4,5]; track n) {
+                <button type="button" class="ed__star" [class.is-on]="(ligne.get('note')!.value ?? 0) >= n"
+                        (click)="setNote(i, n)">★</button>
+              }
+            </div>
+            <div class="ed__tend">
+              @for (t of TENDANCES; track t.value) {
+                <button type="button" class="ed__tend-btn" [class.is-active]="ligne.get('tendance')!.value === t.value"
+                        (click)="setTendance(i, t.value)">{{ t.label }}</button>
+              }
+            </div>
+          </div>
+          <input type="text" formControlName="commentaire" class="ed__comment" placeholder="Commentaire sur cet axe…" />
+        </div>
+      }
+    </div>
+
+    <!-- Partage -->
+    <label class="ed__share">
+      <input type="checkbox" formControlName="partager" />
+      <div>
+        <div class="ed__share-t">Partager avec le joueur</div>
+        <div class="ed__share-s">Décoché par défaut — le joueur ne verra rien tant que non partagé (il recevra une notification).</div>
+      </div>
+    </label>
+  </div>
+
+  <!-- Pied -->
+  <div class="ed__actions">
+    <button type="button" class="ed__btn ed__btn--ghost" (click)="annuler()">Annuler</button>
+    <button type="submit" class="ed__btn ed__btn--primary" [disabled]="saving">
+      {{ saving ? 'Enregistrement…' : (editMode ? 'Enregistrer' : 'Enregistrer l\'entretien') }}
+    </button>
+  </div>
+</form>

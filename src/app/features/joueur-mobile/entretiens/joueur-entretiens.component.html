@@ -1,0 +1,47 @@
+<div class="je">
+  @if (chargement()) {
+    <p class="je__loading">Chargement…</p>
+  } @else if (entretiens().length === 0) {
+    <div class="je__void">
+      <span class="je__void-icon">💬</span>
+      <p class="je__void-t">Aucun entretien partagé pour le moment</p>
+      <small>Ton coach partagera ici les retours de vos échanges. Reviens bientôt !</small>
+    </div>
+  } @else {
+    @for (e of entretiens(); track e.id) {
+      <article class="je-card">
+        <div class="je-card__head">
+          <span class="je-card__icon je-card__icon--{{ e.type | lowercase }}">{{ TYPE_ICONS[e.type] }}</span>
+          <div class="je-card__ht">
+            <div class="je-card__type">{{ TYPE_LABELS[e.type] }}</div>
+            <div class="num je-card__date">{{ e.dateEntretien | date:'d MMM y':'':'fr' }}</div>
+          </div>
+        </div>
+
+        @if (e.notes) { <p class="je-card__notes">{{ e.notes }}</p> }
+
+        @if (e.axes.length > 0) {
+          <div class="je-axes">
+            @for (l of e.axes; track l.id) {
+              <div class="je-axe">
+                <div class="je-axe__top">
+                  <span class="cat-chip cat-chip--{{ (l.categorie || 'TECHNIQUE') | lowercase }}">{{ CAT_LABELS[l.categorie || 'TECHNIQUE'] }}</span>
+                  <span class="je-axe__lib">{{ l.axeLibelle }}</span>
+                  @if (l.note != null) { <span class="num je-axe__note" [class.is-bad]="l.note < 3">{{ l.note }}/5</span> }
+                  @if (l.tendance) { <span class="je-tend je-tend--{{ TEND_TONE[l.tendance] }}">{{ TEND_ICONS[l.tendance] }}</span> }
+                </div>
+                @if (l.commentaire) { <p class="je-axe__cmt">« {{ l.commentaire }} »</p> }
+              </div>
+            }
+          </div>
+        }
+
+        @if (e.videoUrl) {
+          <a class="je-card__video" [href]="e.videoUrl" target="_blank" rel="noopener">▶ Ouvrir la vidéo</a>
+        }
+      </article>
+    }
+
+    <p class="je__note">Seuls les entretiens partagés par le staff apparaissent ici.</p>
+  }
+</div>
