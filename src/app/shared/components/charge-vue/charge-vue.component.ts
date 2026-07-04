@@ -1,5 +1,6 @@
 import { Component, Input, Output, EventEmitter, OnChanges, SimpleChanges, ViewChild } from '@angular/core';
 import { GpsPoint } from '@core/services/joueur.service';
+import { couleurTheme } from '@core/services/theme.service';
 import { MatIcon } from '@angular/material/icon';
 import { ChartComponent, ApexChart, ApexAxisChartSeries, ApexXAxis, ApexPlotOptions, ApexDataLabels, ApexTooltip, ApexYAxis, ApexLegend } from 'ng-apexcharts';
 import { DecimalPipe, DatePipe } from '@angular/common';
@@ -253,7 +254,7 @@ export class ChargeVueComponent implements OnChanges {
     plotOptions: { bar: { borderRadius: 6, columnWidth: '55%', distributed: true } },
     dataLabels: { enabled: false },
     legend: { show: false },
-    colors: ['#15803d'],
+    colors: [couleurTheme()],
     // Barres colorées par type ; l'attendue reste consultable au survol.
     tooltip: {
       custom: ({ dataPointIndex }: { dataPointIndex: number }) => {

@@ -623,6 +623,10 @@ mat-progress-bar {
   color: var(--text-3);
 }
 
+.field__hint--error {
+  color: var(--bad);
+}
+
 .input,
 .select,
 .textarea {
@@ -2032,4 +2036,34 @@ mat-progress-bar {
   .role-row { grid-template-columns: 1fr auto; row-gap: 6px; }
   .role-row__id { grid-column: 1 / -1; }
   .adm-row { flex-wrap: wrap; }
+}
+/* ══════════════════════════════════════
+   NAV TEINTÉE (option « thème club ») — classe posée sur <html> par ThemeService.
+   Doit surclasser les styles du composant nav-sidebar (spécificité html.x > attr scoping).
+   ══════════════════════════════════════ */
+html.theme-nav-teintee {
+  .navbar {
+    background: var(--green-800);
+    border-bottom-color: rgba(255, 255, 255, 0.10);
+  }
+  .navbar .hamburger {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.16);
+    mat-icon { color: rgba(255, 255, 255, 0.85); }
+  }
+  .navbar__brand { color: #fff; }
+  .navbar__brand-sub { color: rgba(255, 255, 255, 0.62); }
+  .navbar__brand-dot { color: var(--green-400); }
+  .navbar .nav-item {
+    color: rgba(255, 255, 255, 0.78);
+    &:hover { background: rgba(255, 255, 255, 0.10); color: #fff; }
+    &.is-active { background: rgba(255, 255, 255, 0.18); color: #fff; mat-icon { color: #fff; } }
+  }
+  .navbar .avatar-btn {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.16);
+    &:hover { background: rgba(255, 255, 255, 0.14); }
+  }
+  .navbar .avatar-name { color: #fff; }
+  .navbar .avatar-chev { color: rgba(255, 255, 255, 0.6); }
 }

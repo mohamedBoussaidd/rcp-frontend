@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { MatIcon } from '@angular/material/icon';
 import { ChartComponent, ApexChart, ApexAxisChartSeries, ApexXAxis, ApexPlotOptions, ApexDataLabels, ApexTooltip, ApexYAxis, ApexLegend } from 'ng-apexcharts';
 import { PredictionService, ChargeEquipe, ChargeSeance, ChargeJoueur } from '@core/services/prediction.service';
+import { couleurTheme } from '@core/services/theme.service';
 
 const COULEURS_TYPE: Record<string, string> = {
   MATCH:        '#ef4444',
@@ -194,7 +195,7 @@ export class ChargeEquipeComponent implements OnInit {
     plotOptions: { bar: { borderRadius: 6, columnWidth: '55%', distributed: true } },
     dataLabels: { enabled: false },
     legend: { show: false },
-    colors: ['#15803d'],
+    colors: [couleurTheme()],
     tooltip: {
       custom: ({ dataPointIndex }: { dataPointIndex: number }) => {
         const m = this.chartMeta[dataPointIndex];

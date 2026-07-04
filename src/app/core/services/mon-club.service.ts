@@ -77,6 +77,11 @@ export class MonClubService {
     return this.http.delete<void>(`${this.base}/membres/${id}`);
   }
 
+  /** Change l'email et/ou le mot de passe d'un membre (champs optionnels). */
+  modifierIdentifiants(id: string, req: { email?: string; nouveauMotDePasse?: string }): Observable<Membre> {
+    return this.http.patch<Membre>(`${this.base}/membres/${id}/identifiants`, req);
+  }
+
   /** Lie un compte JOUEUR à une fiche joueur existante. */
   lierFiche(membreId: string, joueurId: string): Observable<Membre> {
     return this.http.put<Membre>(`${this.base}/membres/${membreId}/fiche`, { joueurId });

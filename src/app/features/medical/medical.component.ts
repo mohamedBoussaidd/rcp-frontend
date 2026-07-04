@@ -10,6 +10,7 @@ import { BlessureNote, RtpEtape, StatutEtape, BlessureSuiviService } from '@core
 import { DocumentMedical, DocumentMedicalService } from '@core/services/document-medical.service';
 import { Wellness, Rpe, SuiviSubjectifService } from '@core/services/suivi-subjectif.service';
 import { PredictionService, ResumeJoueur } from '@core/services/prediction.service';
+import { couleurTheme } from '@core/services/theme.service';
 import { Joueur, JoueurService } from '@core/services/joueur.service';
 import { AuthService } from '@core/services/auth.service';
 import { ChartComponent, ApexChart, ApexAxisChartSeries, ApexNonAxisChartSeries, ApexXAxis, ApexYAxis, ApexStroke, ApexFill, ApexPlotOptions, ApexDataLabels, ApexLegend, ApexGrid, ApexMarkers } from 'ng-apexcharts';
@@ -573,13 +574,13 @@ export class MedicalComponent implements OnInit {
   readonly evoFill: ApexFill           = { type: 'gradient', gradient: { shadeIntensity: 1, opacityFrom: 0.5, opacityTo: 0.04, stops: [0, 100] } };
   readonly evoDataLabels: ApexDataLabels = { enabled: false };
   readonly evoMarkers: ApexMarkers     = { size: 4, strokeWidth: 0, hover: { size: 6 } };
-  readonly evoColors                   = ['#1A9C4D', '#B91C1C'];
+  readonly evoColors                   = [couleurTheme(500), '#B91C1C'];
   readonly evoLegend: ApexLegend       = { show: true, position: 'top', horizontalAlign: 'right' };
   readonly evoYaxis: ApexYAxis         = { min: 0, forceNiceScale: true, labels: { style: { colors: '#94a3b8' } } };
 
   readonly zonesChart: ApexChart       = { type: 'bar', height: 300, toolbar: { show: false }, background: 'transparent', fontFamily: 'Manrope, sans-serif' };
   readonly zonesPlot: ApexPlotOptions  = { bar: { horizontal: true, borderRadius: 4, barHeight: '62%' } };
-  readonly zonesColors                 = ['#1A9C4D'];
+  readonly zonesColors                 = [couleurTheme(500)];
   readonly zonesDataLabels: ApexDataLabels = { enabled: false };
   readonly zonesGrid: ApexGrid         = { borderColor: '#eef1f6', strokeDashArray: 4 };
 

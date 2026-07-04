@@ -1,0 +1,52 @@
+<div class="card adm-card">
+  <div class="adm-card__head">
+    <div>
+      <h2 class="adm-card__title">Apparence</h2>
+      <p class="adm-card__sub">
+        La couleur du club s'applique aux boutons, menus, graphiques et à l'application joueur.
+        L'aperçu est immédiat sur tout l'écran — rien n'est enregistré avant de cliquer « Enregistrer ».
+      </p>
+    </div>
+  </div>
+  <div class="adm-card__body">
+
+    <div class="pal-grid">
+      @for (p of presets; track p.nom) {
+        <button type="button" class="pal-card"
+                [class.is-active]="!modeLibre && couleur === p.couleur"
+                (click)="choisirPreset(p)">
+          <span class="pal-swatch" [style.background]="p.couleur ?? '#15803D'"></span>
+          <span class="pal-nom">{{ p.nom }}</span>
+        </button>
+      }
+      <button type="button" class="pal-card" [class.is-active]="modeLibre" (click)="choisirLibre()">
+        <span class="pal-swatch pal-swatch--libre" [style.background]="modeLibre ? couleur : null"></span>
+        <span class="pal-nom">Personnalisée…</span>
+      </button>
+    </div>
+
+    @if (modeLibre) {
+      <div class="pal-libre">
+        <input type="color" [(ngModel)]="couleurLibre" name="clibre" (ngModelChange)="couleurLibreChange()">
+        <input class="input pal-libre__hex" [(ngModel)]="couleurLibre" name="chex"
+               (ngModelChange)="couleurLibreChange()" maxlength="7" placeholder="#RRGGBB" spellcheck="false">
+        <span class="field__hint">Les couleurs trop claires sont automatiquement assombries pour que les boutons restent lisibles.</span>
+      </div>
+    }
+
+    <label class="pal-nav">
+      <input type="checkbox" [(ngModel)]="navTeintee" name="cnav" (ngModelChange)="apercu()">
+      <span>Barre de navigation aux couleurs du club</span>
+    </label>
+
+    <p class="field__hint">Les graphiques adoptent la nouvelle couleur au prochain affichage de leur écran.</p>
+
+    <div class="pal-actions">
+      <button type="button" class="btn btn--secondary" [disabled]="!dirty" (click)="annuler()">Annuler</button>
+      <button type="button" class="btn btn--primary" [disabled]="!dirty || saving()" (click)="enregistrer()">
+        {{ saving() ? 'Enregistrement…' : 'Enregistrer' }}
+      </button>
+    </div>
+
+  </div>
+</div>

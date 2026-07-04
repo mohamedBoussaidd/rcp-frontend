@@ -1,5 +1,6 @@
 import { Component, OnInit, inject } from '@angular/core';
 import { PredictionService, ResumeJoueur } from '@core/services/prediction.service';
+import { couleurTheme } from '@core/services/theme.service';
 import { PeseesService, PoidsFicheJoueur } from '@core/services/pesees.service';
 import { JoueurService, Joueur, AssiduiteJoueur } from '@core/services/joueur.service';
 import { TechniqueService, JoueurCompoStats } from '@core/services/technique.service';
@@ -220,7 +221,7 @@ export class DashboardComponent implements OnInit {
     title:      { text: '' },
     theme:      { mode: 'light' },
     grid:       { borderColor: '#E5E9EF', strokeDashArray: 3 },
-    colors:     ['#15803D'],
+    colors:     [couleurTheme()],
     fill:       { type: 'gradient', gradient: { shadeIntensity: 1, opacityFrom: 0.5, opacityTo: 0.04, stops: [0, 100] } },
     markers:    { size: 4, strokeWidth: 0, hover: { size: 6 } },
   };

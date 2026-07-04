@@ -7,6 +7,7 @@ import {
 import { Joueur, JoueurService } from '@core/services/joueur.service';
 import { AuthService } from '@core/services/auth.service';
 import { RolesAccesComponent } from '../roles-acces/roles-acces.component';
+import { ApparenceClubComponent } from '../apparence-club/apparence-club.component';
 
 const MAX_EQUIPES = 3;
 
@@ -23,15 +24,15 @@ const ROLES_MEMBRES = [
   standalone: true,
   templateUrl: './mon-club.component.html',
   styleUrl: './mon-club.component.scss',
-  imports: [FormsModule, RolesAccesComponent],
+  imports: [FormsModule, RolesAccesComponent, ApparenceClubComponent],
 })
 export class MonClubComponent implements OnInit {
 
   readonly rolesMembres = ROLES_MEMBRES;
   readonly maxEquipes = MAX_EQUIPES;
 
-  /** Onglet actif : gestion des comptes/équipes, ou administration des rôles & accès. */
-  readonly onglet = signal<'membres' | 'roles'>('membres');
+  /** Onglet actif : gestion des comptes/équipes, administration des rôles & accès, ou apparence. */
+  readonly onglet = signal<'membres' | 'roles' | 'apparence'>('membres');
 
   data = signal<MonClub | null>(null);
   loading = signal(true);
@@ -170,6 +171,56 @@ export class MonClubComponent implements OnInit {
     }).subscribe({
       next: () => { this.editingMembreId.set(null); this.charger(); },
       error: () => this.snack.open('Modification impossible', 'Fermer', { duration: 3000 }),
+    });
+  }
+
+  // ── Identifiants (email / mot de passe) ──
+  identifiantsMembreId = signal<string | null>(null);
+  identifiantsForm = { email: '', nouveauMotDePasse: '', confirmation: '' };
+  savingIdentifiants = signal(false);
+
+  /** Membre dont la modale identifiants est ouverte. */
+  readonly membreEnIdentifiants = computed(() => this.membres().find(m => m.id === this.identifiantsMembreId()) ?? null);
+
+  ouvrirIdentifiants(m: Membre): void {
+    this.identifiantsForm = { email: m.email, nouveauMotDePasse: '', confirmation: '' };
+    this.identifiantsMembreId.set(m.id);
+  }
+  fermerIdentifiants(): void { this.identifiantsMembreId.set(null); }
+
+  get identifiantsValides(): boolean {
+    const f = this.identifiantsForm;
+    const m = this.membreEnIdentifiants();
+    if (!m) return false;
+    const emailChange = !!f.email && f.email.trim().toLowerCase() !== m.email.toLowerCase();
+    const mdpRempli = !!f.nouveauMotDePasse;
+    if (!emailChange && !mdpRempli) return false;                       // rien à enregistrer
+    if (mdpRempli && f.nouveauMotDePasse.length < 8) return false;
+    if (mdpRempli && f.nouveauMotDePasse !== f.confirmation) return false;
+    return true;
+  }
+
+  enregistrerIdentifiants(m: Membre): void {
+    if (!this.identifiantsValides) return;
+    const f = this.identifiantsForm;
+    const req: { email?: string; nouveauMotDePasse?: string } = {};
+    if (f.email && f.email.trim().toLowerCase() !== m.email.toLowerCase()) req.email = f.email.trim();
+    if (f.nouveauMotDePasse) req.nouveauMotDePasse = f.nouveauMotDePasse;
+    this.savingIdentifiants.set(true);
+    this.service.modifierIdentifiants(m.id, req).subscribe({
+      next: () => {
+        this.savingIdentifiants.set(false);
+        this.fermerIdentifiants();
+        this.charger();
+        this.snack.open('Identifiants mis à jour', 'Fermer', { duration: 2500 });
+      },
+      error: (err) => {
+        this.savingIdentifiants.set(false);
+        this.snack.open(
+          err.status === 409 ? 'Cet email est déjà utilisé'
+            : err.status === 400 ? 'Mot de passe : 8 caractères minimum'
+            : 'Modification impossible', 'Fermer', { duration: 3500 });
+      },
     });
   }
 

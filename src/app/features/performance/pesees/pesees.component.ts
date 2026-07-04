@@ -1,5 +1,6 @@
 import { Component, OnInit, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { couleurTheme } from '@core/services/theme.service';
 import { DecimalPipe, DatePipe } from '@angular/common';
 import { MatIcon } from '@angular/material/icon';
 import { MatSnackBar } from '@angular/material/snack-bar';
@@ -61,10 +62,10 @@ export class PeseesComponent implements OnInit {
     stroke:     { curve: 'smooth', width: 3 },
     dataLabels: { enabled: false },
     fill:       { type: 'gradient', gradient: { shadeIntensity: 1, opacityFrom: 0.35, opacityTo: 0.02, stops: [0, 95, 100] } },
-    markers:    { size: 4, colors: ['#15803D'], strokeColors: '#fff', strokeWidth: 2, hover: { size: 6 } },
+    markers:    { size: 4, colors: [couleurTheme()], strokeColors: '#fff', strokeWidth: 2, hover: { size: 6 } },
     tooltip:    { theme: 'light', y: { formatter: (v: number) => `${v} kg` } },
     grid:       { borderColor: '#E5E9EF', strokeDashArray: 4, padding: { left: 8, right: 8 } },
-    colors:     ['#15803D'],
+    colors:     [couleurTheme()],
   };
 
   ngOnInit(): void { this.charger(); }

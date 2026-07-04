@@ -1,5 +1,6 @@
 import { Component, OnInit, inject } from '@angular/core';
 import { DecimalPipe, DatePipe, SlicePipe, LowerCasePipe } from '@angular/common';
+import { couleurTheme } from '@core/services/theme.service';
 import { RouterLink } from '@angular/router';
 import { MatIcon } from '@angular/material/icon';
 import { MatDialog } from '@angular/material/dialog';
@@ -134,7 +135,7 @@ export class DashboardPreparateurComponent implements OnInit {
     title:       { text: '' },
     theme:       { mode: 'light' },
     grid:        { borderColor: '#E5E9EF', strokeDashArray: 3 },
-    colors:      ['#15803D'],
+    colors:      [couleurTheme()],
     annotations: {},
   };
 

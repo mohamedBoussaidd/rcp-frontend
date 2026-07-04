@@ -2,6 +2,7 @@ import { Component, OnInit, HostListener, inject, ViewChild } from '@angular/cor
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { MatDialog } from '@angular/material/dialog';
 import { JoueurService, Joueur, GpsPoint, AssiduiteJoueur } from '@core/services/joueur.service';
+import { couleurTheme } from '@core/services/theme.service';
 import { PredictionService, NiveauFatigue, ResumeJoueur } from '@core/services/prediction.service';
 import { PeseesService, Pesee } from '@core/services/pesees.service';
 import { SuiviSubjectifService, Wellness, Rpe } from '@core/services/suivi-subjectif.service';
@@ -98,7 +99,7 @@ export class JoueurDetailComponent implements OnInit {
     tooltip: { theme: 'light', y: { formatter: (v: number) => `${v.toFixed(1)} kg` } },
     yaxis: { labels: { formatter: (v: number) => `${v.toFixed(0)} kg` } },
     dataLabels: { enabled: false },
-    colors: ['#15803d', '#ef4444'],
+    colors: [couleurTheme(), '#ef4444'],
     annotations: {},
     // Dégradé vert sous la courbe : foncé près de la ligne (poids actuel), s'éclaircissant vers le bas.
     fill: {
@@ -279,7 +280,7 @@ export class JoueurDetailComponent implements OnInit {
     xaxis: { categories: [], labels: { style: { colors: '#94a3b8', fontSize: '11px' } } },
     yaxis: ([
       { min: 0, max: 25, tickAmount: 5, title: { text: 'Hooper /25', style: { color: '#94a3b8' } }, labels: { style: { colors: '#cbd5e1' } } },
-      { opposite: true, min: 0, title: { text: 'sRPE (UA)', style: { color: '#15803d' } }, labels: { style: { colors: '#15803d' } } },
+      { opposite: true, min: 0, title: { text: 'sRPE (UA)', style: { color: couleurTheme() } }, labels: { style: { colors: couleurTheme() } } },
     ] as unknown as ApexYAxis),
     plotOptions: { bar: { columnWidth: '45%', borderRadius: 4, colors: { ranges: [
       { from: 0,  to: 11, color: '#22c55e' },
@@ -288,8 +289,8 @@ export class JoueurDetailComponent implements OnInit {
     ] } } },
     dataLabels: { enabled: false },
     stroke: { width: [0, 3], curve: 'smooth' },
-    markers: { size: [0, 5], colors: ['#15803d'], strokeColors: '#fff', strokeWidth: 2 },
-    colors: ['#cbd5e1', '#15803d'],
+    markers: { size: [0, 5], colors: [couleurTheme()], strokeColors: '#fff', strokeWidth: 2 },
+    colors: ['#cbd5e1', couleurTheme()],
     legend: { show: false },
     tooltip: { shared: true, intersect: false, theme: 'light' },
   };
