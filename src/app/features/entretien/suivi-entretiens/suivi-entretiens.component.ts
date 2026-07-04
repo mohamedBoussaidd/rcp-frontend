@@ -1,14 +1,17 @@
 import { Component, OnInit, inject } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { Router } from '@angular/router';
+import { MatDialog } from '@angular/material/dialog';
+import { AuthService } from '@core/services/auth.service';
 import { EntretienService, EquipeLigne } from '@core/services/entretien.service';
+import { EntretienDialogComponent, EntretienDialogData } from '../../joueur/suivi-individuel/entretien-dialog.component';
 
 type Tri = 'dernier' | 'nom' | 'nb90';
 
 /**
  * Vue équipe « Suivi des entretiens » : une ligne par joueur de l'effectif, avec la date du dernier
- * entretien, les cadences 30 j / 90 j et la répartition par type. Trié pour faire remonter les
- * joueurs oubliés (dernier entretien le plus ancien / jamais en premier).
+ * entretien, le prochain RDV planifié, les cadences 30 j / 90 j et la répartition par type. Trié
+ * pour faire remonter les joueurs oubliés (dernier entretien le plus ancien / jamais en premier).
  */
 @Component({
   selector: 'app-suivi-entretiens',
@@ -21,6 +24,8 @@ export class SuiviEntretiensComponent implements OnInit {
 
   private service = inject(EntretienService);
   private router = inject(Router);
+  private dialog = inject(MatDialog);
+  private auth = inject(AuthService);
 
   lignes: EquipeLigne[] = [];
   chargement = true;
@@ -72,5 +77,30 @@ export class SuiviEntretiensComponent implements OnInit {
   ouvrirFiche(l: EquipeLigne): void {
     // Ouvre directement sur l'onglet « Suivi individuel » de la fiche (cf. joueur-detail).
     this.router.navigate(['/joueurs', l.joueurId], { queryParams: { tab: 'suivi' } });
+  }
+
+  get peutPlanifier(): boolean { return this.auth.has('entretien:write'); }
+
+  /** Jours restants avant une date ISO (RDV) ; négatif = en retard. */
+  joursAvant(date: string): number {
+    return Math.ceil((new Date(date).getTime() - Date.now()) / 86_400_000);
+  }
+
+  /** Planifier un RDV depuis la ligne (sans quitter la vue équipe). */
+  planifier(l: EquipeLigne, event: MouseEvent): void {
+    event.stopPropagation();
+    // Axes chargés pour le cas où le staff bascule le dialog en mode compte-rendu.
+    this.service.listerAxes(l.joueurId).subscribe(axes => {
+      const data: EntretienDialogData = {
+        joueurId: l.joueurId,
+        joueurNom: `${l.prenom} ${l.nom}`,
+        axesExistants: axes.filter(a => a.statut === 'EN_COURS'),
+        modeInitial: 'PLANIFIE',
+      };
+      this.dialog.open(EntretienDialogComponent, { data, autoFocus: false, panelClass: 'rcp-dialog' })
+        .afterClosed().subscribe(ok => {
+          if (ok) this.service.vueEquipe().subscribe(li => { this.lignes = li; this.trier(); });
+        });
+    });
   }
 }

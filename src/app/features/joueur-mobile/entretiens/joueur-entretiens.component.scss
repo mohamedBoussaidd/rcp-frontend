@@ -16,6 +16,18 @@
   &__void small { font-size: .9rem; color: var(--text-3); line-height: 1.55; }
 
   &__note { text-align: center; font-size: .72rem; color: var(--text-4); line-height: 1.5; margin: 6px 0 0; }
+
+  &__section { font-size: .74rem; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; color: var(--text-3); margin: 4px 0 -4px; }
+}
+
+/* Rendez-vous à venir : carte au liseré pointillé (créneau sans contenu). */
+.je-rdv {
+  border: 1px dashed var(--warn, #b45309);
+  background: var(--warn-bg, #fef3c7);
+
+  &__badge { margin-left: auto; flex: none; font-size: .72rem; font-weight: 700; padding: 4px 10px; border-radius: 999px;
+    background: var(--surface); color: var(--warn, #b45309); border: 1px solid var(--warn-bd, #fde68a); }
+  &__hint { margin: 0; font-size: .78rem; color: var(--text-3); line-height: 1.5; }
 }
 
 .je-card {

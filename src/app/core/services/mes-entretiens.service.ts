@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { CategorieAxe, LigneAxe, StatutAxe, Tendance, TypeEntretien } from './entretien.service';
+import { AgendaEntretien, CategorieAxe, LigneAxe, StatutAxe, Tendance, TypeEntretien } from './entretien.service';
 
 export interface MonAxe {
   id: string;
@@ -47,6 +47,11 @@ export class MesEntretiensService {
   }
   mesEntretiens(): Observable<MonEntretien[]> {
     return this.http.get<MonEntretien[]>('/api/moi/entretiens');
+  }
+  /** Mes rendez-vous d'entretien PLANIFIE de la période (type/date/heure — jamais les notes). */
+  monAgenda(debut: string, fin: string): Observable<AgendaEntretien[]> {
+    return this.http.get<AgendaEntretien[]>('/api/moi/entretiens/agenda',
+      { params: new HttpParams().set('debut', debut).set('fin', fin) });
   }
   mesAutoEvaluations(): Observable<AutoEval[]> {
     return this.http.get<AutoEval[]>('/api/moi/auto-evaluations');

@@ -3,7 +3,11 @@
   <!-- En-tête -->
   <div class="ed__head">
     <div>
-      <div class="ed__title">{{ editMode ? 'Modifier l\'entretien' : 'Nouvel entretien' }}</div>
+      <div class="ed__title">
+        {{ editMode
+            ? (data.realiser ? 'Réaliser l\'entretien' : (planif ? 'Modifier le rendez-vous' : 'Modifier l\'entretien'))
+            : (planif ? 'Planifier un entretien' : 'Nouvel entretien') }}
+      </div>
       <div class="ed__subtitle">{{ data.joueurNom }}</div>
     </div>
     <button type="button" class="ed__close" (click)="annuler()" title="Fermer">✕</button>
@@ -11,6 +15,21 @@
 
   <!-- Corps -->
   <div class="ed__body">
+
+    <!-- Mode : compte-rendu maintenant OU rendez-vous à venir -->
+    @if (modeChoisissable) {
+      <div class="ed__field">
+        <div class="ed__seg">
+          <button type="button" class="ed__seg-btn" [class.is-active]="!planif"
+                  (click)="choisirMode('REALISE')">📝 Compte-rendu</button>
+          <button type="button" class="ed__seg-btn" [class.is-active]="planif"
+                  (click)="choisirMode('PLANIFIE')">📅 Planifier</button>
+        </div>
+        @if (planif) {
+          <p class="ed__hint">Le joueur sera notifié du créneau. Notes et évaluations se saisissent — et se partagent — à la réalisation.</p>
+        }
+      </div>
+    }
 
     <!-- Type -->
     <div class="ed__field">
@@ -23,25 +42,34 @@
       </div>
     </div>
 
-    <!-- Date + lien vidéo -->
+    <!-- Date + heure / lien vidéo -->
     <div class="ed__row">
       <div class="ed__field">
         <label>Date</label>
         <input type="date" formControlName="dateEntretien" class="ed__mono" />
       </div>
-      <div class="ed__field">
-        <label>Lien vidéo <span class="ed__opt">(optionnel)</span></label>
-        <input type="url" formControlName="videoUrl" placeholder="https://…" />
-      </div>
+      @if (planif) {
+        <div class="ed__field">
+          <label>Heure <span class="ed__opt">(optionnel)</span></label>
+          <input type="time" formControlName="heure" class="ed__mono" />
+        </div>
+      } @else {
+        <div class="ed__field">
+          <label>Lien vidéo <span class="ed__opt">(optionnel)</span></label>
+          <input type="url" formControlName="videoUrl" placeholder="https://…" />
+        </div>
+      }
     </div>
 
     <!-- Notes -->
     <div class="ed__field">
-      <label>Notes générales <span class="ed__opt">(optionnel)</span></label>
-      <textarea formControlName="notes" rows="3" placeholder="Ce qui s'est dit, l'état d'esprit, le contexte…"></textarea>
+      <label>{{ planif ? 'Notes de préparation' : 'Notes générales' }} <span class="ed__opt">(optionnel)</span></label>
+      <textarea formControlName="notes" rows="3"
+                [placeholder]="planif ? 'Points à aborder, séquences à montrer…' : 'Ce qui s\'est dit, l\'état d\'esprit, le contexte…'"></textarea>
     </div>
 
     <!-- Axes -->
+    @if (!planif) {
     <div class="ed__field">
       <div class="ed__axes-head">
         <label>Axes travaillés</label>
@@ -98,13 +126,16 @@
         <div class="ed__share-s">Décoché par défaut — le joueur ne verra rien tant que non partagé (il recevra une notification).</div>
       </div>
     </label>
+    }
   </div>
 
   <!-- Pied -->
   <div class="ed__actions">
     <button type="button" class="ed__btn ed__btn--ghost" (click)="annuler()">Annuler</button>
     <button type="submit" class="ed__btn ed__btn--primary" [disabled]="saving">
-      {{ saving ? 'Enregistrement…' : (editMode ? 'Enregistrer' : 'Enregistrer l\'entretien') }}
+      {{ saving ? 'Enregistrement…'
+          : (planif ? (editMode ? 'Enregistrer le rendez-vous' : 'Planifier le rendez-vous')
+                    : (editMode ? 'Enregistrer' : 'Enregistrer l\'entretien')) }}
     </button>
   </div>
 </form>

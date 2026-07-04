@@ -429,6 +429,28 @@
 .btn-edit      { background: var(--copper-soft); color: var(--copper); }
 .btn-devalider { background: var(--warn-bg);    color: var(--warn); }
 
+/* ══════════ Couche RDV entretiens ══════════
+   Identité propre, distincte des types de séance : bordure POINTILLÉE ambrée
+   (événement individuel) là où les séances (collectives) ont un aplat plein. */
+.rdv-bloc {
+  border-left: 4px dashed var(--warn);
+  background: var(--warn-bg);
+  &.rdv-realise { opacity: .7; border-left-style: solid; }
+}
+.rdv-carte {
+  border-left: 4px dashed var(--warn) !important;
+  &.rdv-realise { opacity: .75; border-left-style: solid !important; }
+}
+.rdv-dot { background: var(--warn); }
+.rdv-event {
+  background: var(--warn-bg) !important;
+  border: 1px dashed var(--warn);
+  .me-h, .me-titre { color: var(--warn); }
+  &.rdv-realise { opacity: .7; border-style: solid; }
+}
+.rdv-statut--prevu { background: var(--warn-bg); color: var(--warn); }
+.rdv-statut--fait  { background: var(--copper-soft); color: var(--copper); }
+
 /* ══════════ Responsive ══════════ */
 @media (max-width: 1024px) {
   .grille { grid-template-columns: repeat(7, 1fr); gap: 5px; }

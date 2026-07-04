@@ -17,7 +17,10 @@
       </div>
     </div>
     @if (peutEcrireEntretien) {
-      <button class="si__cta" (click)="ouvrirSaisie()">+ Nouvel entretien</button>
+      <div class="si__cta-group">
+        <button class="si__cta si__cta--ghost" (click)="ouvrirPlanification()">📅 Planifier</button>
+        <button class="si__cta" (click)="ouvrirSaisie()">+ Nouvel entretien</button>
+      </div>
     }
   </div>
 
@@ -34,6 +37,7 @@
         <div class="si-kpi__value">{{ nbEntretiens }}</div>
         <div class="si-kpi__sub">
           {{ joursDernierEntretien == null ? 'aucun pour l\'instant' : 'dernier il y a ' + joursDernierEntretien + ' j' }}
+          @if (rdvsAVenir.length > 0) { · {{ rdvsAVenir.length }} RDV prévu{{ rdvsAVenir.length > 1 ? 's' : '' }} }
         </div>
       </div>
       <div class="si-kpi">
@@ -193,13 +197,23 @@
             <div class="si-ent__body">
               <div class="si-ent__head">
                 <span class="si-ent__type">{{ TYPE_LABELS[e.type] }}</span>
-                @if (e.partage) {
+                @if (e.statut === 'PLANIFIE') {
+                  <span class="si-badge si-badge--plan">📅 Prévu</span>
+                } @else if (e.partage) {
                   <span class="si-badge si-badge--share">● Partagé</span>
                 } @else {
                   <span class="si-badge si-badge--muted">● Privé</span>
                 }
                 <span class="si-ent__spacer"></span>
-                <span class="num si-ent__date">{{ e.dateEntretien | date:'d MMM y':'':'fr' }} · il y a {{ joursDepuis(e.dateEntretien) }} j</span>
+                <span class="num si-ent__date">
+                  {{ e.dateEntretien | date:'d MMM y':'':'fr' }}
+                  @if (e.statut === 'PLANIFIE') {
+                    @if (heureCourte(e.heure)) { · {{ heureCourte(e.heure) }} }
+                    · {{ joursAvant(e.dateEntretien) === 0 ? 'aujourd\'hui' : 'dans ' + joursAvant(e.dateEntretien) + ' j' }}
+                  } @else {
+                    · il y a {{ joursDepuis(e.dateEntretien) }} j
+                  }
+                </span>
               </div>
 
               @if (e.meneParNom) { <div class="si-ent__by">Mené par <b>{{ e.meneParNom }}</b></div> }
@@ -226,8 +240,11 @@
                 <span class="si-ent__spacer"></span>
                 @if (peutEditer(e)) {
                   <div class="si-ent__actions">
+                    @if (peutEcrireEntretien && e.statut === 'PLANIFIE') {
+                      <button class="is-primary" (click)="realiserRdv(e)">✓ Réaliser</button>
+                    }
                     @if (peutEcrireEntretien) { <button (click)="ouvrirSaisie(e)">Modifier</button> }
-                    @if (peutEcrireEntretien) {
+                    @if (peutEcrireEntretien && e.statut !== 'PLANIFIE') {
                       <button (click)="basculerPartage(e)">{{ e.partage ? 'Rendre privé' : 'Partager' }}</button>
                     }
                     <button class="is-danger" (click)="supprimerEntretien(e)">Supprimer</button>

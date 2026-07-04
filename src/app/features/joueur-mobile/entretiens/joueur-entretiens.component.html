@@ -1,13 +1,40 @@
 <div class="je">
+
+  <!-- ══ Rendez-vous à venir (créneau seulement — le contenu arrive après l'entretien) ══ -->
+  @if (rdvs().length > 0) {
+    <div class="je__section">📅 À venir</div>
+    @for (r of rdvs(); track r.id) {
+      <article class="je-card je-rdv">
+        <div class="je-card__head">
+          <span class="je-card__icon je-card__icon--{{ r.type | lowercase }}">{{ TYPE_ICONS[r.type] }}</span>
+          <div class="je-card__ht">
+            <div class="je-card__type">{{ TYPE_LABELS[r.type] }}</div>
+            <div class="num je-card__date">
+              {{ r.dateEntretien | date:'EEEE d MMMM':'':'fr' }}
+              @if (heureCourte(r.heure)) { · {{ heureCourte(r.heure) }} }
+            </div>
+          </div>
+          <span class="je-rdv__badge">
+            {{ joursAvant(r.dateEntretien) === 0 ? "Aujourd'hui" : 'Dans ' + joursAvant(r.dateEntretien) + ' j' }}
+          </span>
+        </div>
+        <p class="je-rdv__hint">Le staff a prévu un entretien avec toi — le compte-rendu apparaîtra ici s'il est partagé.</p>
+      </article>
+    }
+  }
+
   @if (chargement()) {
     <p class="je__loading">Chargement…</p>
-  } @else if (entretiens().length === 0) {
+  } @else if (entretiens().length === 0 && rdvs().length === 0) {
     <div class="je__void">
       <span class="je__void-icon">💬</span>
       <p class="je__void-t">Aucun entretien partagé pour le moment</p>
       <small>Ton coach partagera ici les retours de vos échanges. Reviens bientôt !</small>
     </div>
+  } @else if (entretiens().length === 0) {
+    <p class="je__note">Pas encore de compte-rendu partagé.</p>
   } @else {
+    @if (rdvs().length > 0) { <div class="je__section">💬 Passés</div> }
     @for (e of entretiens(); track e.id) {
       <article class="je-card">
         <div class="je-card__head">

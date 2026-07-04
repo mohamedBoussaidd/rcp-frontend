@@ -30,6 +30,7 @@
               <th class="se__th-dot"></th>
               <th>Joueur</th>
               <th>Dernier entretien</th>
+              <th>Prochain RDV</th>
               <th class="c">30 j</th>
               <th class="c">90 j</th>
               <th>Par type</th>
@@ -51,6 +52,20 @@
                     <span class="se__ago se__ago--{{ tone(l.dernierEntretien) }}">· il y a {{ joursDepuis(l.dernierEntretien) }} j</span>
                   } @else {
                     <span class="se__never">Jamais</span>
+                  }
+                </td>
+                <td>
+                  @if (l.prochainRdv) {
+                    <span class="num se__date">📅 {{ l.prochainRdv | date:'d MMM':'':'fr' }}</span>
+                    @if (joursAvant(l.prochainRdv) < 0) {
+                      <span class="se__ago se__ago--bad">· en retard</span>
+                    } @else {
+                      <span class="se__ago se__ago--ok">· {{ joursAvant(l.prochainRdv) === 0 ? 'aujourd\'hui' : 'dans ' + joursAvant(l.prochainRdv) + ' j' }}</span>
+                    }
+                  } @else if (peutPlanifier) {
+                    <button class="se__plan" (click)="planifier(l, $event)">+ Planifier</button>
+                  } @else {
+                    <span class="se__muted">—</span>
                   }
                 </td>
                 <td class="c num">{{ l.nb30j }}</td>

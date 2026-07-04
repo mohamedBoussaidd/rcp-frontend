@@ -6,6 +6,8 @@ export type CategorieAxe = 'TECHNIQUE' | 'TACTIQUE' | 'MENTAL' | 'PHYSIQUE';
 export type StatutAxe = 'EN_COURS' | 'ACQUIS' | 'ABANDONNE';
 export type TypeEntretien = 'VIDEO' | 'TERRAIN' | 'DISCUSSION';
 export type Tendance = 'EN_PROGRES' | 'STAGNE' | 'REGRESSE';
+/** Cycle de vie : rendez-vous à venir → compte-rendu. Seul REALISE alimente les agrégats. */
+export type StatutEntretien = 'PLANIFIE' | 'REALISE';
 
 export interface Axe {
   id: string;
@@ -51,6 +53,8 @@ export interface Entretien {
   joueurId: string;
   type: TypeEntretien;
   dateEntretien: string;
+  heure?: string | null;          // 'HH:mm:ss' — facultative (jour seul possible)
+  statut: StatutEntretien;
   menePar?: string;
   meneParNom?: string | null;
   notes?: string | null;
@@ -68,6 +72,8 @@ export interface EntretienRequest {
   joueurId: string;
   type: TypeEntretien;
   dateEntretien: string;
+  statut?: StatutEntretien;       // absent = REALISE (flux compte-rendu historique)
+  heure?: string | null;
   notes?: string | null;
   videoUrl?: string | null;
   seanceId?: string | null;
@@ -111,11 +117,24 @@ export interface EquipeLigne {
   prenom: string;
   postePrincipal?: string | null;
   dernierEntretien?: string | null;
+  prochainRdv?: string | null;    // date du prochain entretien PLANIFIE
   nb30j: number;
   nb90j: number;
   nbVideo: number;
   nbTerrain: number;
   nbDiscussion: number;
+}
+
+/** Événement « entretien » pour le calendrier (couche RDV). */
+export interface AgendaEntretien {
+  id: string;
+  joueurId: string;
+  joueurNom?: string | null;
+  joueurPrenom?: string | null;
+  type: TypeEntretien;
+  dateEntretien: string;
+  heure?: string | null;
+  statut: StatutEntretien;
 }
 
 /** Suivi individuel & entretiens — côté staff. Les endpoints joueur vivent dans le service PWA. */
@@ -150,6 +169,11 @@ export class EntretienService {
   }
   vueEquipe(): Observable<EquipeLigne[]> {
     return this.http.get<EquipeLigne[]>('/api/entretiens/equipe');
+  }
+  /** Agenda calendrier : entretiens (RDV + comptes-rendus) de la période, portée équipe. */
+  agenda(debut: string, fin: string): Observable<AgendaEntretien[]> {
+    return this.http.get<AgendaEntretien[]>('/api/entretiens/agenda',
+      { params: new HttpParams().set('debut', debut).set('fin', fin) });
   }
   creerEntretien(req: EntretienRequest): Observable<Entretien> {
     return this.http.post<Entretien>('/api/entretiens', req);

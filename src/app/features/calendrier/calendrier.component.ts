@@ -6,6 +6,8 @@ import { FormsModule } from '@angular/forms';
 import { SeanceService, Seance, TypeSeance } from '@core/services/seance.service';
 import { EspaceJoueurService } from '@core/services/espace-joueur.service';
 import { ContexteService } from '@core/services/contexte.service';
+import { AgendaEntretien, EntretienService } from '@core/services/entretien.service';
+import { MesEntretiensService } from '@core/services/mes-entretiens.service';
 import { SeanceFormDialogComponent, SeanceFormResult } from './seance-form-dialog/seance-form-dialog.component';
 import { SeanceContenuDialogComponent } from './seance-contenu-dialog/seance-contenu-dialog.component';
 import { MatTooltip } from '@angular/material/tooltip';
@@ -47,6 +49,8 @@ interface JourCell {
 
 type Vue = 'liste' | 'calendrier';
 type SousVue = 'jour' | 'semaine' | 'mois';
+/** Couches d'événements affichées : séances, rendez-vous d'entretien, ou les deux. */
+type Couche = 'tout' | 'seances' | 'rdv';
 
 @Component({
   selector: 'app-calendrier',
@@ -59,12 +63,16 @@ export class CalendrierComponent implements OnInit {
 
   typeSeances: TypeSeance[] = [];
   seances: Seance[] = [];
+  /** Couche RDV : entretiens de la période (staff : équipe ; joueur : ses RDV planifiés). */
+  rdvs: AgendaEntretien[] = [];
 
   // Mode d'affichage : Liste (défaut) ou Calendrier (Jour / Semaine / Mois).
   vue: Vue = 'calendrier';
   sousVue: SousVue = 'semaine';
   /** Filtre par type (code) ; null = Tous. */
   typeFiltre: string | null = null;
+  /** Couches affichées : séances / RDV entretiens / tout (défaut). */
+  couche: Couche = 'tout';
   /** Date de référence de la période affichée. */
   ancre: Date = new Date();
 
@@ -84,9 +92,16 @@ export class CalendrierComponent implements OnInit {
   auth = inject(AuthService);
   contexte = inject(ContexteService);
   private espaceJoueur = inject(EspaceJoueurService);
+  private entretienService = inject(EntretienService);
+  private mesEntretiens = inject(MesEntretiensService);
 
   /** Joueur : calendrier en lecture seule, données scopées via /api/moi (endpoints staff bloqués). */
   get lectureSeule(): boolean { return this.auth.hasRole('JOUEUR'); }
+
+  /** Filtre de couche affiché si la couche RDV peut exister (droit staff, ou espace joueur). */
+  get montrerFiltreCouche(): boolean {
+    return this.lectureSeule || this.auth.has('entretien:read');
+  }
 
   ngOnInit(): void {
     if (!this.lectureSeule) this.seanceService.getTypeSeances().subscribe(t => this.typeSeances = t);
@@ -98,10 +113,21 @@ export class CalendrierComponent implements OnInit {
   charger(): void {
     this.buildGrids();
     const [debut, fin] = this.periode();
+    const d = this.toDateStr(debut), f = this.toDateStr(fin);
     const seances$ = this.lectureSeule
-      ? this.espaceJoueur.getSeances(this.toDateStr(debut), this.toDateStr(fin))
-      : this.seanceService.getSemaine(this.toDateStr(debut), this.toDateStr(fin));
+      ? this.espaceJoueur.getSeances(d, f)
+      : this.seanceService.getSemaine(d, f);
     seances$.subscribe(s => this.seances = s);
+    this.chargerRdvs(d, f);
+  }
+
+  /** Couche RDV entretiens — best-effort : sans permission ou module inactif (403), couche vide. */
+  private chargerRdvs(debut: string, fin: string): void {
+    const rdvs$ = this.lectureSeule
+      ? this.mesEntretiens.monAgenda(debut, fin)
+      : (this.auth.has('entretien:read') ? this.entretienService.agenda(debut, fin) : null);
+    if (!rdvs$) { this.rdvs = []; return; }
+    rdvs$.subscribe({ next: r => this.rdvs = r, error: () => this.rdvs = [] });
   }
 
   /** Plage [début, fin] à charger selon la vue active. */
@@ -173,17 +199,33 @@ export class CalendrierComponent implements OnInit {
     this.typeFiltre = code;
   }
 
-  /** Séances de la période filtrées par type. */
+  choisirCouche(c: Couche): void {
+    this.couche = c;
+  }
+
+  /** Séances de la période filtrées par type (et masquées si la couche RDV est seule affichée). */
   get seancesVisibles(): Seance[] {
+    if (this.couche === 'rdv') return [];
     return this.typeFiltre
       ? this.seances.filter(s => s.typeSeance?.code === this.typeFiltre)
       : this.seances;
+  }
+
+  /** RDV entretiens affichés (couche « séances » seule → masqués). */
+  get rdvsVisibles(): AgendaEntretien[] {
+    return this.couche === 'seances' ? [] : this.rdvs;
   }
 
   seancesDuJour(dateStr: string): Seance[] {
     return this.seancesVisibles
       .filter(s => s.date === dateStr)
       .sort((a, b) => (a.heureDebut ?? '').localeCompare(b.heureDebut ?? ''));
+  }
+
+  rdvsDuJour(dateStr: string): AgendaEntretien[] {
+    return this.rdvsVisibles
+      .filter(r => r.dateEntretien === dateStr)
+      .sort((a, b) => (a.heure ?? '').localeCompare(b.heure ?? ''));
   }
 
   /** Couleurs distinctes des séances d'un jour (pastilles d'en-tête en vue Liste). */
@@ -197,9 +239,30 @@ export class CalendrierComponent implements OnInit {
     return res;
   }
 
-  /** Jours de la semaine courante qui portent au moins une séance (vue Liste). */
+  /** Jours de la semaine courante qui portent au moins un événement (vue Liste). */
   get joursAvecSeances(): JourCell[] {
-    return this.joursGrid.filter(j => this.seancesDuJour(j.dateStr).length > 0);
+    return this.joursGrid.filter(j =>
+      this.seancesDuJour(j.dateStr).length > 0 || this.rdvsDuJour(j.dateStr).length > 0);
+  }
+
+  // ══════════ RDV entretiens (couche calendrier) ══════════
+
+  readonly RDV_ICONS: Record<string, string> = { VIDEO: '🎬', TERRAIN: '🥅', DISCUSSION: '💬' };
+  readonly RDV_LABELS: Record<string, string> = { VIDEO: 'Vidéo', TERRAIN: 'Terrain', DISCUSSION: 'Discussion' };
+
+  rdvNom(r: AgendaEntretien): string {
+    const nom = `${r.joueurPrenom ?? ''} ${r.joueurNom ?? ''}`.trim();
+    return this.lectureSeule ? 'Mon entretien' : (nom || 'Entretien');
+  }
+
+  rdvHeure(r: AgendaEntretien): string {
+    return r.heure ? r.heure.slice(0, 5) : '';
+  }
+
+  /** Clic sur un RDV : staff → onglet Suivi de la fiche joueur ; joueur → ses entretiens PWA. */
+  ouvrirRdv(r: AgendaEntretien): void {
+    if (this.lectureSeule) this.router.navigate(['/joueur/entretiens']);
+    else this.router.navigate(['/joueurs', r.joueurId], { queryParams: { tab: 'suivi' } });
   }
 
   // ══════════ Contexte équipe ══════════

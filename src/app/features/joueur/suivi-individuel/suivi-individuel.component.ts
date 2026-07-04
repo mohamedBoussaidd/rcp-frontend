@@ -92,16 +92,19 @@ export class SuiviIndividuelComponent implements OnChanges {
   get peutEcrireEntretien(): boolean { return this.auth.has('entretien:write'); }
   get peutModerer(): boolean { return this.auth.has('entretien:manage'); }
 
-  // ── KPI dérivés (bandeau de tête) ──
+  // ── KPI dérivés (bandeau de tête) — sur les comptes-rendus REALISE (un RDV à venir ne compte pas) ──
   get axesEnCours(): Axe[] { return this.axes.filter(a => a.statut === 'EN_COURS'); }
   get nbAxesActifs(): number { return this.axesEnCours.length; }
   get nbAcquis(): number { return this.axes.filter(a => a.statut === 'ACQUIS').length; }
-  get nbEntretiens(): number { return this.entretiens.length; }
+  private get entretiensRealises(): Entretien[] { return this.entretiens.filter(e => e.statut !== 'PLANIFIE'); }
+  get nbEntretiens(): number { return this.entretiensRealises.length; }
+  get rdvsAVenir(): Entretien[] { return this.entretiens.filter(e => e.statut === 'PLANIFIE'); }
 
-  /** Jours depuis le dernier entretien (le plus récent), ou null si aucun. */
+  /** Jours depuis le dernier entretien réalisé (le plus récent), ou null si aucun. */
   get joursDernierEntretien(): number | null {
-    if (!this.entretiens.length) return null;
-    const dernier = Math.max(...this.entretiens.map(e => new Date(e.dateEntretien).getTime()));
+    const realises = this.entretiensRealises;
+    if (!realises.length) return null;
+    const dernier = Math.max(...realises.map(e => new Date(e.dateEntretien).getTime()));
     return Math.max(0, Math.floor((Date.now() - dernier) / 86_400_000));
   }
 
@@ -137,6 +140,16 @@ export class SuiviIndividuelComponent implements OnChanges {
   /** Jours écoulés depuis une date ISO (pour la timeline). */
   joursDepuis(date: string): number {
     return Math.max(0, Math.floor((Date.now() - new Date(date).getTime()) / 86_400_000));
+  }
+
+  /** Jours restants avant une date ISO (pour un RDV planifié) ; 0 = aujourd'hui. */
+  joursAvant(date: string): number {
+    return Math.max(0, Math.ceil((new Date(date).getTime() - Date.now()) / 86_400_000));
+  }
+
+  /** 'HH:mm' d'une heure ISO ('HH:mm:ss'), ou '' si absente. */
+  heureCourte(heure?: string | null): string {
+    return heure ? heure.slice(0, 5) : '';
   }
 
   /** Écart absolu d'un axe (staff vs joueur), null si l'une des deux notes manque. */
@@ -222,16 +235,24 @@ export class SuiviIndividuelComponent implements OnChanges {
   }
 
   // ── Entretiens ──
-  ouvrirSaisie(entretien?: Entretien): void {
+  ouvrirSaisie(entretien?: Entretien, opts?: { modeInitial?: 'PLANIFIE' | 'REALISE'; realiser?: boolean }): void {
     const data: EntretienDialogData = {
       joueurId: this.joueurId,
       joueurNom: this.joueurNom,
       axesExistants: this.axes.filter(a => a.statut === 'EN_COURS'),
       entretien,
+      modeInitial: opts?.modeInitial,
+      realiser: opts?.realiser,
     };
     this.dialog.open(EntretienDialogComponent, { data, autoFocus: false, panelClass: 'rcp-dialog' })
       .afterClosed().subscribe(ok => { if (ok) this.recharger(); });
   }
+
+  /** Planifier un RDV (création en mode PLANIFIE). */
+  ouvrirPlanification(): void { this.ouvrirSaisie(undefined, { modeInitial: 'PLANIFIE' }); }
+
+  /** Réaliser un RDV : rouvre la même fiche en mode compte-rendu (transition PLANIFIE → REALISE). */
+  realiserRdv(e: Entretien): void { this.ouvrirSaisie(e, { realiser: true }); }
 
   basculerPartage(e: Entretien): void {
     this.service.basculerVisibilite(e.id).subscribe(res => {

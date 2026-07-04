@@ -57,4 +57,8 @@
     background: var(--bad-bg); color: var(--t-alert-fg); border: 1px solid var(--bad-bd); }
   &__types { display: inline-flex; gap: 10px; color: var(--text-2); font-size: .82rem; }
   &__muted { color: var(--text-4); }
+
+  &__plan { border: 1px dashed var(--border-strong); background: transparent; color: var(--text-2); border-radius: 999px;
+    padding: 4px 11px; font-size: .74rem; font-weight: 600; cursor: pointer; font-family: inherit;
+    &:hover { background: var(--surface-3); color: var(--text); } }
 }

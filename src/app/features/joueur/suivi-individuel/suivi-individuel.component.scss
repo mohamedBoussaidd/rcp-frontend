@@ -14,10 +14,13 @@
 .si__sub { margin: 3px 0 0; font-size: .82rem; color: var(--text-3); }
 .si__hint { font-size: .72rem; font-weight: 600; color: var(--text-2); background: var(--surface-3);
   border: 1px solid var(--border); border-radius: 999px; padding: 3px 9px; cursor: help; }
+.si__cta-group { display: flex; gap: 8px; flex-wrap: wrap; }
 .si__cta { background: var(--green-600); color: #fff; border: 1px solid transparent; border-radius: var(--r-md);
   padding: 11px 18px; font-weight: 600; cursor: pointer; font-size: .92rem; box-shadow: 0 1px 2px rgba(21,128,61,.35);
   transition: background .16s var(--ease-out);
-  &:hover { background: var(--green-700); } }
+  &:hover { background: var(--green-700); }
+  &--ghost { background: var(--surface); color: var(--text); border-color: var(--border); box-shadow: var(--shadow-xs);
+    &:hover { background: var(--surface-3); } } }
 
 /* ── Bandeau KPI ── */
 .si-kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
@@ -89,7 +92,8 @@
   border: 1px solid var(--border); line-height: 1.5;
   &--ok { background: var(--ok-bg); color: var(--t-ok-fg); border-color: var(--ok-bd); }
   &--muted { background: var(--surface-3); color: var(--text-2); border-color: var(--border); }
-  &--share { background: var(--info-bg); color: var(--info); border-color: var(--info-bd); } }
+  &--share { background: var(--info-bg); color: var(--info); border-color: var(--info-bd); }
+  &--plan { background: var(--warn-bg, #fef3c7); color: var(--warn, #b45309); border-color: var(--warn-bd, #fde68a); } }
 
 .si-tend { font-weight: 700; font-size: .8rem;
   &--up { color: var(--ok); } &--flat { color: var(--warn); } &--down { color: var(--bad); } }
@@ -125,6 +129,8 @@
     button { border: 1px solid transparent; background: transparent; border-radius: var(--r-md); padding: 6px 10px; font-size: .78rem;
       cursor: pointer; color: var(--text-2); font-weight: 600;
       &:hover { background: var(--surface-3); }
+      &.is-primary { color: #fff; background: var(--green-600); border-color: transparent;
+        &:hover { background: var(--green-700); } }
       &.is-danger { color: var(--bad); background: var(--bad-bg); border-color: var(--bad-bd);
         &:hover { background: #fde4e2; } } } }
 }

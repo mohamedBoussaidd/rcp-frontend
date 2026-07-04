@@ -63,6 +63,7 @@
 
   &__mono { font-family: var(--font-num); }
   &__opt { font-weight: 500; text-transform: none; color: var(--text-4); }
+  &__hint { margin: 8px 0 0; color: var(--text-3); font-size: .8rem; line-height: 1.45; }
 
   /* ── Type segmenté ── */
   &__seg { display: flex; background: var(--surface-3); border: 1px solid var(--border); border-radius: 999px; padding: 3px; gap: 2px; }

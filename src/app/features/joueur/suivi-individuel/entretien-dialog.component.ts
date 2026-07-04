@@ -3,7 +3,7 @@ import { FormArray, FormBuilder, FormGroup, ReactiveFormsModule, Validators } fr
 import { MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import {
-  Axe, CategorieAxe, Entretien, EntretienRequest, EntretienService, TypeEntretien,
+  Axe, CategorieAxe, Entretien, EntretienRequest, EntretienService, StatutEntretien, TypeEntretien,
 } from '@core/services/entretien.service';
 
 export interface EntretienDialogData {
@@ -11,12 +11,19 @@ export interface EntretienDialogData {
   joueurNom: string;
   axesExistants: Axe[];
   entretien?: Entretien;
+  /** Pré-sélection du mode en création ('PLANIFIE' = action « Planifier » de la vue équipe). */
+  modeInitial?: StatutEntretien;
+  /** Édition d'un RDV PLANIFIE avec bascule directe en compte-rendu (« Réaliser »). */
+  realiser?: boolean;
 }
 
 /**
- * Saisie rapide d'un entretien (création / édition). Type + date + notes + lien vidéo, et une
- * section « axes » : chaque ligne cible un axe existant OU en crée un à la volée, avec note 1–5,
- * tendance (3 états) et commentaire. Case « Partager avec le joueur » décochée par défaut.
+ * Saisie rapide d'un entretien (création / édition), en deux modes :
+ * — Compte-rendu (REALISE, défaut) : type + date + notes + axes (note 1–5, tendance, commentaire)
+ *   + case « Partager avec le joueur » décochée par défaut.
+ * — Planifier (PLANIFIE) : rendez-vous à venir — date (+ heure facultative) + notes de préparation ;
+ *   pas d'axes ni de partage (le contenu se saisit et se partage à la réalisation). Le joueur est
+ *   notifié du créneau. Rouvrir le RDV en mode compte-rendu le fait passer REALISE.
  */
 @Component({
   selector: 'app-entretien-dialog',
@@ -35,6 +42,8 @@ export class EntretienDialogComponent {
 
   saving = false;
   editMode = false;
+  /** Mode courant du formulaire : REALISE = compte-rendu, PLANIFIE = rendez-vous. */
+  mode: StatutEntretien = 'REALISE';
 
   readonly TYPES: { value: TypeEntretien; label: string; emoji: string }[] = [
     { value: 'TERRAIN',    label: 'Terrain',    emoji: '🥅' },
@@ -60,14 +69,23 @@ export class EntretienDialogComponent {
   constructor() {
     const e = this.data.entretien;
     this.editMode = !!e;
+    // Mode : édition → statut de l'entretien (ou compte-rendu si « Réaliser ») ; création → modeInitial.
+    this.mode = e
+      ? (this.data.realiser ? 'REALISE' : (e.statut ?? 'REALISE'))
+      : (this.data.modeInitial ?? 'REALISE');
     this.form = this.fb.group({
       type: [e?.type ?? 'TERRAIN', Validators.required],
       dateEntretien: [e?.dateEntretien ?? new Date().toISOString().slice(0, 10), Validators.required],
+      heure: [e?.heure ? e.heure.slice(0, 5) : ''],
       notes: [e?.notes ?? ''],
       videoUrl: [e?.videoUrl ?? ''],
       partager: [e?.partage ?? false],
       axes: this.fb.array([]),
     });
+    // « Réaliser » un RDV daté dans le futur : ramène la date à aujourd'hui (garde backend date ≤ today).
+    if (this.data.realiser && e && e.dateEntretien > this.today) {
+      this.form.get('dateEntretien')!.setValue(this.today);
+    }
     if (e) {
       for (const l of e.axes) {
         this.axes.push(this.ligneGroup({
@@ -75,6 +93,24 @@ export class EntretienDialogComponent {
           tendance: l.tendance ?? null, commentaire: l.commentaire ?? '',
         }));
       }
+    }
+  }
+
+  private get today(): string { return new Date().toISOString().slice(0, 10); }
+
+  /** Peut-on encore choisir le mode ? Oui en création ou sur un RDV ; un compte-rendu ne redevient pas RDV. */
+  get modeChoisissable(): boolean {
+    return !this.editMode || this.data.entretien?.statut === 'PLANIFIE';
+  }
+
+  get planif(): boolean { return this.mode === 'PLANIFIE'; }
+
+  choisirMode(m: StatutEntretien): void {
+    if (this.mode === m || !this.modeChoisissable) return;
+    this.mode = m;
+    // Bascule vers compte-rendu d'un RDV futur : ramène la date à aujourd'hui.
+    if (m === 'REALISE' && this.form.value.dateEntretien > this.today) {
+      this.form.get('dateEntretien')!.setValue(this.today);
     }
   }
 
@@ -117,14 +153,18 @@ export class EntretienDialogComponent {
     if (this.form.invalid || this.saving) { this.form.markAllAsTouched(); return; }
     this.saving = true;
 
-    const lignes = this.axes.controls.map(c => c.value).filter(l => l.axeTravailId || (l.nouvelAxeLibelle || '').trim());
+    // En mode rendez-vous, pas d'axes ni de partage : le contenu se saisit à la réalisation.
+    const lignes = this.planif ? []
+      : this.axes.controls.map(c => c.value).filter(l => l.axeTravailId || (l.nouvelAxeLibelle || '').trim());
     const req: EntretienRequest = {
       joueurId: this.data.joueurId,
       type: this.form.value.type,
       dateEntretien: this.form.value.dateEntretien,
+      statut: this.mode,
+      heure: (this.form.value.heure || '').trim() || null,
       notes: (this.form.value.notes || '').trim() || null,
       videoUrl: (this.form.value.videoUrl || '').trim() || null,
-      partager: !!this.form.value.partager,
+      partager: !this.planif && !!this.form.value.partager,
       axes: lignes.map(l => ({
         axeTravailId: l.axeTravailId || null,
         nouvelAxeLibelle: l.axeTravailId ? null : (l.nouvelAxeLibelle || '').trim() || null,
@@ -141,12 +181,21 @@ export class EntretienDialogComponent {
 
     obs.subscribe({
       next: () => {
-        this.snack.open(this.editMode ? 'Entretien mis à jour' : 'Entretien enregistré', 'OK', { duration: 2500 });
+        this.snack.open(
+          this.planif
+            ? (this.editMode ? 'Rendez-vous mis à jour — le joueur sera prévenu si déplacé' : 'Rendez-vous planifié — le joueur est prévenu')
+            : (this.editMode ? 'Entretien mis à jour' : 'Entretien enregistré'),
+          'OK', { duration: 2500 });
         this.ref.close(true);
       },
-      error: () => {
+      error: e => {
         this.saving = false;
-        this.snack.open('Échec de l\'enregistrement', 'Fermer', { duration: 4000 });
+        const msg = e?.status === 409
+          ? (this.planif
+              ? 'Impossible : un rendez-vous se planifie aujourd\'hui ou plus tard.'
+              : 'Impossible : un compte-rendu ne peut pas être daté dans le futur.')
+          : 'Échec de l\'enregistrement';
+        this.snack.open(msg, 'Fermer', { duration: 4000 });
       },
     });
   }
