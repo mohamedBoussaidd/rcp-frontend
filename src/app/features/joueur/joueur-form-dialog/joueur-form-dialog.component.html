@@ -24,6 +24,18 @@
         }
       </div>
 
+      @if (!editMode) {
+        <div class="form-field">
+          <label class="form-field__label">Équipe</label>
+          <select formControlName="equipeId">
+            <option [ngValue]="null">— Non assigné (à affecter ensuite)</option>
+            @for (e of equipes(); track e.id) {
+              <option [ngValue]="e.id">{{ e.nom }}</option>
+            }
+          </select>
+        </div>
+      }
+
       <div class="form-field">
         <label class="form-field__label">Date de naissance</label>
         <input type="date" formControlName="dateNaissance">

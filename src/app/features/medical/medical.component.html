@@ -67,8 +67,8 @@
                 </div>
                 <div class="al-card__status">
                   @if (g.geneIntensite) {
-                    <span class="al-sev" [class]="g.geneIntensite >= 4 ? 'al-sev--bad' : g.geneIntensite === 3 ? 'al-sev--warn' : 'al-sev--ok'">
-                      {{ g.geneIntensite >= 4 ? 'Élevée' : g.geneIntensite === 3 ? 'Modérée' : 'Légère' }}
+                    <span class="al-sev" [class]="g.geneIntensite >= 8 ? 'al-sev--bad' : g.geneIntensite >= 5 ? 'al-sev--warn' : 'al-sev--ok'">
+                      {{ g.geneIntensite >= 8 ? 'Élevée' : g.geneIntensite >= 5 ? 'Modérée' : 'Légère' }}
                     </span>
                   }
                   <span class="al-status al-status--active">Active</span>

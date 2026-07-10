@@ -107,6 +107,16 @@ export const routes: Routes = [
     loadComponent: () => import('./features/entretien/suivi-entretiens/suivi-entretiens.component').then(m => m.SuiviEntretiensComponent)
   },
   {
+    path: 'documents-admin', canActivate: [authGuard, roleGuard, contexteGuard, saisonGuard, moduleGuard],
+    data: { roles: ['SUPER_ADMIN', 'PRESIDENT', 'ADMINISTRATIF', 'ENTRAINEUR', 'PREPARATEUR', 'MEDICAL'], perms: ['docadmin:read'], module: 'documents_admin' },
+    loadComponent: () => import('./features/documentadmin/documents-admin.component').then(m => m.DocumentsAdminComponent)
+  },
+  {
+    path: 'annuaire', canActivate: [authGuard, roleGuard, contexteGuard, saisonGuard],
+    data: { roles: ['SUPER_ADMIN', 'PRESIDENT', 'ADMINISTRATIF', 'ENTRAINEUR'], perms: ['joueurs:write'] },
+    loadComponent: () => import('./features/joueur/annuaire/annuaire.component').then(m => m.AnnuaireComponent)
+  },
+  {
     path: 'vue-seance/:id', canActivate: [authGuard, roleGuard, contexteGuard, saisonGuard, moduleGuard], data: { roles: STAFF_PHYSIQUE, perms: PERMS_GPS, module: 'gps' },
     loadComponent: () => import('./features/performance/vue-seance/vue-seance.component').then(m => m.VueSeanceComponent)
   },

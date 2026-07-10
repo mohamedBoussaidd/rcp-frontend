@@ -1,0 +1,78 @@
+<div class="an">
+  <section class="an-card">
+    <div class="an__head">
+      <div>
+        <h1>Annuaire du club</h1>
+        <p class="an__sub">Toutes les personnes, leurs équipes, et le pool des non-assignés — créez puis assignez.</p>
+      </div>
+      <button class="an__btn an__btn--primary" (click)="creerFiche()">+ Créer une fiche</button>
+    </div>
+
+    @if (chargement()) {
+      <p class="an__empty">Chargement…</p>
+    } @else {
+      <div class="an__toolbar">
+        <input class="an__search" type="text" placeholder="Rechercher une personne…"
+               [ngModel]="recherche()" (ngModelChange)="recherche.set($event)">
+        <div class="an__tri">
+          <button [class.is-active]="!filtrePool()" (click)="filtrePool.set(false)">Tous</button>
+          <button [class.is-active]="filtrePool()" (click)="filtrePool.set(true)">
+            Non assignés @if (nbPool() > 0) { <span class="an__badge">{{ nbPool() }}</span> }
+          </button>
+        </div>
+      </div>
+
+      @if (filtres().length === 0) {
+        <p class="an__empty">Aucune personne ne correspond.</p>
+      } @else {
+        <div class="an__tablewrap">
+          <table class="an__table">
+            <thead>
+              <tr><th>Personne</th><th>Équipes</th><th class="c">Assigner</th></tr>
+            </thead>
+            <tbody>
+              @for (p of filtres(); track p.joueurId) {
+                <tr [class.is-busy]="busy() === p.joueurId">
+                  <td class="an__name">
+                    <span class="an__avatar">{{ initiales(p) }}</span>
+                    <span>{{ p.prenom }} {{ p.nom }}</span>
+                  </td>
+                  <td>
+                    @if (p.equipes.length === 0) {
+                      <span class="an__pool">Non assigné</span>
+                    } @else {
+                      <span class="an__chips">
+                        @for (e of p.equipes; track e.id) {
+                          <span class="an__chip">
+                            {{ e.nom }}
+                            <button type="button" class="an__chip-x" title="Retirer de cette équipe"
+                                    (click)="retirer(p, e.id)">×</button>
+                          </span>
+                        }
+                      </span>
+                    }
+                  </td>
+                  <td class="c">
+                    @if (equipesAssignables(p).length > 0) {
+                      <button class="an__btn an__btn--ghost" [matMenuTriggerFor]="menu"
+                              [disabled]="busy() === p.joueurId">
+                        <mat-icon>add</mat-icon>
+                      </button>
+                      <mat-menu #menu="matMenu">
+                        @for (e of equipesAssignables(p); track e.id) {
+                          <button mat-menu-item (click)="assigner(p, e.id)">{{ e.nom }}</button>
+                        }
+                      </mat-menu>
+                    } @else {
+                      <span class="an__na">—</span>
+                    }
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+    }
+  </section>
+</div>

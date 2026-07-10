@@ -3,6 +3,7 @@ import { Router } from '@angular/router';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { ConfigurationService } from '@core/services/configuration.service';
 import { SeanceService, TypeSeance } from '@core/services/seance.service';
+import { CategorieAge, CategorieAgeRequest, CategorieAgeService } from '@core/services/categorie-age.service';
 import { MatCard, MatCardHeader, MatCardTitle, MatCardContent, MatCardActions } from '@angular/material/card';
 import { MatTooltip } from '@angular/material/tooltip';
 import { FormsModule } from '@angular/forms';
@@ -304,6 +305,13 @@ export class ParametresComponent implements OnInit {
   ciblesOuvert = false;
   cibleSaving: string | null = null;
 
+  // ── Catégories d'âge (référentiel configurable, âge atteint dans la saison) ──
+  categoriesAge: CategorieAge[] = [];
+  categoriesOuvert = false;
+  categorieSaving: string | null = null;
+  nouvelleCategorieOuverte = false;
+  nvCatCode = ''; nvCatLibelle = ''; nvCatAgeMin: number | null = null; nvCatAgeMax: number | null = null;
+
   readonly groupes: GroupeParams[] = [
     {
       id: 'charge_poids',
@@ -388,6 +396,7 @@ export class ParametresComponent implements OnInit {
 
   private configService = inject(ConfigurationService);
   private seanceService = inject(SeanceService);
+  private categorieAgeService = inject(CategorieAgeService);
   private snackBar = inject(MatSnackBar);
   private router = inject(Router);
 
@@ -402,6 +411,51 @@ export class ParametresComponent implements OnInit {
     this.seanceService.getTypeSeances().subscribe({
       next: types => this.typesSeance = types,
       error: () => {},
+    });
+    this.categorieAgeService.lister().subscribe({
+      next: cats => this.categoriesAge = cats,
+      error: () => {},
+    });
+  }
+
+  // ── Catégories d'âge ──
+
+  sauvegarderCategorie(cat: CategorieAge): void {
+    this.categorieSaving = cat.id;
+    const req: CategorieAgeRequest = {
+      code: cat.code, libelle: cat.libelle, ageMin: cat.ageMin, ageMax: cat.ageMax, ordre: cat.ordre, actif: cat.actif,
+    };
+    this.categorieAgeService.modifier(cat.id, req).subscribe({
+      next: maj => {
+        this.categorieSaving = null;
+        this.categoriesAge = this.categoriesAge.map(c => c.id === maj.id ? maj : c);
+        this.snackBar.open(`Catégorie « ${maj.libelle} » enregistrée`, 'OK', { duration: 2500 });
+      },
+      error: err => {
+        this.categorieSaving = null;
+        this.snackBar.open(err.status === 409 ? 'Cette tranche d\'âge chevauche une autre catégorie' : 'Enregistrement impossible',
+          'Fermer', { duration: 3500 });
+      },
+    });
+  }
+
+  ouvrirNouvelleCategorie(): void { this.nouvelleCategorieOuverte = true; }
+  annulerNouvelleCategorie(): void {
+    this.nouvelleCategorieOuverte = false;
+    this.nvCatCode = ''; this.nvCatLibelle = ''; this.nvCatAgeMin = null; this.nvCatAgeMax = null;
+  }
+
+  creerCategorie(): void {
+    if (!this.nvCatCode.trim() || !this.nvCatLibelle.trim()) return;
+    const req: CategorieAgeRequest = {
+      code: this.nvCatCode.trim(), libelle: this.nvCatLibelle.trim(),
+      ageMin: this.nvCatAgeMin, ageMax: this.nvCatAgeMax, ordre: this.categoriesAge.length,
+    };
+    this.categorieAgeService.creer(req).subscribe({
+      next: cat => { this.categoriesAge = [...this.categoriesAge, cat]; this.annulerNouvelleCategorie(); },
+      error: err => this.snackBar.open(
+        err.status === 409 ? 'Cette tranche d\'âge chevauche une autre catégorie' : 'Création impossible',
+        'Fermer', { duration: 3500 }),
     });
   }
 

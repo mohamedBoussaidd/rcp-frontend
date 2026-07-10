@@ -20,7 +20,7 @@
       <section class="pwa-card">
         <div class="histo-card-head">
           <div class="histo-card-title">Ressenti Hooper</div>
-          <div class="histo-card-val"><span class="histo-card-val__n">{{ hooperMoyen() ?? '—' }}</span><span class="histo-card-val__u">/25</span></div>
+          <div class="histo-card-val"><span class="histo-card-val__n">{{ hooperMoyen() ?? '—' }}</span><span class="histo-card-val__u">/50</span></div>
         </div>
         <div class="histo-card-sub">7 derniers jours · plus bas = meilleure forme</div>
 
@@ -48,11 +48,11 @@
       <div class="histo-stats">
         <div class="pwa-card histo-stat">
           <div class="histo-stat__lab">Sommeil moyen</div>
-          <div class="histo-stat__val">{{ sommeilMoyen() ?? '—' }}<small>/5</small></div>
+          <div class="histo-stat__val">{{ sommeilMoyen() ?? '—' }}<small>/10</small></div>
         </div>
         <div class="pwa-card histo-stat">
           <div class="histo-stat__lab">Fatigue moyenne</div>
-          <div class="histo-stat__val histo-stat__val--warn">{{ fatigueMoyen() ?? '—' }}<small>/5</small></div>
+          <div class="histo-stat__val histo-stat__val--warn">{{ fatigueMoyen() ?? '—' }}<small>/10</small></div>
         </div>
       </div>
 
@@ -63,7 +63,7 @@
           </span>
           <div class="histo-gene__body">
             <span class="histo-gene__title">Dernière gêne signalée</span>
-            <span class="histo-gene__detail">{{ g.geneZone }} · intensité {{ g.geneIntensite }}/5</span>
+            <span class="histo-gene__detail">{{ g.geneZone }} · intensité {{ g.geneIntensite }}/10</span>
           </div>
         </section>
       }

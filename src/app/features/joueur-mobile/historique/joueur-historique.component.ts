@@ -28,7 +28,7 @@ export class JoueurHistoriqueComponent {
 
   readonly joursRemplis = computed(() => this.serie().filter(j => j.hooper != null).length);
 
-  /** Moyenne d'un item Hooper sur la fenêtre 7 j (1..5, 1 décimale). */
+  /** Moyenne d'un item Hooper sur la fenêtre 7 j (1..10, 1 décimale). */
   private moyenneItem(sel: (w: { sommeil: number; fatigue: number }) => number): number | null {
     const limite = this.store.dateISO(new Date(Date.now() - 6 * 86400000));
     const ws = this.store.wellness().filter(w => w.date >= limite);
@@ -66,13 +66,13 @@ export class JoueurHistoriqueComponent {
       .sort((a, b) => b.date.localeCompare(a.date))[0] ?? null;
   });
 
-  /** Hauteur de barre Hooper en % (max 25). */
-  barH(v: number | null): number { return v == null ? 0 : Math.round(v / 25 * 100); }
+  /** Hauteur de barre Hooper en % (max 50). */
+  barH(v: number | null): number { return v == null ? 0 : Math.round(v / 50 * 100); }
 
   classe(v: number | null): string {
     if (v == null) return '';
-    if (v <= 11) return 'ok';
-    if (v <= 17) return 'moyen';
+    if (v <= 22) return 'ok';
+    if (v <= 34) return 'moyen';
     return 'bad';
   }
 }

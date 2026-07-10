@@ -9,7 +9,7 @@ interface ScaleItem {
   label: string;
   emoji: string;
   bas: string;   // sens de la valeur 1
-  haut: string;  // sens de la valeur 5
+  haut: string;  // sens de la valeur 10
 }
 
 interface MoodItem { val: number; label: string; mouth: string; }
@@ -17,7 +17,7 @@ interface MomentGene { val: string; label: string; }
 
 /**
  * Saisie du ressenti quotidien — refonte « Claude Design ».
- * Onglet « Ressenti » : humeur (visages) + 4 échelles Hooper (1..5) + commentaire.
+ * Onglet « Ressenti » : humeur (visages) + 4 échelles Hooper (1..10) + commentaire.
  * Onglet « Mode gêne » : mannequin + intensité + moment.
  * Upsert 1/jour : si le ressenti est déjà validé, le Hooper se verrouille et
  * seule la gêne reste éditable.
@@ -35,15 +35,15 @@ export class JoueurWellnessComponent implements OnInit {
   private router = inject(Router);
   private route = inject(ActivatedRoute);
 
-  readonly NOTES = [1, 2, 3, 4, 5];
+  readonly NOTES = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
 
-  /** Humeur : 5 visages, valeur 1 (excellente) → 5 (très mauvaise). */
+  /** Humeur : 5 visages répartis sur l'échelle 1..10 (2 = excellente → 10 = très mauvaise). */
   readonly MOODS: MoodItem[] = [
-    { val: 1, label: 'Top',     mouth: 'M34 58 Q50 72 66 58' },
-    { val: 2, label: 'Bien',    mouth: 'M36 60 Q50 68 64 60' },
-    { val: 3, label: 'Moyen',   mouth: 'M36 61 L64 61' },
-    { val: 4, label: 'Bof',     mouth: 'M36 64 Q50 58 64 64' },
-    { val: 5, label: 'Mauvais', mouth: 'M34 66 Q50 52 66 66' },
+    { val: 2,  label: 'Top',     mouth: 'M34 58 Q50 72 66 58' },
+    { val: 4,  label: 'Bien',    mouth: 'M36 60 Q50 68 64 60' },
+    { val: 6,  label: 'Moyen',   mouth: 'M36 61 L64 61' },
+    { val: 8,  label: 'Bof',     mouth: 'M36 64 Q50 58 64 64' },
+    { val: 10, label: 'Mauvais', mouth: 'M34 66 Q50 52 66 66' },
   ];
 
   /** Les 4 échelles Hooper hors humeur. */
@@ -64,10 +64,10 @@ export class JoueurWellnessComponent implements OnInit {
   readonly tab = signal<'ressenti' | 'gene'>('ressenti');
 
   // Brouillons
-  readonly wForm = signal<Record<HooperKey, number>>({ sommeil: 3, fatigue: 3, douleur: 3, stress: 3, humeur: 3 });
+  readonly wForm = signal<Record<HooperKey, number>>({ sommeil: 5, fatigue: 5, douleur: 5, stress: 5, humeur: 6 });
   readonly commentaire = signal('');
   readonly geneActive = signal(false);
-  readonly gForm = signal<GeneForm>({ zone: '', intensite: 2, moment: 'EFFORT' });
+  readonly gForm = signal<GeneForm>({ zone: '', intensite: 4, moment: 'EFFORT' });
 
   readonly envoi = signal(false);
   readonly toast = signal(false);
@@ -87,7 +87,7 @@ export class JoueurWellnessComponent implements OnInit {
       this.commentaire.set(w.commentaire ?? '');
       if (w.geneZone) {
         this.geneActive.set(true);
-        this.gForm.set({ zone: w.geneZone, intensite: w.geneIntensite ?? 2, moment: w.geneMoment ?? 'EFFORT' });
+        this.gForm.set({ zone: w.geneZone, intensite: w.geneIntensite ?? 4, moment: w.geneMoment ?? 'EFFORT' });
       }
     });
   }
@@ -118,10 +118,10 @@ export class JoueurWellnessComponent implements OnInit {
 
   onComment(v: string): void { this.commentaire.set(v); }
 
-  /** Couleur d'une note (vert → rouge) : plus haut = plus mauvais. */
+  /** Couleur d'une note 1..10 (vert → rouge) : plus haut = plus mauvais. */
   couleurNote(v: number): string {
     const palette = ['', '#15803D', '#65A30D', '#CA8A04', '#EA580C', '#B91C1C'];
-    return palette[v] ?? '#B91C1C';
+    return palette[Math.ceil(v / 2)] ?? '#B91C1C';
   }
 
   readonly geneValide = computed(() => !this.geneActive() || !!this.gForm().zone);

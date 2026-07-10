@@ -1,0 +1,218 @@
+<div class="da">
+  <section class="da-card">
+    <div class="da__head">
+      <div>
+        <h1>Licences &amp; documents</h1>
+        <p class="da__sub">Conformité documentaire de l'effectif — licence, certificat médical, autorisation parentale…</p>
+      </div>
+      @if (peutConfigurer) {
+        <div class="da__tri">
+          <button [class.is-active]="vue() === 'conformite'" (click)="setVue('conformite')">Conformité</button>
+          <button [class.is-active]="vue() === 'referentiel'" (click)="setVue('referentiel')">Référentiel</button>
+          <button [class.is-active]="vue() === 'categories'" (click)="setVue('categories')">Catégories d'âge</button>
+        </div>
+      }
+    </div>
+
+    @if (chargement()) {
+      <p class="da__empty">Chargement…</p>
+    } @else if (vue() === 'conformite') {
+
+      <div class="da__tri da__tri--sub">
+        <button [class.is-active]="perimetre() === 'joueurs'" (click)="setPerimetre('joueurs')">Joueurs</button>
+        <button [class.is-active]="perimetre() === 'staff'" (click)="setPerimetre('staff')">Staff</button>
+      </div>
+
+      @if (conformite(); as c) {
+        <div class="da__counters">
+          <span class="da__count da__count--ok">{{ c.complets }} complet(s)</span>
+          <span class="da__count da__count--bad">{{ c.incomplets }} incomplet(s)</span>
+          <span class="da__count da__count--warn">{{ c.aValider }} à valider</span>
+          <span class="da__count da__count--warn">{{ c.expirentSous30j }} expirent sous 30 j</span>
+        </div>
+
+        <div class="da__filtres">
+          <button [class.is-active]="filtreStatut() === 'TOUS'" (click)="setFiltre('TOUS')">Tous</button>
+          <button [class.is-active]="filtreStatut() === 'MANQUANT'" (click)="setFiltre('MANQUANT')">Manquant</button>
+          <button [class.is-active]="filtreStatut() === 'SOUMIS'" (click)="setFiltre('SOUMIS')">À valider</button>
+          <button [class.is-active]="filtreStatut() === 'VALIDE'" (click)="setFiltre('VALIDE')">Validé</button>
+          <button [class.is-active]="filtreStatut() === 'REFUSE'" (click)="setFiltre('REFUSE')">Refusé</button>
+          <button [class.is-active]="filtreStatut() === 'EXPIRE'" (click)="setFiltre('EXPIRE')">Expiré</button>
+        </div>
+
+        @if (joueursFiltres().length === 0) {
+          <p class="da__empty">
+            {{ perimetre() === 'staff' ? 'Aucun membre du staff ne correspond à ce filtre.' : 'Aucun joueur ne correspond à ce filtre.' }}
+          </p>
+        } @else {
+          <div class="da__tablewrap">
+            <table class="da__table">
+              <thead>
+                <tr>
+                  <th>{{ perimetre() === 'staff' ? 'Membre' : 'Joueur' }}</th>
+                  @if (perimetre() === 'joueurs') { <th>Catégorie</th> }
+                  @for (col of colonnes(); track col.typeId) {
+                    <th class="c">{{ col.libelle }}@if (col.obligatoire) { <span class="da__req">*</span> }</th>
+                  }
+                </tr>
+              </thead>
+              <tbody>
+                @for (j of joueursFiltres(); track j.joueurId) {
+                  <tr>
+                    <td class="da__name">{{ j.prenom }} {{ j.nom }}</td>
+                    @if (perimetre() === 'joueurs') { <td class="c da__cat">{{ j.categorieAgeCode ?? '—' }}</td> }
+                    @for (col of colonnes(); track col.typeId) {
+                      <td class="c">
+                        @if (documentPour(j, col.typeId); as d) {
+                          <button type="button" class="da__pill da__pill--{{ d.statut.toLowerCase() }}"
+                                  [class.da__pill--expire-bientot]="expireBientot(d)"
+                                  (click)="ouvrirCellule(j, col)">
+                            {{ statutLabel(d.statut) }}
+                          </button>
+                        } @else {
+                          <span class="da__na">—</span>
+                        }
+                      </td>
+                    }
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        }
+      }
+
+    } @else if (vue() === 'categories') {
+      <!-- Catégories d'âge -->
+      <p class="da__desc">
+        Les bornes sont exprimées en ÂGE ATTEINT DANS LA SAISON (pas en année de naissance) : elles
+        restent justes d'une saison à l'autre. Un joueur surclassé garde sa catégorie réelle, calculée
+        sur sa date de naissance, indépendamment de son équipe.
+      </p>
+
+      @if (categorieErreur()) { <p class="da__err">{{ categorieErreur() }}</p> }
+
+      <div class="da__tablewrap">
+        <table class="da__table">
+          <thead>
+            <tr><th>Code</th><th>Libellé</th><th class="c">Âge min</th><th class="c">Âge max</th><th class="c">Actif</th><th></th></tr>
+          </thead>
+          <tbody>
+            @for (cat of categories(); track cat.id) {
+              <tr>
+                <td class="da__cat">{{ cat.code }}</td>
+                <td><input class="da__input da__input--text" [(ngModel)]="cat.libelle" /></td>
+                <td class="c"><input type="number" class="da__input" min="0" [(ngModel)]="cat.ageMin" /></td>
+                <td class="c"><input type="number" class="da__input" min="0" [(ngModel)]="cat.ageMax" /></td>
+                <td class="c"><input type="checkbox" [(ngModel)]="cat.actif" /></td>
+                <td>
+                  <button class="da__save" [disabled]="categorieSaving() === cat.id" (click)="sauvegarderCategorie(cat)">
+                    {{ categorieSaving() === cat.id ? '…' : 'Enregistrer' }}
+                  </button>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+
+      @if (!nouvelleCategorieOuverte()) {
+        <button type="button" class="da__add" (click)="ouvrirNouvelleCategorie()">+ Ajouter une catégorie</button>
+      } @else {
+        <div class="da__nouveau">
+          <div class="da__nouveau-grid">
+            <input class="da__input da__input--text" placeholder="Code (ex. U15)" [(ngModel)]="nvCatCode" />
+            <input class="da__input da__input--text" placeholder="Libellé" [(ngModel)]="nvCatLibelle" />
+            <input type="number" class="da__input" placeholder="Âge min" [(ngModel)]="nvCatAgeMin" />
+            <input type="number" class="da__input" placeholder="Âge max" [(ngModel)]="nvCatAgeMax" />
+          </div>
+          <div class="da__nouveau-actions">
+            <button type="button" class="da__cancel" (click)="annulerNouvelleCategorie()">Annuler</button>
+            <button type="button" class="da__save" (click)="creerCategorie()">Créer</button>
+          </div>
+        </div>
+      }
+
+    } @else {
+      <!-- Référentiel -->
+      <p class="da__desc">Types de documents exigés de l'effectif. Une catégorie d'âge non cochée = s'applique à tous.</p>
+
+      <div class="da__tablewrap">
+        <table class="da__table da__table--ref">
+          <thead>
+            <tr>
+              <th>Libellé</th>
+              <th class="c">Cible</th>
+              <th class="c">Obligatoire</th>
+              <th class="c">Validation manuelle</th>
+              <th class="c">Validité (mois)</th>
+              <th>Catégories d'âge</th>
+              <th class="c">Actif</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (t of types(); track t.id) {
+              <tr>
+                <td><input class="da__input da__input--text" [(ngModel)]="t.libelle" /></td>
+                <td class="c">
+                  <select class="da__input" [(ngModel)]="t.cible">
+                    @for (cb of CIBLES; track cb.val) { <option [value]="cb.val">{{ cb.label }}</option> }
+                  </select>
+                </td>
+                <td class="c"><input type="checkbox" [(ngModel)]="t.obligatoire" /></td>
+                <td class="c"><input type="checkbox" [(ngModel)]="t.validationManuelle" /></td>
+                <td class="c"><input type="number" class="da__input" min="0" [(ngModel)]="t.dureeValiditeMois" /></td>
+                <td>
+                  <div class="da__chips">
+                    @for (cat of categories(); track cat.code) {
+                      <button type="button" class="da__chip" [class.is-active]="t.categoriesAge.includes(cat.code)"
+                              (click)="toggleCategorieType(t, cat.code)">{{ cat.code }}</button>
+                    }
+                    @if (t.categoriesAge.length === 0) { <span class="da__muted">Toutes</span> }
+                  </div>
+                </td>
+                <td class="c"><input type="checkbox" [checked]="t.actif" (change)="toggleActifType(t)" /></td>
+                <td>
+                  <button class="da__save" [disabled]="sauvegardeId() === t.id" (click)="sauvegarderType(t)">
+                    {{ sauvegardeId() === t.id ? '…' : 'Enregistrer' }}
+                  </button>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+
+      @if (!nouveauOuvert()) {
+        <button type="button" class="da__add" (click)="ouvrirNouveau()">+ Ajouter un type de document</button>
+      } @else {
+        <div class="da__nouveau">
+          <div class="da__nouveau-grid">
+            <input class="da__input da__input--text" placeholder="Code (ex. licence)" [(ngModel)]="nvCode" />
+            <input class="da__input da__input--text" placeholder="Libellé" [(ngModel)]="nvLibelle" />
+            <input class="da__input da__input--text" placeholder="Description (optionnel)" [(ngModel)]="nvDescription" />
+            <input type="number" class="da__input" placeholder="Validité (mois)" [(ngModel)]="nvDureeValiditeMois" />
+          </div>
+          <label class="da__check">Cible
+            <select class="da__input" [(ngModel)]="nvCible">
+              @for (cb of CIBLES; track cb.val) { <option [value]="cb.val">{{ cb.label }}</option> }
+            </select>
+          </label>
+          <label class="da__check"><input type="checkbox" [(ngModel)]="nvObligatoire" /> Obligatoire</label>
+          <label class="da__check"><input type="checkbox" [(ngModel)]="nvValidationManuelle" /> Validation manuelle</label>
+          <div class="da__chips">
+            @for (cat of categories(); track cat.code) {
+              <button type="button" class="da__chip" [class.is-active]="nvCategories.includes(cat.code)"
+                      (click)="toggleNvCategorie(cat.code)">{{ cat.code }}</button>
+            }
+          </div>
+          <div class="da__nouveau-actions">
+            <button type="button" class="da__cancel" (click)="annulerNouveau()">Annuler</button>
+            <button type="button" class="da__save" (click)="creerType()">Créer</button>
+          </div>
+        </div>
+      }
+    }
+  </section>
+</div>

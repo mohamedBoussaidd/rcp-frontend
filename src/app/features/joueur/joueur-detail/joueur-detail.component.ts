@@ -289,16 +289,16 @@ export class JoueurDetailComponent implements OnInit {
       chart: { type: 'line', height: 320, toolbar: { show: false }, zoom: { enabled: false }, background: 'transparent', foreColor: '#94a3b8' },
       xaxis: { categories: [], labels: { style: { colors: '#94a3b8', fontSize: '11px' } } },
       yaxis: ([
-        { min: 0, max: 25, tickAmount: 5, title: { text: 'Hooper /25', style: { color: '#94a3b8' } }, labels: { style: { colors: '#cbd5e1' } } },
+        { min: 0, max: 50, tickAmount: 5, title: { text: 'Hooper /50', style: { color: '#94a3b8' } }, labels: { style: { colors: '#cbd5e1' } } },
         { opposite: true, min: 0, title: { text: 'sRPE (UA)', style: { color: couleurTheme() } }, labels: { style: { colors: couleurTheme() } } },
       ] as unknown as ApexYAxis),
       plotOptions: {
         bar: {
           columnWidth: '45%', borderRadius: 4, colors: {
             ranges: [
-              { from: 0, to: 11, color: '#22c55e' },
-              { from: 12, to: 16, color: '#f59e0b' },
-              { from: 17, to: 25, color: '#ef4444' },
+              { from: 0, to: 22, color: '#22c55e' },
+              { from: 23, to: 34, color: '#f59e0b' },
+              { from: 35, to: 50, color: '#ef4444' },
             ]
           }
         }
@@ -480,29 +480,29 @@ export class JoueurDetailComponent implements OnInit {
     return w.sommeil + w.fatigue + w.douleur + w.stress + w.humeur;
   }
 
-  /** Classe d'état d'après le total Hooper (5..25, plus bas = mieux). */
+  /** Classe d'état d'après le total Hooper (5..50, plus bas = mieux). */
   hooperClasse(v: number | null): string {
     if (v == null) return '';
-    if (v <= 11) return 'ok';
-    if (v <= 16) return 'moyen';
+    if (v <= 22) return 'ok';
+    if (v <= 33) return 'moyen';
     return 'bad';
   }
 
   /** Tonalité sémantique du total Hooper. */
   hooperTone(v: number | null): 'ok' | 'warn' | 'alert' | 'neutral' {
     if (v == null) return 'neutral';
-    if (v <= 11) return 'ok';
-    if (v <= 16) return 'warn';
+    if (v <= 22) return 'ok';
+    if (v <= 33) return 'warn';
     return 'alert';
   }
   hooperLabel(v: number | null): string {
     if (v == null) return '—';
-    if (v <= 11) return 'Bon';
-    if (v <= 16) return 'Vigilance';
+    if (v <= 22) return 'Bon';
+    if (v <= 33) return 'Vigilance';
     return 'Alerte';
   }
-  /** Couleur d'un item Hooper (1..5, plus haut = moins bon). */
-  itemColor(v: number): string { return v <= 2 ? '#22c55e' : v === 3 ? '#f59e0b' : '#ef4444'; }
+  /** Couleur d'un item Hooper (1..10, plus haut = moins bon). */
+  itemColor(v: number): string { return v <= 4 ? '#22c55e' : v <= 7 ? '#f59e0b' : '#ef4444'; }
 
   /** Série des N derniers jours (du plus récent au plus ancien) : Hooper + sRPE + gêne. */
   get serieWellness(): {

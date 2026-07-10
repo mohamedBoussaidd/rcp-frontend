@@ -10,18 +10,18 @@ import { Conseil, ConseilRequest, ConseilService } from '@core/services/conseil.
 import { Joueur, JoueurService } from '@core/services/joueur.service';
 import { Seance } from '@core/services/seance.service';
 
-/** Item de l'indice de Hooper. Échelle 1..5, sens « 1 = bon → 5 = mauvais » (Hooper standard). */
+/** Item de l'indice de Hooper. Échelle 1..10, sens « 1 = bon → 10 = mauvais » (Hooper standard). */
 interface HooperItem {
   key: 'fatigue' | 'sommeil' | 'stress' | 'douleur' | 'humeur';
   label: string;
   bas: string;   // sens de la valeur 1
-  haut: string;  // sens de la valeur 5
+  haut: string;  // sens de la valeur 10
 }
 
-/** Point du graphe 7 jours : barre Hooper (/25) + point RPE (/10). */
+/** Point du graphe : barre (total Hooper /50 ou item /10 selon le critère) + point RPE (/10). */
 interface JourSerie {
   date: string;
-  jour: string;        // libellé court (Lun, Mar…)
+  jour: string;        // libellé court (Lun, Mar… ou jj/mm sur longue période)
   hooper: number | null;
   rpe: number | null;
   aujourdhui: boolean;
@@ -70,8 +70,16 @@ export class SuiviSubjectifComponent implements OnInit {
   private conseilService = inject(ConseilService);
   private joueurService = inject(JoueurService);
 
-  /** Fenêtre d'historique (jours) : 7 ou 14, au choix. */
-  fenetreJours = signal<7 | 14>(7);
+  /** Fenêtres d'historique proposées (jours). */
+  readonly FENETRES = [7, 14, 30, 60, 90];
+  /** Fenêtre d'historique (jours), utilisée hors plage libre. */
+  fenetreJours = signal<number>(7);
+  /** Plage libre « du… au… » (dates ISO) ; prioritaire quand les deux bornes sont cohérentes. */
+  plageActive = signal(false);
+  plageDebut = signal<string>('');
+  plageFin = signal<string>('');
+  /** Critère affiché sur le graphe : total Hooper ou un item du questionnaire. */
+  critere = signal<'total' | HooperItem['key']>('total');
   /** Tri « non-remplis aujourd'hui en tête » de la vue équipe (déclenché via ?focus=non-remplis). */
   triNonRemplis = signal(false);
 
@@ -81,7 +89,7 @@ export class SuiviSubjectifComponent implements OnInit {
   // Getter (et non champ figé) : les permissions sont chargées en async après le boot.
   get peutEditerConseils(): boolean { return this.auth.canEditerConseils(); }
 
-  readonly NOTES_HOOPER = [1, 2, 3, 4, 5];
+  readonly NOTES_HOOPER = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
   readonly NOTES_RPE = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
   readonly ICONES = ICONES_CONSEIL;
   readonly HOOPER_ITEMS: HooperItem[] = [
@@ -122,7 +130,7 @@ export class SuiviSubjectifComponent implements OnInit {
   });
 
   // ── Formulaire wellness (joueur) ──
-  wForm = signal<Record<HooperItem['key'], number>>({ fatigue: 3, sommeil: 3, stress: 3, douleur: 3, humeur: 3 });
+  wForm = signal<Record<HooperItem['key'], number>>({ fatigue: 5, sommeil: 5, stress: 5, douleur: 5, humeur: 5 });
   commentaire = signal('');
   wEnvoi = signal(false);
 
@@ -132,7 +140,7 @@ export class SuiviSubjectifComponent implements OnInit {
     { val: 'EFFORT', label: "À l'effort" }, { val: 'APRES', label: 'Juste après' }, { val: 'REPOS', label: 'Au repos' },
   ];
   geneActive = signal(false);
-  gForm = signal<{ zone: string; intensite: number; moment: string }>({ zone: 'cheville', intensite: 2, moment: 'EFFORT' });
+  gForm = signal<{ zone: string; intensite: number; moment: string }>({ zone: 'cheville', intensite: 4, moment: 'EFFORT' });
 
   geneEnvoi = signal(false);
 
@@ -172,7 +180,19 @@ export class SuiviSubjectifComponent implements OnInit {
     }
   }
 
-  setFenetre(n: 7 | 14): void { this.fenetreJours.set(n); }
+  setFenetre(n: number): void {
+    this.plageActive.set(false);
+    this.fenetreJours.set(n);
+  }
+
+  /** Met à jour une borne de la plage libre ; la plage s'active dès que les deux bornes sont cohérentes. */
+  setPlage(borne: 'debut' | 'fin', val: string): void {
+    if (borne === 'debut') this.plageDebut.set(val); else this.plageFin.set(val);
+    const d = this.plageDebut(), f = this.plageFin();
+    this.plageActive.set(!!d && !!f && d <= f);
+  }
+
+  setCritere(c: 'total' | HooperItem['key']): void { this.critere.set(c); }
 
   // ──────────────────────────── Chargement staff ────────────────────────────
 
@@ -228,17 +248,38 @@ export class SuiviSubjectifComponent implements OnInit {
     return w ? w[key] : null;
   }
 
-  /** Badge d'état global d'après le total Hooper (5..25, plus bas = mieux). */
+  /** Badge d'état global d'après le total Hooper (5..50, plus bas = mieux). */
   readonly etatBadge = computed<{ label: string; classe: string } | null>(() => {
     const t = this.totalCourant();
     if (t == null) return null;
-    if (t <= 11) return { label: 'Bon état général', classe: 'ok' };
-    if (t <= 17) return { label: 'État correct', classe: 'moyen' };
+    if (t <= 22) return { label: 'Bon état général', classe: 'ok' };
+    if (t <= 34) return { label: 'État correct', classe: 'moyen' };
     return { label: 'Vigilance', classe: 'bad' };
   });
 
-  /** Série des N derniers jours (7 ou 14) pour le joueur courant : barre Hooper + point RPE. */
-  readonly serie7j = computed<JourSerie[]>(() => {
+  /** Bornes de la période affichée : plage libre si active, sinon les N derniers jours. */
+  readonly periode = computed<{ debut: Date; nbJours: number }>(() => {
+    if (this.plageActive()) {
+      const debut = new Date(this.plageDebut() + 'T12:00:00');
+      const fin = new Date(this.plageFin() + 'T12:00:00');
+      const nbJours = Math.min(366, Math.round((fin.getTime() - debut.getTime()) / 86400000) + 1);
+      return { debut, nbJours };
+    }
+    const debut = new Date();
+    debut.setHours(12, 0, 0, 0);
+    debut.setDate(debut.getDate() - (this.fenetreJours() - 1));
+    return { debut, nbJours: this.fenetreJours() };
+  });
+
+  /** Libellé du critère affiché sur le graphe. */
+  readonly critereLabel = computed(() =>
+    this.critere() === 'total' ? 'Hooper' : this.HOOPER_ITEMS.find(i => i.key === this.critere())!.label);
+
+  /** Échelle max du graphe : total /50, item /10. */
+  readonly maxEchelle = computed(() => this.critere() === 'total' ? 50 : 10);
+
+  /** Série des jours de la période pour le joueur courant : barre (total ou item) + point RPE. */
+  readonly serie = computed<JourSerie[]>(() => {
     const jours = ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam'];
     const auj = this.dateISO(new Date());
     const wByDate = new Map(this.wellness().map(w => [w.date, w]));
@@ -246,16 +287,18 @@ export class SuiviSubjectifComponent implements OnInit {
     for (const r of this.rpe()) {
       rpeByDate.set(r.date, Math.max(rpeByDate.get(r.date) ?? 0, r.rpe));
     }
+    const crit = this.critere();
+    const { debut, nbJours } = this.periode();
     const out: JourSerie[] = [];
-    for (let i = this.fenetreJours() - 1; i >= 0; i--) {
-      const d = new Date();
-      d.setDate(d.getDate() - i);
+    for (let i = 0; i < nbJours; i++) {
+      const d = new Date(debut);
+      d.setDate(debut.getDate() + i);
       const iso = this.dateISO(d);
       const w = wByDate.get(iso);
       out.push({
         date: iso,
-        jour: jours[d.getDay()],
-        hooper: w ? this.hooperTotal(w) : null,
+        jour: nbJours <= 14 ? jours[d.getDay()] : `${d.getDate()}/${d.getMonth() + 1}`,
+        hooper: w ? (crit === 'total' ? this.hooperTotal(w) : w[crit]) : null,
         rpe: rpeByDate.get(iso) ?? null,
         aujourdhui: iso === auj,
       });
@@ -263,42 +306,63 @@ export class SuiviSubjectifComponent implements OnInit {
     return out;
   });
 
+  /** Bulles de valeur au sommet des barres : masquées quand la période est trop dense. */
+  readonly montrerPoints = computed(() => this.serie().length <= 21);
+
+  /** Une étiquette de jour sur k, pour rester lisible sur les longues périodes. */
+  readonly pasEtiquette = computed(() => Math.max(1, Math.ceil(this.serie().length / 13)));
+
   /**
    * Points de la courbe (polyline SVG, repère 0..100 × 0..100) reliant le SOMMET
    * de la barre Hooper de chaque jour rempli. La valeur RPE est affichée sur le point.
    */
   readonly rpeCourbe = computed(() => {
-    const n = this.serie7j().length || 1;
-    return this.serie7j()
+    const n = this.serie().length || 1;
+    return this.serie()
       .map((d, i) => d.hooper != null ? `${((i + 0.5) / n * 100).toFixed(2)},${(100 - this.barH(d.hooper)).toFixed(2)}` : null)
       .filter((p): p is string => p !== null)
       .join(' ');
   });
 
+  /** Moyenne du critère affiché (total /50 ou item /10) sur la période. */
   readonly hooperMoyen = computed(() => {
-    const vals = this.serie7j().map(j => j.hooper).filter((v): v is number => v != null);
+    const vals = this.serie().map(j => j.hooper).filter((v): v is number => v != null);
     return vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : null;
   });
 
-  /** Charge cumulée sur les 7 derniers jours (somme des charges sRPE). */
+  /** Charge cumulée sur la période affichée (somme des charges sRPE). */
   readonly chargeCumulee = computed(() => {
-    const limite = this.dateISO(new Date(Date.now() - (this.fenetreJours() - 1) * 86400000));
+    const { debut, nbJours } = this.periode();
+    const debutISO = this.dateISO(debut);
+    const fin = new Date(debut);
+    fin.setDate(debut.getDate() + nbJours - 1);
+    const finISO = this.dateISO(fin);
     return this.rpe()
-      .filter(r => r.date >= limite && r.charge != null)
+      .filter(r => r.date >= debutISO && r.date <= finISO && r.charge != null)
       .reduce((tot, r) => tot + (r.charge ?? 0), 0);
   });
 
-  readonly joursRemplis = computed(() => this.serie7j().filter(j => j.hooper != null).length);
+  readonly joursRemplis = computed(() => this.serie().filter(j => j.hooper != null).length);
 
-  /** Hauteur de barre Hooper en % (max 25). */
-  barH(v: number | null): number { return v == null ? 0 : Math.round(v / 25 * 100); }
+  /** Hauteur de barre en % (échelle : total /50, item /10). */
+  barH(v: number | null): number { return v == null ? 0 : Math.round(v / this.maxEchelle() * 100); }
   /** Position verticale du point RPE en % (0 en bas, max 10). */
   pointRpe(v: number | null): number { return v == null ? 0 : Math.round((1 - v / 10) * 100); }
 
+  /** Classe d'état d'un TOTAL Hooper (5..50, plus bas = mieux). */
   hooperBarClasse(v: number | null): string {
     if (v == null) return '';
-    if (v <= 11) return 'ok';
-    if (v <= 17) return 'moyen';
+    if (v <= 22) return 'ok';
+    if (v <= 34) return 'moyen';
+    return 'bad';
+  }
+
+  /** Classe d'état d'une barre du graphe, selon le critère affiché (item : 1..10, 1 = bon). */
+  barClasse(v: number | null): string {
+    if (v == null) return '';
+    if (this.critere() === 'total') return this.hooperBarClasse(v);
+    if (v <= 4) return 'ok';
+    if (v <= 7) return 'moyen';
     return 'bad';
   }
 
@@ -414,7 +478,7 @@ export class SuiviSubjectifComponent implements OnInit {
     this.wForm.set({ fatigue: w.fatigue, sommeil: w.sommeil, stress: w.stress, douleur: w.douleur, humeur: w.humeur });
     this.commentaire.set(w.commentaire ?? '');
     this.geneActive.set(!!w.geneZone);
-    if (w.geneZone) this.gForm.set({ zone: w.geneZone, intensite: w.geneIntensite ?? 2, moment: w.geneMoment ?? 'EFFORT' });
+    if (w.geneZone) this.gForm.set({ zone: w.geneZone, intensite: w.geneIntensite ?? 4, moment: w.geneMoment ?? 'EFFORT' });
   }
 
   setW(key: HooperItem['key'], val: number): void {

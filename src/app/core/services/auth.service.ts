@@ -166,10 +166,13 @@ export class AuthService {
   /** Page d'accueil selon le rôle (après login / accès racine). */
   homeRoute(): string {
     switch (this.currentUser()?.role) {
-      case 'SUPER_ADMIN': return '/admin/clubs';
-      case 'PRESIDENT':   return '/mon-club';
-      case 'JOUEUR':      return '/joueur';
-      default:            return '/dashboard';
+      case 'SUPER_ADMIN':   return '/admin/clubs';
+      case 'PRESIDENT':     return '/mon-club';
+      case 'JOUEUR':        return '/joueur';
+      // Administratif n'a pas accès au dashboard sportif (STAFF) : son seul module aujourd'hui
+      // est Licences & documents.
+      case 'ADMINISTRATIF': return '/documents-admin';
+      default:               return '/dashboard';
     }
   }
 

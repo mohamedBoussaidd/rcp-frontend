@@ -27,6 +27,34 @@
   &.is-active { background: var(--surface, #fff); color: var(--green-700); box-shadow: var(--shadow-sm); }
 }
 
+/* Plage libre « du… au… » */
+.ss-plage {
+  display: flex; align-items: center; gap: 8px;
+  margin: 10px 0 4px;
+
+  input[type="date"] {
+    border: 1px solid var(--border-strong); border-radius: 8px;
+    background: var(--surface); color: var(--text-2);
+    padding: 4px 8px; font-size: 12px;
+  }
+
+  &.is-active input[type="date"] {
+    border-color: var(--green-600); color: var(--green-700);
+  }
+}
+
+.ss-plage__label {
+  font-size: 12px; color: var(--text-3);
+}
+
+/* Pills de critère (Total / Sommeil / Fatigue…) */
+.ss-criteres {
+  display: flex; flex-wrap: wrap; gap: 2px;
+  padding: 2px; margin: 6px 0 10px;
+  background: var(--bg-2); border: 1px solid var(--border); border-radius: 999px;
+  width: fit-content;
+}
+
 .ss {
   max-width: 1280px;
   margin: 0 auto;
@@ -738,9 +766,20 @@
   position: absolute;
   inset: 0;
   display: grid;
-  grid-template-columns: repeat(7, 1fr);
+  grid-template-columns: repeat(var(--n, 7), 1fr);
   gap: 8px;
   align-items: end;
+}
+
+/* Période dense (> 21 jours) : barres serrées, pas de bulles de valeur. */
+.ss-chart--dense .ss-chart__bars,
+.ss-chart--dense .ss-chart__days {
+  gap: 2px;
+}
+
+.ss-chart--dense .ss-chart__bar {
+  width: 100%;
+  border-radius: 2px 2px 0 0;
 }
 
 .ss-chart__cell {
@@ -816,7 +855,7 @@
 
 .ss-chart__days {
   display: grid;
-  grid-template-columns: repeat(7, 1fr);
+  grid-template-columns: repeat(var(--n, 7), 1fr);
   gap: 8px;
   margin-top: 6px;
 }
@@ -825,6 +864,8 @@
   text-align: center;
   font-size: 0.66rem;
   color: var(--text-3);
+  white-space: nowrap;
+  overflow: visible;
 }
 
 .ss-chart__day.is-today {

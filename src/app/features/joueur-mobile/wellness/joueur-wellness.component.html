@@ -43,7 +43,7 @@
               <span class="well-scale__emoji">{{ s.emoji }}</span>
               <span class="well-scale__label">{{ s.label }}</span>
             </div>
-            <span class="well-scale__val" [style.color]="couleurNote(noteOf(s.key))">{{ noteOf(s.key) }}/5</span>
+            <span class="well-scale__val" [style.color]="couleurNote(noteOf(s.key))">{{ noteOf(s.key) }}/10</span>
           </div>
           <div class="well-dots">
             @for (n of NOTES; track n) {
@@ -87,7 +87,7 @@
       <section class="pwa-card pwa-rise">
         <div class="well-scale__head">
           <div class="well-card-title">Intensité</div>
-          <span class="well-scale__val" [style.color]="couleurNote(gForm().intensite)">{{ gForm().intensite }}/5</span>
+          <span class="well-scale__val" [style.color]="couleurNote(gForm().intensite)">{{ gForm().intensite }}/10</span>
         </div>
         <div class="well-dots">
           @for (n of NOTES; track n) {

@@ -54,6 +54,9 @@ export class JoueurHomeComponent {
   /** Module « Suivi individuel » actif pour le club → raccourcis axes/entretiens visibles. */
   readonly peutSuivi = computed(() => this.auth.hasModule('suivi_individuel'));
 
+  /** Module « Licences & documents » actif pour le club → raccourci visible. */
+  readonly peutDocumentsAdmin = computed(() => this.auth.hasModule('documents_admin'));
+
   /** Une séance de la prochaine est-elle un match ? */
   estMatch(): boolean {
     const s = this.store.prochaineSeance();

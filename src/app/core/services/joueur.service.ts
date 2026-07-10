@@ -1,5 +1,5 @@
 import { Injectable, inject } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { shareReplay } from 'rxjs/operators';
 
@@ -44,6 +44,20 @@ export interface Joueur {
   profilAthletique?: string;
   statut: string;
   dateArriveeClub?: string;
+  clubId?: string | null;
+}
+
+/** Référence d'équipe pour l'annuaire. */
+export interface EquipeRef { id: string; nom: string; }
+
+/** Ligne d'annuaire club : personne + ses équipes (effectif EN_COURS). `assigne=false` → pool. */
+export interface AnnuaireJoueur {
+  joueurId: string;
+  nom: string;
+  prenom: string;
+  poste?: string | null;
+  equipes: EquipeRef[];
+  assigne: boolean;
 }
 
 /** Un événement d'assiduité (absence/excuse/retard passé). */
@@ -98,8 +112,11 @@ export class JoueurService {
     return this.http.get<Joueur>(`${this.base}/${id}`);
   }
 
-  create(joueur: Partial<Joueur>): Observable<Joueur> {
-    return this.http.post<Joueur>(this.base, joueur);
+  /** Crée une fiche. `equipeId` (optionnel) inscrit la personne à l'effectif de la saison EN_COURS. */
+  create(joueur: Partial<Joueur>, equipeId?: string | null): Observable<Joueur> {
+    let params = new HttpParams();
+    if (equipeId) params = params.set('equipeId', equipeId);
+    return this.http.post<Joueur>(this.base, joueur, { params });
   }
 
   update(id: string, joueur: Partial<Joueur>): Observable<Joueur> {
@@ -108,6 +125,21 @@ export class JoueurService {
 
   getAllPourSuppression(): Observable<Joueur[]> {
     return this.http.get<Joueur[]>(`${this.base}/tous`);
+  }
+
+  /** Annuaire club : toutes les personnes + leurs équipes (effectif EN_COURS) + pool des non-assignés. */
+  getAnnuaire(): Observable<AnnuaireJoueur[]> {
+    return this.http.get<AnnuaireJoueur[]>(`${this.base}/annuaire`);
+  }
+
+  /** Assigne une personne à l'effectif d'une équipe (saison EN_COURS). */
+  assigner(joueurId: string, equipeId: string): Observable<void> {
+    return this.http.post<void>(`${this.base}/${joueurId}/equipes/${equipeId}`, {});
+  }
+
+  /** Retire une personne de l'effectif d'une équipe (saison EN_COURS). */
+  desassigner(joueurId: string, equipeId: string): Observable<void> {
+    return this.http.delete<void>(`${this.base}/${joueurId}/equipes/${equipeId}`);
   }
 
   delete(id: string): Observable<void> {

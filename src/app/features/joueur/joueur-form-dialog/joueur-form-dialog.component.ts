@@ -3,6 +3,7 @@ import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angula
 import { MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { JoueurService, Joueur } from '@core/services/joueur.service';
+import { ContexteService } from '@core/services/contexte.service';
 
 @Component({
   selector: 'app-joueur-form-dialog',
@@ -62,16 +63,26 @@ export class JoueurFormDialogComponent {
   private dialogRef = inject<MatDialogRef<JoueurFormDialogComponent>>(MatDialogRef);
   private joueurService = inject(JoueurService);
   private snackBar = inject(MatSnackBar);
+  private contexte = inject(ContexteService);
   data = inject<Joueur | null>(MAT_DIALOG_DATA, { optional: true });
+
+  /** Équipes du club actif, pour assigner la fiche à sa création (sinon fiche « non assignée »). */
+  readonly equipes = this.contexte.equipesDispo;
 
   constructor() {
     const j = this.data;
     this.editMode = !!j?.id;
     this.titre    = this.editMode ? `Modifier — ${j!.prenom} ${j!.nom}` : 'Nouveau joueur';
 
+    // À la création, préselectionne l'équipe si le contexte en cible une seule (Phase 4 : l'équipe
+    // ne fait plus partie de la fiche, elle sert uniquement à l'inscription à l'effectif).
+    const equipesDispo = this.contexte.equipesDispo();
+    const equipeDefaut = equipesDispo.length === 1 ? equipesDispo[0].id : null;
+
     this.form = this.fb.group({
       prenom:           [j?.prenom           ?? '',     Validators.required],
       nom:              [j?.nom              ?? '',     Validators.required],
+      equipeId:         [equipeDefaut],
       dateNaissance:    [j?.dateNaissance     ?? null],
       dateArriveeClub:  [j?.dateArriveeClub   ?? null],
       piedFort:         [j?.piedFort          ?? null],
@@ -88,11 +99,12 @@ export class JoueurFormDialogComponent {
   save(): void {
     if (this.form.invalid) return;
     this.saving = true;
-    const payload = this.cleanNullStrings(this.form.value);
+    // equipeId n'est plus un champ de la fiche : on l'extrait pour l'envoyer en paramètre (inscription effectif).
+    const { equipeId, ...payload } = this.cleanNullStrings(this.form.value);
 
     const op$ = this.editMode
       ? this.joueurService.update(this.data!.id, payload)
-      : this.joueurService.create(payload);
+      : this.joueurService.create(payload, equipeId);
 
     const msg = this.editMode ? 'Joueur mis à jour' : 'Joueur créé avec succès';
 

@@ -1,0 +1,43 @@
+<div class="jda">
+  @if (chargement()) {
+    <p class="jda__loading">Chargement…</p>
+  } @else if (documents().length === 0) {
+    <div class="jda__void">
+      <span class="jda__void-emoji">🗂️</span>
+      <p>Aucun document requis pour le moment.</p>
+    </div>
+  } @else {
+    @if (erreur()) { <p class="jda__err">{{ erreur() }}</p> }
+
+    @for (d of documents(); track d.typeId) {
+      <div class="jda-card">
+        <div class="jda-card__head">
+          <span class="jda-card__lib">{{ d.typeLibelle }}@if (d.obligatoire) { <span class="jda-card__req">*</span> }</span>
+          <span class="jda-pill jda-pill--{{ d.statut.toLowerCase() }}">{{ statutLabel(d.statut) }}</span>
+        </div>
+        @if (d.typeDescription) { <p class="jda-card__desc">{{ d.typeDescription }}</p> }
+
+        @if (d.statut === 'REFUSE' && d.motifRefus) {
+          <p class="jda-card__motif">Motif du refus : {{ d.motifRefus }}</p>
+        }
+        @if (d.dateExpiration) {
+          <p class="jda-card__exp" [class.is-soon]="expireBientot(d)">
+            {{ expireBientot(d) ? '⚠️ Expire' : 'Expire' }} le {{ d.dateExpiration | date:'d MMMM y':'':'fr' }}
+          </p>
+        }
+
+        <div class="jda-card__actions">
+          @if (d.documentId) {
+            <button type="button" class="jda-act" (click)="telecharger(d)">⬇️ Voir</button>
+          }
+          @if (d.statut === 'MANQUANT' || d.statut === 'REFUSE' || d.statut === 'EXPIRE') {
+            <label class="jda-act jda-act--primary">
+              <input type="file" accept=".pdf,image/*" hidden (change)="onFichier($event, d.typeId)">
+              {{ d.statut === 'MANQUANT' ? '📷 Déposer' : '📷 Redéposer' }}
+            </label>
+          }
+        </div>
+      </div>
+    }
+  }
+</div>

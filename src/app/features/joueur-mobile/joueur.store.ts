@@ -27,7 +27,7 @@ export interface SeanceANoter {
   duree?: number;
 }
 
-/** Point de la série 7 jours : barre Hooper (/25) + point RPE (/10). */
+/** Point de la série 7 jours : barre Hooper (/50) + point RPE (/10). */
 export interface JourSerie {
   date: string;
   jour: string;
@@ -99,7 +99,7 @@ export class JoueurStore {
   /** Une gêne est-elle déclarée aujourd'hui ? */
   readonly geneDuJour = computed(() => !!this.wellnessDuJour()?.geneZone);
 
-  /** Total Hooper d'une saisie (5..25, plus bas = mieux). */
+  /** Total Hooper d'une saisie (5..50, plus bas = mieux). */
   hooperTotal(w: Wellness): number {
     return w.sommeil + w.fatigue + w.douleur + w.stress + w.humeur;
   }

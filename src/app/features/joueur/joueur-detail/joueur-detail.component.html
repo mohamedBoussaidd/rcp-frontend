@@ -343,7 +343,7 @@
                 </div>
               </div>
               <div class="su-legend">
-                <span><strong>Hooper</strong> : 5 (très frais) → 25 (vigilance) · <em>plus bas = mieux</em></span>
+                <span><strong>Hooper</strong> : 5 (très frais) → 50 (vigilance) · <em>plus bas = mieux</em></span>
                 <span class="su-legend__sep"></span>
                 <span><strong>sRPE</strong> : charge ressentie de la séance (RPE × durée), en UA</span>
               </div>
@@ -362,7 +362,7 @@
                       <span class="pf-badge" [class]="'tone-' + hooperTone(hooperDernier)"><span class="pf-dot"></span>{{ hooperLabel(hooperDernier) }}</span>
                     }
                   </div>
-                  <div class="su-kpi__val" [class]="'c-' + hooperTone(hooperDernier)">{{ hooperDernier ?? '—' }}<span class="su-kpi__unit">/25</span></div>
+                  <div class="su-kpi__val" [class]="'c-' + hooperTone(hooperDernier)">{{ hooperDernier ?? '—' }}<span class="su-kpi__unit">/50</span></div>
                   <div class="su-kpi__sub">dernier relevé</div>
                 </div>
                 <div class="su-kpi">
@@ -372,7 +372,7 @@
                       <span class="pf-badge" [class]="'tone-' + hooperTone(hooperMoyen)"><span class="pf-dot"></span>{{ hooperLabel(hooperMoyen) }}</span>
                     }
                   </div>
-                  <div class="su-kpi__val">{{ hooperMoyen != null ? (hooperMoyen | number:'1.1-1') : '—' }}<span class="su-kpi__unit">/25</span></div>
+                  <div class="su-kpi__val">{{ hooperMoyen != null ? (hooperMoyen | number:'1.1-1') : '—' }}<span class="su-kpi__unit">/50</span></div>
                   <div class="su-kpi__sub">sur la fenêtre sélectionnée</div>
                 </div>
                 <div class="su-kpi">
@@ -407,7 +407,7 @@
                             <span [style.background]="n <= geneAlerte.intensite ? '#dc2626' : '#fecaca'"></span>
                           }
                         </div>
-                        <span class="su-gene__intval">{{ geneAlerte.intensite }}<span>/5</span></span>
+                        <span class="su-gene__intval">{{ geneAlerte.intensite }}<span>/10</span></span>
                       </div>
                     </div>
                   }
@@ -420,7 +420,7 @@
                   <div class="gps-cardhead">
                     <div class="pf-card__head pf-card__head--flush"><span class="pf-card__bullet"></span><h2>Tendance — Hooper &amp; charge perçue</h2></div>
                     <div class="gps-chartlegend">
-                      <span><span class="gps-chartlegend__sw" style="background:#cbd5e1"></span>Hooper /25</span>
+                      <span><span class="gps-chartlegend__sw" style="background:#cbd5e1"></span>Hooper /50</span>
                       <span><span class="gps-chartlegend__sw" style="background:#15803d"></span>sRPE</span>
                     </div>
                   </div>
@@ -445,14 +445,14 @@
                     @if (wellnessDernierRempli) { <span class="su-bd-date">{{ wellnessDernierRempli.date | date:'d MMM':'':'fr' }}</span> }
                   </div>
                   @if (hooperDernier != null) {
-                    <div class="su-bd-sub">D'où vient le score de {{ hooperDernier }}/25 ?</div>
+                    <div class="su-bd-sub">D'où vient le score de {{ hooperDernier }}/50 ?</div>
                   }
                   <div class="su-jauges">
                     @for (it of itemsDernierReleve; track it.label) {
                       <div class="su-jauge">
                         <div class="su-jauge__head">
                           <span class="su-jauge__label">{{ it.label }}</span>
-                          <span class="su-jauge__val" [style.color]="it.color">{{ it.value }}<span class="su-jauge__max">/5</span></span>
+                          <span class="su-jauge__val" [style.color]="it.color">{{ it.value }}<span class="su-jauge__max">/10</span></span>
                         </div>
                         <div class="su-jauge__segs">
                           @for (sg of it.segs; track $index) {
@@ -481,14 +481,14 @@
                     <span class="su-hdate">{{ j.date | date:'EEE d MMM':'':'fr' }}</span>
                     <span>
                       @if (j.hooper != null) {
-                        <span class="pf-badge" [class]="'tone-' + hooperTone(j.hooper)"><span class="pf-dot"></span>{{ j.hooper }}/25 · {{ hooperLabel(j.hooper) }}</span>
+                        <span class="pf-badge" [class]="'tone-' + hooperTone(j.hooper)"><span class="pf-dot"></span>{{ j.hooper }}/50 · {{ hooperLabel(j.hooper) }}</span>
                       } @else { <span class="su-empty">Non rempli</span> }
                     </span>
                     <span class="r" [class.su-soft]="j.charge == null">{{ j.charge != null ? (j.charge | number:'1.0-0') + ' UA' : 'Repos' }}</span>
                     <span class="r">
                       @if (j.geneZone) {
                         <span class="su-hgene" [class.untreated]="!j.geneTraitee">
-                          <mat-icon>warning</mat-icon>{{ joliZone(j.geneZone) }}@if (j.geneIntensite != null) { {{ j.geneIntensite }}/5 }@if (!j.geneTraitee) { ⚠ }
+                          <mat-icon>warning</mat-icon>{{ joliZone(j.geneZone) }}@if (j.geneIntensite != null) { {{ j.geneIntensite }}/10 }@if (!j.geneTraitee) { ⚠ }
                         </span>
                       } @else { <span class="su-empty">—</span> }
                     </span>

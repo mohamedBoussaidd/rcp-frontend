@@ -1,0 +1,52 @@
+<div class="dcd">
+  <div class="dcd__head">
+    <div>
+      <div class="dcd__title">{{ data.typeLibelle }}</div>
+      <div class="dcd__subtitle">{{ data.joueurNom }}</div>
+    </div>
+    <button type="button" class="dcd__close" (click)="fermer()" title="Fermer">✕</button>
+  </div>
+
+  <div class="dcd__body">
+    <div class="dcd__statut dcd__statut--{{ data.statut.toLowerCase() }}">{{ libelleStatut }}</div>
+
+    @if (data.statut === 'REFUSE' && data.motifRefus) {
+      <p class="dcd__motif">Motif du refus : {{ data.motifRefus }}</p>
+    }
+    @if (data.dateExpiration) {
+      <p class="dcd__expiration">Expire le {{ data.dateExpiration | date:'d MMMM y':'':'fr' }}</p>
+    }
+
+    @if (data.documentId) {
+      <button type="button" class="dcd__view" (click)="telecharger()">📄 Voir le document déposé</button>
+    }
+
+    @if (data.statut === 'SOUMIS') {
+      <div class="dcd__actions">
+        <button type="button" class="dcd__btn dcd__btn--ok" [disabled]="envoi()" (click)="valider()">✓ Valider</button>
+        @if (!refusOuvert()) {
+          <button type="button" class="dcd__btn dcd__btn--bad" (click)="ouvrirRefus()">✕ Refuser</button>
+        }
+      </div>
+      @if (refusOuvert()) {
+        <div class="dcd__refus">
+          <textarea [(ngModel)]="motif" rows="2" placeholder="Motif du refus (obligatoire)"></textarea>
+          <button type="button" class="dcd__btn dcd__btn--bad" [disabled]="envoi()" (click)="refuser()">Confirmer le refus</button>
+        </div>
+      }
+    }
+
+    <div class="dcd__depot">
+      <label class="dcd__label">{{ data.documentId ? 'Remplacer le document' : 'Déposer un document' }}</label>
+      <label class="dcd__file">
+        <input type="file" accept=".pdf,image/*" (change)="onFichier($event)" hidden>
+        <span>{{ fichier()?.name ?? 'Choisir un fichier (PDF, JPG, PNG)' }}</span>
+      </label>
+      <button type="button" class="dcd__btn dcd__btn--primary" [disabled]="envoi() || !fichier()" (click)="deposer()">
+        {{ envoi() ? 'Envoi…' : 'Déposer' }}
+      </button>
+    </div>
+
+    @if (erreur()) { <p class="dcd__err">{{ erreur() }}</p> }
+  </div>
+</div>

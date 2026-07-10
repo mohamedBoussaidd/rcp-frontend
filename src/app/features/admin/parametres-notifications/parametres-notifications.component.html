@@ -33,24 +33,24 @@
         </span><input type="number" step="1" [(ngModel)]="c.seuilReadinessMin"></label>
         <label><span class="lbl">Wellness fatigue ≥
           <app-info-hint align="left" titre="Fatigue (Hooper)"
-            texte="Item saisi par le joueur, de 1 (bon) à 5 (mauvais). Alerte si la fatigue déclarée atteint ce niveau ou pire."></app-info-hint>
-        </span><input type="number" min="1" max="5" [(ngModel)]="c.seuilWellnessFatigue"></label>
+            texte="Item saisi par le joueur, de 1 (bon) à 10 (mauvais). Alerte si la fatigue déclarée atteint ce niveau ou pire."></app-info-hint>
+        </span><input type="number" min="1" max="10" [(ngModel)]="c.seuilWellnessFatigue"></label>
         <label><span class="lbl">Wellness douleur ≥
           <app-info-hint align="left" titre="Douleur (Hooper)"
-            texte="De 1 (aucune) à 5 (forte). Alerte si la douleur déclarée atteint ce niveau ou pire."></app-info-hint>
-        </span><input type="number" min="1" max="5" [(ngModel)]="c.seuilWellnessDouleur"></label>
+            texte="De 1 (aucune) à 10 (forte). Alerte si la douleur déclarée atteint ce niveau ou pire."></app-info-hint>
+        </span><input type="number" min="1" max="10" [(ngModel)]="c.seuilWellnessDouleur"></label>
         <label><span class="lbl">Wellness stress ≥
           <app-info-hint align="left" titre="Stress (Hooper)"
-            texte="De 1 (détendu) à 5 (très stressé). Alerte si le stress déclaré atteint ce niveau ou pire."></app-info-hint>
-        </span><input type="number" min="1" max="5" [(ngModel)]="c.seuilWellnessStress"></label>
+            texte="De 1 (détendu) à 10 (très stressé). Alerte si le stress déclaré atteint ce niveau ou pire."></app-info-hint>
+        </span><input type="number" min="1" max="10" [(ngModel)]="c.seuilWellnessStress"></label>
         <label><span class="lbl">Wellness sommeil ≥
           <app-info-hint align="left" titre="Sommeil (Hooper)"
-            texte="Échelle où 1 = excellent et 5 = très mauvais. Alerte si le sommeil déclaré atteint ce niveau ou pire."></app-info-hint>
-        </span><input type="number" min="1" max="5" [(ngModel)]="c.seuilWellnessSommeil"></label>
+            texte="Échelle où 1 = excellent et 10 = très mauvais. Alerte si le sommeil déclaré atteint ce niveau ou pire."></app-info-hint>
+        </span><input type="number" min="1" max="10" [(ngModel)]="c.seuilWellnessSommeil"></label>
         <label><span class="lbl">Wellness humeur ≥
           <app-info-hint align="left" titre="Humeur (Hooper)"
-            texte="Échelle où 1 = bonne et 5 = mauvaise. Alerte si l'humeur déclarée atteint ce niveau ou pire."></app-info-hint>
-        </span><input type="number" min="1" max="5" [(ngModel)]="c.seuilWellnessHumeur"></label>
+            texte="Échelle où 1 = bonne et 10 = mauvaise. Alerte si l'humeur déclarée atteint ce niveau ou pire."></app-info-hint>
+        </span><input type="number" min="1" max="10" [(ngModel)]="c.seuilWellnessHumeur"></label>
         <label><span class="lbl">Poids court (kg)
           <app-info-hint align="left" titre="Variation de poids — court terme"
             texte="Écart de poids rapide (jour à jour) déclenchant un signalement, en kilogrammes."></app-info-hint>

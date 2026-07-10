@@ -103,6 +103,21 @@ const ALL_MODULES: NavModule[] = [
     subnav: [],
   },
   {
+    key: 'annuaire', label: 'Annuaire', icon: 'groups',
+    link: '/annuaire', matches: ['/annuaire'],
+    roles: ['SUPER_ADMIN', 'PRESIDENT', 'ADMINISTRATIF', 'ENTRAINEUR'],
+    perms: ['joueurs:write'],
+    subnav: [],
+  },
+  {
+    key: 'documents-admin', label: 'Licences & documents', icon: 'assignment_turned_in',
+    link: '/documents-admin', matches: ['/documents-admin'],
+    roles: ['SUPER_ADMIN', 'PRESIDENT', 'ADMINISTRATIF', 'ENTRAINEUR', 'PREPARATEUR', 'MEDICAL'],
+    perms: ['docadmin:read'],
+    module: 'documents_admin',
+    subnav: [],
+  },
+  {
     key: 'medical', label: 'Médical', icon: 'healing',
     link: '/medical', query: { section: 'alertes' }, matches: ['/medical', '/mon-espace', '/suivi-subjectif', '/mes-blessures'],
     roles: ['SUPER_ADMIN', 'PRESIDENT', 'ENTRAINEUR', 'PREPARATEUR', 'MEDICAL', 'JOUEUR'],

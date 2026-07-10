@@ -13,7 +13,7 @@
       <p class="ss-sub">
         {{ today | date:'EEEE d MMMM y' }}
         @if (isJoueur) {
-          · à remplir avant 11h00 · <span class="ss-pill">{{ joursRemplis() }} jours remplis sur {{ fenetreJours() }}</span>
+          · à remplir avant 11h00 · <span class="ss-pill">{{ joursRemplis() }} jours remplis sur {{ periode().nbJours }}</span>
         }
       </p>
     </div>
@@ -48,7 +48,7 @@
       <div class="ss-synthese">
         <div class="ss-stat">
           <span class="ss-stat__label">Hooper moyen</span>
-          <span class="ss-stat__value">{{ m.hooper != null ? (m.hooper | number:'1.1-1') : '—' }}<small>/25</small></span>
+          <span class="ss-stat__value">{{ m.hooper != null ? (m.hooper | number:'1.1-1') : '—' }}<small>/50</small></span>
         </div>
         <div class="ss-stat">
           <span class="ss-stat__label">Charge moyenne</span>
@@ -132,12 +132,12 @@
           <div class="ss-card__head">
             <div>
               <h2 class="ss-card__title">Questionnaire Hooper</h2>
-              <p class="ss-card__sub">5 items · échelle 1 (bon) → 5 (mauvais)</p>
+              <p class="ss-card__sub">5 items · échelle 1 (bon) → 10 (mauvais)</p>
             </div>
             <div class="ss-total">
               <div>
                 <span class="ss-total__label">Total</span>
-                <span class="ss-total__value">{{ totalCourant() ?? '—' }}<small>/25</small></span>
+                <span class="ss-total__value">{{ totalCourant() ?? '—' }}<small>/50</small></span>
               </div>
               @if (etatBadge(); as b) { <span class="ss-state ss-state--{{ b.classe }}">{{ b.label }}</span> }
             </div>
@@ -147,7 +147,7 @@
             <div class="ss-item">
               <div class="ss-item__head">
                 <span class="ss-item__label">{{ item.label }}</span>
-                <span class="ss-item__scale">1 — {{ item.bas }} · 5 — {{ item.haut }}</span>
+                <span class="ss-item__scale">1 — {{ item.bas }} · 10 — {{ item.haut }}</span>
               </div>
               <div class="ss-notes">
                 @for (n of NOTES_HOOPER; track n) {
@@ -275,25 +275,48 @@
       <!-- Colonne droite -->
       <div class="ss-col">
 
-        <!-- Graphe 7 jours -->
+        <!-- Graphe sur la période choisie -->
         <div class="ss-card">
           <div class="ss-card__head">
-            <h2 class="ss-card__title">{{ fenetreJours() }} derniers jours</h2>
+            <h2 class="ss-card__title">
+              @if (plageActive()) { Du {{ plageDebut() | date:'dd/MM' }} au {{ plageFin() | date:'dd/MM' }} }
+              @else { {{ fenetreJours() }} derniers jours }
+            </h2>
             <div class="ss-fenetre">
-              <button class="ss-fenetre__btn" [class.is-active]="fenetreJours() === 7"  (click)="setFenetre(7)">7 j</button>
-              <button class="ss-fenetre__btn" [class.is-active]="fenetreJours() === 14" (click)="setFenetre(14)">14 j</button>
+              @for (n of FENETRES; track n) {
+                <button class="ss-fenetre__btn" [class.is-active]="!plageActive() && fenetreJours() === n"
+                        (click)="setFenetre(n)">{{ n }} j</button>
+              }
             </div>
           </div>
-          <div class="ss-legend"><span class="ss-legend__bar"></span> Hooper /25 <span class="ss-legend__line"></span> tendance · RPE au point</div>
 
-          <div class="ss-chart">
+          <!-- Plage libre « du… au… » -->
+          <div class="ss-plage" [class.is-active]="plageActive()">
+            <span class="ss-plage__label">ou du</span>
+            <input type="date" [ngModel]="plageDebut()" (ngModelChange)="setPlage('debut', $event)">
+            <span class="ss-plage__label">au</span>
+            <input type="date" [ngModel]="plageFin()" (ngModelChange)="setPlage('fin', $event)">
+          </div>
+
+          <!-- Critère affiché -->
+          <div class="ss-criteres">
+            <button class="ss-fenetre__btn" [class.is-active]="critere() === 'total'" (click)="setCritere('total')">Total</button>
+            @for (item of HOOPER_ITEMS; track item.key) {
+              <button class="ss-fenetre__btn" [class.is-active]="critere() === item.key"
+                      (click)="setCritere(item.key)">{{ item.label }}</button>
+            }
+          </div>
+
+          <div class="ss-legend"><span class="ss-legend__bar"></span> {{ critereLabel() }} /{{ maxEchelle() }} <span class="ss-legend__line"></span> tendance · RPE au point</div>
+
+          <div class="ss-chart" [class.ss-chart--dense]="!montrerPoints()" [style.--n]="serie().length">
             <div class="ss-chart__plot">
-              <!-- Barres Hooper -->
+              <!-- Barres (total Hooper ou item selon le critère) -->
               <div class="ss-chart__bars">
-                @for (d of serie7j(); track d.date) {
+                @for (d of serie(); track d.date) {
                   <div class="ss-chart__cell">
                     @if (d.hooper != null) {
-                      <div class="ss-chart__bar" [class]="hooperBarClasse(d.hooper)" [style.height.%]="barH(d.hooper)"></div>
+                      <div class="ss-chart__bar" [class]="barClasse(d.hooper)" [style.height.%]="barH(d.hooper)"></div>
                     }
                   </div>
                 }
@@ -304,26 +327,28 @@
                   <polyline [attr.points]="rpeCourbe()" vector-effect="non-scaling-stroke"></polyline>
                 </svg>
               }
-              <!-- Points au sommet de chaque barre (valeur Hooper + RPE) -->
-              @for (d of serie7j(); track d.date) {
-                @if (d.hooper != null) {
-                  <span class="ss-chart__point"
-                        [style.left.%]="($index + 0.5) / serie7j().length * 100"
-                        [style.bottom.%]="barH(d.hooper)">
-                    <span class="ss-chart__val">{{ d.hooper }}@if (d.rpe != null) { <em>· RPE {{ d.rpe }}</em> }</span>
-                  </span>
+              <!-- Points au sommet de chaque barre (valeur + RPE) — masqués sur période dense -->
+              @if (montrerPoints()) {
+                @for (d of serie(); track d.date) {
+                  @if (d.hooper != null) {
+                    <span class="ss-chart__point"
+                          [style.left.%]="($index + 0.5) / serie().length * 100"
+                          [style.bottom.%]="barH(d.hooper)">
+                      <span class="ss-chart__val">{{ d.hooper }}@if (d.rpe != null) { <em>· RPE {{ d.rpe }}</em> }</span>
+                    </span>
+                  }
                 }
               }
             </div>
             <div class="ss-chart__days">
-              @for (d of serie7j(); track d.date) {
-                <span class="ss-chart__day" [class.is-today]="d.aujourdhui">{{ d.jour }}</span>
+              @for (d of serie(); track d.date) {
+                <span class="ss-chart__day" [class.is-today]="d.aujourdhui">{{ $index % pasEtiquette() === 0 ? d.jour : '' }}</span>
               }
             </div>
           </div>
 
           <div class="ss-chart__foot">
-            <div><span class="ss-stat__label">Hooper moyen</span><strong>{{ hooperMoyen() != null ? (hooperMoyen() | number:'1.1-1') : '—' }}</strong></div>
+            <div><span class="ss-stat__label">{{ critereLabel() }} moyen</span><strong>{{ hooperMoyen() != null ? (hooperMoyen() | number:'1.1-1') : '—' }}<small>/{{ maxEchelle() }}</small></strong></div>
             <div><span class="ss-stat__label">Charge cumulée</span><strong>{{ chargeCumulee() | number:'1.0-0' }} UA</strong></div>
           </div>
         </div>

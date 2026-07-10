@@ -37,6 +37,10 @@ const routes: Routes = [
         loadComponent: () => import('./documents/joueur-documents.component').then(m => m.JoueurDocumentsComponent)
       },
       {
+        path: 'documents-administratifs', data: { title: 'Mes documents administratifs' },
+        loadComponent: () => import('./documents-admin/joueur-documents-admin.component').then(m => m.JoueurDocumentsAdminComponent)
+      },
+      {
         path: 'poids', data: { title: 'Évolution du poids' },
         loadComponent: () => import('./poids/joueur-poids.component').then(m => m.JoueurPoidsComponent)
       },

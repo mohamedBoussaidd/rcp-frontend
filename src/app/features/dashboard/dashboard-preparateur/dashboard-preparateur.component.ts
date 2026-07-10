@@ -273,14 +273,14 @@ export class DashboardPreparateurComponent implements OnInit {
     return { zone: this.ZONES_LABEL[w.geneZone] ?? w.geneZone.replace(/_/g, ' '), jours };
   }
 
-  /** Items dégradés de la saisie du jour (sommeil/courbatures/fatigue ≥ 4/5). */
+  /** Items dégradés de la saisie du jour (sommeil/courbatures/fatigue ≥ 8/10). */
   private wellnessJourDegrade(joueurId: string): string[] {
     const w = this.wellnessData.find(x => x.joueurId === joueurId && x.date === this.aujourdhui);
     if (!w) return [];
     const out: string[] = [];
-    if (w.sommeil >= 4) out.push('sommeil dégradé');
-    if (w.douleur >= 4) out.push('courbatures');
-    if (w.fatigue >= 4) out.push('fatigue déclarée');
+    if (w.sommeil >= 8) out.push('sommeil dégradé');
+    if (w.douleur >= 8) out.push('courbatures');
+    if (w.fatigue >= 8) out.push('fatigue déclarée');
     return out;
   }
 
