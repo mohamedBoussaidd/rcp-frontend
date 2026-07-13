@@ -65,21 +65,33 @@
         <div class="gps-kpi__val">{{ moyenneRatioReel != null ? (moyenneRatioReel | number:'1.0-0') : '—' }}<span class="gps-kpi__unit">m/min</span></div>
         <div class="gps-kpi__foot"><span class="gps-kpi__foottxt">distance / durée sur la période</span></div>
       </div>
-      <div class="gps-kpi">
-        <div class="gps-kpi__head"><span class="gps-kpi__icon ico-amber"><mat-icon>bolt</mat-icon></span><span class="gps-kpi__label">Vitesse max</span></div>
-        <div class="gps-kpi__val">{{ maxVitesse != null ? (maxVitesse | number:'1.1-1') : '—' }}<span class="gps-kpi__unit">km/h</span></div>
-        <div class="gps-kpi__foot"><span class="gps-kpi__foottxt">pic sur la période</span></div>
-      </div>
+      @if (metriquesClub.estActive('VITESSE_MAX')) {
+        <div class="gps-kpi">
+          <div class="gps-kpi__head"><span class="gps-kpi__icon ico-amber"><mat-icon>bolt</mat-icon></span><span class="gps-kpi__label">Vitesse max</span></div>
+          <div class="gps-kpi__val">{{ maxVitesse != null ? (maxVitesse | number:'1.1-1') : '—' }}<span class="gps-kpi__unit">km/h</span></div>
+          <div class="gps-kpi__foot"><span class="gps-kpi__foottxt">pic sur la période</span></div>
+        </div>
+      }
     </div>
 
     <!-- KPI band — secondaires -->
     <div class="gps-kpis2">
       <div class="gps-tile"><div class="gps-tile__label">Distance attendue</div><div class="gps-tile__val">{{ totalDistAttendueKm | number:'1.1-1' }}<span class="gps-tile__unit">km</span></div><div class="gps-tile__sub">séances comparables</div></div>
-      <div class="gps-tile"><div class="gps-tile__label">Sprints</div><div class="gps-tile__val">{{ totalNbSprints }}</div><div class="gps-tile__sub">&gt; 24 km/h</div></div>
-      <div class="gps-tile"><div class="gps-tile__label">Distance &gt; 19 km/h</div><div class="gps-tile__val">{{ totalDist19Km | number:'1.1-1' }}<span class="gps-tile__unit">km</span></div><div class="gps-tile__sub">haute intensité</div></div>
-      <div class="gps-tile"><div class="gps-tile__label">Distance &gt; 28 km/h</div><div class="gps-tile__val">{{ totalDist28Km | number:'1.1-1' }}<span class="gps-tile__unit">km</span></div><div class="gps-tile__sub">très haute int.</div></div>
-      <div class="gps-tile"><div class="gps-tile__label">Accélérations</div><div class="gps-tile__val">{{ totalAccelerations }}</div><div class="gps-tile__sub">sur la période</div></div>
-      <div class="gps-tile"><div class="gps-tile__label">Freinages</div><div class="gps-tile__val">{{ totalFreinages }}</div><div class="gps-tile__sub">sur la période</div></div>
+      @if (metriquesClub.estActive('NB_SPRINTS')) {
+        <div class="gps-tile"><div class="gps-tile__label">Sprints</div><div class="gps-tile__val">{{ totalNbSprints }}</div><div class="gps-tile__sub">{{ metriquesClub.labelSeuil('z24') }}</div></div>
+      }
+      @if (metriquesClub.estActive('DISTANCE_Z19')) {
+        <div class="gps-tile"><div class="gps-tile__label">Distance {{ metriquesClub.labelSeuil('z19') }}</div><div class="gps-tile__val">{{ totalDist19Km | number:'1.1-1' }}<span class="gps-tile__unit">km</span></div><div class="gps-tile__sub">haute intensité</div></div>
+      }
+      @if (metriquesClub.estActive('DISTANCE_Z28')) {
+        <div class="gps-tile"><div class="gps-tile__label">Distance {{ metriquesClub.labelSeuil('z28') }}</div><div class="gps-tile__val">{{ totalDist28Km | number:'1.1-1' }}<span class="gps-tile__unit">km</span></div><div class="gps-tile__sub">très haute int.</div></div>
+      }
+      @if (metriquesClub.estActive('NB_ACCELERATIONS')) {
+        <div class="gps-tile"><div class="gps-tile__label">Accélérations</div><div class="gps-tile__val">{{ totalAccelerations }}</div><div class="gps-tile__sub">sur la période</div></div>
+      }
+      @if (metriquesClub.estActive('NB_FREINAGES')) {
+        <div class="gps-tile"><div class="gps-tile__label">Freinages</div><div class="gps-tile__val">{{ totalFreinages }}</div><div class="gps-tile__sub">sur la période</div></div>
+      }
     </div>
 
     <!-- Graphe + répartition (Direction B) -->
@@ -150,12 +162,12 @@
               <th class="r">Attendue</th>
               <th class="r">Ratio</th>
               <th class="c">Charge rel.</th>
-              <th class="r">&gt;19 km/h</th>
-              <th class="r">&gt;28 km/h</th>
-              <th class="r">Sprints</th>
-              <th class="r">V. max</th>
-              <th class="r">Accél.</th>
-              <th class="r">Frein.</th>
+              @if (metriquesClub.estActive('DISTANCE_Z19')) { <th class="r">{{ metriquesClub.labelSeuil('z19') }}</th> }
+              @if (metriquesClub.estActive('DISTANCE_Z28')) { <th class="r">{{ metriquesClub.labelSeuil('z28') }}</th> }
+              @if (metriquesClub.estActive('DISTANCE_Z24') || metriquesClub.estActive('NB_SPRINTS')) { <th class="r">Sprints</th> }
+              @if (metriquesClub.estActive('VITESSE_MAX')) { <th class="r">V. max</th> }
+              @if (metriquesClub.estActive('NB_ACCELERATIONS')) { <th class="r">Accél.</th> }
+              @if (metriquesClub.estActive('NB_FREINAGES')) { <th class="r">Frein.</th> }
             </tr>
           </thead>
           <tbody>
@@ -170,12 +182,24 @@
                 <td class="r faint">{{ g.distAttendue ? ((g.distAttendue / 1000) | number:'1.2-2') + ' km' : '—' }}</td>
                 <td class="r mid">{{ g.ratioReel ? (g.ratioReel | number:'1.0-0') + ' m/min' : '—' }}</td>
                 <td class="c"><span class="pf-badge" [class]="chargeTone(g.statut)">{{ statutLibelle(g.statut) }}</span></td>
-                <td class="r soft">{{ g.distance19kmhM ? ((g.distance19kmhM / 1000) | number:'1.2-2') + ' km' : '—' }}</td>
-                <td class="r soft">{{ g.distanceSprint28kmhM ? ((g.distanceSprint28kmhM / 1000) | number:'1.2-2') + ' km' : '—' }}</td>
-                <td class="r soft">{{ g.distanceSprint24kmhM ? ((g.distanceSprint24kmhM) | number:'1.0-0') + ' m' : '—' }}@if (g.nbSprints24kmh) { · {{ g.nbSprints24kmh }}}</td>
-                <td class="r mid">{{ g.vitesseMaxKmh ? (g.vitesseMaxKmh | number:'1.1-1') : '—' }}</td>
-                <td class="r soft">{{ g.nbAccelerations ?? '—' }}</td>
-                <td class="r soft">{{ g.nbFreinages ?? '—' }}</td>
+                @if (metriquesClub.estActive('DISTANCE_Z19')) {
+                  <td class="r soft">{{ g.distance19kmhM ? ((g.distance19kmhM / 1000) | number:'1.2-2') + ' km' : '—' }}</td>
+                }
+                @if (metriquesClub.estActive('DISTANCE_Z28')) {
+                  <td class="r soft">{{ g.distanceSprint28kmhM ? ((g.distanceSprint28kmhM / 1000) | number:'1.2-2') + ' km' : '—' }}</td>
+                }
+                @if (metriquesClub.estActive('DISTANCE_Z24') || metriquesClub.estActive('NB_SPRINTS')) {
+                  <td class="r soft">{{ g.distanceSprint24kmhM ? ((g.distanceSprint24kmhM) | number:'1.0-0') + ' m' : '—' }}@if (g.nbSprints24kmh) { · {{ g.nbSprints24kmh }}}</td>
+                }
+                @if (metriquesClub.estActive('VITESSE_MAX')) {
+                  <td class="r mid">{{ g.vitesseMaxKmh ? (g.vitesseMaxKmh | number:'1.1-1') : '—' }}</td>
+                }
+                @if (metriquesClub.estActive('NB_ACCELERATIONS')) {
+                  <td class="r soft">{{ g.nbAccelerations ?? '—' }}</td>
+                }
+                @if (metriquesClub.estActive('NB_FREINAGES')) {
+                  <td class="r soft">{{ g.nbFreinages ?? '—' }}</td>
+                }
               </tr>
             }
           </tbody>
@@ -188,12 +212,12 @@
               <td class="r faint">{{ totalDistAttendueKm | number:'1.1-1' }} km</td>
               <td class="r strong">{{ moyenneRatioReel ? (moyenneRatioReel | number:'1.0-0') + ' m/min' : '—' }}</td>
               <td></td>
-              <td class="r strong">{{ totalDist19Km | number:'1.1-1' }} km</td>
-              <td class="r strong">{{ totalDist28Km | number:'1.1-1' }} km</td>
-              <td class="r strong">{{ totalNbSprints }}</td>
-              <td class="r strong">{{ maxVitesse ? (maxVitesse | number:'1.1-1') : '—' }}</td>
-              <td class="r strong">{{ totalAccelerations }}</td>
-              <td class="r strong">{{ totalFreinages }}</td>
+              @if (metriquesClub.estActive('DISTANCE_Z19')) { <td class="r strong">{{ totalDist19Km | number:'1.1-1' }} km</td> }
+              @if (metriquesClub.estActive('DISTANCE_Z28')) { <td class="r strong">{{ totalDist28Km | number:'1.1-1' }} km</td> }
+              @if (metriquesClub.estActive('DISTANCE_Z24') || metriquesClub.estActive('NB_SPRINTS')) { <td class="r strong">{{ totalNbSprints }}</td> }
+              @if (metriquesClub.estActive('VITESSE_MAX')) { <td class="r strong">{{ maxVitesse ? (maxVitesse | number:'1.1-1') : '—' }}</td> }
+              @if (metriquesClub.estActive('NB_ACCELERATIONS')) { <td class="r strong">{{ totalAccelerations }}</td> }
+              @if (metriquesClub.estActive('NB_FREINAGES')) { <td class="r strong">{{ totalFreinages }}</td> }
             </tr>
           </tfoot>
         </table>

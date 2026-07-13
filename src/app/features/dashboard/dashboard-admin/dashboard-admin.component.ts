@@ -28,11 +28,12 @@ export class DashboardAdminComponent implements OnInit {
   readonly club = signal<MonClub | null>(null);
   readonly loading = signal(true);
 
-  // ── Comptes ──
-  readonly staffCount   = computed(() => (this.club()?.membres ?? []).filter(m => m.role !== 'JOUEUR').length);
-  readonly joueursCount = computed(() => (this.club()?.membres ?? []).filter(m => m.role === 'JOUEUR').length);
-  readonly equipesCount = computed(() => this.club()?.equipes.length ?? 0);
-  readonly clubNom      = computed(() => this.club()?.clubNom ?? '');
+  // ── Comptes APPLICATION (utilisateurs, à ne pas confondre avec les fiches joueur) ──
+  readonly staffCount    = computed(() => (this.club()?.membres ?? []).filter(m => m.role !== 'JOUEUR').length);
+  readonly comptesCount  = computed(() => (this.club()?.membres ?? []).length);
+  readonly comptesActifs = computed(() => (this.club()?.membres ?? []).filter(m => m.actif).length);
+  readonly equipesCount  = computed(() => this.club()?.equipes.length ?? 0);
+  readonly clubNom       = computed(() => this.club()?.clubNom ?? '');
 
   // ── Conformité ──
   readonly complets    = computed(() => this.conformite()?.complets ?? 0);

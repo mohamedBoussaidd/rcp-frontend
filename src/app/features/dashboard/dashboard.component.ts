@@ -110,11 +110,14 @@ export class DashboardComponent implements OnInit {
   }
 
   /* ── KPIs dérivés ── */
+  // Les statuts (statutMap) viennent de /api/joueurs = CLUB entier pour un président, alors que
+  // `joueurs` est scopé au contexte (équipe sélectionnée). On compte donc UNIQUEMENT parmi les
+  // joueurs affichés, sinon la card indique « 77/27 disponibles » (numérateur club, dénominateur équipe).
   get nbDisponibles(): number {
-    return [...this.statutMap.values()].filter(s => s === 'actif').length;
+    return this.joueurs.filter(j => (this.statutMap.get(j.joueur_id) ?? 'actif') === 'actif').length;
   }
   get nbBlesses(): number {
-    return [...this.statutMap.values()].filter(s => s === 'blesse').length;
+    return this.joueurs.filter(j => this.statutMap.get(j.joueur_id) === 'blesse').length;
   }
   get fatigueMoyenne(): number {
     if (!this.joueurs.length) return 0;

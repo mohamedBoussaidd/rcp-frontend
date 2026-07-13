@@ -6,6 +6,7 @@ import { forkJoin, of } from 'rxjs';
 import { catchError } from 'rxjs/operators';
 import { SeanceService, Seance } from '@core/services/seance.service';
 import { PredictionService, RapportSeance, LigneRapport } from '@core/services/prediction.service';
+import { MetriquesClubService } from '@core/services/metriques-club.service';
 
 const COULEURS_TYPE: Record<string, string> = {
   MATCH:        '#ef4444',
@@ -16,15 +17,6 @@ const COULEURS_TYPE: Record<string, string> = {
   PRE_MATCH:    '#eab308',
   FORCE:        '#8b5cf6',
 };
-
-/** Bandes de vitesse aux seuils RÉELS des données GPS (15/19/24/28 km/h). */
-const ZONES: { key: string; label: string; court: string; couleur: string }[] = [
-  { key: 'z1', label: 'Z1 · 0–15 km/h',  court: 'Z1', couleur: '#94a3b8' },
-  { key: 'z2', label: 'Z2 · 15–19 km/h', court: 'Z2', couleur: '#22c55e' },
-  { key: 'z3', label: 'Z3 · 19–24 km/h', court: 'Z3', couleur: '#eab308' },
-  { key: 'z4', label: 'Z4 · 24–28 km/h', court: 'Z4', couleur: '#f97316' },
-  { key: 'z5', label: 'Z5 · > 28 km/h',  court: 'Z5', couleur: '#ef4444' },
-];
 
 type GroupePoste = 'TOUS' | 'DF' | 'ML' | 'ATT';
 
@@ -50,8 +42,15 @@ export class VueSeanceComponent implements OnInit {
   private router  = inject(Router);
   private seanceService     = inject(SeanceService);
   private predictionService = inject(PredictionService);
+  readonly metriquesClub    = inject(MetriquesClubService);
 
-  readonly ZONES = ZONES;
+  /** Bandes Z1..Z5 aux seuils réels du club (profil d'import), défaut 15/19/24/28. */
+  readonly ZONES = this.metriquesClub.zones;
+
+  /** Le club importe-t-il au moins une distance par zone ? (sinon barres/donut masqués) */
+  readonly zonesDispo = computed(() =>
+    ['DISTANCE_Z15', 'DISTANCE_Z19', 'DISTANCE_Z24', 'DISTANCE_Z28']
+      .some(m => this.metriquesClub.estActive(m)));
 
   seances = signal<Seance[]>([]);
   seanceIdSel = signal<string | null>(null);
@@ -66,6 +65,7 @@ export class VueSeanceComponent implements OnInit {
   private expanded = signal<Set<string>>(new Set());
 
   ngOnInit(): void {
+    this.metriquesClub.charger();
     this.seanceService.getAll().subscribe({
       next: data => {
         const triees = [...data].sort((a, b) => b.date.localeCompare(a.date));
@@ -184,6 +184,7 @@ export class VueSeanceComponent implements OnInit {
   /** Distance totale (km) par bande, sur l'ensemble filtré — alimente le donut. */
   readonly zonesGlobales = computed(() => {
     const ls = this.lignesFiltrees();
+    const ZONES = this.ZONES();
     const cumul = ZONES.map((_, i) => ls.reduce((s, l) => s + (l.zones[i] ?? 0), 0));
     const total = cumul.reduce((s, v) => s + v, 0) || 1;
     return ZONES.map((z, i) => ({

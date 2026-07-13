@@ -18,11 +18,15 @@
   <div class="kpis">
     <div class="kpi">
       <span class="kpi__ic kpi__ic--green"><mat-icon>sports_soccer</mat-icon></span>
-      <div><div class="kpi__val">{{ joueursCount() }}</div><div class="kpi__lbl">Joueurs</div></div>
+      <div><div class="kpi__val">{{ effectifTotal() }}</div><div class="kpi__lbl">Fiches joueur</div></div>
+    </div>
+    <div class="kpi" title="Comptes application du club (connexion) — toutes casquettes, fiches joueur non comprises">
+      <span class="kpi__ic kpi__ic--blue"><mat-icon>manage_accounts</mat-icon></span>
+      <div><div class="kpi__val">{{ comptesActifs() }} / {{ comptesCount() }}</div><div class="kpi__lbl">Comptes actifs / créés</div></div>
     </div>
     <div class="kpi">
       <span class="kpi__ic kpi__ic--blue"><mat-icon>groups</mat-icon></span>
-      <div><div class="kpi__val">{{ staffCount() }}</div><div class="kpi__lbl">Staff</div></div>
+      <div><div class="kpi__val">{{ staffCount() }}</div><div class="kpi__lbl">Comptes staff</div></div>
     </div>
     <div class="kpi">
       <span class="kpi__ic kpi__ic--slate"><mat-icon>shield</mat-icon></span>

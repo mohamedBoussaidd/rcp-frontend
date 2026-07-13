@@ -221,36 +221,92 @@ export class SeanceService {
     return this.http.get<any[]>(`${this.base}/${seanceId}/donnees`);
   }
 
-  uploadExcel(file: File, date: string, typeSeance: string): Observable<any> {
+  /**
+   * Import GPS flexible : fichier (.xlsx/.csv) OU texte collé. Sans mappings, le back applique
+   * le profil reconnu (statut PRET) ou renvoie colonnes + suggestions (statut MAPPING_REQUIS) ;
+   * avec mappings (écran validé), il convertit et peut enregistrer le profil du club.
+   */
+  analyserImport(opts: AnalyseImportOptions): Observable<AnalyseImportResponse> {
     const form = new FormData();
-    form.append('file', file);
-    form.append('date', date);
-    form.append('typeSeance', typeSeance);
-    return this.http.post<any>('/api/import/excel', form);
-  }
-
-  uploadExcelBySeance(file: File, seanceId: string): Observable<any> {
-    const form = new FormData();
-    form.append('file', file);
-    form.append('seanceId', seanceId);
-    return this.http.post<any>('/api/import/excel', form);
-  }
-
-  analyserExcel(file: File, seanceId: string): Observable<AnalyseImportResponse> {
-    const form = new FormData();
-    form.append('file', file);
-    form.append('seanceId', seanceId);
-    return this.http.post<AnalyseImportResponse>('/api/import/excel/analyser', form);
+    if (opts.file) form.append('file', opts.file);
+    if (opts.texte) form.append('texte', opts.texte);
+    form.append('seanceId', opts.seanceId);
+    if (opts.mappings) form.append('mappings', JSON.stringify(opts.mappings));
+    if (opts.formatIdentite) form.append('formatIdentite', opts.formatIdentite);
+    if (opts.enregistrerProfil) form.append('enregistrerProfil', 'true');
+    if (opts.nomProfil) form.append('nomProfil', opts.nomProfil);
+    return this.http.post<AnalyseImportResponse>('/api/import/analyser', form);
   }
 
   confirmerImport(body: ConfirmerImportRequest): Observable<ResultatImport> {
-    return this.http.post<ResultatImport>('/api/import/excel/confirmer', body);
+    return this.http.post<ResultatImport>('/api/import/confirmer', body);
+  }
+
+  getProfilsImport(seanceId: string): Observable<ProfilImport[]> {
+    return this.http.get<ProfilImport[]>('/api/import/profils', { params: { seanceId } });
   }
 }
 
+// ── Import GPS flexible ──
+
+export type MetriqueImport =
+  'IDENTITE' | 'DATE_SEANCE' | 'DUREE' | 'DISTANCE_TOTALE' |
+  'DISTANCE_Z15' | 'DISTANCE_Z19' | 'DISTANCE_Z24' | 'DISTANCE_Z28' |
+  'NB_SPRINTS' | 'VITESSE_MAX' | 'NB_ACCELERATIONS' | 'NB_FREINAGES' | 'RATIO_DISTANCE_MIN';
+
+/** Association colonne du fichier (en-tête normalisé) → métrique interne. */
+export interface MappingColonne {
+  entete: string;
+  metrique: MetriqueImport;
+  facteur?: number;                              // multiplicateur d'unité (km→m : 1000)
+  seuilReel?: number;                            // seuil réel du fichier (ex. 19.8)
+  semantique?: 'CUMUL' | 'BANDE';                // BANDE = plage re-cumulée à la conversion
+  formatDuree?: 'HMS' | 'MINUTES' | 'SECONDES';
+}
+
+export interface ColonneDetectee {
+  entete: string;
+  enteteNormalise: string;
+  apercu: string[];
+  suggestion?: MappingColonne;
+}
+
+export interface AvertissementImport {
+  niveau: 'FICHIER' | 'COLONNE' | 'LIGNE';
+  numeroLigne?: number;
+  colonne?: string;
+  message: string;
+}
+
+export interface JoueurInconnu {
+  identiteFichier: string;
+  prenomSuggere?: string;
+  nomSuggere?: string;
+}
+
+export interface ProfilImport {
+  id: string;
+  nom: string;
+  global: boolean;                               // profil fournisseur (lecture seule)
+  formatIdentite: string;
+  mappings: MappingColonne[];
+}
+
+export interface AnalyseImportOptions {
+  seanceId: string;
+  file?: File;
+  texte?: string;
+  mappings?: MappingColonne[];
+  formatIdentite?: string;
+  enregistrerProfil?: boolean;
+  nomProfil?: string;
+}
+
 export interface LigneGpsImport {
-  prenomFichier: string;
+  numeroLigne?: number;
+  identiteFichier: string;
   joueurId?: string;
+  joueurNomAffiche?: string;
   dureeMinutes?: number;
   distanceTotaleM?: number;
   distance15kmhM?: number;
@@ -265,13 +321,20 @@ export interface LigneGpsImport {
 }
 
 export interface AnalyseImportResponse {
+  statut: 'MAPPING_REQUIS' | 'PRET';
   seanceId: string;
+  signatureEntetes?: string;
+  formatIdentiteSuggere?: string;
+  colonnes: ColonneDetectee[];
+  profilsDisponibles: ProfilImport[];
+  profilUtilise?: ProfilImport;
   lignes: LigneGpsImport[];
-  joueursInconnus: string[];
+  avertissements: AvertissementImport[];
+  joueursInconnus: JoueurInconnu[];
 }
 
 export interface ResolutionImport {
-  prenomFichier: string;
+  identiteFichier: string;
   action: 'CREATE' | 'MERGE' | 'IGNORE';
   joueurExistantId?: string;
   prenom?: string;

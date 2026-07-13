@@ -1,12 +1,12 @@
 <div class="page-head" style="padding:24px 24px 0;margin-bottom:0">
   <div>
     <h1 class="page-head__title">Import GPS</h1>
-    <p class="page-head__sub">Chargement des données depuis Excel</p>
+    <p class="page-head__sub">Chargement des données GPS (Excel, CSV ou copier-coller)</p>
   </div>
 </div>
 
 <!-- ══════════════════════════════════════════
-     ÉTAPE 1 : Sélection séance + fichier
+     ÉTAPE 1 : Sélection séance + source de données
      ══════════════════════════════════════════ -->
 @if (etape === 'selection') {
   <div class="import-layout">
@@ -41,9 +41,9 @@
       }
     </div>
 
-    <!-- Colonne droite : fichier -->
+    <!-- Colonne droite : source de données -->
     <div class="panel">
-      <h2 class="panel-title">Fichier GPS Excel</h2>
+      <h2 class="panel-title">Données GPS</h2>
 
       @if (seanceSelectionnee) {
         <div class="seance-choisie">
@@ -57,18 +57,28 @@
         <div class="attente">← Sélectionne d'abord une séance</div>
       }
 
-      <label class="file-zone" [class.disabled]="!seanceSelectionnee">
-        <input type="file" accept=".xlsx,.xls" hidden (change)="onFileChange($event)" [disabled]="!seanceSelectionnee">
-        <span class="file-icon">📂</span>
-        @if (fichierSelectionne) {
-          <span class="file-name">{{ fichierSelectionne.name }}</span>
-        } @else {
-          <span class="file-hint">Cliquer pour choisir un fichier Excel</span>
-        }
-      </label>
+      <div class="source-tabs">
+        <button class="source-tab" [class.active]="ongletSource === 'fichier'" (click)="ongletSource = 'fichier'">📂 Fichier</button>
+        <button class="source-tab" [class.active]="ongletSource === 'coller'" (click)="ongletSource = 'coller'">📋 Coller</button>
+      </div>
+
+      @if (ongletSource === 'fichier') {
+        <label class="file-zone" [class.disabled]="!seanceSelectionnee">
+          <input type="file" accept=".xlsx,.csv,.txt" hidden (change)="onFileChange($event)" [disabled]="!seanceSelectionnee">
+          <span class="file-icon">📂</span>
+          @if (fichierSelectionne) {
+            <span class="file-name">{{ fichierSelectionne.name }}</span>
+          } @else {
+            <span class="file-hint">Cliquer pour choisir un fichier Excel (.xlsx) ou CSV</span>
+          }
+        </label>
+      } @else {
+        <textarea class="coller-zone" rows="8" [(ngModel)]="texteColle" [disabled]="!seanceSelectionnee"
+                  placeholder="Colle ici les données copiées depuis un tableur ou un export texte (en-têtes inclus)"></textarea>
+      }
 
       <button class="btn btn--primary btn-import" [disabled]="!peutAnalyser" (click)="analyser()">
-        Analyser le fichier
+        Analyser les données
       </button>
     </div>
 
@@ -81,26 +91,221 @@
 @if (etape === 'analyse') {
   <div class="etape-centre">
     <div class="spinner"></div>
-    <p>Analyse du fichier en cours…</p>
+    <p>Analyse des données en cours…</p>
   </div>
 }
 
 <!-- ══════════════════════════════════════════
-     ÉTAPE 2 : Résolution des joueurs inconnus
+     ÉTAPE mapping : format inconnu → associer les colonnes
+     ══════════════════════════════════════════ -->
+@if (etape === 'mapping' && analyse) {
+  <div class="mapping-layout">
+    <div class="resolution-header">
+      <h2>Associer les colonnes du fichier</h2>
+      <p>Format non reconnu : indique à quelle donnée correspond chaque colonne. Ce choix sera mémorisé pour les prochains imports.</p>
+    </div>
+
+    @if (profilsDisponibles.length > 0) {
+      <div class="profils-bar">
+        <span class="profils-label">Partir d'un profil :</span>
+        @for (p of profilsDisponibles; track p.id) {
+          <button class="profil-chip" (click)="appliquerProfil(p)">
+            {{ p.nom }}@if (p.global) { <span class="profil-global">fournisseur</span> }
+          </button>
+        }
+      </div>
+    }
+
+    <div class="format-identite">
+      <label>Format du nom de joueur dans le fichier</label>
+      <select [(ngModel)]="formatIdentite">
+        <option value="PRENOM_NOM">Prénom Nom (ex. Brian FENEUIL)</option>
+        <option value="NOM_PRENOM">Nom Prénom (ex. FENEUIL Brian)</option>
+        <option value="PRENOM">Prénom seul</option>
+      </select>
+    </div>
+
+    <div class="table-scroll">
+      <table class="mapping-table">
+        <thead>
+          <tr>
+            <th>Colonne du fichier</th>
+            <th>Aperçu</th>
+            <th>Correspond à</th>
+            <th>Options</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (l of mappingLignes; track l.enteteNormalise) {
+            <tr [class.ignoree]="!l.metrique">
+              <td class="col-entete">{{ l.entete }}</td>
+              <td class="col-apercu">
+                @for (v of l.apercu; track $index) { <span class="apercu-val">{{ v }}</span> }
+              </td>
+              <td>
+                <select [(ngModel)]="l.metrique">
+                  @for (m of metriques; track m.value) {
+                    <option [ngValue]="m.value">{{ m.label }}</option>
+                  }
+                </select>
+              </td>
+              <td class="col-options">
+                @if (estDistance(l.metrique)) {
+                  <select [(ngModel)]="l.facteur" title="Unité">
+                    <option [ngValue]="1">mètres</option>
+                    <option [ngValue]="1000">kilomètres</option>
+                  </select>
+                }
+                @if (l.metrique === 'VITESSE_MAX') {
+                  <select [(ngModel)]="l.facteur" title="Unité">
+                    <option [ngValue]="1">km/h</option>
+                    <option [ngValue]="3.6">m/s</option>
+                  </select>
+                }
+                @if (l.metrique === 'DUREE') {
+                  <select [(ngModel)]="l.formatDuree" title="Format">
+                    <option value="HMS">hh:mm:ss</option>
+                    <option value="MINUTES">minutes</option>
+                    <option value="SECONDES">secondes</option>
+                  </select>
+                }
+                @if (estZone(l.metrique)) {
+                  <select [(ngModel)]="l.semantique" title="Cumul (>seuil) ou plage (a-b km/h)">
+                    <option value="CUMUL">au-delà du seuil</option>
+                    <option value="BANDE">plage (a–b km/h)</option>
+                  </select>
+                  <input class="seuil-input" type="number" step="0.1" [(ngModel)]="l.seuilReel"
+                         placeholder="seuil" title="Seuil réel du fichier (km/h)">
+                }
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+
+    @if (metriquesEnDouble.length > 0) {
+      <div class="warn-banner">⚠ Plusieurs colonnes pointent vers : {{ metriquesEnDouble.join(', ') }}</div>
+    }
+    @if (!mappingValide && metriquesEnDouble.length === 0) {
+      <div class="warn-banner">⚠ Associe au moins la colonne « Nom du joueur »</div>
+    }
+
+    <label class="save-profil">
+      <input type="checkbox" [(ngModel)]="enregistrerProfil">
+      <span>Mémoriser ce format pour le club</span>
+      @if (enregistrerProfil) {
+        <input class="nom-profil" [(ngModel)]="nomProfil" placeholder="Nom du profil (ex. McLloyd U19)">
+      }
+    </label>
+
+    <div class="resolution-footer">
+      <button class="btn btn--primary btn-import" [disabled]="!mappingValide" (click)="validerMapping()">
+        Valider le mapping et convertir
+      </button>
+      <button class="btn btn--secondary" (click)="etape = 'selection'">← Retour</button>
+    </div>
+  </div>
+}
+
+<!-- ══════════════════════════════════════════
+     ÉTAPE vérification : aperçu + avertissements + exclusions
+     ══════════════════════════════════════════ -->
+@if (etape === 'verification' && analyse) {
+  <div class="verif-layout">
+    <div class="resolution-header">
+      <h2>Vérification avant import</h2>
+      <p>
+        {{ analyse.lignes.length }} ligne(s) lues
+        @if (analyse.profilUtilise) { — profil « {{ analyse.profilUtilise.nom }} » appliqué automatiquement }
+        @if (nbLignesAvecAlerte > 0) { — <strong>{{ nbLignesAvecAlerte }} ligne(s) avec alerte</strong> }
+      </p>
+    </div>
+
+    @for (a of avertissementsGlobaux; track $index) {
+      <div class="warn-banner" [class.warn-fichier]="a.niveau === 'FICHIER'">⚠ {{ a.message }}</div>
+    }
+
+    <div class="table-scroll">
+      <table class="verif-table">
+        <thead>
+          <tr>
+            <th title="Exclure la ligne de l'import"></th>
+            <th>Joueur</th>
+            <th>Durée</th>
+            <th>Dist. (m)</th>
+            <th>&gt;15</th>
+            <th>&gt;19</th>
+            <th>&gt;24</th>
+            <th>&gt;28</th>
+            <th>Vmax</th>
+            <th>Spr.</th>
+            <th>Acc.</th>
+            <th>Fre.</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (l of analyse.lignes; track l.numeroLigne) {
+            <tr [class.exclue]="estExclue(l)" [class.alerte]="warnsDe(l).length > 0">
+              <td><input type="checkbox" [checked]="estExclue(l)" (change)="toggleExclusion(l)" title="Exclure"></td>
+              <td class="col-joueur">
+                <span class="verif-identite">{{ l.identiteFichier }}</span>
+                @if (l.joueurNomAffiche) {
+                  <span class="badge-connu" title="Fiche reconnue">{{ l.joueurNomAffiche }}</span>
+                } @else {
+                  <span class="badge-inconnu">à résoudre</span>
+                }
+              </td>
+              <td>{{ l.dureeMinutes ?? '—' }}</td>
+              <td>{{ l.distanceTotaleM ?? '—' }}</td>
+              <td>{{ l.distance15kmhM ?? '—' }}</td>
+              <td>{{ l.distance19kmhM ?? '—' }}</td>
+              <td>{{ l.distanceSprint24kmhM ?? '—' }}</td>
+              <td>{{ l.distanceSprint28kmhM ?? '—' }}</td>
+              <td>{{ l.vitesseMaxKmh ?? '—' }}</td>
+              <td>{{ l.nbSprints24kmh ?? '—' }}</td>
+              <td>{{ l.nbAccelerations ?? '—' }}</td>
+              <td>{{ l.nbFreinages ?? '—' }}</td>
+            </tr>
+            @if (warnsDe(l).length > 0 && !estExclue(l)) {
+              <tr class="ligne-warns">
+                <td></td>
+                <td colspan="11">
+                  @for (w of warnsDe(l); track $index) { <span class="warn-inline">⚠ {{ w }}</span> }
+                </td>
+              </tr>
+            }
+          }
+        </tbody>
+      </table>
+    </div>
+
+    <div class="resolution-footer">
+      <button class="btn btn--primary btn-import" (click)="continuerVerification()">
+        Continuer ({{ lignesRetenues.length }} lignes)
+      </button>
+      <button class="btn btn--secondary" (click)="retourMapping()">Modifier le mapping</button>
+      <button class="btn btn--secondary" (click)="etape = 'selection'">← Retour</button>
+    </div>
+  </div>
+}
+
+<!-- ══════════════════════════════════════════
+     ÉTAPE résolution des joueurs inconnus
      ══════════════════════════════════════════ -->
 @if (etape === 'resolution') {
   <div class="resolution-layout">
     <div class="resolution-header">
       <h2>Joueurs non reconnus</h2>
-      <p>{{ resolutions.length }} joueur(s) du fichier ne correspondent à aucun profil. Choisis une action pour chacun.</p>
+      <p>{{ resolutions.length }} joueur(s) du fichier ne correspondent à aucune fiche. Choisis une action pour chacun — elle sera mémorisée pour les prochains imports.</p>
     </div>
 
     <div class="resolution-liste">
-      @for (res of resolutions; track res.prenomFichier) {
+      @for (res of resolutions; track res.identiteFichier) {
         <div class="resolution-card" [class.resolu]="res.action !== null">
 
           <div class="res-header">
-            <span class="res-prenom">{{ res.prenomFichier }}</span>
+            <span class="res-prenom">{{ res.identiteFichier }}</span>
             <span class="res-badge" [class]="'badge-' + (res.action ?? 'none')">
               {{ res.action === 'CREATE' ? 'Créer' : res.action === 'MERGE' ? 'Fusionner' : res.action === 'IGNORE' ? 'Ignorer' : 'En attente' }}
             </span>
@@ -124,7 +329,7 @@
             <div class="res-form">
               <div class="res-field">
                 <label>Prénom</label>
-                <input [(ngModel)]="res.prenom" placeholder="{{ res.prenomFichier }}">
+                <input [(ngModel)]="res.prenom" placeholder="{{ res.identiteFichier }}">
               </div>
               <div class="res-field">
                 <label>Nom *</label>
@@ -172,7 +377,7 @@
               (click)="soumettreResolutions()">
         Confirmer et importer ({{ nbJoueursImportes }} joueurs)
       </button>
-      <button class="btn btn--secondary" (click)="etape = 'selection'">← Retour</button>
+      <button class="btn btn--secondary" (click)="etape = 'verification'">← Retour</button>
     </div>
   </div>
 }

@@ -63,16 +63,20 @@
         <div class="kpi__value">{{ kpis().distanceTotaleKm | number:'1.1-1' }} <span class="unit">km</span></div>
         <div class="kpi__sub">moyenne / joueur {{ kpis().distanceMoyM | number:'1.0-0' }} m</div>
       </div>
-      <div class="kpi">
-        <div class="kpi__label">Vitesse max</div>
-        <div class="kpi__value">{{ kpis().vitesseMax | number:'1.1-1' }} <span class="unit">km/h</span></div>
-        <div class="kpi__sub">{{ kpis().vitesseMaxJoueur || '—' }}</div>
-      </div>
-      <div class="kpi">
-        <div class="kpi__label">Sprints (&gt; 24 km/h)</div>
-        <div class="kpi__value">{{ kpis().sprintsTotal }}</div>
-        <div class="kpi__sub">moyenne {{ kpis().sprintsMoy | number:'1.1-1' }} / joueur</div>
-      </div>
+      @if (metriquesClub.estActive('VITESSE_MAX')) {
+        <div class="kpi">
+          <div class="kpi__label">Vitesse max</div>
+          <div class="kpi__value">{{ kpis().vitesseMax | number:'1.1-1' }} <span class="unit">km/h</span></div>
+          <div class="kpi__sub">{{ kpis().vitesseMaxJoueur || '—' }}</div>
+        </div>
+      }
+      @if (metriquesClub.estActive('NB_SPRINTS')) {
+        <div class="kpi">
+          <div class="kpi__label">Sprints ({{ metriquesClub.labelSeuil('z24') }})</div>
+          <div class="kpi__value">{{ kpis().sprintsTotal }}</div>
+          <div class="kpi__sub">moyenne {{ kpis().sprintsMoy | number:'1.1-1' }} / joueur</div>
+        </div>
+      }
       @if (chargeDispo()) {
         <div class="kpi">
           <div class="kpi__label">Charge moyenne</div>
@@ -115,10 +119,10 @@
             <span class="c-joueur">Joueur</span>
             <span class="c-poste">Poste</span>
             <span class="c-num">Distance</span>
-            <span class="c-num">V max</span>
-            <span class="c-num">Sprints</span>
+            @if (metriquesClub.estActive('VITESSE_MAX')) { <span class="c-num">V max</span> }
+            @if (metriquesClub.estActive('NB_SPRINTS')) { <span class="c-num">Sprints</span> }
             @if (chargeDispo()) { <span class="c-num">Charge</span> }
-            <span class="c-zones">Zones de vitesse</span>
+            @if (zonesDispo()) { <span class="c-zones">Zones de vitesse</span> }
             <span class="c-statut">Statut</span>
           </div>
 
@@ -127,18 +131,24 @@
               <span class="c-joueur"><strong>{{ l.prenom[0] }}. {{ l.nom }}</strong></span>
               <span class="c-poste"><span class="badge badge--neutral">{{ l.poste || '—' }}</span></span>
               <span class="c-num">{{ l.distance_reelle ? (l.distance_reelle | number:'1.0-0') : '—' }}</span>
-              <span class="c-num">{{ l.vitesse_max ? (l.vitesse_max | number:'1.1-1') : '—' }}</span>
-              <span class="c-num">{{ l.nb_sprints ?? '—' }}</span>
+              @if (metriquesClub.estActive('VITESSE_MAX')) {
+                <span class="c-num">{{ l.vitesse_max ? (l.vitesse_max | number:'1.1-1') : '—' }}</span>
+              }
+              @if (metriquesClub.estActive('NB_SPRINTS')) {
+                <span class="c-num">{{ l.nb_sprints ?? '—' }}</span>
+              }
               @if (chargeDispo()) { <span class="c-num">{{ l.charge_ua ?? '—' }}</span> }
-              <span class="c-zones">
-                <span class="zbar" [title]="'Total ' + (l.zones_total_m | number:'1.0-0') + ' m'">
-                  @for (z of ZONES; track z.key; let i = $index) {
-                    @if (l.zones_total_m > 0) {
-                      <span class="zbar__seg" [style.width.%]="(l.zones[i] / l.zones_total_m) * 100" [style.background]="z.couleur"></span>
+              @if (zonesDispo()) {
+                <span class="c-zones">
+                  <span class="zbar" [title]="'Total ' + (l.zones_total_m | number:'1.0-0') + ' m'">
+                    @for (z of ZONES(); track z.key; let i = $index) {
+                      @if (l.zones_total_m > 0) {
+                        <span class="zbar__seg" [style.width.%]="(l.zones[i] / l.zones_total_m) * 100" [style.background]="z.couleur"></span>
+                      }
                     }
-                  }
+                  </span>
                 </span>
-              </span>
+              }
               <span class="c-statut">
                 <span class="badge" [class]="statutBadgeClass(l.statut)">{{ statutLibelle(l.statut) }}</span>
                 <span class="chevron" [class.open]="estDeplie(l.joueur_id)">⌄</span>
@@ -168,8 +178,12 @@
                       </span>
                     } @else { — }
                   </span></div>
-                  <div><span class="k">Accélérations</span><span class="v">{{ l.nb_accelerations ?? '—' }}</span></div>
-                  <div><span class="k">Freinages</span><span class="v">{{ l.nb_freinages ?? '—' }}</span></div>
+                  @if (metriquesClub.estActive('NB_ACCELERATIONS')) {
+                    <div><span class="k">Accélérations</span><span class="v">{{ l.nb_accelerations ?? '—' }}</span></div>
+                  }
+                  @if (metriquesClub.estActive('NB_FREINAGES')) {
+                    <div><span class="k">Freinages</span><span class="v">{{ l.nb_freinages ?? '—' }}</span></div>
+                  }
                   @if (estMatch() && l.objectif_m !== null && l.ratio_objectif !== null) {
                     <div class="vs-detail__wide" [class.delta-pos]="l.atteint_objectif" [class.delta-neg]="!l.atteint_objectif">
                       <span class="k">Obj. poste</span>
@@ -183,11 +197,13 @@
                   }
                 </div>
                 <!-- Détail des zones de vitesse (km par bande) -->
-                <div class="vs-detail__zones">
-                  @for (z of ZONES; track z.key; let i = $index) {
-                    <span class="zchip"><i [style.background]="z.couleur"></i>{{ z.court }} {{ (l.zones[i] / 1000) | number:'1.2-2' }} km</span>
-                  }
-                </div>
+                @if (zonesDispo()) {
+                  <div class="vs-detail__zones">
+                    @for (z of ZONES(); track z.key; let i = $index) {
+                      <span class="zchip"><i [style.background]="z.couleur"></i>{{ z.court }} {{ (l.zones[i] / 1000) | number:'1.2-2' }} km</span>
+                    }
+                  </div>
+                }
               </div>
             }
           }
@@ -205,6 +221,7 @@
           </div>
         </div>
 
+        @if (zonesDispo()) {
         <div class="card vs-zones">
           <div class="card__header"><h3 class="card__title">Répartition zones de vitesse</h3></div>
           <div class="vs-zones__body">
@@ -225,6 +242,7 @@
             </ul>
           </div>
         </div>
+        }
       </div>
 
     </div>

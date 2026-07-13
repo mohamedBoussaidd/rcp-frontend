@@ -157,11 +157,13 @@ export class DashboardPreparateurComponent implements OnInit {
   }
 
   /* ── KPIs ── */
+  // statutMap = club entier (/api/joueurs) ; `joueurs` = contexte (équipe). On compte parmi les
+  // joueurs affichés uniquement, pour que numérateur et dénominateur portent sur la même population.
   get nbDisponibles(): number {
-    return [...this.statutMap.values()].filter(s => s === 'actif').length;
+    return this.joueurs.filter(j => (this.statutMap.get(j.joueur_id) ?? 'actif') === 'actif').length;
   }
   get nbBlesses(): number {
-    return [...this.statutMap.values()].filter(s => s === 'blesse').length;
+    return this.joueurs.filter(j => this.statutMap.get(j.joueur_id) === 'blesse').length;
   }
   get nbRisqueEleve(): number {
     return this.joueurs.filter(j => j.niveau_risque === 'ELEVE').length;

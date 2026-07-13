@@ -1,6 +1,7 @@
-import { Component, Input, Output, EventEmitter, OnChanges, SimpleChanges, ViewChild } from '@angular/core';
+import { Component, Input, Output, EventEmitter, OnChanges, OnInit, SimpleChanges, ViewChild, inject } from '@angular/core';
 import { GpsPoint } from '@core/services/joueur.service';
 import { couleurTheme } from '@core/services/theme.service';
+import { MetriquesClubService } from '@core/services/metriques-club.service';
 import { MatIcon } from '@angular/material/icon';
 import { ChartComponent, ApexChart, ApexAxisChartSeries, ApexXAxis, ApexPlotOptions, ApexDataLabels, ApexTooltip, ApexYAxis, ApexLegend } from 'ng-apexcharts';
 import { DecimalPipe, DatePipe } from '@angular/common';
@@ -29,11 +30,18 @@ const COULEURS_TYPE: Record<string, string> = {
   styleUrl: './charge-vue.component.scss',
   imports: [MatIcon, ChartComponent, DecimalPipe, DatePipe, FormsModule],
 })
-export class ChargeVueComponent implements OnChanges {
+export class ChargeVueComponent implements OnChanges, OnInit {
 
   @Input() gpsData: GpsPoint[] = [];
   @Input() gpsLoading = false;
   @Output() periodeChange = new EventEmitter<{ debut: string; fin: string }>();
+
+  /** Métriques actives + seuils réels du club (masquage des colonnes jamais importées). */
+  readonly metriquesClub = inject(MetriquesClubService);
+
+  ngOnInit(): void {
+    this.metriquesClub.charger();
+  }
 
   // Pagination
   pageIndex = 0;
