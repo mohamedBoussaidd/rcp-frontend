@@ -41,9 +41,11 @@ export class AdminClubsComponent implements OnInit {
   }
 
   entrer(c: Club): void {
+    // Le super-admin entre dans le contexte du club → on l'amène sur la vue d'ensemble Coaching
+    // (et non /dashboard, qui le renverrait vers la liste des clubs via le redirecteur d'accueil).
     this.clubService.getEquipes(c.id).subscribe({
-      next: equipes => { this.contexte.entrerClub({ id: c.id, nom: c.nom }, equipes); this.router.navigate(['/dashboard']); },
-      error: ()     => { this.contexte.entrerClub({ id: c.id, nom: c.nom }); this.router.navigate(['/dashboard']); },
+      next: equipes => { this.contexte.entrerClub({ id: c.id, nom: c.nom }, equipes); this.router.navigate(['/coaching']); },
+      error: ()     => { this.contexte.entrerClub({ id: c.id, nom: c.nom }); this.router.navigate(['/coaching']); },
     });
   }
 

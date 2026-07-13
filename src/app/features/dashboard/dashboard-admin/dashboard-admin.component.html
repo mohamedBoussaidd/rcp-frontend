@@ -1,0 +1,115 @@
+<div class="screen">
+
+  <!-- ══ En-tête ══ -->
+  <div class="page-head">
+    <div>
+      <h1 class="page-head__title">Tableau de bord — Administration</h1>
+      <p class="page-head__sub">
+        @if (clubNom()) { {{ clubNom() }} · } Conformité, comptes et effectif du club
+      </p>
+    </div>
+  </div>
+
+  @if (loading()) {
+    <p class="muted">Chargement…</p>
+  } @else {
+
+  <!-- ══ KPIs ══ -->
+  <div class="kpis">
+    <div class="kpi">
+      <span class="kpi__ic kpi__ic--green"><mat-icon>sports_soccer</mat-icon></span>
+      <div><div class="kpi__val">{{ joueursCount() }}</div><div class="kpi__lbl">Joueurs</div></div>
+    </div>
+    <div class="kpi">
+      <span class="kpi__ic kpi__ic--blue"><mat-icon>groups</mat-icon></span>
+      <div><div class="kpi__val">{{ staffCount() }}</div><div class="kpi__lbl">Staff</div></div>
+    </div>
+    <div class="kpi">
+      <span class="kpi__ic kpi__ic--slate"><mat-icon>shield</mat-icon></span>
+      <div><div class="kpi__val">{{ equipesCount() }}</div><div class="kpi__lbl">Équipes</div></div>
+    </div>
+    <div class="kpi">
+      <span class="kpi__ic" [class.kpi__ic--warn]="aValider() > 0" [class.kpi__ic--muted]="aValider() === 0"><mat-icon>fact_check</mat-icon></span>
+      <div><div class="kpi__val">{{ aValider() }}</div><div class="kpi__lbl">Docs à valider</div></div>
+    </div>
+  </div>
+
+  <div class="cols">
+
+    <!-- ══ Conformité documentaire ══ -->
+    <section class="card">
+      <div class="card__head">
+        <h2>Conformité documentaire</h2>
+        <a class="link" routerLink="/documents-admin">Gérer <mat-icon>chevron_right</mat-icon></a>
+      </div>
+
+      <div class="gauge">
+        <div class="gauge__top">
+          <span class="gauge__pct">{{ tauxConformite() }}%</span>
+          <span class="gauge__cap">de l'effectif en règle · {{ complets() }}/{{ effectifTotal() }}</span>
+        </div>
+        <div class="gauge__track"><div class="gauge__fill" [style.width.%]="tauxConformite()"></div></div>
+      </div>
+
+      <div class="stat-grid">
+        <div class="stat stat--ok">
+          <div class="stat__val">{{ complets() }}</div>
+          <div class="stat__lbl">Complets</div>
+        </div>
+        <div class="stat" [class.stat--bad]="incomplets() > 0">
+          <div class="stat__val">{{ incomplets() }}</div>
+          <div class="stat__lbl">Incomplets</div>
+        </div>
+        <div class="stat" [class.stat--warn]="aValider() > 0">
+          <div class="stat__val">{{ aValider() }}</div>
+          <div class="stat__lbl">À valider</div>
+        </div>
+        <div class="stat" [class.stat--warn]="expirent() > 0">
+          <div class="stat__val">{{ expirent() }}</div>
+          <div class="stat__lbl">Expirent &lt; 30j</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ══ Effectif par catégorie d'âge ══ -->
+    <section class="card">
+      <div class="card__head">
+        <h2>Effectif par catégorie</h2>
+        <a class="link" routerLink="/annuaire">Annuaire <mat-icon>chevron_right</mat-icon></a>
+      </div>
+
+      @if (parCategorie().length) {
+        <ul class="bars">
+          @for (c of parCategorie(); track c.code) {
+            <li class="bar">
+              <span class="bar__lbl">{{ c.code }}</span>
+              <span class="bar__track"><span class="bar__fill" [style.width.%]="pct(c.nb)"></span></span>
+              <span class="bar__val">{{ c.nb }}</span>
+            </li>
+          }
+        </ul>
+      } @else {
+        <p class="muted">Aucun joueur dans l'effectif.</p>
+      }
+    </section>
+
+  </div>
+
+  <!-- ══ Accès rapides ══ -->
+  <div class="quick">
+    <a class="quick__card" routerLink="/documents-admin">
+      <mat-icon>assignment_turned_in</mat-icon>
+      <div><div class="quick__t">Licences &amp; documents</div><div class="quick__s">Valider, déposer, configurer</div></div>
+    </a>
+    <a class="quick__card" routerLink="/annuaire">
+      <mat-icon>groups</mat-icon>
+      <div><div class="quick__t">Annuaire</div><div class="quick__s">Fiches joueurs &amp; équipes</div></div>
+    </a>
+    <a class="quick__card" routerLink="/mon-club">
+      <mat-icon>settings</mat-icon>
+      <div><div class="quick__t">Mon club</div><div class="quick__s">Comptes, équipes, rôles</div></div>
+    </a>
+  </div>
+
+  }
+</div>

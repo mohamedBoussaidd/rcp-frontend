@@ -1,0 +1,173 @@
+<div class="ms-wrap">
+  <header class="ms-head">
+    <div>
+      <h1>Séances</h1>
+      <p class="ms-sub">Bibliothèque de séances-modèles réutilisables — planifiez-les sur une date pour générer une séance.</p>
+    </div>
+    <div class="ms-head__actions">
+      <a routerLink="/coaching" class="ms-btn ms-btn--ghost">← Coaching</a>
+      <button class="ms-btn ms-btn--primary" (click)="nouveau()">+ Nouveau modèle</button>
+    </div>
+  </header>
+
+  @if (message) { <div class="ms-toast">{{ message }}</div> }
+
+  <!-- ══ Liste des modèles ══ -->
+  @if (loading) {
+    <p class="ms-muted">Chargement…</p>
+  } @else if (!modeles.length) {
+    <p class="ms-muted">Aucun modèle pour l'instant. Créez-en un (ex. « Séance technique type », « Prépa physique intermittent »).</p>
+  } @else {
+    <div class="ms-grid">
+      @for (m of modeles; track m.id) {
+        <article class="ms-card">
+          <div class="ms-card__head">
+            <h2>{{ m.nom }}</h2>
+            <span class="ms-pill">{{ m.nbExercices }} exo(s)</span>
+          </div>
+          <ul class="ms-creneaux">
+            <li>
+              <strong>{{ m.typeSeanceLibelle || '—' }}</strong>
+              @if (m.dureeMinutes) { <span>· {{ m.dureeMinutes }} min</span> }
+              @if (m.objectifIntensite) { <span class="ms-muted">· intensité {{ m.objectifIntensite }}/5</span> }
+              @if (m.objectif) { <em class="ms-obj">{{ m.objectif }}</em> }
+            </li>
+          </ul>
+          <p class="ms-card__desc">
+            @if (m.creeParNom) { <span>par {{ m.creeParNom }}</span> }
+            @if (!m.modifiable) { <span class="ms-muted"> · lecture seule</span> }
+          </p>
+          <div class="ms-card__actions">
+            <button class="ms-btn ms-btn--primary" (click)="ouvrirPlanifier(m)">Planifier</button>
+            @if (m.modifiable) { <button class="ms-btn" (click)="modifier(m)">Éditer</button> }
+            <button class="ms-btn" (click)="dupliquer(m)">Dupliquer</button>
+            @if (m.modifiable) { <button class="ms-btn ms-btn--danger" (click)="supprimer(m)">Supprimer</button> }
+          </div>
+        </article>
+      }
+    </div>
+  }
+
+  <!-- ══ Éditeur de modèle ══ -->
+  @if (edition) {
+    <div class="ms-modal" (click)="annulerEdition()">
+      <div class="ms-modal__panel" (click)="$event.stopPropagation()">
+        <h2>{{ editionId ? 'Modifier le modèle' : 'Nouveau modèle' }}</h2>
+
+        <div class="ms-form-grid">
+          <label class="ms-field">
+            <span>Nom</span>
+            <input [(ngModel)]="edition.nom" placeholder="Ex. Séance technique type" />
+          </label>
+          <label class="ms-field">
+            <span>Type de séance</span>
+            <select [(ngModel)]="edition.typeSeanceId">
+              @for (t of types; track t.id) { <option [ngValue]="t.id">{{ t.libelle }}</option> }
+            </select>
+          </label>
+          <label class="ms-field">
+            <span>Durée (min)</span>
+            <input type="number" [(ngModel)]="edition.dureeMinutes" placeholder="auto = Σ exercices" />
+          </label>
+          <label class="ms-field">
+            <span>Intensité cible (1–5)</span>
+            <input type="number" min="1" max="5" [(ngModel)]="edition.objectifIntensite" />
+          </label>
+          <label class="ms-field">
+            <span>Distance cible (m)</span>
+            <input type="number" [(ngModel)]="edition.objectifDistanceM" />
+          </label>
+          <label class="ms-field">
+            <span>Distance haute intensité (m)</span>
+            <input type="number" [(ngModel)]="edition.objectifDistanceHauteIntensiteM" />
+          </label>
+        </div>
+        <label class="ms-field">
+          <span>Objectif</span>
+          <input [(ngModel)]="edition.objectif" placeholder="Objectif principal de la séance" />
+        </label>
+        <label class="ms-field">
+          <span>Description / notes</span>
+          <input [(ngModel)]="edition.description" placeholder="Optionnel" />
+        </label>
+
+        <!-- Sélection d'exercices depuis la bibliothèque -->
+        <div class="ms-creneaux-edit">
+          <div class="ms-creneaux-edit__head">
+            <h3>Exercices ({{ selection.length }})</h3>
+            <button class="ms-btn" (click)="toggleExoListe()">{{ exoListeOuverte ? 'Fermer' : '+ Ajouter des exercices' }}</button>
+          </div>
+
+          @if (!selection.length) {
+            <p class="ms-muted">Aucun exercice. Ajoutez-en depuis la bibliothèque.</p>
+          } @else {
+            <ol class="ms-exo-sel">
+              @for (e of selection; track e.id) {
+                <li>
+                  <span class="ms-exo-nom">{{ e.nom }}</span>
+                  @if (e.type) { <span class="ms-pill">{{ e.type }}</span> }
+                  @if (e.dureeMinutes) { <span class="ms-muted">{{ e.dureeMinutes }} min</span> }
+                  <button class="ms-btn ms-btn--danger ms-btn--icon" (click)="retirer(e)" title="Retirer">✕</button>
+                </li>
+              }
+            </ol>
+          }
+
+          @if (exoListeOuverte) {
+            <div class="ms-exo-lib">
+              <input class="ms-exo-filtre" [(ngModel)]="filtreExo" placeholder="Filtrer les exercices…" />
+              @if (!exercicesFiltres.length) {
+                <p class="ms-muted">Aucun exercice dans la bibliothèque.</p>
+              } @else {
+                <div class="ms-exo-choix">
+                  @for (e of exercicesFiltres; track e.id) {
+                    <button class="ms-exo-item" [class.ms-exo-item--on]="estSelectionne(e)" (click)="toggleSelection(e)">
+                      <span>{{ estSelectionne(e) ? '✓' : '+' }} {{ e.nom }}</span>
+                      @if (e.type) { <span class="ms-pill">{{ e.type }}</span> }
+                    </button>
+                  }
+                </div>
+              }
+            </div>
+          }
+        </div>
+
+        <div class="ms-modal__actions">
+          <button class="ms-btn" (click)="annulerEdition()">Annuler</button>
+          <button class="ms-btn ms-btn--primary" (click)="enregistrer()">Enregistrer</button>
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- ══ Planification (instanciation en séance) ══ -->
+  @if (planifId) {
+    <div class="ms-modal" (click)="annulerPlanifier()">
+      <div class="ms-modal__panel ms-modal__panel--sm" (click)="$event.stopPropagation()">
+        <h2>Planifier « {{ planifNom }} »</h2>
+        <p class="ms-muted">Crée une séance planifiée dans le calendrier, avec le contenu du modèle.</p>
+
+        <label class="ms-field">
+          <span>Date</span>
+          <input type="date" [(ngModel)]="planifDate" />
+        </label>
+        <label class="ms-field">
+          <span>Heure (optionnel)</span>
+          <input type="time" [(ngModel)]="planifHeure" />
+        </label>
+
+        @if (planifResult) {
+          <div class="ms-result">
+            Séance créée le {{ planifResult.date }}.
+            <a routerLink="/calendrier">Voir le calendrier →</a>
+          </div>
+        }
+
+        <div class="ms-modal__actions">
+          <button class="ms-btn" (click)="annulerPlanifier()">Fermer</button>
+          <button class="ms-btn ms-btn--primary" (click)="lancerPlanifier()">Générer la séance</button>
+        </div>
+      </div>
+    </div>
+  }
+</div>

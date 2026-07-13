@@ -6,7 +6,7 @@ import { JoueurService, Joueur, AssiduiteJoueur } from '@core/services/joueur.se
 import { TechniqueService, JoueurCompoStats } from '@core/services/technique.service';
 import { DecimalPipe, DatePipe, SlicePipe } from '@angular/common';
 import { SeanceService, Seance, ResumeAppel } from '@core/services/seance.service';
-import { Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatDialog } from '@angular/material/dialog';
 import { JoueurFormDialogComponent } from '../joueur/joueur-form-dialog/joueur-form-dialog.component';
@@ -234,8 +234,16 @@ export class DashboardComponent implements OnInit {
   private snackBar = inject(MatSnackBar);
   private dialog = inject(MatDialog);
   private router = inject(Router);
+  private route = inject(ActivatedRoute);
   private dateSimuleeService = inject(DateSimuleeService);
   auth = inject(AuthService);
+
+  /**
+   * Variante « Coaching » : cet écran sert de Vue d'ensemble du menu Coaching → on force la vue
+   * « équipe » et on masque le toggle de casquette (la préparation physique a désormais son propre
+   * menu Performance avec son propre dashboard). Piloté par la donnée de route `variante`.
+   */
+  readonly modeCoaching = this.route.snapshot.data['variante'] === 'coaching';
 
   /**
    * Outil « voyage dans la saison » : réservé au SUPER_ADMIN (prod incluse). Le backend n'honore de
@@ -264,11 +272,13 @@ export class DashboardComponent implements OnInit {
    * OU s'il a un accès complet (super-admin / admin club) — pour pouvoir consulter les deux vues.
    */
   peutBasculer(): boolean {
+    if (this.modeCoaching) return false;
     if (this.auth.hasRole('SUPER_ADMIN') || this.auth.has('club:manage')) return true;
     return this.auth.has('gps:import') && this.aCapaciteEntraineur();
   }
   /** Faut-il afficher la vue préparateur ? (toggle si dispo, sinon règle par capability). */
   afficherPrepa(): boolean {
+    if (this.modeCoaching) return false;
     return this.peutBasculer() ? this.vue === 'prepa' : this.auth.estPreparateurVue();
   }
 

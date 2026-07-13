@@ -45,78 +45,70 @@ interface NavModule {
 }
 
 const ALL_MODULES: NavModule[] = [
-  {
-    key: 'dashboard', label: 'Dashboard', icon: 'dashboard',
-    link: '/dashboard', matches: ['/dashboard'],
-    roles: ['SUPER_ADMIN', 'PRESIDENT', 'ENTRAINEUR', 'PREPARATEUR', 'MEDICAL'],
-    subnav: [],
-  },
+  // ── 01 · Planning : calendrier du club + cadre de la saison (lecture partagée, Administratif inclus) ──
   {
     key: 'planning', label: 'Planning', icon: 'calendar_month',
-    link: '/calendrier', matches: ['/calendrier', '/planning-technique', '/modeles-semaine', '/saisons', '/comparaison-saisons'],
-    roles: ['SUPER_ADMIN', 'PRESIDENT', 'ENTRAINEUR', 'PREPARATEUR', 'MEDICAL', 'JOUEUR'],
+    link: '/calendrier', matches: ['/calendrier', '/modeles-semaine', '/saisons'],
+    roles: ['SUPER_ADMIN', 'PRESIDENT', 'ENTRAINEUR', 'PREPARATEUR', 'MEDICAL', 'ADMINISTRATIF', 'JOUEUR'],
+    perms: ['seances:read'],
     subnav: [
-      { label: 'Séances',          link: '/calendrier' },
-      { label: 'Schémas',          link: '/planning-technique', section: 'schemas',   roles: ['SUPER_ADMIN', 'ENTRAINEUR'], perms: ['schemas:write'], module: 'tactique' },
-      { label: 'Exercices',        link: '/planning-technique', section: 'exercices', default: true, roles: ['SUPER_ADMIN', 'ENTRAINEUR'], perms: ['exercices:write'], module: 'tactique' },
-      { label: 'Plan de jeu',      link: '/planning-technique', section: 'planjeu',   roles: ['SUPER_ADMIN', 'ENTRAINEUR'], perms: ['plandejeu:write'], module: 'tactique' },
-      { label: 'Match',            link: '/planning-technique', section: 'match',     roles: ['SUPER_ADMIN', 'ENTRAINEUR'], perms: ['matchs:write'], module: 'match' },
-      { label: 'Diaporama',        link: '/planning-technique', section: 'diaporama', roles: ['SUPER_ADMIN', 'ENTRAINEUR', 'PREPARATEUR'], perms: ['diaporama:write'], module: 'diaporama' },
-      { label: 'Saisons',          link: '/saisons', roles: ['SUPER_ADMIN', 'PRESIDENT', 'ENTRAINEUR', 'PREPARATEUR'], perms: ['saison:manage'] },
+      { label: 'Calendrier',         link: '/calendrier', roles: ['SUPER_ADMIN', 'PRESIDENT', 'ENTRAINEUR', 'PREPARATEUR', 'MEDICAL', 'ADMINISTRATIF', 'JOUEUR'] },
       { label: 'Modèles de semaine', link: '/modeles-semaine', roles: ['SUPER_ADMIN', 'PRESIDENT', 'ENTRAINEUR', 'PREPARATEUR'], perms: ['seances:write'] },
-      { label: 'Comparaison saisons', link: '/comparaison-saisons', roles: ['SUPER_ADMIN', 'PRESIDENT', 'ENTRAINEUR', 'PREPARATEUR', 'MEDICAL'] },
+      { label: 'Saisons',            link: '/saisons', roles: ['SUPER_ADMIN', 'PRESIDENT', 'ENTRAINEUR', 'PREPARATEUR'], perms: ['saison:manage'] },
     ],
   },
+  // ── 02 · Coaching : zone tactique/terrain de l'entraîneur — gate dédié `coaching:access` ──
+  // Le Préparateur n'a PAS `coaching:access` → il sort proprement de Coaching (fin du leak
+  // `seances:write`). Le menu est un conteneur : chaque sous-écran garde son propre module (pack).
+  {
+    key: 'coaching', label: 'Coaching', icon: 'sports_soccer',
+    link: '/coaching', matches: ['/coaching', '/planning-technique', '/seances-modeles', '/comparaison-saisons'],
+    roles: ['SUPER_ADMIN'],
+    perms: ['coaching:access'],
+    subnav: [
+      { label: 'Vue d\'ensemble',     link: '/coaching', roles: ['SUPER_ADMIN'], perms: ['coaching:access'] },
+      { label: 'Séances',             link: '/seances-modeles', roles: ['SUPER_ADMIN'], perms: ['seances_modeles:access'], module: 'seances_modeles' },
+      { label: 'Schémas',             link: '/planning-technique', section: 'schemas',   roles: ['SUPER_ADMIN', 'ENTRAINEUR'], perms: ['schemas:write'], module: 'tactique' },
+      { label: 'Exercices',           link: '/planning-technique', section: 'exercices', roles: ['SUPER_ADMIN', 'ENTRAINEUR'], perms: ['exercices:write'], module: 'tactique' },
+      { label: 'Plan de jeu',         link: '/planning-technique', section: 'planjeu',   roles: ['SUPER_ADMIN', 'ENTRAINEUR'], perms: ['plandejeu:write'], module: 'tactique' },
+      { label: 'Match',               link: '/planning-technique', section: 'match',     roles: ['SUPER_ADMIN', 'ENTRAINEUR'], perms: ['matchs:write'], module: 'match' },
+      { label: 'Diaporama',           link: '/planning-technique', section: 'diaporama', roles: ['SUPER_ADMIN', 'ENTRAINEUR'], perms: ['diaporama:write'], module: 'diaporama' },
+      { label: 'Comparaison saisons', link: '/comparaison-saisons', roles: ['SUPER_ADMIN'], perms: ['coaching:access'] },
+    ],
+  },
+  // ── 03 · Performance : préparation physique (+ overview préparateur) ──
   {
     key: 'performance', label: 'Performance', icon: 'fitness_center',
-    link: '/vue-seance', matches: ['/vue-seance', '/etat-effectif', '/charge-equipe', '/suivi-subjectif', '/pesees', '/import', '/methodologie', '/parametres'],
+    link: '/performance', matches: ['/performance', '/vue-seance', '/etat-effectif', '/charge-equipe', '/suivi-subjectif', '/pesees', '/import', '/methodologie', '/parametres'],
     roles: ['SUPER_ADMIN', 'PRESIDENT', 'PREPARATEUR', 'MEDICAL'],
     perms: ['pesees:write', 'gps:import'],
     modulesAny: ['gps', 'prepa_physique', 'wellness', 'pesees'],
     subnav: [
+      { label: 'Vue d\'ensemble',   link: '/performance', roles: ['SUPER_ADMIN', 'PRESIDENT', 'PREPARATEUR', 'MEDICAL'] },
       { label: 'État de l\'effectif', link: '/etat-effectif', module: 'prepa_physique' },
       { label: 'Charge d\'entrainement', link: '/charge-equipe', module: 'gps' },
       { label: 'Vue séance',        link: '/vue-seance', module: 'gps' },
-      { label: 'RPE/sRPE',   link: '/suivi-subjectif', module: 'wellness' },
-      // { label: 'Comparaison',       link: '/vue-seance', section: 'comparaison', disabled: true },
-      // { label: 'Historique joueur', link: '/vue-seance', section: 'historique', disabled: true },
+      { label: 'RPE/sRPE',          link: '/suivi-subjectif', module: 'wellness' },
       { label: 'Pesées',            link: '/pesees',       roles: ['SUPER_ADMIN', 'PRESIDENT', 'PREPARATEUR', 'MEDICAL'], perms: ['pesees:write'], module: 'pesees' },
       { label: 'Paramètres',        link: '/parametres',   roles: ['SUPER_ADMIN', 'PRESIDENT', 'PREPARATEUR'], perms: ['configuration:write'] },
-      { label: 'Import GPS',      link: '/import',       roles: ['SUPER_ADMIN', 'PREPARATEUR'], perms: ['gps:import'], module: 'gps' },
+      { label: 'Import GPS',        link: '/import',       roles: ['SUPER_ADMIN', 'PREPARATEUR'], perms: ['gps:import'], module: 'gps' },
       { label: 'Méthodologie',      link: '/methodologie', roles: ['SUPER_ADMIN', 'PRESIDENT', 'PREPARATEUR', 'MEDICAL'], module: 'prepa_physique' },
     ],
   },
+  // ── 04 · Suivi des membres : présence + entretiens individuels ──
+  // Gate 100 % par permission (plus par rôle) : le Médical n'a plus `entretien:read` (V53) et n'a
+  // pas `presence:write` → menu masqué ; l'Administratif entre via `entretien:read` (V53).
   {
-    key: 'presence', label: 'Présence', icon: 'fact_check',
-    link: '/presence', matches: ['/presence'],
-    roles: ['SUPER_ADMIN', 'PRESIDENT', 'ENTRAINEUR', 'PREPARATEUR'],
-    perms: ['presence:write'],
-    module: 'presence',
-    subnav: [],
+    key: 'suivi-membres', label: 'Suivi des membres', icon: 'supervisor_account',
+    link: '/presence', matches: ['/presence', '/suivi-entretiens'],
+    roles: ['SUPER_ADMIN'],
+    perms: ['presence:write', 'entretien:read'],
+    subnav: [
+      { label: 'Présence',    link: '/presence', roles: ['SUPER_ADMIN'], perms: ['presence:write'], module: 'presence' },
+      { label: 'Entretiens',  link: '/suivi-entretiens', roles: ['SUPER_ADMIN'], perms: ['entretien:read'], module: 'suivi_individuel' },
+    ],
   },
-  {
-    key: 'suivi', label: 'Suivi individuel', icon: 'psychology',
-    link: '/suivi-entretiens', matches: ['/suivi-entretiens'],
-    roles: ['SUPER_ADMIN', 'PRESIDENT', 'ENTRAINEUR', 'PREPARATEUR', 'MEDICAL'],
-    perms: ['entretien:read'],
-    module: 'suivi_individuel',
-    subnav: [],
-  },
-  {
-    key: 'annuaire', label: 'Annuaire', icon: 'groups',
-    link: '/annuaire', matches: ['/annuaire'],
-    roles: ['SUPER_ADMIN', 'PRESIDENT', 'ADMINISTRATIF', 'ENTRAINEUR'],
-    perms: ['joueurs:write'],
-    subnav: [],
-  },
-  {
-    key: 'documents-admin', label: 'Licences & documents', icon: 'assignment_turned_in',
-    link: '/documents-admin', matches: ['/documents-admin'],
-    roles: ['SUPER_ADMIN', 'PRESIDENT', 'ADMINISTRATIF', 'ENTRAINEUR', 'PREPARATEUR', 'MEDICAL'],
-    perms: ['docadmin:read'],
-    module: 'documents_admin',
-    subnav: [],
-  },
+  // ── 05 · Médical (inchangé) ──
   {
     key: 'medical', label: 'Médical', icon: 'healing',
     link: '/medical', query: { section: 'alertes' }, matches: ['/medical', '/mon-espace', '/suivi-subjectif', '/mes-blessures'],
@@ -132,18 +124,30 @@ const ALL_MODULES: NavModule[] = [
       { label: 'Mon espace',                    link: '/mon-espace', roles: ['JOUEUR'] },
     ],
   },
+  // ── 06 · Administration : données administratives des membres (+ overview administratif) ──
   {
-    key: 'admin', label: 'Admin', icon: 'admin_panel_settings',
-    link: '/admin/clubs', presidentLink: '/mon-club',
-    matches: ['/admin', '/mon-club'],
-    roles: ['SUPER_ADMIN', 'PRESIDENT', 'ENTRAINEUR'],
+    key: 'administration', label: 'Administration', icon: 'badge',
+    link: '/administration', matches: ['/administration', '/annuaire', '/documents-admin'],
+    roles: ['SUPER_ADMIN', 'PRESIDENT', 'ADMINISTRATIF', 'ENTRAINEUR', 'PREPARATEUR', 'MEDICAL'],
+    perms: ['docadmin:read', 'joueurs:write'],
+    subnav: [
+      { label: 'Vue d\'ensemble',       link: '/administration', roles: ['SUPER_ADMIN', 'PRESIDENT', 'ADMINISTRATIF'] },
+      { label: 'Annuaire',              link: '/annuaire', roles: ['SUPER_ADMIN', 'PRESIDENT', 'ADMINISTRATIF', 'ENTRAINEUR'], perms: ['joueurs:write'] },
+      { label: 'Licences & documents',  link: '/documents-admin', roles: ['SUPER_ADMIN', 'PRESIDENT', 'ADMINISTRATIF', 'ENTRAINEUR', 'PREPARATEUR', 'MEDICAL'], perms: ['docadmin:read'], module: 'documents_admin' },
+    ],
+  },
+  // ── 07 · Gestion du club : configuration (comptes, équipes, rôles, apparence) ──
+  {
+    key: 'gestion-club', label: 'Gestion du club', icon: 'admin_panel_settings',
+    link: '/admin/clubs', matches: ['/admin', '/mon-club', '/tableau-president'],
+    roles: ['SUPER_ADMIN', 'PRESIDENT', 'ENTRAINEUR', 'ADMINISTRATIF'],
     perms: ['club:manage', 'membres:manage'],
     subnav: [
+      { label: 'Mon tableau de bord', link: '/tableau-president', roles: ['PRESIDENT'] },
       { label: 'Clubs',          link: '/admin/clubs', roles: ['SUPER_ADMIN'] },
       { label: 'Packs & modules', link: '/admin/abonnements', roles: ['SUPER_ADMIN'] },
       { label: 'Rôles globaux',  link: '/admin/roles-globaux', roles: ['SUPER_ADMIN'] },
-      { label: 'Comptes du club', link: '/mon-club',   roles: ['SUPER_ADMIN'] },
-      { label: 'Mon club',       link: '/mon-club',    roles: ['PRESIDENT', 'ENTRAINEUR'], perms: ['club:manage', 'membres:manage'] },
+      { label: 'Mon club',       link: '/mon-club',    roles: ['PRESIDENT', 'ENTRAINEUR', 'ADMINISTRATIF'], perms: ['club:manage', 'membres:manage'] },
     ],
   },
 ];
@@ -204,11 +208,25 @@ export class NavSidebarComponent {
     return true;
   }
 
+  /**
+   * Un conteneur n'a de sens que s'il lui reste AU MOINS un sous-item accessible (rôle + module).
+   * Sans cette garde, un menu dont tous les sous-écrans ont été fermés par le pack resterait affiché
+   * mais mènerait à du vide / une route bloquée. Un conteneur sans sous-menu est piloté par ses
+   * propres gates (module/rôle) et reste visible.
+   */
+  private hasAccessibleSubnav(m: NavModule, userRole: Role): boolean {
+    if (!m.subnav.length) return true;
+    return m.subnav.some(s =>
+      this.visible(s.roles, s.perms, userRole) && this.moduleVisible(s.module));
+  }
+
   readonly navModules = computed<NavModule[]>(() => {
     const user = this.auth.currentUser();
     if (!user) return [];
     return ALL_MODULES.filter(m =>
-      this.visible(m.roles, m.perms, user.role) && this.moduleVisible(m.module, m.modulesAny));
+      this.visible(m.roles, m.perms, user.role)
+      && this.moduleVisible(m.module, m.modulesAny)
+      && this.hasAccessibleSubnav(m, user.role));
   });
 
   /**

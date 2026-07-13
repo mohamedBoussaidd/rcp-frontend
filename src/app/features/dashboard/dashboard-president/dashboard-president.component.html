@@ -1,0 +1,40 @@
+<div class="screen">
+
+  <div class="page-head">
+    <div>
+      <h1 class="page-head__title">Tableau de bord{{ prenom ? ' — ' + prenom : '' }}</h1>
+      <p class="page-head__sub">Votre vue direction. Les indicateurs clés arrivent bientôt.</p>
+    </div>
+  </div>
+
+  <div class="soon-banner">
+    <mat-icon>construction</mat-icon>
+    <div>
+      <div class="soon-banner__t">Tableau de bord en préparation</div>
+      <div class="soon-banner__s">Cet espace vous présentera l'essentiel du club d'un coup d'œil. En attendant, accédez à la gestion ci-dessous.</div>
+    </div>
+  </div>
+
+  <div class="grid">
+    @for (b of aVenir; track b.titre) {
+      <div class="tile">
+        <span class="tile__ic"><mat-icon>{{ b.icon }}</mat-icon></span>
+        <div class="tile__t">{{ b.titre }}</div>
+        <div class="tile__s">{{ b.desc }}</div>
+        <span class="tile__soon">À venir</span>
+      </div>
+    }
+  </div>
+
+  <div class="quick">
+    <a class="quick__card" routerLink="/mon-club">
+      <mat-icon>settings</mat-icon>
+      <div><div class="quick__t">Mon club</div><div class="quick__s">Comptes, équipes, rôles, apparence</div></div>
+    </a>
+    <a class="quick__card" routerLink="/administration">
+      <mat-icon>assignment_turned_in</mat-icon>
+      <div><div class="quick__t">Administration</div><div class="quick__s">Annuaire &amp; conformité documentaire</div></div>
+    </a>
+  </div>
+
+</div>

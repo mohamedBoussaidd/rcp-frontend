@@ -163,16 +163,22 @@ export class AuthService {
     return this.has('gps:import') && !this.has('club:manage');
   }
 
-  /** Page d'accueil selon le rôle (après login / accès racine). */
+  /**
+   * Page d'accueil selon le rôle (après login / accès racine). Chaque zone de menu a sa propre
+   * « Vue d'ensemble » : on renvoie chacun vers la sienne (le dashboard suit le menu, pas le rôle).
+   * Un utilisateur multi-rôle atterrit sur la vue de son rôle « principal » (utilisateur.role),
+   * puis navigue librement entre les menus qu'il détient.
+   */
   homeRoute(): string {
     switch (this.currentUser()?.role) {
       case 'SUPER_ADMIN':   return '/admin/clubs';
-      case 'PRESIDENT':     return '/mon-club';
+      case 'PRESIDENT':     return '/tableau-president';   // Gestion du club › Mon tableau de bord
+      case 'ADMINISTRATIF': return '/administration';      // Administration › Vue d'ensemble
+      case 'PREPARATEUR':   return '/performance';         // Performance › Vue d'ensemble
+      case 'MEDICAL':       return '/medical';             // Médical
       case 'JOUEUR':        return '/joueur';
-      // Administratif n'a pas accès au dashboard sportif (STAFF) : son seul module aujourd'hui
-      // est Licences & documents.
-      case 'ADMINISTRATIF': return '/documents-admin';
-      default:               return '/dashboard';
+      case 'ENTRAINEUR':    return '/coaching';            // Coaching › Vue d'ensemble
+      default:               return '/coaching';
     }
   }
 

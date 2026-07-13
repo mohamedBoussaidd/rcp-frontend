@@ -71,9 +71,34 @@ export const routes: Routes = [
     path: 'planning-technique', canActivate: [authGuard, roleGuard, contexteGuard, saisonGuard, moduleGuard], data: { roles: ['ENTRAINEUR', 'SUPER_ADMIN'], perms: PERMS_TACTIQUE, modulesAny: ['tactique', 'match', 'diaporama'] },
     loadComponent: () => import('./features/tactical/planning-technique.component').then(m => m.PlanningTechniqueComponent)
   },
+  // Redirecteur d'accueil : renvoie chaque rôle vers sa vue d'ensemble (cf. auth.homeRoute()).
   {
-    path: 'dashboard', canActivate: [authGuard, roleGuard, contexteGuard, saisonGuard], data: { roles: STAFF },
+    path: 'dashboard', canActivate: [authGuard],
+    loadComponent: () => import('./features/home/home-redirect.component').then(m => m.HomeRedirectComponent)
+  },
+  // Vue d'ensemble « Coaching » (= dashboard entraîneur, vue équipe forcée + toggle masqué).
+  {
+    path: 'coaching', canActivate: [authGuard, roleGuard, contexteGuard, saisonGuard],
+    data: { roles: ['SUPER_ADMIN', 'PRESIDENT', 'ENTRAINEUR', 'PREPARATEUR'], variante: 'coaching' },
     loadComponent: () => import('./features/dashboard/dashboard.component').then(m => m.DashboardComponent)
+  },
+  // Vue d'ensemble « Performance » (= dashboard préparateur, autonome).
+  {
+    path: 'performance', canActivate: [authGuard, roleGuard, contexteGuard, saisonGuard],
+    data: { roles: STAFF_PHYSIQUE, perms: PERMS_GPS },
+    loadComponent: () => import('./features/dashboard/dashboard-preparateur/dashboard-preparateur.component').then(m => m.DashboardPreparateurComponent)
+  },
+  // Vue d'ensemble « Administration » (accueil de l'Administratif) — club-wide, sans gate saison.
+  {
+    path: 'administration', canActivate: [authGuard, roleGuard, contexteGuard],
+    data: { roles: ['SUPER_ADMIN', 'PRESIDENT', 'ADMINISTRATIF'], perms: ['docadmin:read'] },
+    loadComponent: () => import('./features/dashboard/dashboard-admin/dashboard-admin.component').then(m => m.DashboardAdminComponent)
+  },
+  // Vue d'ensemble « Gestion du club » (accueil EXCLUSIF du président) — placeholder.
+  {
+    path: 'tableau-president', canActivate: [authGuard, roleGuard, contexteGuard],
+    data: { roles: ['SUPER_ADMIN', 'PRESIDENT'] },
+    loadComponent: () => import('./features/dashboard/dashboard-president/dashboard-president.component').then(m => m.DashboardPresidentComponent)
   },
   {
     path: 'joueurs/:id', canActivate: [authGuard, roleGuard, contexteGuard, saisonGuard], data: { roles: STAFF },
@@ -132,6 +157,13 @@ export const routes: Routes = [
     path: 'modeles-semaine', canActivate: [authGuard, roleGuard, contexteGuard, saisonGuard],
     data: { roles: ['SUPER_ADMIN', 'PRESIDENT', 'ENTRAINEUR', 'PREPARATEUR'], perms: ['seances:write'] },
     loadComponent: () => import('./features/seances/modeles-semaine/modeles-semaine.component').then(m => m.ModelesSemaineComponent)
+  },
+  // Bibliothèque de séances-modèles (espace Coaching) : module dédié `seances_modeles` (pack Prépa+)
+  // + permission dédiée seances_modeles:access. moduleGuard ferme l'accès hors abonnement.
+  {
+    path: 'seances-modeles', canActivate: [authGuard, roleGuard, contexteGuard, saisonGuard, moduleGuard],
+    data: { roles: ['SUPER_ADMIN'], perms: ['seances_modeles:access'], module: 'seances_modeles' },
+    loadComponent: () => import('./features/seances/seances-modeles/seances-modeles.component').then(m => m.SeancesModelesComponent)
   },
   {
     path: 'saisons', canActivate: [authGuard, roleGuard, contexteGuard],

@@ -12,15 +12,18 @@ import { SaisonContexteService } from '../services/saison-contexte.service';
  *    explicite (/choix-saison) ;
  *  - sinon → accès autorisé.
  *
- * Les joueurs (PWA) ne sont jamais bloqués. En cas d'erreur réseau, on laisse passer pour ne
- * pas bloquer l'app sur un incident d'API.
+ * Les joueurs (PWA) ne sont jamais bloqués. L'Administratif non plus : ses écrans (Annuaire,
+ * Licences & documents, tableau de bord admin) sont CLUB-WIDE, jamais scopés par saison — et il
+ * n'a pas accès aux écrans du gate (/choix-saison réservé au STAFF, /creer-saison à saison:manage),
+ * ce qui le bloquerait en boucle. En cas d'erreur réseau, on laisse passer pour ne pas bloquer
+ * l'app sur un incident d'API.
  */
 export const saisonGuard: CanActivateFn = (): Observable<boolean | UrlTree> => {
   const auth = inject(AuthService);
   const sc = inject(SaisonContexteService);
   const router = inject(Router);
 
-  if (auth.hasRole('JOUEUR')) return of(true);
+  if (auth.hasRole('JOUEUR', 'ADMINISTRATIF')) return of(true);
 
   return sc.charger().pipe(
     map(saisons => {
