@@ -86,6 +86,19 @@ export class AnnuaireComponent implements OnInit {
       .afterClosed().subscribe(cree => { if (cree) this.charger(); });
   }
 
+  /** L'annuaire ne porte qu'un résumé : on recharge la fiche complète avant d'ouvrir l'édition. */
+  modifier(p: AnnuaireJoueur): void {
+    this.busy.set(p.joueurId);
+    this.service.getById(p.joueurId).subscribe({
+      next: joueur => {
+        this.busy.set(null);
+        this.dialog.open(JoueurFormDialogComponent, { data: joueur, autoFocus: false, panelClass: 'rcp-dialog' })
+          .afterClosed().subscribe(maj => { if (maj) this.charger(); });
+      },
+      error: err => { this.busy.set(null); this.erreur(err, 'Fiche introuvable'); },
+    });
+  }
+
   initiales(p: AnnuaireJoueur): string {
     return `${(p.prenom || '').charAt(0)}${(p.nom || '').charAt(0)}`.toUpperCase();
   }

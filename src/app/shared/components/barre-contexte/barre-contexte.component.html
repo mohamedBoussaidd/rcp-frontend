@@ -37,3 +37,20 @@
     </span>
   </div>
 }
+
+<!-- Staff multi-équipes : bascule entre les équipes de ses affectations (pas de pill club). -->
+@if (selecteurStaffVisible) {
+  <div class="context-pill">
+    <span class="context-pill__content">
+      <span class="context-pill__label">Équipe</span>
+      <select class="context-pill__select"
+              [value]="contexte.equipesActives().length ? contexte.equipesActives()[0] : ''"
+              (change)="onChangerEquipe($any($event.target).value)">
+        <option value="">Toutes mes équipes</option>
+        @for (e of contexte.equipesDispo(); track e.id) {
+          <option [value]="e.id">{{ e.nom }}</option>
+        }
+      </select>
+    </span>
+  </div>
+}

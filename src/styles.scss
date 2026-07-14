@@ -2561,6 +2561,30 @@ mat-progress-bar {
   }
 }
 
+/* Item de pick-list avec option rattachée (ex. équipe ciblée par un rôle attribué). */
+.pick-item {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.pick__equipe {
+  margin-left: 30px;
+  padding: 7px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-md, 8px);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-size: 12.5px;
+  cursor: pointer;
+
+  &:focus {
+    outline: none;
+    border-color: var(--green-400);
+  }
+}
+
 @media (max-width: 860px) {
   .pm-grid {
     grid-template-columns: 1fr;

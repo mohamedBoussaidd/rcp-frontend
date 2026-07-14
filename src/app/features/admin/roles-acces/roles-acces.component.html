@@ -24,7 +24,9 @@
           </div>
           <div class="adm-row__chips">
             @for (a of rolesDuMembre(m); track a.id) {
-              <span class="adm-badge" [class.adm-badge--system]="a.systeme" [class.adm-badge--custom]="!a.systeme">{{ a.roleLibelle }}</span>
+              <span class="adm-badge" [class.adm-badge--system]="a.systeme" [class.adm-badge--custom]="!a.systeme">
+                {{ a.roleLibelle }}@if (a.equipeNom) { · {{ a.equipeNom }}}
+              </span>
             }
             @if (rolesDuMembre(m).length === 0) {
               <span class="adm-row__none">Aucun rôle</span>
@@ -112,17 +114,31 @@
         <div class="modal__body">
           <div class="pick-list">
             @for (r of roles(); track r.id) {
-              <label class="pick" [class.pick--on]="roleMembreActif(r.id)">
-                <input type="checkbox" [checked]="roleMembreActif(r.id)" (change)="toggleRoleMembre(r.id)">
-                <span class="pick__name">{{ r.libelle }}</span>
-                @if (r.systeme) {
-                  <span class="adm-badge adm-badge--system">Système</span>
-                } @else if (r.global) {
-                  <span class="adm-badge adm-badge--global">Global</span>
-                } @else {
-                  <span class="adm-badge adm-badge--custom">Custom</span>
+              <div class="pick-item">
+                <label class="pick" [class.pick--on]="roleMembreActif(r.id)">
+                  <input type="checkbox" [checked]="roleMembreActif(r.id)" (change)="toggleRoleMembre(r.id)">
+                  <span class="pick__name">{{ r.libelle }}</span>
+                  @if (r.systeme) {
+                    <span class="adm-badge adm-badge--system">Système</span>
+                  } @else if (r.global) {
+                    <span class="adm-badge adm-badge--global">Global</span>
+                  } @else {
+                    <span class="adm-badge adm-badge--custom">Custom</span>
+                  }
+                </label>
+                @if (roleMembreActif(r.id) && equipes().length > 0) {
+                  <select class="pick__equipe" [value]="equipeRole(r.id)"
+                          (change)="choisirEquipeRole(r.id, $any($event.target).value)"
+                          title="Équipe sur laquelle ce rôle s'applique">
+                    <option value="">
+                      {{ m.equipeId ? 'Équipe du membre — ' + (nomEquipe(m.equipeId) ?? '?') : 'Tout le club' }}
+                    </option>
+                    @for (e of equipes(); track e.id) {
+                      <option [value]="e.id">{{ e.nom }}</option>
+                    }
+                  </select>
                 }
-              </label>
+              </div>
             }
           </div>
         </div>

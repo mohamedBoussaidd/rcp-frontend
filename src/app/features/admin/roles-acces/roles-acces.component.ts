@@ -2,7 +2,7 @@ import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { Affectation, PermissionCat, RoleDef, RolesService } from '@core/services/roles.service';
-import { Membre, MonClubService } from '@core/services/mon-club.service';
+import { Equipe, Membre, MonClubService } from '@core/services/mon-club.service';
 
 interface ModuleGroup { module: string; perms: PermissionCat[]; }
 
@@ -27,6 +27,7 @@ export class RolesAccesComponent implements OnInit {
   roles = signal<RoleDef[]>([]);
   catalogue = signal<PermissionCat[]>([]);
   membres = signal<Membre[]>([]);
+  equipes = signal<Equipe[]>([]);
   /** Affectations par membre (cache), chargées au démarrage. */
   affs = signal<Record<string, Affectation[]>>({});
 
@@ -77,7 +78,8 @@ export class RolesAccesComponent implements OnInit {
 
   // ── Attribution de rôles à un membre ──
   membreEditId = signal<string | null>(null);
-  rolesSel = signal<Set<string>>(new Set());
+  /** Rôles sélectionnés → équipe ciblée ('' = équipe du membre, ou tout le club s'il n'en a pas). */
+  rolesSel = signal<Map<string, string>>(new Map());
   savingAffectation = signal(false);
 
   /** Membre dont la modale d'attribution est ouverte. */
@@ -94,6 +96,7 @@ export class RolesAccesComponent implements OnInit {
     this.clubSvc.getMonClub().subscribe({
       next: d => {
         this.membres.set(d.membres);
+        this.equipes.set(d.equipes);
         this.loading.set(false);
         d.membres.filter(m => m.role !== 'JOUEUR').forEach(m => this.chargerAff(m.id));
       },
@@ -174,23 +177,40 @@ export class RolesAccesComponent implements OnInit {
 
   gererMembre(m: Membre): void {
     this.membreEditId.set(m.id);
-    this.rolesSel.set(new Set(this.rolesDuMembre(m).map(a => a.roleId)));
+    this.rolesSel.set(new Map(this.rolesDuMembre(m).map(a => [a.roleId, a.equipeId ?? ''])));
   }
 
   annulerMembre(): void { this.membreEditId.set(null); }
 
   toggleRoleMembre(roleId: string): void {
     this.rolesSel.update(s => {
-      const n = new Set(s);
-      n.has(roleId) ? n.delete(roleId) : n.add(roleId);
+      const n = new Map(s);
+      n.has(roleId) ? n.delete(roleId) : n.set(roleId, '');
       return n;
     });
   }
 
   roleMembreActif(roleId: string): boolean { return this.rolesSel().has(roleId); }
 
+  /** Équipe ciblée par l'affectation du rôle ('' = équipe par défaut du membre). */
+  equipeRole(roleId: string): string { return this.rolesSel().get(roleId) ?? ''; }
+
+  choisirEquipeRole(roleId: string, equipeId: string): void {
+    this.rolesSel.update(s => {
+      const n = new Map(s);
+      if (n.has(roleId)) n.set(roleId, equipeId);
+      return n;
+    });
+  }
+
+  nomEquipe(id?: string): string | null {
+    return this.equipes().find(e => e.id === id)?.nom ?? null;
+  }
+
   enregistrerMembre(m: Membre): void {
-    const items = [...this.rolesSel()].map(roleId => ({ roleId }));
+    // '' = pas d'équipe explicite → le back retombe sur l'équipe du membre (ou club entier sans équipe).
+    const items = [...this.rolesSel().entries()]
+      .map(([roleId, equipeId]) => equipeId ? { roleId, equipeId } : { roleId });
     this.savingAffectation.set(true);
     this.rolesSvc.definirRoles(m.id, items).subscribe({
       next: a => {

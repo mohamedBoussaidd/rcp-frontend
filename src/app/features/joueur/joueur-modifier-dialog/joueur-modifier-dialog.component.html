@@ -1,0 +1,38 @@
+<div class="form-card modifier-modal">
+
+  <div class="form-card__header">
+    <h2 class="form-card__title">Modifier une fiche</h2>
+    <button type="button" class="form-card__close" (click)="fermer()" aria-label="Fermer">✕</button>
+  </div>
+
+  <div class="form-card__body">
+
+    @if (loading) {
+      <p class="msg-centre">Chargement…</p>
+    }
+
+    @if (!loading && joueurs.length === 0) {
+      <p class="msg-centre">Aucun joueur enregistré.</p>
+    }
+
+    @if (!loading && joueurs.length > 0) {
+      <ul class="joueur-liste">
+        @for (j of joueurs; track j.id) {
+          <li class="joueur-ligne">
+            <div class="joueur-info">
+              <span class="joueur-nom">{{ j.prenom }} {{ j.nom }}</span>
+              <span class="joueur-poste">{{ j.postePrincipal || '—' }} · {{ j.statut }}</span>
+            </div>
+            <button type="button" class="btn-modifier"
+                    (click)="modifier(j)"
+                    title="Modifier {{ j.prenom }} {{ j.nom }}">
+              ✎
+            </button>
+          </li>
+        }
+      </ul>
+    }
+
+  </div>
+
+</div>

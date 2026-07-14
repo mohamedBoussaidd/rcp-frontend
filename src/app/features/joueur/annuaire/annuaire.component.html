@@ -28,7 +28,7 @@
         <div class="an__tablewrap">
           <table class="an__table">
             <thead>
-              <tr><th>Personne</th><th>Équipes</th><th class="c">Assigner</th></tr>
+              <tr><th>Personne</th><th>Équipes</th><th class="c">Actions</th></tr>
             </thead>
             <tbody>
               @for (p of filtres(); track p.joueurId) {
@@ -53,9 +53,13 @@
                     }
                   </td>
                   <td class="c">
+                    <button class="an__btn an__btn--ghost" title="Modifier la fiche"
+                            [disabled]="busy() === p.joueurId" (click)="modifier(p)">
+                      <mat-icon>edit</mat-icon>
+                    </button>
                     @if (equipesAssignables(p).length > 0) {
-                      <button class="an__btn an__btn--ghost" [matMenuTriggerFor]="menu"
-                              [disabled]="busy() === p.joueurId">
+                      <button class="an__btn an__btn--ghost" title="Assigner à une équipe"
+                              [matMenuTriggerFor]="menu" [disabled]="busy() === p.joueurId">
                         <mat-icon>add</mat-icon>
                       </button>
                       <mat-menu #menu="matMenu">
@@ -63,8 +67,6 @@
                           <button mat-menu-item (click)="assigner(p, e.id)">{{ e.nom }}</button>
                         }
                       </mat-menu>
-                    } @else {
-                      <span class="an__na">—</span>
                     }
                   </td>
                 </tr>

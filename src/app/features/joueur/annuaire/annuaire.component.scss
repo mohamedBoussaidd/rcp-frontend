@@ -91,6 +91,7 @@
     &--primary { background: var(--green-600, #15803d); border-color: transparent; color: #fff;
       &:hover { background: var(--green-700, #166534); } }
     &--ghost { padding: 6px; mat-icon { font-size: 20px; width: 20px; height: 20px; } }
+    & + & { margin-left: 6px; }
   }
 
   &__empty { color: var(--text-3); padding: 24px 0; text-align: center; }

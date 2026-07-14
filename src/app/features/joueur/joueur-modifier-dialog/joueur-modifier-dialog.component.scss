@@ -1,0 +1,71 @@
+/* Cas particuliers du dialog « modifier une fiche » — le socle est dans _forms.scss,
+   la structure de liste reprend le dialog supprimer. */
+.modifier-modal {
+  width: 460px;
+  max-width: 92vw;
+  max-height: 75vh;
+}
+
+.msg-centre {
+  text-align: center;
+  color: var(--text-3);
+  padding: 24px 0;
+  margin: 0;
+}
+
+/* ── Liste des joueurs ── */
+.joueur-liste {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.joueur-ligne {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 2px;
+  border-bottom: 1px solid var(--border);
+
+  &:last-child { border-bottom: none; }
+}
+
+.joueur-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.joueur-nom {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.joueur-poste {
+  font-size: 0.72rem;
+  color: var(--text-3);
+  text-transform: capitalize;
+}
+
+/* ── Bouton ✎ ── */
+.btn-modifier {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 1px solid var(--green-200);
+  background: var(--green-50);
+  color: var(--green-600);
+  font-size: 0.8rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s, color 0.2s;
+
+  &:hover {
+    background: var(--green-600);
+    color: #fff;
+  }
+}

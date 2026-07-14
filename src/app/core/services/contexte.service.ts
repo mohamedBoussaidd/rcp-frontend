@@ -1,4 +1,6 @@
-import { Injectable, computed, signal } from '@angular/core';
+import { Injectable, computed, inject, signal } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
+import { Observable } from 'rxjs';
 
 /** Club actif minimal (id + nom) pour l'affichage et les en-têtes de contexte. */
 export interface ClubActif {
@@ -29,6 +31,8 @@ export class ContexteService {
 
   private static readonly KEY = 'rcp_contexte';
 
+  private http = inject(HttpClient);
+
   /** Club actuellement actif (null = aucun, ex. super-admin sur l'espace admin). */
   readonly clubActif = signal<ClubActif | null>(null);
   /** Équipes du club actif, proposées dans le sélecteur. */
@@ -46,6 +50,14 @@ export class ContexteService {
 
   constructor() {
     this.restaurer();
+  }
+
+  /**
+   * Équipes du périmètre AUTORISÉ de l'utilisateur (identité seule, contexte non déduit) —
+   * alimente le sélecteur d'équipe du staff multi-équipes.
+   */
+  chargerEquipesAutorisees(): Observable<EquipeContexte[]> {
+    return this.http.get<EquipeContexte[]>('/api/contexte/equipes');
   }
 
   /** Entre dans le contexte d'un club (remplace entièrement le contexte précédent). */

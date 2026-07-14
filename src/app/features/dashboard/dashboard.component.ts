@@ -10,6 +10,7 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatDialog } from '@angular/material/dialog';
 import { JoueurFormDialogComponent } from '../joueur/joueur-form-dialog/joueur-form-dialog.component';
+import { JoueurModifierDialogComponent } from '../joueur/joueur-modifier-dialog/joueur-modifier-dialog.component';
 import { JoueurSupprimerDialogComponent } from '../joueur/joueur-supprimer-dialog/joueur-supprimer-dialog.component';
 import { PresenceDialogComponent } from '../performance/presence-dialog/presence-dialog.component';
 import { ApexChart, ApexAxisChartSeries, ApexXAxis, ApexStroke, ApexDataLabels, ApexTitleSubtitle, ApexTheme, ApexGrid, ApexYAxis, ApexFill, ApexMarkers, ChartComponent } from 'ng-apexcharts';
@@ -439,6 +440,14 @@ export class DashboardComponent implements OnInit {
       width: '560px', maxWidth: '95vw', panelClass: 'app-dialog',
     });
     ref.afterClosed().subscribe(joueur => { if (joueur) this.loadEquipe(); });
+  }
+
+  ouvrirDialogModification(): void {
+    const ref = this.dialog.open(JoueurModifierDialogComponent, {
+      width: '500px', maxWidth: '95vw', panelClass: 'app-dialog',
+    });
+    // Un statut modifié change les compteurs Disponibles → recharger aussi les statuts.
+    ref.afterClosed().subscribe(modifie => { if (modifie) { this.loadEquipe(); this.loadStatuts(); } });
   }
 
   ouvrirDialogSuppression(): void {
