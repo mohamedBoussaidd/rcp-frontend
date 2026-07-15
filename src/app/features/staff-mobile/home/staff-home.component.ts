@@ -1,7 +1,7 @@
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { AuthService } from '@core/services/auth.service';
 import { ContexteService } from '@core/services/contexte.service';
 import { NotificationPushService } from '@core/services/notification-push.service';
@@ -29,6 +29,7 @@ export class StaffHomeComponent implements OnInit {
   push = inject(NotificationPushService);
   notifications = inject(NotificationService);
   private seanceService = inject(SeanceService);
+  private router = inject(Router);
 
   readonly today = new Date();
   readonly seancesJour = signal<Seance[]>([]);
@@ -68,4 +69,7 @@ export class StaffHomeComponent implements OnInit {
   }
 
   deconnexion(): void { this.auth.logout(); }
+
+  /** Bascule vers l'interface web complète : accueil desktop du rôle. */
+  versionComplete(): void { this.router.navigateByUrl(this.auth.homeRoute()); }
 }

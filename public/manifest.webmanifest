@@ -1,11 +1,11 @@
 {
   "name": "Mon Suivi — RCP",
   "short_name": "Mon Suivi",
-  "description": "Ressenti quotidien, effort des séances et suivi perso du joueur.",
+  "description": "Espace mobile du club : suivi perso du joueur et outils du staff.",
   "display": "standalone",
   "orientation": "portrait",
   "scope": "/",
-  "start_url": "/joueur",
+  "start_url": "/m",
   "theme_color": "#15803D",
   "background_color": "#F4F6FA",
   "lang": "fr",

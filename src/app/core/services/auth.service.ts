@@ -182,6 +182,36 @@ export class AuthService {
     }
   }
 
+  /**
+   * L'espace mobile staff (/staff) est-il pertinent pour ce compte ? Tout rôle non-joueur d'un
+   * club ayant le module `espace_staff` (fail-open tant que la liste n'est pas chargée, comme
+   * hasModule — la route /staff reste protégée par ses propres guards). Pilote la visibilité
+   * des liens « Espace mobile » et l'aiguillage après login.
+   */
+  peutEspaceStaff(): boolean {
+    const role = this.currentUser()?.role;
+    return !!role && role !== 'JOUEUR' && this.hasModule('espace_staff');
+  }
+
+  /**
+   * Destination après login — et du start_url PWA (/m) : sur petit écran, le staff est aiguillé
+   * vers son espace mobile (/staff), miroir du joueur qui atterrit sur /joueur. Sur grand écran
+   * (ou super-admin, qui pilote depuis le desktop), on garde l'accueil du rôle (homeRoute), et
+   * les guards conservent homeRoute() comme repli : pas de boucle possible si /staff est refusé.
+   */
+  routeApresLogin(): string {
+    const role = this.currentUser()?.role;
+    if (role !== 'SUPER_ADMIN' && this.peutEspaceStaff() && AuthService.estEcranMobile()) {
+      return '/staff';
+    }
+    return this.homeRoute();
+  }
+
+  /** Petit écran (téléphone / petite tablette) : critère de l'aiguillage mobile. */
+  private static estEcranMobile(): boolean {
+    return window.matchMedia('(max-width: 900px)').matches;
+  }
+
   private store(res: LoginResponse): void {
     localStorage.setItem(AuthService.TOKEN_KEY, res.token);
     const { token, type, ...user } = res;

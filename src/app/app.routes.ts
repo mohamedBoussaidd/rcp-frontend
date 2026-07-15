@@ -4,6 +4,7 @@ import { roleGuard } from '@core/guards/role.guard';
 import { contexteGuard } from '@core/guards/contexte.guard';
 import { saisonGuard } from '@core/guards/saison.guard';
 import { moduleGuard } from '@core/guards/module.guard';
+import { aiguillageMobileGuard } from '@core/guards/aiguillage-mobile.guard';
 import { Role } from '@core/services/auth.service';
 // Import de type uniquement (effacé à la compilation → ne casse pas le lazy loading).
 import type { JoueurDetailComponent } from './features/joueur/joueur-detail/joueur-detail.component';
@@ -21,6 +22,10 @@ const PERMS_TACTIQUE = ['schemas:write', 'exercices:write', 'plandejeu:write', '
 // plutôt que dans le bundle initial. Gain de perf au démarrage.
 export const routes: Routes = [
   { path: 'login', loadComponent: () => import('./features/login/login.component').then(m => m.LoginComponent) },
+
+  // Cible du start_url PWA (manifest) : l'icône installée s'ouvre ici, puis chaque public est
+  // aiguillé vers son espace (joueur → /joueur, staff sur téléphone → /staff, sinon desktop).
+  { path: 'm', canActivate: [aiguillageMobileGuard], children: [] },
 
   { path: '', redirectTo: 'dashboard', pathMatch: 'full' },
 

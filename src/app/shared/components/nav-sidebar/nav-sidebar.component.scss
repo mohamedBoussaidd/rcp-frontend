@@ -267,6 +267,18 @@
   &:hover { opacity: .8; }
 }
 
+/* Bascule vers l'espace mobile staff (variante neutre du btn-logout) */
+.btn-espace-mobile {
+  display: flex; align-items: center; gap: 10px;
+  width: 100%; padding: 9px 12px;
+  border-radius: var(--r-md);
+  border: 1px solid var(--border); background: var(--surface-2); color: var(--text);
+  font-size: 0.82rem; font-weight: 600; font-family: inherit;
+  cursor: pointer; transition: opacity .15s;
+  mat-icon { font-size: 1rem !important; width: 18px !important; height: 18px !important; flex-shrink: 0; }
+  &:hover { opacity: .8; }
+}
+
 /* ══════════════════════════════════════
    RESPONSIVE
    ══════════════════════════════════════ */

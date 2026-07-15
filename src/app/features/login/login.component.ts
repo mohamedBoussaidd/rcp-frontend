@@ -24,9 +24,9 @@ export class LoginComponent {
   private router = inject(Router);
 
   constructor() {
-    // Déjà connecté : on saute directement à l'accueil du rôle
+    // Déjà connecté : on saute directement à l'accueil du rôle (espace mobile staff sur téléphone)
     if (this.auth.isAuthenticated()) {
-      this.router.navigateByUrl(this.auth.homeRoute());
+      this.router.navigateByUrl(this.auth.routeApresLogin());
     }
   }
 
@@ -38,7 +38,7 @@ export class LoginComponent {
     this.auth.login(this.email.trim(), this.motDePasse).subscribe({
       next: () => {
         this.loading.set(false);
-        this.router.navigateByUrl(this.auth.homeRoute());
+        this.router.navigateByUrl(this.auth.routeApresLogin());
       },
       error: (err) => {
         this.loading.set(false);

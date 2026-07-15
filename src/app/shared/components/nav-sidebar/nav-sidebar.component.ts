@@ -321,6 +321,15 @@ export class NavSidebarComponent {
     this.auth.logout();
   }
 
+  /** Lien de bascule vers l'espace mobile staff (/staff) : rôles non-joueur, module actif. */
+  peutEspaceStaff(): boolean { return this.auth.peutEspaceStaff(); }
+
+  allerEspaceMobile(): void {
+    this.profileOpen.set(false);
+    this.sidebarService.close();
+    this.router.navigate(['/staff']);
+  }
+
   toggleProfile(): void { this.profileOpen.update(v => !v); }
   closeProfile(): void  { this.profileOpen.set(false); }
 }

@@ -61,6 +61,12 @@
               </div>
             </div>
             <div class="profile-dropdown__sep"></div>
+            @if (peutEspaceStaff()) {
+              <button class="profile-dropdown__item" (click)="allerEspaceMobile()">
+                <mat-icon>smartphone</mat-icon>
+                Espace mobile
+              </button>
+            }
             <button class="profile-dropdown__item profile-dropdown__item--danger" (click)="deconnexion()">
               <mat-icon>logout</mat-icon>
               Déconnexion
@@ -139,6 +145,12 @@
           <div class="user-role">{{ roleLabel(u.role) }}</div>
         </div>
       </div>
+      @if (peutEspaceStaff()) {
+        <button class="btn-espace-mobile" (click)="allerEspaceMobile()">
+          <mat-icon>smartphone</mat-icon>
+          <span>Espace mobile</span>
+        </button>
+      }
       <button class="btn-logout" (click)="deconnexion()">
         <mat-icon>logout</mat-icon>
         <span>Déconnexion</span>
