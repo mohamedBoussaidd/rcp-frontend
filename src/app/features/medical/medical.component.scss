@@ -615,3 +615,43 @@
   .infirmerie-ligne__retour { grid-column: span 2; }
   .bilan-kpis { grid-template-columns: 1fr 1fr; }
 }
+
+/* ── V57 : protocoles de reprise, qualification & déclarations ─────────────── */
+
+.bl-region { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--text-3); margin: 8px 0 6px; }
+.bl-label--sub { font-size: 12px; color: var(--text-3); }
+
+.rtp-modeles { display: flex; flex-direction: column; gap: 8px; margin: 8px 0 14px; }
+.rtp-modele {
+  text-align: left; border: 1px solid var(--border); background: var(--surface-1); border-radius: var(--r-lg);
+  padding: 10px 12px; cursor: pointer; display: flex; flex-direction: column; gap: 4px;
+  &:hover { background: var(--surface-2); }
+  &.is-on { border-color: var(--brand-500, #3b82f6); box-shadow: 0 0 0 2px color-mix(in srgb, var(--brand-500, #3b82f6) 22%, transparent); }
+}
+.rtp-modele__nom { font-weight: 700; display: flex; align-items: center; gap: 8px; }
+.rtp-modele__meta { font-size: 12px; color: var(--text-3); }
+
+.rtp-jrow { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 8px 0; }
+.rtp-etacts { display: inline-flex; gap: 4px; }
+.bl-phase__foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 4px; }
+.rtp-ajout { margin-top: 12px; }
+
+.proto-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 14px; }
+.proto-card {
+  background: var(--surface-1); border: 1px solid var(--border); border-radius: var(--r-lg); padding: 16px;
+  display: flex; flex-direction: column; gap: 8px;
+  &--off { opacity: .6; }
+}
+.proto-card__head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.proto-card__nom { font-weight: 800; font-size: 15px; }
+.proto-card__desc { font-size: 12.5px; color: var(--text-2); margin: 0; }
+.proto-card__criteres { font-size: 12px; color: var(--text-3); margin: 0; }
+.proto-card__etapes { margin: 4px 0 0; padding-left: 18px; font-size: 12.5px; color: var(--text-2); display: flex; flex-direction: column; gap: 3px; }
+.proto-card__j { color: var(--text-3); font-size: 11px; margin-left: 6px; }
+.proto-card__acts { display: flex; gap: 14px; margin-top: auto; padding-top: 8px; border-top: 1px solid var(--border); }
+
+.bl-modal--large { max-width: 720px; }
+.proto-etape { display: grid; grid-template-columns: 28px 1fr auto; gap: 10px; align-items: start; padding: 10px 0; border-bottom: 1px dashed var(--border); }
+.proto-etape__num { width: 28px; height: 28px; border-radius: 50%; background: var(--surface-3); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 12.5px; }
+.proto-etape__fields { display: flex; flex-direction: column; gap: 6px; }
+.proto-etape__acts { display: flex; flex-direction: column; gap: 4px; }

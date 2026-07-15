@@ -4,10 +4,11 @@
   <div class="page-head">
     <div>
       <h1 class="page-head__title">
-        {{ section() === 'blessures' ? 'Blessures' :
-           section() === 'suivi'     ? 'Suivi subjectif' :
-           section() === 'bilan'     ? 'Bilan blessures' :
-           section() === 'documents' ? 'Documents médicaux' : 'Alertes' }}
+        {{ section() === 'blessures'  ? 'Blessures' :
+           section() === 'suivi'      ? 'Suivi subjectif' :
+           section() === 'bilan'      ? 'Bilan blessures' :
+           section() === 'documents'  ? 'Documents médicaux' :
+           section() === 'protocoles' ? 'Protocoles de reprise' : 'Alertes' }}
       </h1>
       <p class="page-head__sub">Suivi médical de l'effectif</p>
     </div>
@@ -280,7 +281,7 @@
               <span class="bl-status" [class]="statutBlessureClass(b.statut)">{{ statutBlessureLabel(b.statut) }}</span>
             </div>
             <div class="bl-card__diag">
-              {{ labelDe(zones, b.zoneCorporelle) }}@if (b.cote) { {{ labelDe(cotes, b.cote) | lowercase }}}@if (b.typeBlessure) { — {{ labelDe(types, b.typeBlessure) }}}
+              {{ zoneAffichee(b) }}@if (b.cote) { {{ labelDe(cotes, b.cote) | lowercase }}}@if (b.typeBlessure) { — {{ typeAffiche(b) }}}
             </div>
             <div class="bl-stats">
               <div class="bl-stat"><span class="bl-stat__lbl">Depuis</span><span class="bl-stat__val">{{ joursDepuis(b) }} jours</span></div>
@@ -309,7 +310,7 @@
             <span class="bl-avatar bl-avatar--sm" [class]="statutBlessureClass(b.statut)">{{ initiales(b.joueurPrenom, b.joueurNom) }}</span>
             <span class="bl-ligne__name">{{ b.joueurPrenom }} {{ b.joueurNom }}</span>
             <span class="bl-status" [class]="statutBlessureClass(b.statut)">{{ statutBlessureLabel(b.statut) }}</span>
-            <span class="bl-ligne__diag">{{ labelDe(zones, b.zoneCorporelle) }}@if (b.typeBlessure) { · {{ labelDe(types, b.typeBlessure) }}}</span>
+            <span class="bl-ligne__diag">{{ zoneAffichee(b) }}@if (b.typeBlessure) { · {{ typeAffiche(b) }}}</span>
             <span class="bl-ligne__retour">{{ b.dateRetourPrevue ? ('retour ' + (b.dateRetourPrevue | date:'dd/MM')) : 'retour non estimé' }}</span>
           </button>
         }
@@ -327,7 +328,7 @@
             <span class="bl-avatar bl-avatar--sm st-retabli">{{ initiales(b.joueurPrenom, b.joueurNom) }}</span>
             <span class="bl-ligne__name">{{ b.joueurPrenom }} {{ b.joueurNom }}</span>
             <span class="bl-status st-retabli">Rétabli</span>
-            <span class="bl-ligne__diag">{{ labelDe(zones, b.zoneCorporelle) }}@if (b.typeBlessure) { · {{ labelDe(types, b.typeBlessure) }}}</span>
+            <span class="bl-ligne__diag">{{ zoneAffichee(b) }}@if (b.typeBlessure) { · {{ typeAffiche(b) }}}</span>
             <span class="bl-ligne__retour">{{ b.dateRetourEffectif ? ('le ' + (b.dateRetourEffectif | date:'dd/MM/yyyy')) : '' }}</span>
           </button>
         }
@@ -358,11 +359,17 @@
               </div>
               <div class="bl-field">
                 <label class="bl-label">Zone corporelle</label>
-                <div class="bl-chips">
-                  @for (z of zones; track z.val) {
-                    <button type="button" class="bl-chip" [class.is-on]="form.zoneCorporelle === z.val" (click)="form.zoneCorporelle = z.val">{{ z.label }}</button>
-                  }
-                </div>
+                @for (g of zonesGroupes; track g.region) {
+                  <p class="bl-region">{{ g.region }}</p>
+                  <div class="bl-chips">
+                    @for (z of g.zones; track z.val) {
+                      <button type="button" class="bl-chip" [class.is-on]="form.zoneCorporelle === z.val" (click)="form.zoneCorporelle = z.val">{{ z.label }}</button>
+                    }
+                  </div>
+                }
+                @if (form.zoneCorporelle === 'autre') {
+                  <input class="input" style="margin-top:8px" [(ngModel)]="form.zonePrecision" name="zonePrecision" placeholder="Préciser la zone (ex. cœur, sternum…)">
+                }
               </div>
               <div class="bl-field">
                 <label class="bl-label">Type de blessure</label>
@@ -371,6 +378,9 @@
                     <button type="button" class="bl-chip" [class.is-on]="form.typeBlessure === t.val" (click)="form.typeBlessure = t.val">{{ t.label }}</button>
                   }
                 </div>
+                @if (form.typeBlessure === 'autre') {
+                  <input class="input" style="margin-top:8px" [(ngModel)]="form.typePrecision" name="typePrecision" placeholder="Préciser le type de blessure…">
+                }
               </div>
               <div class="bl-field">
                 <label class="bl-label">Gravité</label>
@@ -415,6 +425,14 @@
             }
             @if (formStep() === 3) {
               <div class="bl-field">
+                <label class="bl-label">Qualification administrative</label>
+                <div class="bl-seg">
+                  @for (q of QUALIFS; track q.val) {
+                    <button type="button" class="bl-seg__opt" [class.is-on]="form.qualificationAdministrative === q.val" (click)="form.qualificationAdministrative = q.val">{{ q.label }}</button>
+                  }
+                </div>
+              </div>
+              <div class="bl-field">
                 <label class="bl-label">Commentaires</label>
                 <textarea class="input" rows="3" [(ngModel)]="form.commentaire" name="commentaire" placeholder="Contexte, circonstances de la blessure…"></textarea>
               </div>
@@ -448,7 +466,7 @@
         <div class="bl-drawer__head">
           <div>
             <h3 class="bl-drawer__title">{{ b.joueurPrenom }} {{ b.joueurNom }}</h3>
-            <p class="bl-drawer__sub">{{ labelDe(zones, b.zoneCorporelle) }}@if (b.typeBlessure) { — {{ labelDe(types, b.typeBlessure) }}}</p>
+            <p class="bl-drawer__sub">{{ zoneAffichee(b) }}@if (b.typeBlessure) { — {{ typeAffiche(b) }}}</p>
           </div>
           <div class="row" style="gap:10px;align-items:center">
             <span class="bl-status" [class]="statutBlessureClass(b.statut)">{{ statutBlessureLabel(b.statut) }}</span>
@@ -459,6 +477,9 @@
           <button [class.is-on]="suiviTab() === 'resume'" (click)="suiviTab.set('resume')">Résumé</button>
           <button [class.is-on]="suiviTab() === 'protocole'" (click)="suiviTab.set('protocole')">Protocole</button>
           <button [class.is-on]="suiviTab() === 'journal'" (click)="suiviTab.set('journal')">Journal</button>
+          @if (peutQualifier) {
+            <button [class.is-on]="suiviTab() === 'administratif'" (click)="suiviTab.set('administratif')">Administratif</button>
+          }
         </div>
         <div class="bl-drawer__body">
 
@@ -470,6 +491,9 @@
               <div class="bl-info"><span class="bl-info__lbl">Récidive</span><span class="bl-info__val">{{ b.recidive ? 'Oui' : 'Non' }}</span></div>
               <div class="bl-info"><span class="bl-info__lbl">Début</span><span class="bl-info__val">{{ b.dateBlessure | date:'dd MMM yyyy' }}</span></div>
               <div class="bl-info"><span class="bl-info__lbl">Retour prévu</span><span class="bl-info__val">{{ b.dateRetourPrevue ? (b.dateRetourPrevue | date:'dd MMM yyyy') : '—' }}</span></div>
+              @if (b.qualificationAdministrative && b.qualificationAdministrative !== 'AUCUNE') {
+                <div class="bl-info"><span class="bl-info__lbl">Administratif</span><span class="bl-info__val">{{ qualifLabel(b.qualificationAdministrative) }}</span></div>
+              }
             </div>
             @let pctRes = progressionTemps(b);
             <p class="bl-label bl-label--mt">Progression</p>
@@ -501,31 +525,140 @@
 
           @if (suiviTab() === 'protocole') {
             @if (rtp().length === 0) {
-              <div class="empty-state" style="padding:24px 0">Aucun protocole de reprise.</div>
-              @if (auth.canEcrireBlessures()) {
-                <button type="button" class="bl-genbtn" (click)="initRtp()">+ Générer un protocole type</button>
+
+              @if (showRtpInit()) {
+                <!-- Choix du modèle (suggestion pré-sélectionnée) -->
+                <p class="bl-label">Choisir un protocole type</p>
+                <div class="rtp-modeles">
+                  @for (m of rtpModelesActifs(); track m.id) {
+                    <button type="button" class="rtp-modele" [class.is-on]="rtpModeleChoisi() === m.id" (click)="rtpModeleChoisi.set(m.id)">
+                      <span class="rtp-modele__nom">{{ m.nom }}
+                        @if (rtpSuggestionId() === m.id) { <span class="badge badge--ok">Suggéré</span> }
+                      </span>
+                      <span class="rtp-modele__meta">{{ m.etapes.length }} étapes · {{ criteresLabel(m) }}</span>
+                    </button>
+                  }
+                  @if (rtpModelesActifs().length === 0) {
+                    <div class="empty-state" style="padding:12px 0">Aucun modèle actif — créez-en un dans « Protocoles ».</div>
+                  }
+                </div>
+                <div class="bl-drawer__actions">
+                  <button type="button" class="al-link" (click)="annulerInitRtp()">Annuler</button>
+                  <button type="button" class="btn btn--primary btn--sm" [disabled]="!rtpModeleChoisi()" (click)="confirmerInitRtp()">✓ Lancer le protocole</button>
+                </div>
+              } @else {
+                <div class="empty-state" style="padding:24px 0">Aucun protocole de reprise.</div>
+                @if (auth.canEcrireBlessures()) {
+                  <button type="button" class="bl-genbtn" (click)="initRtp()">+ Lancer un protocole</button>
+                }
               }
+
             } @else {
               <div class="bl-prog" style="margin-bottom:18px"><div class="bl-prog__bar"><span class="pg-bad" [style.width.%]="rtpProgression"></span></div><span class="bl-prog__pct">{{ rtpProgression }}%</span></div>
               <ol class="bl-timeline">
-                @for (e of rtp(); track e.id) {
+                @for (e of rtp(); track e.id; let i = $index; let dernier = $last) {
                   <li class="bl-phase" [class]="etapeClass(e.statut)">
                     <button type="button" class="bl-phase__dot" [disabled]="!auth.canEcrireBlessures()" (click)="cyclerEtape(e)" [title]="ETAPE_LABELS[e.statut]"></button>
                     <div class="bl-phase__card">
-                      <div class="bl-phase__head">
-                        <span class="bl-phase__title">{{ e.libelle }}</span>
-                        @if (e.jDebut != null && e.jFin != null) { <span class="bl-phase__j">J{{ e.jDebut }} – J{{ e.jFin }}</span> }
-                      </div>
-                      @if (e.description) { <p class="bl-phase__desc">{{ e.description }}</p> }
-                      <span class="bl-phase__statut">{{ ETAPE_LABELS[e.statut] }}@if (e.dateValidation) { · {{ e.dateValidation | date:'dd/MM' }} }</span>
+                      @if (editingEtapeId() === e.id) {
+                        <!-- Édition inline de l'étape -->
+                        <input class="input" [(ngModel)]="etapeEdit.libelle" name="etLib{{ e.id }}" placeholder="Libellé de l'étape">
+                        <div class="rtp-jrow">
+                          <input class="input" type="number" min="0" [(ngModel)]="etapeEdit.jDebut" name="etJd{{ e.id }}" placeholder="J début">
+                          <input class="input" type="number" min="0" [(ngModel)]="etapeEdit.jFin" name="etJf{{ e.id }}" placeholder="J fin">
+                        </div>
+                        <textarea class="input" rows="2" [(ngModel)]="etapeEdit.description" name="etDesc{{ e.id }}" placeholder="Détail des actions…"></textarea>
+                        <div class="bl-drawer__actions">
+                          <button type="button" class="al-link" (click)="annulerEditionEtape()">Annuler</button>
+                          <button type="button" class="btn btn--primary btn--sm" [disabled]="!etapeEdit.libelle.trim()" (click)="enregistrerEtape()">✓ Enregistrer</button>
+                        </div>
+                      } @else {
+                        <div class="bl-phase__head">
+                          <span class="bl-phase__title">{{ e.libelle }}</span>
+                          @if (e.jDebut != null && e.jFin != null) { <span class="bl-phase__j">J{{ e.jDebut }} – J{{ e.jFin }}</span> }
+                        </div>
+                        @if (e.description) { <p class="bl-phase__desc">{{ e.description }}</p> }
+                        <div class="bl-phase__foot">
+                          <span class="bl-phase__statut">{{ ETAPE_LABELS[e.statut] }}@if (e.dateValidation) { · {{ e.dateValidation | date:'dd/MM' }} }</span>
+                          @if (auth.canEcrireBlessures()) {
+                            <span class="rtp-etacts">
+                              <button type="button" class="doc-iconbtn" title="Monter" [disabled]="i === 0" (click)="deplacerEtape(e, -1)">↑</button>
+                              <button type="button" class="doc-iconbtn" title="Descendre" [disabled]="dernier" (click)="deplacerEtape(e, 1)">↓</button>
+                              <button type="button" class="doc-iconbtn" title="Modifier" (click)="commencerEditionEtape(e)">✎</button>
+                              <button type="button" class="doc-iconbtn doc-iconbtn--danger" title="Supprimer" (click)="supprimerEtape(e)">🗑</button>
+                            </span>
+                          }
+                        </div>
+                      }
                     </div>
                   </li>
                 }
               </ol>
+
               @if (auth.canEcrireBlessures()) {
-                <button type="button" class="al-link al-link--danger" style="margin-top:12px" (click)="supprimerRtp()">Réinitialiser le protocole</button>
+                @if (showAjoutEtape()) {
+                  <div class="bl-phase__card rtp-ajout">
+                    <input class="input" [(ngModel)]="etapeEdit.libelle" name="newEtLib" placeholder="Libellé de la nouvelle étape">
+                    <div class="rtp-jrow">
+                      <input class="input" type="number" min="0" [(ngModel)]="etapeEdit.jDebut" name="newEtJd" placeholder="J début">
+                      <input class="input" type="number" min="0" [(ngModel)]="etapeEdit.jFin" name="newEtJf" placeholder="J fin">
+                    </div>
+                    <textarea class="input" rows="2" [(ngModel)]="etapeEdit.description" name="newEtDesc" placeholder="Détail des actions…"></textarea>
+                    <div class="bl-drawer__actions">
+                      <button type="button" class="al-link" (click)="annulerEditionEtape()">Annuler</button>
+                      <button type="button" class="btn btn--primary btn--sm" [disabled]="!etapeEdit.libelle.trim()" (click)="enregistrerEtape()">+ Ajouter</button>
+                    </div>
+                  </div>
+                } @else {
+                  <button type="button" class="bl-genbtn" style="margin-top:12px" (click)="ouvrirAjoutEtape()">+ Ajouter une étape</button>
+                }
+                <div class="bl-drawer__actions" style="margin-top:12px">
+                  <button type="button" class="al-link" (click)="enregistrerCommeModele()">Enregistrer comme modèle</button>
+                  <button type="button" class="al-link al-link--danger" (click)="supprimerRtp()">Réinitialiser le protocole</button>
+                </div>
               }
             }
+          }
+
+          @if (suiviTab() === 'administratif' && peutQualifier) {
+            <p class="bl-label">Qualification administrative</p>
+            <div class="bl-seg">
+              @for (q of QUALIFS; track q.val) {
+                <button type="button" class="bl-seg__opt" [class.is-on]="(b.qualificationAdministrative ?? 'AUCUNE') === q.val" (click)="qualifier(b, q.val)">{{ q.label }}</button>
+              }
+            </div>
+
+            <p class="bl-label bl-label--mt">Déclarations (arrêt / accident de travail)</p>
+            @if (declarations().length === 0) {
+              <div class="empty-state" style="padding:12px 0">Aucune déclaration déposée.</div>
+            } @else {
+              <div class="bl-journal">
+                @for (d of declarations(); track d.id) {
+                  <div class="bl-note">
+                    <div class="bl-note__head">
+                      <span class="bl-note__who">{{ catMeta(d.categorie).icon }} {{ catMeta(d.categorie).label }}</span>
+                      <span class="bl-note__date">{{ d.dateDepot | date:'dd/MM/yyyy' }}</span>
+                    </div>
+                    <p class="bl-note__txt">{{ d.nomOriginal }}@if (d.description) { — {{ d.description }} }</p>
+                    <div class="doc-actions" style="margin-top:6px">
+                      <button type="button" class="doc-iconbtn" title="Télécharger" (click)="telechargerDeclaration(d)">⬇</button>
+                      <button type="button" class="doc-iconbtn doc-iconbtn--danger" title="Supprimer" (click)="supprimerDeclaration(d)">🗑</button>
+                    </div>
+                  </div>
+                }
+              </div>
+            }
+
+            <p class="bl-label bl-label--mt">Déposer une déclaration</p>
+            <div class="bl-seg" style="margin-bottom:8px">
+              <button type="button" class="bl-seg__opt" [class.is-on]="declCategorie === 'arret_travail'" (click)="declCategorie = 'arret_travail'">Arrêt de travail</button>
+              <button type="button" class="bl-seg__opt" [class.is-on]="declCategorie === 'accident_travail'" (click)="declCategorie = 'accident_travail'">Accident de travail</button>
+            </div>
+            <input class="input" type="file" accept=".pdf,.jpg,.jpeg,.png" (change)="onDeclFile($event)" name="declFichier">
+            <input class="input" style="margin-top:8px" [(ngModel)]="declDescription" name="declDesc" placeholder="Description (optionnel)…">
+            <div class="bl-drawer__actions" style="margin-top:10px">
+              <button type="button" class="btn btn--primary btn--sm" [disabled]="savingDecl() || !declFile()" (click)="deposerDeclaration()">{{ savingDecl() ? 'Envoi…' : '⬆ Envoyer' }}</button>
+            </div>
           }
 
           @if (suiviTab() === 'journal') {
@@ -818,7 +951,7 @@
       }
     </div>
 
-    <!-- ══ MODALE Ajouter un document ══ -->
+    <!-- ══ MODALE Ajouter un document (voir plus bas) ══ -->
     @if (showDocForm() && auth.canEcrireBlessures()) {
       <div class="bl-overlay" (click)="annulerDepotDoc()">
         <div class="bl-modal" (click)="$event.stopPropagation()">
@@ -864,6 +997,135 @@
             <div class="bl-modal__foot">
               <button type="button" class="al-link" (click)="annulerDepotDoc()">Annuler</button>
               <button type="submit" class="btn btn--primary" [disabled]="savingDoc() || !docFile() || !docForm.joueurId">{{ savingDoc() ? 'Envoi…' : '⬆ Envoyer' }}</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    }
+  }
+
+  <!-- ═══════════════════════════════════════
+       SECTION : PROTOCOLES DE REPRISE (bibliothèque du club)
+       ═══════════════════════════════════════ -->
+  @if (section() === 'protocoles') {
+
+    <div class="bl-head">
+      <p class="bl-head__title">Protocoles types <span class="bl-head__count">({{ protocoles().length }})</span></p>
+      @if (auth.canEcrireBlessures()) {
+        <button class="btn btn--primary" (click)="nouveauProto()">+ Nouveau protocole</button>
+      }
+    </div>
+
+    @if (protocoles().length === 0) {
+      <div class="card card--padded"><div class="empty-state">Aucun protocole type.</div></div>
+    } @else {
+      <div class="proto-grid">
+        @for (m of protocoles(); track m.id) {
+          <div class="proto-card" [class.proto-card--off]="!m.actif">
+            <div class="proto-card__head">
+              <span class="proto-card__nom">{{ m.nom }}</span>
+              @if (!m.actif) { <span class="badge badge--neutral">Inactif</span> }
+            </div>
+            @if (m.description) { <p class="proto-card__desc">{{ m.description }}</p> }
+            <p class="proto-card__criteres">🎯 {{ criteresLabel(m) }}</p>
+            <ol class="proto-card__etapes">
+              @for (e of m.etapes; track $index) {
+                <li>{{ e.libelle }}@if (e.jDebut != null && e.jFin != null) { <span class="proto-card__j">J{{ e.jDebut }}–J{{ e.jFin }}</span> }</li>
+              }
+            </ol>
+            @if (auth.canEcrireBlessures()) {
+              <div class="proto-card__acts">
+                <button class="al-link" (click)="editerProto(m)">Modifier</button>
+                <button class="al-link" (click)="dupliquerProto(m)">Dupliquer</button>
+                <button class="al-link al-link--danger" (click)="supprimerProto(m)">Supprimer</button>
+              </div>
+            }
+          </div>
+        }
+      </div>
+    }
+
+    <!-- ══ MODALE Protocole type ══ -->
+    @if (showProtoForm() && auth.canEcrireBlessures()) {
+      <div class="bl-overlay" (click)="annulerProto()">
+        <div class="bl-modal bl-modal--large" (click)="$event.stopPropagation()">
+          <div class="bl-modal__head">
+            <div>
+              <h3 class="bl-modal__title">{{ protoEditingId() ? 'Modifier le protocole' : 'Nouveau protocole' }}</h3>
+              <p class="bl-modal__sub">Les protocoles déjà lancés sur des blessures ne sont jamais modifiés.</p>
+            </div>
+            <button type="button" class="bl-modal__close" (click)="annulerProto()">×</button>
+          </div>
+          <form class="bl-modal__body" (ngSubmit)="enregistrerProto()">
+            <div class="bl-row2">
+              <div class="bl-field"><label class="bl-label">Nom</label><input class="input" [(ngModel)]="protoForm.nom" name="protoNom" placeholder="Ex. Reprise entorse cheville"></div>
+              <div class="bl-field">
+                <label class="bl-label">Actif</label>
+                <label class="bl-switch">
+                  <input type="checkbox" [(ngModel)]="protoForm.actif" name="protoActif">
+                  <span class="bl-switch__track"></span>
+                  <span class="bl-switch__txt">{{ protoForm.actif ? 'Oui' : 'Non' }}</span>
+                </label>
+              </div>
+            </div>
+            <div class="bl-field">
+              <label class="bl-label">Description</label>
+              <textarea class="input" rows="2" [(ngModel)]="protoForm.description" name="protoDesc" placeholder="Objectif du protocole…"></textarea>
+            </div>
+
+            <p class="bl-label">Suggestion automatique — s'applique quand la blessure correspond (vide = tous)</p>
+            <div class="bl-field">
+              <label class="bl-label bl-label--sub">Types de blessure</label>
+              <div class="bl-chips">
+                @for (t of types; track t.val) {
+                  <button type="button" class="bl-chip" [class.is-on]="protoForm.typesBlessure.includes(t.val)" (click)="toggleCritere(protoForm.typesBlessure, t.val)">{{ t.label }}</button>
+                }
+              </div>
+            </div>
+            <div class="bl-field">
+              <label class="bl-label bl-label--sub">Zones corporelles</label>
+              @for (g of zonesGroupes; track g.region) {
+                <p class="bl-region">{{ g.region }}</p>
+                <div class="bl-chips">
+                  @for (z of g.zones; track z.val) {
+                    <button type="button" class="bl-chip" [class.is-on]="protoForm.zonesCorporelles.includes(z.val)" (click)="toggleCritere(protoForm.zonesCorporelles, z.val)">{{ z.label }}</button>
+                  }
+                </div>
+              }
+            </div>
+            <div class="bl-field">
+              <label class="bl-label bl-label--sub">Gravités</label>
+              <div class="bl-chips">
+                @for (gv of gravites; track gv.val) {
+                  <button type="button" class="bl-chip" [class.is-on]="protoForm.gravites.includes(gv.val)" (click)="toggleCritere(protoForm.gravites, gv.val)">{{ gv.label }}</button>
+                }
+              </div>
+            </div>
+
+            <p class="bl-label">Étapes du protocole</p>
+            @for (e of protoForm.etapes; track $index; let i = $index; let derniere = $last) {
+              <div class="proto-etape">
+                <div class="proto-etape__num">{{ i + 1 }}</div>
+                <div class="proto-etape__fields">
+                  <input class="input" [(ngModel)]="e.libelle" name="petLib{{ i }}" placeholder="Libellé de l'étape">
+                  <div class="rtp-jrow">
+                    <input class="input" type="number" min="0" [(ngModel)]="e.jDebut" name="petJd{{ i }}" placeholder="J début">
+                    <input class="input" type="number" min="0" [(ngModel)]="e.jFin" name="petJf{{ i }}" placeholder="J fin">
+                  </div>
+                  <textarea class="input" rows="2" [(ngModel)]="e.description" name="petDesc{{ i }}" placeholder="Détail des actions…"></textarea>
+                </div>
+                <div class="proto-etape__acts">
+                  <button type="button" class="doc-iconbtn" title="Monter" [disabled]="i === 0" (click)="deplacerEtapeProto(i, -1)">↑</button>
+                  <button type="button" class="doc-iconbtn" title="Descendre" [disabled]="derniere" (click)="deplacerEtapeProto(i, 1)">↓</button>
+                  <button type="button" class="doc-iconbtn doc-iconbtn--danger" title="Retirer" [disabled]="protoForm.etapes.length === 1" (click)="retirerEtapeProto(i)">🗑</button>
+                </div>
+              </div>
+            }
+            <button type="button" class="bl-genbtn" (click)="ajouterEtapeProto()">+ Ajouter une étape</button>
+
+            <div class="bl-modal__foot">
+              <button type="button" class="al-link" (click)="annulerProto()">Annuler</button>
+              <button type="submit" class="btn btn--primary" [disabled]="savingProto() || !protoFormValide">{{ savingProto() ? 'Enregistrement…' : '✓ Enregistrer' }}</button>
             </div>
           </form>
         </div>

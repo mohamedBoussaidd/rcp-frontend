@@ -112,11 +112,13 @@ const ALL_MODULES: NavModule[] = [
   {
     key: 'medical', label: 'Médical', icon: 'healing',
     link: '/medical', query: { section: 'alertes' }, matches: ['/medical', '/mon-espace', '/suivi-subjectif', '/mes-blessures'],
-    roles: ['SUPER_ADMIN', 'PRESIDENT', 'ENTRAINEUR', 'PREPARATEUR', 'MEDICAL', 'JOUEUR'],
+    roles: ['SUPER_ADMIN', 'PRESIDENT', 'ENTRAINEUR', 'PREPARATEUR', 'MEDICAL', 'ADMINISTRATIF', 'JOUEUR'],
     module: 'medical',
     subnav: [
       { label: 'Alertes',                       link: '/medical', section: 'alertes', default: true, roles: ['SUPER_ADMIN', 'PRESIDENT', 'ENTRAINEUR', 'PREPARATEUR', 'MEDICAL'], module: 'medical' },
-      { label: 'Blessures',                     link: '/medical', section: 'blessures', roles: ['SUPER_ADMIN', 'PRESIDENT', 'ENTRAINEUR', 'PREPARATEUR', 'MEDICAL'], module: 'medical' },
+      // Administratif : accès blessures pour la qualification arrêt/accident + déclarations (V57).
+      { label: 'Blessures',                     link: '/medical', section: 'blessures', roles: ['SUPER_ADMIN', 'PRESIDENT', 'ENTRAINEUR', 'PREPARATEUR', 'MEDICAL', 'ADMINISTRATIF'], module: 'medical' },
+      { label: 'Protocoles',                    link: '/medical', section: 'protocoles', roles: ['SUPER_ADMIN', 'PRESIDENT', 'MEDICAL'], module: 'medical' },
       { label: 'Bilan blessures',               link: '/medical', section: 'bilan', roles: ['SUPER_ADMIN', 'PRESIDENT', 'ENTRAINEUR', 'PREPARATEUR', 'MEDICAL'], module: 'medical' },
       { label: 'Documents',                     link: '/medical', section: 'documents', roles: ['SUPER_ADMIN', 'PRESIDENT', 'ENTRAINEUR', 'PREPARATEUR', 'MEDICAL'], module: 'medical' },
       { label: 'Mon suivi',                     link: '/suivi-subjectif', roles: ['JOUEUR'], module: 'wellness' },

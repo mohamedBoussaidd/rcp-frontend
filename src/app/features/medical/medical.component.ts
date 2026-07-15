@@ -5,8 +5,9 @@ import { map } from 'rxjs';
 import { FormsModule } from '@angular/forms';
 import { DatePipe, LowerCasePipe } from '@angular/common';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { Blessure, BlessureRequest, BlessureService, StatutBlessure } from '@core/services/blessure.service';
+import { Blessure, BlessureRequest, BlessureService, QualificationAdministrative, StatutBlessure } from '@core/services/blessure.service';
 import { BlessureNote, RtpEtape, StatutEtape, BlessureSuiviService } from '@core/services/blessure-suivi.service';
+import { ProtocoleModele, ProtocoleModeleEtape, ProtocoleModeleRequest, ProtocoleModeleService } from '@core/services/protocole-modele.service';
 import { DocumentMedical, DocumentMedicalService } from '@core/services/document-medical.service';
 import { Wellness, Rpe, SuiviSubjectifService } from '@core/services/suivi-subjectif.service';
 import { PredictionService, ResumeJoueur } from '@core/services/prediction.service';
@@ -31,33 +32,74 @@ export class MedicalComponent implements OnInit {
     { initialValue: 'alertes' },
   );
 
-  readonly zones: { val: string; label: string }[] = [
-    { val: 'cheville',       label: 'Cheville' },
-    { val: 'genou',          label: 'Genou' },
-    { val: 'ischio_jambier', label: 'Ischio-jambier' },
-    { val: 'quadriceps',     label: 'Quadriceps' },
-    { val: 'adducteur',      label: 'Adducteur' },
-    { val: 'mollet',         label: 'Mollet' },
-    { val: 'aine',           label: 'Aine' },
-    { val: 'dos',            label: 'Dos' },
-    { val: 'epaule',         label: 'Épaule' },
-    { val: 'poignet',        label: 'Poignet' },
-    { val: 'pied',           label: 'Pied' },
-    { val: 'hanche',         label: 'Hanche' },
-    { val: 'tendon_achille', label: "Tendon d'Achille" },
-    { val: 'cervicales',     label: 'Cervicales' },
+  /** Zones groupées par région pour le formulaire (liste complète tête/tronc + membres). */
+  readonly zonesGroupes: { region: string; zones: { val: string; label: string }[] }[] = [
+    {
+      region: 'Tête & tronc',
+      zones: [
+        { val: 'tete_visage',    label: 'Tête / visage' },
+        { val: 'cervicales',     label: 'Cervicales' },
+        { val: 'thorax_cotes',   label: 'Thorax / côtes' },
+        { val: 'abdomen',        label: 'Abdomen' },
+        { val: 'dos',            label: 'Dos' },
+        { val: 'lombaires',      label: 'Lombaires' },
+        { val: 'bassin',         label: 'Bassin' },
+      ],
+    },
+    {
+      region: 'Membres supérieurs',
+      zones: [
+        { val: 'epaule',         label: 'Épaule' },
+        { val: 'bras',           label: 'Bras' },
+        { val: 'coude',          label: 'Coude' },
+        { val: 'avant_bras',     label: 'Avant-bras' },
+        { val: 'poignet',        label: 'Poignet' },
+        { val: 'main_doigts',    label: 'Main / doigts' },
+      ],
+    },
+    {
+      region: 'Membres inférieurs',
+      zones: [
+        { val: 'hanche',         label: 'Hanche' },
+        { val: 'aine',           label: 'Aine' },
+        { val: 'adducteur',      label: 'Adducteur' },
+        { val: 'quadriceps',     label: 'Quadriceps' },
+        { val: 'ischio_jambier', label: 'Ischio-jambier' },
+        { val: 'genou',          label: 'Genou' },
+        { val: 'mollet',         label: 'Mollet' },
+        { val: 'tibia',          label: 'Tibia' },
+        { val: 'tendon_achille', label: "Tendon d'Achille" },
+        { val: 'cheville',       label: 'Cheville' },
+        { val: 'pied',           label: 'Pied / orteils' },
+      ],
+    },
+    {
+      region: 'Autre',
+      zones: [
+        { val: 'autre',          label: 'Autre (préciser)' },
+      ],
+    },
   ];
+  /** Liste à plat (labels, stats, graphiques). */
+  readonly zones: { val: string; label: string }[] = this.zonesGroupes.flatMap(g => g.zones);
   readonly types: { val: string; label: string }[] = [
     { val: 'entorse',           label: 'Entorse' },
     { val: 'dechirure',         label: 'Déchirure' },
     { val: 'contracture',       label: 'Contracture' },
     { val: 'elongation',        label: 'Élongation' },
     { val: 'fracture',          label: 'Fracture' },
+    { val: 'fracture_fatigue',  label: 'Fracture de fatigue' },
     { val: 'luxation',          label: 'Luxation' },
     { val: 'tendinite',         label: 'Tendinite' },
+    { val: 'periostite',        label: 'Périostite' },
+    { val: 'pubalgie',          label: 'Pubalgie' },
     { val: 'contusion',         label: 'Contusion' },
     { val: 'lesion_musculaire', label: 'Lésion musculaire' },
-    { val: 'autre',             label: 'Autre' },
+    { val: 'commotion',         label: 'Commotion cérébrale' },
+    { val: 'plaie',             label: 'Plaie / coupure' },
+    { val: 'malaise_pathologie', label: 'Malaise / pathologie' },
+    { val: 'maladie',           label: 'Maladie' },
+    { val: 'autre',             label: 'Autre (préciser)' },
   ];
   readonly cotes: { val: string; label: string }[] = [
     { val: 'gauche',   label: 'Gauche' },
@@ -80,6 +122,12 @@ export class MedicalComponent implements OnInit {
     { val: 'EN_REPRISE',   label: 'En reprise' },
     { val: 'RETABLI',      label: 'Rétabli' },
   ];
+  readonly QUALIFS: { val: QualificationAdministrative; label: string }[] = [
+    { val: 'AUCUNE',           label: 'Aucune' },
+    { val: 'ARRET_MALADIE',    label: 'Arrêt maladie' },
+    { val: 'ACCIDENT_TRAVAIL', label: 'Accident de travail' },
+  ];
+  qualifLabel(v?: string): string { return this.QUALIFS.find(q => q.val === v)?.label ?? 'Aucune'; }
 
   blessures = signal<Blessure[]>([]);
   joueurs   = signal<Joueur[]>([]);
@@ -98,9 +146,11 @@ export class MedicalComponent implements OnInit {
     bilan_sanguin: { label: 'Bilan sanguin', color: '#e11d48', icon: '🩸' },
     certificat:    { label: 'Certificat',    color: '#3b82f6', icon: '📄' },
     ordonnance:    { label: 'Ordonnance',    color: '#16a34a', icon: '💊' },
+    arret_travail:    { label: 'Arrêt de travail',    color: '#d97706', icon: '📋' },
+    accident_travail: { label: 'Accident de travail', color: '#dc2626', icon: '📋' },
     autre:         { label: 'Autre',         color: '#64748b', icon: '📎' },
   };
-  readonly CATEGORIES_DOC_LIST = ['irm', 'radio', 'echographie', 'bilan_sanguin', 'certificat', 'ordonnance', 'autre'];
+  readonly CATEGORIES_DOC_LIST = ['irm', 'radio', 'echographie', 'bilan_sanguin', 'certificat', 'ordonnance', 'arret_travail', 'accident_travail', 'autre'];
   catMeta(v?: string): { label: string; color: string; icon: string } {
     return this.CAT_META[v ?? ''] ?? { label: this.joliLabel(v), color: '#64748b', icon: '📎' };
   }
@@ -189,7 +239,7 @@ export class MedicalComponent implements OnInit {
   /** Refonte Blessures : vue grille/liste, étapes de la modale, onglet du drawer. */
   vueBlessures = signal<'grille' | 'liste'>('grille');
   formStep     = signal(1);
-  suiviTab     = signal<'resume' | 'protocole' | 'journal'>('resume');
+  suiviTab     = signal<'resume' | 'protocole' | 'journal' | 'administratif'>('resume');
 
   private joueursMap = computed(() => new Map(this.joueurs().map(j => [j.id, j])));
 
@@ -206,6 +256,13 @@ export class MedicalComponent implements OnInit {
   labelDe(list: { val: string; label: string }[], val?: string): string {
     if (!val) return '—';
     return list.find(x => x.val === val)?.label ?? this.joliLabel(val);
+  }
+  /** Libellé de zone/type en tenant compte de la précision saisie quand « autre ». */
+  zoneAffichee(b: Blessure): string {
+    return b.zoneCorporelle === 'autre' && b.zonePrecision ? b.zonePrecision : this.labelDe(this.zones, b.zoneCorporelle);
+  }
+  typeAffiche(b: Blessure): string {
+    return b.typeBlessure === 'autre' && b.typePrecision ? b.typePrecision : this.labelDe(this.types, b.typeBlessure);
   }
 
   joursDepuis(b: Blessure): number {
@@ -242,9 +299,11 @@ export class MedicalComponent implements OnInit {
     const payload: BlessureRequest = {
       joueurId: b.joueurId, dateBlessure: b.dateBlessure,
       dateRetourEffectif: b.dateRetourEffectif || null, dateRetourPrevue: b.dateRetourPrevue || null,
-      statut, typeBlessure: b.typeBlessure, zoneCorporelle: b.zoneCorporelle, cote: b.cote,
+      statut, typeBlessure: b.typeBlessure, typePrecision: b.typePrecision,
+      zoneCorporelle: b.zoneCorporelle, zonePrecision: b.zonePrecision, cote: b.cote,
       gravite: b.gravite, causeProbable: b.causeProbable, recidive: b.recidive,
       commentaire: b.commentaire, notesMedicales: b.notesMedicales,
+      qualificationAdministrative: b.qualificationAdministrative,
     };
     this.blessureService.modifier(b.id, payload).subscribe({
       next: maj => { this.suiviBlessure.set(maj); this.charger(); },
@@ -349,14 +408,18 @@ export class MedicalComponent implements OnInit {
   private documentService = inject(DocumentMedicalService);
   private suiviService = inject(SuiviSubjectifService);
   private blessureSuiviService = inject(BlessureSuiviService);
+  private protocoleService = inject(ProtocoleModeleService);
   private predictionService = inject(PredictionService);
   private joueurService = inject(JoueurService);
   private snack = inject(MatSnackBar);
   auth = inject(AuthService);
 
+  /** Qualification administrative & déclarations : médical + président + administratif. */
+  get peutQualifier(): boolean { return this.auth.has('blessures:qualify'); }
+
   ngOnInit(): void {
     this.joueurService.getAll().subscribe({ next: j => this.joueurs.set(j), error: () => {} });
-    this.charger(); this.chargerDocuments(); this.chargerSuivi();
+    this.charger(); this.chargerDocuments(); this.chargerSuivi(); this.chargerProtocoles();
     this.predictionService.getResumeEquipe().subscribe({ next: d => this.joueursRisque.set(d), error: () => {} });
     this.suiviService.getWellness().subscribe({ next: d => this.wellnessAlertes.set(d), error: () => {} });
   }
@@ -373,7 +436,7 @@ export class MedicalComponent implements OnInit {
   annuler(): void  { this.showForm.set(false); this.editingId.set(null); this.geneEnConversion.set(null); this.formStep.set(1); }
   editer(b: Blessure): void {
     this.editingId.set(b.id);
-    this.form = { joueurId: b.joueurId, dateBlessure: b.dateBlessure, dateRetourEffectif: b.dateRetourEffectif ?? '', dateRetourPrevue: b.dateRetourPrevue ?? '', statut: b.statut, typeBlessure: b.typeBlessure, zoneCorporelle: b.zoneCorporelle, cote: b.cote, gravite: b.gravite, causeProbable: b.causeProbable, recidive: b.recidive, commentaire: b.commentaire, notesMedicales: b.notesMedicales };
+    this.form = { joueurId: b.joueurId, dateBlessure: b.dateBlessure, dateRetourEffectif: b.dateRetourEffectif ?? '', dateRetourPrevue: b.dateRetourPrevue ?? '', statut: b.statut, typeBlessure: b.typeBlessure, typePrecision: b.typePrecision ?? '', zoneCorporelle: b.zoneCorporelle, zonePrecision: b.zonePrecision ?? '', cote: b.cote, gravite: b.gravite, causeProbable: b.causeProbable, recidive: b.recidive, commentaire: b.commentaire, notesMedicales: b.notesMedicales, qualificationAdministrative: b.qualificationAdministrative ?? 'AUCUNE' };
     this.formStep.set(1);
     this.showForm.set(true);
   }
@@ -442,8 +505,15 @@ export class MedicalComponent implements OnInit {
     this.suiviBlessure.set(b); this.noteTexte.set(''); this.suiviTab.set('resume');
     this.blessureSuiviService.listerNotes(b.id).subscribe({ next: d => this.notes.set(d), error: () => {} });
     this.blessureSuiviService.listerRtp(b.id).subscribe({ next: d => this.rtp.set(d), error: () => {} });
+    this.declarations.set([]);
+    if (this.peutQualifier) {
+      this.documentService.listerDeclarations(b.id).subscribe({ next: d => this.declarations.set(d), error: () => {} });
+    }
   }
-  fermerSuivi(): void { this.suiviBlessure.set(null); this.notes.set([]); this.rtp.set([]); }
+  fermerSuivi(): void {
+    this.suiviBlessure.set(null); this.notes.set([]); this.rtp.set([]);
+    this.declarations.set([]); this.annulerInitRtp(); this.annulerEditionEtape(); this.showAjoutEtape.set(false);
+  }
 
   ajouterNote(): void {
     const b = this.suiviBlessure(); const texte = this.noteTexte().trim();
@@ -454,20 +524,153 @@ export class MedicalComponent implements OnInit {
     const b = this.suiviBlessure(); if (!b) return;
     this.blessureSuiviService.supprimerNote(b.id, n.id).subscribe({ next: () => this.notes.update(l => l.filter(x => x.id !== n.id)), error: () => {} });
   }
+  // ── Initialisation du protocole depuis un modèle (choix + suggestion) ──
+  showRtpInit      = signal(false);
+  rtpModelesActifs = signal<ProtocoleModele[]>([]);
+  rtpSuggestionId  = signal<string | null>(null);
+  rtpModeleChoisi  = signal<string>('');
+
   initRtp(): void {
     const b = this.suiviBlessure(); if (!b) return;
-    this.blessureSuiviService.initialiserRtp(b.id).subscribe({ next: d => this.rtp.set(d), error: () => this.snack.open('Protocole déjà initialisé', 'Fermer', { duration: 3000 }) });
+    this.protocoleService.lister().subscribe({
+      next: modeles => {
+        this.rtpModelesActifs.set(modeles.filter(m => m.actif));
+        this.showRtpInit.set(true);
+        this.blessureSuiviService.suggestion(b.id).subscribe({
+          next: s => { this.rtpSuggestionId.set(s?.id ?? null); this.rtpModeleChoisi.set(s?.id ?? modeles.find(m => m.actif)?.id ?? ''); },
+          error: () => { this.rtpSuggestionId.set(null); this.rtpModeleChoisi.set(modeles.find(m => m.actif)?.id ?? ''); },
+        });
+      },
+      error: () => this.snack.open('Chargement des modèles impossible', 'Fermer', { duration: 3000 }),
+    });
   }
+  annulerInitRtp(): void { this.showRtpInit.set(false); this.rtpModeleChoisi.set(''); this.rtpSuggestionId.set(null); }
+  confirmerInitRtp(): void {
+    const b = this.suiviBlessure(); const modeleId = this.rtpModeleChoisi();
+    if (!b || !modeleId) return;
+    this.blessureSuiviService.initialiserRtp(b.id, modeleId).subscribe({
+      next: d => { this.rtp.set(d); this.annulerInitRtp(); },
+      error: () => this.snack.open('Initialisation impossible', 'Fermer', { duration: 3000 }),
+    });
+  }
+
+  // ── Édition libre des étapes du protocole en cours ──
+  showAjoutEtape  = signal(false);
+  editingEtapeId  = signal<string | null>(null);
+  etapeEdit: { libelle: string; jDebut: number | null; jFin: number | null; description: string } =
+    { libelle: '', jDebut: null, jFin: null, description: '' };
+
   cyclerEtape(e: RtpEtape): void {
     const b = this.suiviBlessure(); if (!b) return;
     const suivant: StatutEtape = e.statut === 'A_FAIRE' ? 'EN_COURS' : e.statut === 'EN_COURS' ? 'VALIDEE' : 'A_FAIRE';
     this.blessureSuiviService.majEtape(b.id, e.id, suivant).subscribe({ next: maj => this.rtp.update(l => l.map(x => x.id === e.id ? maj : x)), error: () => {} });
+  }
+  ouvrirAjoutEtape(): void {
+    this.editingEtapeId.set(null);
+    this.etapeEdit = { libelle: '', jDebut: null, jFin: null, description: '' };
+    this.showAjoutEtape.set(true);
+  }
+  commencerEditionEtape(e: RtpEtape): void {
+    this.showAjoutEtape.set(false);
+    this.editingEtapeId.set(e.id);
+    this.etapeEdit = { libelle: e.libelle, jDebut: e.jDebut ?? null, jFin: e.jFin ?? null, description: e.description ?? '' };
+  }
+  annulerEditionEtape(): void { this.editingEtapeId.set(null); this.showAjoutEtape.set(false); }
+  enregistrerEtape(): void {
+    const b = this.suiviBlessure(); if (!b || !this.etapeEdit.libelle.trim()) return;
+    const id = this.editingEtapeId();
+    if (id) {
+      // Édition : -1 = « effacer » la fenêtre J côté back (null = inchangé).
+      this.blessureSuiviService.modifierEtape(b.id, id, {
+        libelle: this.etapeEdit.libelle,
+        jDebut: this.etapeEdit.jDebut ?? -1, jFin: this.etapeEdit.jFin ?? -1,
+        description: this.etapeEdit.description,
+      }).subscribe({
+        next: maj => { this.rtp.update(l => l.map(x => x.id === id ? maj : x)); this.annulerEditionEtape(); },
+        error: () => this.snack.open('Modification impossible', 'Fermer', { duration: 3000 }),
+      });
+    } else {
+      this.blessureSuiviService.ajouterEtape(b.id, {
+        libelle: this.etapeEdit.libelle,
+        jDebut: this.etapeEdit.jDebut, jFin: this.etapeEdit.jFin,
+        description: this.etapeEdit.description || null,
+      }).subscribe({
+        next: e => { this.rtp.update(l => [...l, e]); this.annulerEditionEtape(); },
+        error: () => this.snack.open('Ajout impossible', 'Fermer', { duration: 3000 }),
+      });
+    }
+  }
+  supprimerEtape(e: RtpEtape): void {
+    const b = this.suiviBlessure(); if (!b || !confirm(`Supprimer l'étape « ${e.libelle} » ?`)) return;
+    this.blessureSuiviService.supprimerEtape(b.id, e.id).subscribe({
+      next: () => this.rtp.update(l => l.filter(x => x.id !== e.id)),
+      error: () => this.snack.open('Suppression impossible', 'Fermer', { duration: 3000 }),
+    });
+  }
+  deplacerEtape(e: RtpEtape, sens: -1 | 1): void {
+    const b = this.suiviBlessure(); if (!b) return;
+    const ids = this.rtp().map(x => x.id);
+    const i = ids.indexOf(e.id); const j = i + sens;
+    if (i < 0 || j < 0 || j >= ids.length) return;
+    [ids[i], ids[j]] = [ids[j], ids[i]];
+    this.blessureSuiviService.reordonner(b.id, ids).subscribe({
+      next: d => this.rtp.set(d),
+      error: () => this.snack.open('Réordonnancement impossible', 'Fermer', { duration: 3000 }),
+    });
+  }
+  enregistrerCommeModele(): void {
+    const b = this.suiviBlessure(); if (!b) return;
+    const nom = prompt('Nom du nouveau modèle de protocole :');
+    if (!nom || !nom.trim()) return;
+    this.blessureSuiviService.enregistrerCommeModele(b.id, nom.trim()).subscribe({
+      next: m => { this.protocoles.update(l => [...l, m]); this.snack.open(`Modèle « ${m.nom} » enregistré`, 'Fermer', { duration: 3000 }); },
+      error: () => this.snack.open('Enregistrement impossible', 'Fermer', { duration: 3000 }),
+    });
   }
   supprimerRtp(): void {
     const b = this.suiviBlessure(); if (!b || !confirm('Supprimer le protocole de reprise ?')) return;
     this.blessureSuiviService.supprimerRtp(b.id).subscribe({ next: () => this.rtp.set([]), error: () => {} });
   }
   etapeClass(statut: StatutEtape): string { return statut === 'VALIDEE' ? 'et-validee' : statut === 'EN_COURS' ? 'et-encours' : 'et-afaire'; }
+
+  // ── Onglet Administratif : qualification + déclarations (blessures:qualify) ──
+  declarations   = signal<DocumentMedical[]>([]);
+  declFile       = signal<File | null>(null);
+  declCategorie: 'arret_travail' | 'accident_travail' = 'arret_travail';
+  declDescription = '';
+  savingDecl     = signal(false);
+
+  qualifier(b: Blessure, q: QualificationAdministrative): void {
+    if (b.qualificationAdministrative === q) return;
+    this.blessureService.qualifier(b.id, q).subscribe({
+      next: maj => { this.suiviBlessure.set(maj); this.charger(); },
+      error: () => this.snack.open('Qualification impossible', 'Fermer', { duration: 3000 }),
+    });
+  }
+  onDeclFile(e: Event): void { this.declFile.set((e.target as HTMLInputElement).files?.[0] ?? null); }
+  deposerDeclaration(): void {
+    const b = this.suiviBlessure(); const f = this.declFile();
+    if (!b || !f) return;
+    this.savingDecl.set(true);
+    this.documentService.deposerDeclaration(b.id, f, this.declCategorie, this.declDescription).subscribe({
+      next: d => { this.savingDecl.set(false); this.declFile.set(null); this.declDescription = ''; this.declarations.update(l => [d, ...l]); },
+      error: () => { this.savingDecl.set(false); this.snack.open("Échec de l'envoi de la déclaration", 'Fermer', { duration: 3000 }); },
+    });
+  }
+  telechargerDeclaration(d: DocumentMedical): void {
+    const b = this.suiviBlessure(); if (!b) return;
+    this.documentService.telechargerDeclaration(b.id, d.id).subscribe({
+      next: blob => { const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = d.nomOriginal; a.click(); URL.revokeObjectURL(url); },
+      error: () => this.snack.open('Téléchargement impossible', 'Fermer', { duration: 3000 }),
+    });
+  }
+  supprimerDeclaration(d: DocumentMedical): void {
+    const b = this.suiviBlessure(); if (!b || !confirm(`Supprimer « ${d.nomOriginal} » ?`)) return;
+    this.documentService.supprimerDeclaration(b.id, d.id).subscribe({
+      next: () => this.declarations.update(l => l.filter(x => x.id !== d.id)),
+      error: () => this.snack.open('Suppression impossible', 'Fermer', { duration: 3000 }),
+    });
+  }
 
   // ──────────────────────────── BILAN ────────────────────────────
 
@@ -584,7 +787,87 @@ export class MedicalComponent implements OnInit {
   readonly zonesDataLabels: ApexDataLabels = { enabled: false };
   readonly zonesGrid: ApexGrid         = { borderColor: '#eef1f6', strokeDashArray: 4 };
 
+  // ──────────────────────────── PROTOCOLES TYPES (bibliothèque du club) ────────────────────────────
+
+  protocoles     = signal<ProtocoleModele[]>([]);
+  showProtoForm  = signal(false);
+  protoEditingId = signal<string | null>(null);
+  savingProto    = signal(false);
+  protoForm: { nom: string; description: string; actif: boolean; typesBlessure: string[]; zonesCorporelles: string[]; gravites: string[]; etapes: ProtocoleModeleEtape[] } = this.protoFormVide();
+
+  private protoFormVide() {
+    return { nom: '', description: '', actif: true, typesBlessure: [] as string[], zonesCorporelles: [] as string[], gravites: [] as string[], etapes: [{ libelle: '', jDebut: null, jFin: null, description: '' }] as ProtocoleModeleEtape[] };
+  }
+
+  chargerProtocoles(): void {
+    this.protocoleService.lister().subscribe({ next: p => this.protocoles.set(p), error: () => {} });
+  }
+
+  /** Critères d'un modèle en libellés courts (badges de la liste). */
+  criteresLabel(m: ProtocoleModele): string {
+    const parts: string[] = [];
+    if (m.typesBlessure.length) parts.push(m.typesBlessure.map(t => this.labelDe(this.types, t)).join(', '));
+    if (m.zonesCorporelles.length) parts.push(m.zonesCorporelles.map(z => this.labelDe(this.zones, z)).join(', '));
+    if (m.gravites.length) parts.push(m.gravites.map(g => this.labelDe(this.gravites, g)).join(', '));
+    return parts.length ? parts.join(' · ') : 'Tous types de blessure';
+  }
+
+  nouveauProto(): void { this.protoEditingId.set(null); this.protoForm = this.protoFormVide(); this.showProtoForm.set(true); }
+  editerProto(m: ProtocoleModele): void {
+    this.protoEditingId.set(m.id);
+    this.protoForm = {
+      nom: m.nom, description: m.description ?? '', actif: m.actif,
+      typesBlessure: [...m.typesBlessure], zonesCorporelles: [...m.zonesCorporelles], gravites: [...m.gravites],
+      etapes: m.etapes.map(e => ({ libelle: e.libelle, jDebut: e.jDebut ?? null, jFin: e.jFin ?? null, description: e.description ?? '' })),
+    };
+    this.showProtoForm.set(true);
+  }
+  annulerProto(): void { this.showProtoForm.set(false); this.protoEditingId.set(null); }
+
+  toggleCritere(liste: string[], val: string): void {
+    const i = liste.indexOf(val);
+    if (i >= 0) liste.splice(i, 1); else liste.push(val);
+  }
+  ajouterEtapeProto(): void { this.protoForm.etapes.push({ libelle: '', jDebut: null, jFin: null, description: '' }); }
+  retirerEtapeProto(i: number): void { if (this.protoForm.etapes.length > 1) this.protoForm.etapes.splice(i, 1); }
+  deplacerEtapeProto(i: number, sens: -1 | 1): void {
+    const j = i + sens;
+    if (j < 0 || j >= this.protoForm.etapes.length) return;
+    [this.protoForm.etapes[i], this.protoForm.etapes[j]] = [this.protoForm.etapes[j], this.protoForm.etapes[i]];
+  }
+  get protoFormValide(): boolean {
+    return !!this.protoForm.nom.trim() && this.protoForm.etapes.length > 0 && this.protoForm.etapes.every(e => !!e.libelle.trim());
+  }
+  enregistrerProto(): void {
+    if (!this.protoFormValide) return;
+    this.savingProto.set(true);
+    const req: ProtocoleModeleRequest = {
+      nom: this.protoForm.nom, description: this.protoForm.description || null, actif: this.protoForm.actif,
+      typesBlessure: this.protoForm.typesBlessure, zonesCorporelles: this.protoForm.zonesCorporelles, gravites: this.protoForm.gravites,
+      etapes: this.protoForm.etapes.map(e => ({ libelle: e.libelle, jDebut: e.jDebut, jFin: e.jFin, description: e.description || null })),
+    };
+    const id = this.protoEditingId();
+    const obs = id ? this.protocoleService.modifier(id, req) : this.protocoleService.creer(req);
+    obs.subscribe({
+      next: () => { this.savingProto.set(false); this.annulerProto(); this.chargerProtocoles(); },
+      error: () => { this.savingProto.set(false); this.snack.open("Erreur lors de l'enregistrement", 'Fermer', { duration: 3000 }); },
+    });
+  }
+  dupliquerProto(m: ProtocoleModele): void {
+    this.protocoleService.dupliquer(m.id).subscribe({
+      next: copie => { this.chargerProtocoles(); this.editerProto(copie); },
+      error: () => this.snack.open('Duplication impossible', 'Fermer', { duration: 3000 }),
+    });
+  }
+  supprimerProto(m: ProtocoleModele): void {
+    if (!confirm(`Supprimer le modèle « ${m.nom} » ? Les protocoles déjà lancés ne sont pas touchés.`)) return;
+    this.protocoleService.supprimer(m.id).subscribe({
+      next: () => this.protocoles.update(l => l.filter(x => x.id !== m.id)),
+      error: () => this.snack.open('Suppression impossible', 'Fermer', { duration: 3000 }),
+    });
+  }
+
   private formVide(): BlessureRequest {
-    return { joueurId: '', dateBlessure: new Date().toISOString().slice(0, 10), dateRetourEffectif: '', dateRetourPrevue: '', statut: 'INDISPONIBLE', typeBlessure: '', zoneCorporelle: '', cote: '', gravite: '', causeProbable: '', recidive: false, commentaire: '', notesMedicales: '' };
+    return { joueurId: '', dateBlessure: new Date().toISOString().slice(0, 10), dateRetourEffectif: '', dateRetourPrevue: '', statut: 'INDISPONIBLE', typeBlessure: '', typePrecision: '', zoneCorporelle: '', zonePrecision: '', cote: '', gravite: '', causeProbable: '', recidive: false, commentaire: '', notesMedicales: '', qualificationAdministrative: 'AUCUNE' };
   }
 }

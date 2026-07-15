@@ -7,6 +7,8 @@ export interface DocumentMedical {
   joueurId: string;
   joueurNom?: string;
   joueurPrenom?: string;
+  /** Renseigné pour une déclaration (arrêt / accident de travail) rattachée à une blessure. */
+  blessureId?: string;
   nomOriginal: string;
   typeMime: string;
   tailleOctets: number;
@@ -45,5 +47,28 @@ export class DocumentMedicalService {
 
   supprimer(id: string): Observable<void> {
     return this.http.delete<void>(`${this.base}/${id}`);
+  }
+
+  // ── Déclarations (arrêt / accident de travail) d'une blessure — blessures:qualify ──
+
+  listerDeclarations(blessureId: string): Observable<DocumentMedical[]> {
+    return this.http.get<DocumentMedical[]>(`/api/blessures/${blessureId}/declarations`);
+  }
+
+  deposerDeclaration(blessureId: string, fichier: File, categorie: 'arret_travail' | 'accident_travail',
+                     description?: string): Observable<DocumentMedical> {
+    const fd = new FormData();
+    fd.append('fichier', fichier);
+    fd.append('categorie', categorie);
+    if (description) fd.append('description', description);
+    return this.http.post<DocumentMedical>(`/api/blessures/${blessureId}/declarations`, fd);
+  }
+
+  telechargerDeclaration(blessureId: string, id: string): Observable<Blob> {
+    return this.http.get(`/api/blessures/${blessureId}/declarations/${id}/fichier`, { responseType: 'blob' });
+  }
+
+  supprimerDeclaration(blessureId: string, id: string): Observable<void> {
+    return this.http.delete<void>(`/api/blessures/${blessureId}/declarations/${id}`);
   }
 }

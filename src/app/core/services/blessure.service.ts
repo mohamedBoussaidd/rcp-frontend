@@ -14,15 +14,20 @@ export interface Blessure {
   dateRetourPrevue?: string;
   statut: StatutBlessure;
   typeBlessure?: string;
+  typePrecision?: string;
   zoneCorporelle?: string;
+  zonePrecision?: string;
   cote?: string;
   gravite?: string;
   causeProbable?: string;
   recidive: boolean;
   commentaire?: string;
   notesMedicales?: string;
+  qualificationAdministrative?: QualificationAdministrative;
   enCours: boolean;
 }
+
+export type QualificationAdministrative = 'AUCUNE' | 'ARRET_MALADIE' | 'ACCIDENT_TRAVAIL';
 
 export interface BlessureRequest {
   joueurId: string;
@@ -31,13 +36,16 @@ export interface BlessureRequest {
   dateRetourPrevue?: string | null;
   statut?: StatutBlessure;
   typeBlessure?: string;
+  typePrecision?: string;
   zoneCorporelle?: string;
+  zonePrecision?: string;
   cote?: string;
   gravite?: string;
   causeProbable?: string;
   recidive?: boolean;
   commentaire?: string;
   notesMedicales?: string;
+  qualificationAdministrative?: QualificationAdministrative;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -61,5 +69,10 @@ export class BlessureService {
 
   supprimer(id: string): Observable<void> {
     return this.http.delete<void>(`${this.base}/${id}`);
+  }
+
+  /** Qualification administrative seule (blessures:qualify : médical, président, administratif). */
+  qualifier(id: string, qualification: QualificationAdministrative): Observable<Blessure> {
+    return this.http.patch<Blessure>(`${this.base}/${id}/qualification`, { qualification });
   }
 }

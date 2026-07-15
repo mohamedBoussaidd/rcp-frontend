@@ -41,7 +41,7 @@ export const routes: Routes = [
     loadComponent: () => import('./features/admin/mon-club/mon-club.component').then(m => m.MonClubComponent)
   },
   {
-    path: 'medical', canActivate: [authGuard, roleGuard, contexteGuard, saisonGuard, moduleGuard], data: { roles: ['ENTRAINEUR', 'PREPARATEUR', 'MEDICAL', 'PRESIDENT', 'SUPER_ADMIN'], module: 'medical' },
+    path: 'medical', canActivate: [authGuard, roleGuard, contexteGuard, saisonGuard, moduleGuard], data: { roles: ['ENTRAINEUR', 'PREPARATEUR', 'MEDICAL', 'PRESIDENT', 'ADMINISTRATIF', 'SUPER_ADMIN'], module: 'medical' },
     loadComponent: () => import('./features/medical/medical.component').then(m => m.MedicalComponent)
   },
   {
