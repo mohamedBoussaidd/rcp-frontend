@@ -1,0 +1,25 @@
+:host { display: block; }
+
+.jb-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-2xl);
+  box-shadow: var(--shadow-xs);
+  padding: 16px;
+  margin-bottom: 10px;
+
+  &__head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  &__titre { font-weight: 800; font-size: 15px; text-transform: capitalize; }
+  &__meta { font-size: 13px; color: var(--text-2); margin: 6px 0 12px; }
+}
+
+.jb-badge {
+  font-size: 11px;
+  font-weight: 800;
+  border-radius: var(--r-pill);
+  padding: 4px 10px;
+
+  &--ok { background: var(--green-50); color: var(--green-700); }
+  &--off { background: var(--surface-3); color: var(--text-3); }
+  &--new { background: #fef3c7; color: #b45309; }
+}

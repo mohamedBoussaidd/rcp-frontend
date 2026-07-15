@@ -1,0 +1,61 @@
+@if (chargement()) {
+  <div class="pwa-empty">Chargement…</div>
+} @else if (seances().length === 0) {
+  <div class="pwa-empty">
+    <div class="pwa-empty__ic">✅</div>
+    <div class="pwa-empty__t">Pas de séance aujourd'hui</div>
+    <div class="pwa-empty__s">L'appel se fait sur les séances du jour ({{ aujourdHui | date:'d MMMM':'':'fr' }}).</div>
+  </div>
+} @else {
+
+  <!-- Choix de la séance du jour -->
+  @if (seances().length > 1) {
+    <div class="pwa-chips ap-choix pwa-rise">
+      @for (s of seances(); track s.id) {
+        <button type="button" class="pwa-chip" [class.is-active]="seanceActive()?.id === s.id" (click)="choisirSeance(s)">
+          @if (s.heureDebut) {{{ s.heureDebut }} · }{{ s.titre || s.typeSeance.libelle }}
+        </button>
+      }
+    </div>
+  }
+
+  @if (seanceActive(); as s) {
+    <div class="ap-head pwa-rise">
+      <span class="ap-head__titre">
+        @if (estMatch(s)) { ⚽ } @else { 🏃 } {{ s.titre || s.typeSeance.libelle }}@if (s.adversaire) { — {{ s.adversaire }}}
+      </span>
+      <span class="ap-head__stats">
+        {{ lignes().length }} joueurs · {{ nbAbsents() }} abs/exc
+        @if (nbBlesses() > 0) { · {{ nbBlesses() }} blessé(s) }
+      </span>
+      <span class="ap-head__hint">Présence par exception : ne coche que les écarts, le reste compte présent.</span>
+    </div>
+
+    @if (lignes().length === 0) {
+      <div class="pwa-empty">Feuille de présence vide.</div>
+    } @else {
+      @for (l of lignes(); track l.joueurId) {
+        <div class="ap-ligne pwa-rise" [class.ap-ligne--blesse]="l.blesse">
+          <span class="ap-ligne__avatar">{{ initiales(l) }}</span>
+          <span class="ap-ligne__id">
+            <span class="ap-ligne__nom">{{ l.prenom }} {{ l.nom }}</span>
+            <span class="ap-ligne__meta">
+              @if (l.blesse) { 🩹 blessé }
+              @else if (l.statut) { {{ l.statut === 'PRESENT' ? 'présent' : l.statut === 'ABSENT' ? 'absent' : l.statut === 'EXCUSE' ? 'excusé' : 'retard' }}@if (l.source === 'JOUEUR') { (auto-déclaré) } }
+              @else { disponible }
+            </span>
+          </span>
+          <span class="ap-ligne__acts">
+            @for (st of STATUTS; track st.val) {
+              <button type="button" class="ap-st" [class]="'ap-st--' + st.val.toLowerCase()"
+                      [class.is-on]="l.statut === st.val"
+                      [title]="st.label" (click)="marquer(l, st.val)">{{ st.court }}</button>
+            }
+          </span>
+        </div>
+      }
+    }
+  } @else {
+    <div class="pwa-empty">Choisis une séance ci-dessus pour faire l'appel.</div>
+  }
+}

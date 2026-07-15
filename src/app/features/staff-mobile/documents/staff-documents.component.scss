@@ -1,0 +1,42 @@
+:host { display: block; }
+
+.sd-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-2xl);
+  box-shadow: var(--shadow-xs);
+  padding: 16px;
+  margin-bottom: 10px;
+
+  &__head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  &__titre { font-weight: 800; font-size: 15px; display: flex; align-items: center; gap: 8px; }
+  &__desc { font-size: 12.5px; color: var(--text-3); margin: 6px 0 0; }
+  &__fichier { font-size: 13px; color: var(--text-2); margin: 8px 0 0; }
+  &__refus { font-size: 12.5px; font-weight: 700; color: #b91c1c; margin: 6px 0 0; }
+  &__acts { display: flex; gap: 8px; margin-top: 12px; }
+}
+
+.sd-req {
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  background: var(--surface-3);
+  color: var(--text-3);
+  border-radius: var(--r-pill);
+  padding: 3px 8px;
+}
+
+.sd-badge {
+  font-size: 11px;
+  font-weight: 800;
+  border-radius: var(--r-pill);
+  padding: 5px 10px;
+  flex-shrink: 0;
+
+  &--ok { background: var(--green-50); color: var(--green-700); }
+  &--info { background: #e0f2fe; color: #0369a1; }
+  &--bad { background: #fee2e2; color: #b91c1c; }
+  &--off { background: var(--surface-3); color: var(--text-3); }
+}
+
+.sd-upload { cursor: pointer; }

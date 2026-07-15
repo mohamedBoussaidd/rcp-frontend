@@ -108,6 +108,11 @@ export class JoueurService {
     return this.http.get<Joueur[]>(this.base);
   }
 
+  /** Effectif (saison EN_COURS) de l'équipe active uniquement — écrans strictement équipe (compo de match…). */
+  getEffectifEquipe(): Observable<Joueur[]> {
+    return this.http.get<Joueur[]>(`${this.base}/equipe`);
+  }
+
   getById(id: string): Observable<Joueur> {
     return this.http.get<Joueur>(`${this.base}/${id}`);
   }

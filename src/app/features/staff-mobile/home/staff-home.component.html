@@ -1,0 +1,93 @@
+<!-- En-tête : salutation + cloche + avatar -->
+<header class="home-hero pwa-rise">
+  <div>
+    <div class="home-hero__greet">{{ salutation() }},</div>
+    <h1 class="home-hero__name">{{ prenom() || 'Staff' }}</h1>
+    <div class="home-hero__date">{{ today | date:'EEEE d MMMM':'':'fr' }}</div>
+  </div>
+  <div class="home-hero__actions">
+    <app-notification-bell [inline]="true"></app-notification-bell>
+    <button type="button" class="home-avatar" (click)="deconnexion()" aria-label="Se déconnecter">
+      {{ initiales() }}
+    </button>
+  </div>
+</header>
+
+<!-- Sélecteur d'équipe (staff multi-équipes) -->
+@if (contexte.equipesDispo().length > 1) {
+  <div class="home-equipe pwa-rise">
+    <span class="home-equipe__lbl">Équipe</span>
+    <select class="home-equipe__select" [ngModel]="equipeChoisie()" (ngModelChange)="changerEquipe($event)" name="equipe">
+      <option value="">Toutes mes équipes</option>
+      @for (e of contexte.equipesDispo(); track e.id) { <option [value]="e.id">{{ e.nom }}</option> }
+    </select>
+  </div>
+}
+
+<!-- Bannière push -->
+@if (push.etat() === 'a-activer') {
+  <button type="button" class="home-push pwa-rise" (click)="push.activer()">
+    <span class="home-push__ic">🔔</span>
+    <span class="home-push__body">
+      <span class="home-push__t">Activer les notifications</span>
+      <span class="home-push__s">Absences, messages, documents… directement sur ce téléphone</span>
+    </span>
+    <span class="home-push__go">Activer</span>
+  </button>
+}
+
+<!-- Aujourd'hui : séances du jour -->
+<section class="home-today pwa-rise">
+  <div class="home-today__head">
+    <span class="home-today__label">Aujourd'hui</span>
+    <span class="home-today__pill">{{ today | date:'d MMM':'':'fr' }}</span>
+  </div>
+  @if (seancesJour().length === 0) {
+    <p class="home-today__vide">Aucune séance prévue aujourd'hui.</p>
+  } @else {
+    @for (s of seancesJour(); track s.id) {
+      <a class="home-act" [routerLink]="['/staff/appel']" [queryParams]="{ seance: s.id }">
+        <span class="home-act__icon" [class.home-act__icon--match]="estMatch(s)">
+          @if (estMatch(s)) { ⚽ } @else { 🏃 }
+        </span>
+        <span class="home-act__body">
+          <span class="home-act__title">{{ s.titre || s.typeSeance.libelle }}@if (s.adversaire) { — {{ s.adversaire }}}</span>
+          <span class="home-act__sub">@if (s.heureDebut) {{{ s.heureDebut }} · }{{ s.typeSeance.libelle }}</span>
+        </span>
+        <span class="home-act__tag">Appel ›</span>
+      </a>
+    }
+  }
+</section>
+
+<!-- Tuiles -->
+<h2 class="pwa-section-title">Raccourcis</h2>
+<div class="home-tiles">
+  <a class="home-tile pwa-rise" routerLink="/staff/agenda">
+    <span class="home-tile__ic">🗓️</span>
+    <span class="home-tile__t">Agenda</span>
+    <span class="home-tile__s">Séances & matchs</span>
+  </a>
+  <a class="home-tile pwa-rise" routerLink="/staff/effectif">
+    <span class="home-tile__ic">🧑‍🤝‍🧑</span>
+    <span class="home-tile__t">Effectif</span>
+    <span class="home-tile__s">Dispo & blessures</span>
+  </a>
+  <a class="home-tile pwa-rise" routerLink="/staff/messages">
+    <span class="home-tile__ic">💬</span>
+    <span class="home-tile__t">Messages</span>
+    <span class="home-tile__s">Joueurs & équipe</span>
+  </a>
+  <a class="home-tile pwa-rise" routerLink="/staff/documents">
+    <span class="home-tile__ic">📁</span>
+    <span class="home-tile__t">Mes documents</span>
+    <span class="home-tile__s">Licence, diplômes…</span>
+  </a>
+  <a class="home-tile pwa-rise" routerLink="/staff/notifications">
+    <span class="home-tile__ic">🔔</span>
+    <span class="home-tile__t">Notifications</span>
+    <span class="home-tile__s">
+      @if (notifications.nonLus() > 0) { {{ notifications.nonLus() }} non lue(s) } @else { À jour }
+    </span>
+  </a>
+</div>

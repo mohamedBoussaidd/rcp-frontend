@@ -40,14 +40,18 @@ export class AppComponent {
     window.location.reload();
   }
 
-  /** PWA joueur : routes /joueur affichées en plein écran, sans la sidebar staff. */
-  readonly modeMobile = signal(this.router.url.startsWith('/joueur'));
+  /** PWA : routes /joueur et /staff affichées en plein écran, sans le chrome desktop. */
+  readonly modeMobile = signal(AppComponent.estRouteMobile(this.router.url));
+
+  private static estRouteMobile(url: string): boolean {
+    return url.startsWith('/joueur') || url.startsWith('/staff');
+  }
 
   constructor() {
     inject(ThemeService).init();
     inject(PwaInstallService); // capte tôt l'événement d'installation (beforeinstallprompt)
     this.router.events
       .pipe(filter(e => e instanceof NavigationEnd))
-      .subscribe(e => this.modeMobile.set((e as NavigationEnd).urlAfterRedirects.startsWith('/joueur')));
+      .subscribe(e => this.modeMobile.set(AppComponent.estRouteMobile((e as NavigationEnd).urlAfterRedirects)));
   }
 }

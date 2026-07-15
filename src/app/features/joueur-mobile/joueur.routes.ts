@@ -41,6 +41,11 @@ const routes: Routes = [
         loadComponent: () => import('./documents-admin/joueur-documents-admin.component').then(m => m.JoueurDocumentsAdminComponent)
       },
       {
+        // Chemin aligné sur le lien des notifications (NotificationProducer.bulletinDisponible).
+        path: 'bulletins', data: { title: 'Mes fiches de paye' },
+        loadComponent: () => import('./bulletins/joueur-bulletins.component').then(m => m.JoueurBulletinsComponent)
+      },
+      {
         path: 'poids', data: { title: 'Évolution du poids' },
         loadComponent: () => import('./poids/joueur-poids.component').then(m => m.JoueurPoidsComponent)
       },

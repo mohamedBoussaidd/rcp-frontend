@@ -1,0 +1,66 @@
+@if (!capacite()) {
+  <div class="pwa-empty">Chargement…</div>
+} @else if (!capacite()!.peutEnvoyer) {
+  <div class="pwa-empty">
+    <div class="pwa-empty__ic">💬</div>
+    <div class="pwa-empty__t">Envoi non autorisé</div>
+    <div class="pwa-empty__s">Ton rôle ne permet pas d'envoyer des messages.</div>
+  </div>
+} @else {
+
+  <!-- Onglets -->
+  <div class="msg-tabs pwa-rise">
+    <button type="button" [class.is-on]="onglet() === 'ecrire'" (click)="choisirOnglet('ecrire')">Écrire</button>
+    <button type="button" [class.is-on]="onglet() === 'envoyes'" (click)="choisirOnglet('envoyes')">Envoyés</button>
+  </div>
+
+  @if (onglet() === 'ecrire') {
+    <div class="pwa-card pwa-rise">
+
+      <!-- Destinataires -->
+      <p class="msg-lbl">Destinataires</p>
+      <div class="msg-seg">
+        <button type="button" [class.is-on]="!modeCible()" (click)="modeCible.set(false)">Toute l'équipe</button>
+        @if (capacite()!.peutCibler) {
+          <button type="button" [class.is-on]="modeCible()" (click)="modeCible.set(true)">Cibler</button>
+        }
+      </div>
+      @if (modeCible()) {
+        <div class="pwa-chips msg-chips">
+          @for (d of destinatairesDispo(); track d.joueurId) {
+            <button type="button" class="pwa-chip" [class.is-active]="cibles().has(d.joueurId)" (click)="basculerCible(d.joueurId)">{{ d.nom }}</button>
+          }
+        </div>
+      }
+
+      <p class="msg-lbl">Message</p>
+      <input class="msg-input" [(ngModel)]="titre" name="titre" placeholder="Titre (optionnel)">
+      <textarea class="msg-input" rows="5" [(ngModel)]="corps" name="corps" placeholder="Ton message…"></textarea>
+
+      @if (retour()) { <p class="msg-retour">{{ retour() }}</p> }
+
+      <button type="button" class="pwa-btn pwa-btn--primary pwa-btn--block" style="margin-top:10px"
+              [disabled]="envoiEnCours() || !corps.trim() || (modeCible() && cibles().size === 0)"
+              (click)="envoyer()">
+        {{ envoiEnCours() ? 'Envoi…' : 'Envoyer' }}
+      </button>
+    </div>
+  }
+
+  @if (onglet() === 'envoyes') {
+    @if (envoyes().length === 0) {
+      <div class="pwa-empty">Aucun message envoyé.</div>
+    } @else {
+      @for (m of envoyes(); track $index) {
+        <div class="msg-envoye pwa-rise">
+          <div class="msg-envoye__head">
+            <span class="msg-envoye__titre">{{ m.titre }}</span>
+            <span class="msg-envoye__date">{{ m.createdAt | date:'dd/MM HH:mm' }}</span>
+          </div>
+          <p class="msg-envoye__corps">{{ m.corps }}</p>
+          <span class="msg-envoye__nb">{{ m.nbDestinataires }} destinataire(s)</span>
+        </div>
+      }
+    }
+  }
+}

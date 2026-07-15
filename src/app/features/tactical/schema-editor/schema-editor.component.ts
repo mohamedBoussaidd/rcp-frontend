@@ -1203,9 +1203,6 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
       return best;
     };
 
-    // Toutes les flèches qui FINISSENT au départ de a (ses "arrivants").
-    const arrivants = (a: SchemaTrace) => fleches.filter(b =>
-      b.id !== a.id && Math.hypot(debut(a).x - fin(b).x, debut(a).y - fin(b).y) <= RAYON_LIEN);
     // Prédécesseur de même nature (joueur ou ballon) : le plus proche.
     const predNature = (a: SchemaTrace, estType: (x: SchemaTrace) => boolean): SchemaTrace | undefined => {
       let best: SchemaTrace | undefined; let dMin = RAYON_LIEN;
@@ -1217,12 +1214,25 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
       return best;
     };
 
-    // Propriétaire d'une flèche : hérité du prédécesseur de même nature, sinon l'élément
-    // le plus proche du départ (le ballon se prend au début d'une conduite, etc.).
+    // Lien EXPLICITE posé au dessin (lierTrace) : une flèche dessinée sur un jeton/ballon lui
+    // est réservée — prioritaire sur toute déduction géométrique (deux flèches proches ou qui
+    // se croisent ne se volent plus leur mobile).
+    const explicite = (a: SchemaTrace, type: 'ballon' | 'joueur'): SchemaElement | undefined => {
+      const id = type === 'joueur'
+        ? (estJoueur(a) ? a.elementId : undefined)
+        : (a.type === 'conduite' ? a.ballId : (estBallon(a) ? a.elementId : undefined));
+      return id ? this.elements.find(e => e.id === id && e.type === type) : undefined;
+    };
+
+    // Propriétaire d'une flèche : le lien explicite, sinon hérité du prédécesseur de même
+    // nature, sinon l'élément le plus proche du départ (le ballon se prend au début d'une
+    // conduite, etc.).
     const memo = { ballon: new Map<string, SchemaElement | undefined>(), joueur: new Map<string, SchemaElement | undefined>() };
     const owner = (a: SchemaTrace, type: 'ballon' | 'joueur', estType: (x: SchemaTrace) => boolean, vu = new Set<string>()): SchemaElement | undefined => {
       const m = memo[type];
       if (m.has(a.id)) return m.get(a.id);
+      const ex = explicite(a, type);
+      if (ex) { m.set(a.id, ex); return ex; }
       if (vu.has(a.id)) return undefined;
       vu.add(a.id);
       const p = predNature(a, estType);
@@ -1230,6 +1240,22 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
       m.set(a.id, r);
       return r;
     };
+
+    // Toutes les flèches qui FINISSENT au départ de a (ses "arrivants"). Les chaînes de deux
+    // joueurs DIFFÉRENTS ne se synchronisent pas entre elles (une course qui se termine près
+    // du départ de la flèche d'un autre joueur ne doit pas la retarder) — sauf remise/relais
+    // où le MÊME ballon passe de l'un à l'autre.
+    const arrivants = (a: SchemaTrace) => fleches.filter(b => {
+      if (b.id === a.id || Math.hypot(debut(a).x - fin(b).x, debut(a).y - fin(b).y) > RAYON_LIEN) return false;
+      const ja = estJoueur(a) ? owner(a, 'joueur', estJoueur) : undefined;
+      const jb = estJoueur(b) ? owner(b, 'joueur', estJoueur) : undefined;
+      if (ja && jb && ja.id !== jb.id) {
+        const ba = estBallon(a) ? owner(a, 'ballon', estBallon) : undefined;
+        const bb = estBallon(b) ? owner(b, 'ballon', estBallon) : undefined;
+        return !!ba && !!bb && ba.id === bb.id;
+      }
+      return true;
+    });
 
     // Vitesse (px/s) d'un segment. Mode vitesse : vitesse réelle du joueur (vmax/vmoy GPS)
     // pour course/conduite, vitesse de passe pour passe/tir. Mode temps : distance brute (1),

@@ -1,0 +1,71 @@
+@if (chargement()) {
+  <div class="pwa-empty">Chargement…</div>
+} @else {
+
+  <!-- KPI -->
+  <div class="ef-kpis pwa-rise">
+    <div class="ef-kpi">
+      <span class="ef-kpi__num">{{ joueurs().length }}</span>
+      <span class="ef-kpi__lbl">Effectif</span>
+    </div>
+    <div class="ef-kpi ef-kpi--ok">
+      <span class="ef-kpi__num">{{ disponibles().length }}</span>
+      <span class="ef-kpi__lbl">Disponibles</span>
+    </div>
+    <div class="ef-kpi ef-kpi--bad">
+      <span class="ef-kpi__num">{{ indisponibles().length }}</span>
+      <span class="ef-kpi__lbl">Indispo</span>
+    </div>
+  </div>
+
+  <!-- Gênes signalées (7 derniers jours) -->
+  @if (auth.has('wellness:read') && genes().length > 0) {
+    <p class="pwa-section-title">Gênes signalées</p>
+    @for (g of genes(); track g.id) {
+      <div class="ef-ligne ef-ligne--warn pwa-rise">
+        <span class="ef-ligne__avatar">⚠</span>
+        <span class="ef-ligne__id">
+          <span class="ef-ligne__nom">{{ g.joueurPrenom }} {{ g.joueurNom }}</span>
+          <span class="ef-ligne__meta">Gêne {{ joliLabel(g.geneZone) }} · {{ g.date | date:'dd/MM' }}</span>
+        </span>
+      </div>
+    }
+  }
+
+  <!-- Indisponibles -->
+  @if (indisponibles().length > 0) {
+    <p class="pwa-section-title">Indisponibles</p>
+    @for (j of indisponibles(); track j.id) {
+      <div class="ef-ligne pwa-rise">
+        <span class="ef-ligne__avatar ef-ligne__avatar--bad">{{ initiales(j.prenom, j.nom) }}</span>
+        <span class="ef-ligne__id">
+          <span class="ef-ligne__nom">{{ j.prenom }} {{ j.nom }}</span>
+          <span class="ef-ligne__meta">
+            {{ statutLabel(j.statut) }}
+            @if (blessureDe(j.id); as b) {
+              — {{ joliLabel(b.zoneCorporelle) }}@if (b.dateRetourPrevue) { · retour {{ b.dateRetourPrevue | date:'dd/MM' }}}
+            }
+          </span>
+        </span>
+        <span class="ef-badge ef-badge--bad">{{ statutLabel(j.statut) }}</span>
+      </div>
+    }
+  }
+
+  <!-- Effectif disponible -->
+  <p class="pwa-section-title">Disponibles</p>
+  @if (disponibles().length === 0) {
+    <div class="pwa-empty">Aucun joueur disponible.</div>
+  } @else {
+    @for (j of disponibles(); track j.id) {
+      <div class="ef-ligne pwa-rise">
+        <span class="ef-ligne__avatar">{{ initiales(j.prenom, j.nom) }}</span>
+        <span class="ef-ligne__id">
+          <span class="ef-ligne__nom">{{ j.prenom }} {{ j.nom }}</span>
+          @if (j.postePrincipal) { <span class="ef-ligne__meta">{{ joliLabel(j.postePrincipal) }}</span> }
+        </span>
+        <span class="ef-badge ef-badge--ok">Dispo</span>
+      </div>
+    }
+  }
+}

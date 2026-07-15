@@ -1,0 +1,160 @@
+:host { display: block; }
+
+/* ── En-tête ── */
+.home-hero {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 16px;
+
+  &__greet { font-size: 14px; color: var(--text-3); font-weight: 600; }
+  &__name  { font-size: 26px; font-weight: 800; margin: 0; letter-spacing: -0.02em; }
+  &__date  { font-size: 13px; color: var(--text-3); margin-top: 2px; text-transform: capitalize; }
+  &__actions { display: flex; align-items: center; gap: 10px; }
+}
+
+.home-avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: none;
+  background: var(--green-600);
+  color: #fff;
+  font-weight: 800;
+  font-size: 15px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* ── Sélecteur d'équipe ── */
+.home-equipe {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-xl);
+  padding: 10px 14px;
+  margin-bottom: 12px;
+
+  &__lbl { font-size: 12px; font-weight: 700; text-transform: uppercase; color: var(--text-3); }
+  &__select {
+    flex: 1;
+    border: none;
+    background: transparent;
+    font-size: 15px;
+    font-weight: 700;
+    font-family: var(--font);
+    color: var(--text);
+  }
+}
+
+/* ── Bannière push ── */
+.home-push {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  text-align: left;
+  background: var(--green-50);
+  border: 1.5px solid var(--green-600);
+  border-radius: var(--r-2xl);
+  padding: 14px;
+  margin-bottom: 12px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+
+  &__ic { font-size: 24px; }
+  &__body { flex: 1; display: flex; flex-direction: column; gap: 2px; }
+  &__t { font-weight: 800; font-size: 14.5px; color: var(--green-700); }
+  &__s { font-size: 12px; color: var(--text-2); }
+  &__go {
+    background: var(--green-600);
+    color: #fff;
+    font-weight: 700;
+    font-size: 13px;
+    padding: 8px 14px;
+    border-radius: var(--r-pill);
+  }
+}
+
+/* ── Aujourd'hui ── */
+.home-today {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-2xl);
+  box-shadow: var(--shadow-sm);
+  padding: 16px;
+  margin-bottom: 6px;
+
+  &__head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+  &__label { font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-3); }
+  &__pill { font-size: 12px; font-weight: 700; background: var(--surface-3); border-radius: var(--r-pill); padding: 4px 10px; }
+  &__vide { font-size: 14px; color: var(--text-3); margin: 6px 0; }
+}
+
+.home-act {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 0;
+  text-decoration: none;
+  color: inherit;
+  border-top: 1px solid var(--border);
+  -webkit-tap-highlight-color: transparent;
+
+  &:first-of-type { border-top: none; }
+
+  &__icon {
+    width: 42px;
+    height: 42px;
+    border-radius: var(--r-xl);
+    background: linear-gradient(150deg, var(--green-500), var(--green-700));
+    display: grid;
+    place-items: center;
+    font-size: 20px;
+    flex-shrink: 0;
+
+    &--match { background: linear-gradient(150deg, #f59e0b, #d97706); }
+  }
+  &__body { flex: 1; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+  &__title { font-weight: 800; font-size: 15px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  &__sub { font-size: 12.5px; color: var(--text-3); }
+  &__tag {
+    font-size: 12px;
+    font-weight: 800;
+    color: var(--green-700);
+    background: var(--green-50);
+    border-radius: var(--r-pill);
+    padding: 6px 10px;
+    flex-shrink: 0;
+  }
+}
+
+/* ── Tuiles ── */
+.home-tiles {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.home-tile {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-2xl);
+  box-shadow: var(--shadow-xs);
+  padding: 16px 14px;
+  text-decoration: none;
+  color: inherit;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 90ms var(--ease-out);
+
+  &:active { transform: scale(0.97); }
+
+  &__ic { font-size: 24px; }
+  &__t { font-weight: 800; font-size: 14.5px; }
+  &__s { font-size: 12px; color: var(--text-3); }
+}

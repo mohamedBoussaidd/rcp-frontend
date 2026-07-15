@@ -1,0 +1,100 @@
+:host { display: block; }
+
+.msg-tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+
+  button {
+    flex: 1;
+    height: 44px;
+    border: 1.5px solid var(--border-strong);
+    background: var(--surface);
+    border-radius: var(--r-xl);
+    font-weight: 800;
+    font-size: 14px;
+    font-family: var(--font);
+    color: var(--text-2);
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+
+    &.is-on {
+      background: var(--green-600);
+      border-color: var(--green-600);
+      color: #fff;
+    }
+  }
+}
+
+.msg-lbl {
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-3);
+  margin: 12px 0 8px;
+
+  &:first-child { margin-top: 0; }
+}
+
+.msg-seg {
+  display: flex;
+  gap: 8px;
+
+  button {
+    flex: 1;
+    height: 44px;
+    border: 1.5px solid var(--border-strong);
+    background: var(--surface);
+    border-radius: var(--r-xl);
+    font-weight: 700;
+    font-size: 13.5px;
+    font-family: var(--font);
+    color: var(--text-2);
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+
+    &.is-on {
+      background: var(--green-50);
+      border-color: var(--green-600);
+      color: var(--green-700);
+    }
+  }
+}
+
+.msg-chips { margin-top: 10px; }
+
+.msg-input {
+  width: 100%;
+  border: 1.5px solid var(--border-strong);
+  border-radius: var(--r-xl);
+  background: var(--surface);
+  font-family: var(--font);
+  font-size: 15px;
+  padding: 12px 14px;
+  margin-bottom: 8px;
+  color: var(--text);
+
+  &:focus { outline: none; border-color: var(--green-600); }
+}
+
+.msg-retour {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--green-700);
+  margin: 4px 0 0;
+}
+
+.msg-envoye {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-2xl);
+  padding: 14px;
+  margin-bottom: 8px;
+
+  &__head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  &__titre { font-weight: 800; font-size: 14px; }
+  &__date { font-size: 11.5px; color: var(--text-3); flex-shrink: 0; }
+  &__corps { font-size: 13.5px; color: var(--text-2); margin: 6px 0; white-space: pre-wrap; }
+  &__nb { font-size: 11.5px; font-weight: 700; color: var(--text-3); }
+}

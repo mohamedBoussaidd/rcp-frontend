@@ -129,13 +129,15 @@ const ALL_MODULES: NavModule[] = [
   // ── 06 · Administration : données administratives des membres (+ overview administratif) ──
   {
     key: 'administration', label: 'Administration', icon: 'badge',
-    link: '/administration', matches: ['/administration', '/annuaire', '/documents-admin'],
+    link: '/administration', matches: ['/administration', '/annuaire', '/documents-admin', '/contrats'],
     roles: ['SUPER_ADMIN', 'PRESIDENT', 'ADMINISTRATIF', 'ENTRAINEUR', 'PREPARATEUR', 'MEDICAL'],
-    perms: ['docadmin:read', 'joueurs:write'],
+    perms: ['docadmin:read', 'joueurs:write', 'contrats:manage'],
     subnav: [
       { label: 'Vue d\'ensemble',       link: '/administration', roles: ['SUPER_ADMIN', 'PRESIDENT', 'ADMINISTRATIF'] },
       { label: 'Annuaire',              link: '/annuaire', roles: ['SUPER_ADMIN', 'PRESIDENT', 'ADMINISTRATIF', 'ENTRAINEUR'], perms: ['joueurs:write'] },
       { label: 'Licences & documents',  link: '/documents-admin', roles: ['SUPER_ADMIN', 'PRESIDENT', 'ADMINISTRATIF', 'ENTRAINEUR', 'PREPARATEUR', 'MEDICAL'], perms: ['docadmin:read'], module: 'documents_admin' },
+      // Confidentiel : Président/Administratif uniquement (contrats:manage), module contrats (V59).
+      { label: 'Contrats & paie',       link: '/contrats', roles: ['SUPER_ADMIN'], perms: ['contrats:manage'], module: 'contrats' },
     ],
   },
   // ── 07 · Gestion du club : configuration (comptes, équipes, rôles, apparence) ──

@@ -1,0 +1,40 @@
+@if (chargement()) {
+  <div class="pwa-empty">Chargement…</div>
+} @else {
+
+  @if (contrats().length > 0) {
+    <p class="pwa-section-title">Mon contrat</p>
+    @for (c of contrats(); track c.id) {
+      <div class="jb-card pwa-rise">
+        <div class="jb-card__head">
+          <span class="jb-card__titre">{{ c.typeContrat }}</span>
+          <span class="jb-badge" [class.jb-badge--ok]="c.actif" [class.jb-badge--off]="!c.actif">{{ c.actif ? 'Actif' : 'Non actif' }}</span>
+        </div>
+        <p class="jb-card__meta">Du {{ c.dateDebut | date:'dd/MM/yyyy' }}@if (c.dateFin) { au {{ c.dateFin | date:'dd/MM/yyyy' }}} @else { — sans échéance }</p>
+        @if (c.nomOriginal) {
+          <button type="button" class="pwa-btn pwa-btn--secondary" (click)="telechargerContrat(c)">⬇ {{ c.nomOriginal }}</button>
+        }
+      </div>
+    }
+  }
+
+  <p class="pwa-section-title">Mes fiches de paye</p>
+  @if (bulletins().length === 0) {
+    <div class="pwa-empty">
+      <div class="pwa-empty__ic">💶</div>
+      <div class="pwa-empty__t">Aucune fiche de paye</div>
+      <div class="pwa-empty__s">Tes bulletins apparaîtront ici dès que le club les distribue.</div>
+    </div>
+  } @else {
+    @for (b of bulletins(); track b.id) {
+      <div class="jb-card pwa-rise">
+        <div class="jb-card__head">
+          <span class="jb-card__titre">{{ b.periode | date:'MMMM yyyy':'':'fr' }}</span>
+          @if (!b.premierTelechargementLe) { <span class="jb-badge jb-badge--new">Nouveau</span> }
+        </div>
+        <p class="jb-card__meta">📎 {{ b.nomOriginal }}</p>
+        <button type="button" class="pwa-btn pwa-btn--primary pwa-btn--block" (click)="telecharger(b)">⬇ Télécharger</button>
+      </div>
+    }
+  }
+}

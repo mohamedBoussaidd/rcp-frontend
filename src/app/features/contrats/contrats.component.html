@@ -1,0 +1,196 @@
+<div class="screen">
+
+  <div class="page-head">
+    <div>
+      <h1 class="page-head__title">Contrats &amp; fiches de paye</h1>
+      <p class="page-head__sub">Contrats des joueurs et du staff, distribution des bulletins</p>
+    </div>
+  </div>
+
+  <!-- Stats (vue président) -->
+  @if (stats(); as s) {
+    <div class="ct-kpis">
+      <div class="ct-kpi">
+        <div class="ct-kpi__num">{{ s.actifs }}</div>
+        <div class="ct-kpi__lbl">Contrats actifs</div>
+      </div>
+      <div class="ct-kpi">
+        <div class="ct-kpi__num">{{ s.total }}</div>
+        <div class="ct-kpi__lbl">Total contrats</div>
+      </div>
+      <div class="ct-kpi" [class.ct-kpi--warn]="s.expirent90j > 0">
+        <div class="ct-kpi__num">{{ s.expirent90j }}</div>
+        <div class="ct-kpi__lbl">Expirent sous 90 j</div>
+      </div>
+    </div>
+  }
+
+  <!-- Onglets -->
+  <div class="ct-tabs">
+    <button [class.is-on]="onglet() === 'contrats'" (click)="onglet.set('contrats')">Contrats</button>
+    <button [class.is-on]="onglet() === 'paie'" (click)="onglet.set('paie')">Fiches de paye</button>
+  </div>
+
+  <!-- ══ ONGLET CONTRATS ══ -->
+  @if (onglet() === 'contrats') {
+
+    <div class="ct-toolbar">
+      <select class="input select" style="max-width:240px" [ngModel]="filtreEquipe()" (ngModelChange)="filtreEquipe.set($event)" name="filtreEquipe">
+        <option value="">Toutes les équipes</option>
+        @for (e of contexte.equipesDispo(); track e.id) { <option [value]="e.id">{{ e.nom }}</option> }
+      </select>
+      <button class="btn btn--primary" (click)="nouveau()">+ Nouveau contrat</button>
+    </div>
+
+    @if (contratsFiltres().length === 0) {
+      <div class="card card--padded"><div class="empty-state">Aucun contrat.</div></div>
+    } @else {
+      <div class="card"><div class="card__body card__body--flush">
+        <table class="ct-table">
+          <thead>
+            <tr>
+              <th>Personne</th><th>Type</th><th>Début</th><th>Fin</th><th>Statut</th><th>Document</th><th class="ct-table__actions">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (c of contratsFiltres(); track c.id) {
+              @let badge = statutBadge(c);
+              <tr>
+                <td class="ct-nom">{{ c.joueurPrenom }} {{ c.joueurNom }}</td>
+                <td>{{ c.typeContrat }}</td>
+                <td>{{ c.dateDebut | date:'dd/MM/yyyy' }}</td>
+                <td>{{ c.dateFin ? (c.dateFin | date:'dd/MM/yyyy') : '—' }}</td>
+                <td><span class="ct-badge" [class]="badge.cls">{{ badge.label }}</span></td>
+                <td>
+                  @if (c.nomOriginal) {
+                    <button class="doc-iconbtn" title="Télécharger {{ c.nomOriginal }}" (click)="telechargerPdf(c)">⬇ 📄</button>
+                  } @else {
+                    <span class="ct-nodoc">aucun</span>
+                  }
+                  <label class="doc-iconbtn ct-upload" title="Joindre le contrat signé (PDF)">
+                    ⬆<input type="file" accept=".pdf,.jpg,.jpeg,.png" hidden (change)="joindrePdf(c, $event)">
+                  </label>
+                </td>
+                <td>
+                  <div class="doc-actions">
+                    <button class="doc-iconbtn" title="Modifier" (click)="editer(c)">✎</button>
+                    <button class="doc-iconbtn doc-iconbtn--danger" title="Supprimer" (click)="supprimer(c)">🗑</button>
+                  </div>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div></div>
+    }
+
+    <!-- Modale contrat -->
+    @if (showForm()) {
+      <div class="bl-overlay" (click)="annuler()">
+        <div class="bl-modal" (click)="$event.stopPropagation()">
+          <div class="bl-modal__head">
+            <div>
+              <h3 class="bl-modal__title">{{ editingId() ? 'Modifier le contrat' : 'Nouveau contrat' }}</h3>
+              <p class="bl-modal__sub">Le statut actif/expiré est calculé automatiquement à partir des dates.</p>
+            </div>
+            <button type="button" class="bl-modal__close" (click)="annuler()">×</button>
+          </div>
+          <form class="bl-modal__body" (ngSubmit)="enregistrer()">
+            <div class="bl-field">
+              <label class="bl-label">Personne (joueur ou staff)</label>
+              <select class="input select" [(ngModel)]="form.joueurId" name="ctJoueur">
+                <option value="" disabled>Choisir une personne…</option>
+                @for (p of annuaire(); track p.joueurId) {
+                  <option [value]="p.joueurId">{{ p.prenom }} {{ p.nom }}@if (p.equipes.length) { ({{ p.equipes[0].nom }})}</option>
+                }
+              </select>
+            </div>
+            <div class="bl-field">
+              <label class="bl-label">Type de contrat</label>
+              <div class="bl-chips">
+                @for (t of TYPES_CONTRAT; track t) {
+                  <button type="button" class="bl-chip" [class.is-on]="form.typeContrat === t" (click)="form.typeContrat = t">{{ t }}</button>
+                }
+              </div>
+            </div>
+            <div class="bl-row2">
+              <div class="bl-field"><label class="bl-label">Date de début</label><input class="input" type="date" [(ngModel)]="form.dateDebut" name="ctDebut"></div>
+              <div class="bl-field"><label class="bl-label">Date de fin (vide = sans échéance)</label><input class="input" type="date" [(ngModel)]="form.dateFin" name="ctFin"></div>
+            </div>
+            <div class="bl-field">
+              <label class="bl-label">Notes</label>
+              <textarea class="input" rows="2" [(ngModel)]="form.notes" name="ctNotes" placeholder="Précisions (avenant, clause…)"></textarea>
+            </div>
+            <div class="bl-modal__foot">
+              <button type="button" class="al-link" (click)="annuler()">Annuler</button>
+              <button type="submit" class="btn btn--primary" [disabled]="saving() || !form.joueurId || !form.typeContrat || !form.dateDebut">{{ saving() ? 'Enregistrement…' : '✓ Enregistrer' }}</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    }
+  }
+
+  <!-- ══ ONGLET FICHES DE PAYE ══ -->
+  @if (onglet() === 'paie') {
+
+    <div class="ct-toolbar">
+      <input class="input" type="month" style="max-width:180px" [ngModel]="periode()" (ngModelChange)="changerPeriode($event)" name="periode">
+      <button class="btn btn--primary" [disabled]="distribuant() || nbNonNotifies() === 0" (click)="distribuer()">
+        {{ distribuant() ? 'Distribution…' : '📨 Distribuer (' + nbNonNotifies() + ')' }}
+      </button>
+    </div>
+
+    <!-- Dépôt -->
+    <div class="card card--padded ct-depot">
+      <p class="ct-depot__titre">Déposer un bulletin — période {{ periode() }}</p>
+      <div class="ct-depot__row">
+        <select class="input select" [(ngModel)]="depotJoueurId" name="depotJoueur">
+          <option value="" disabled>Choisir une personne…</option>
+          @for (p of annuaire(); track p.joueurId) { <option [value]="p.joueurId">{{ p.prenom }} {{ p.nom }}</option> }
+        </select>
+        <input class="input" type="file" accept=".pdf" (change)="onDepotFile($event)" name="depotFichier">
+        <button class="btn btn--primary" [disabled]="deposant() || !depotJoueurId || !depotFile" (click)="deposerBulletin()">{{ deposant() ? 'Envoi…' : '⬆ Déposer' }}</button>
+      </div>
+      <p class="ct-depot__hint">Redéposer pour la même personne et la même période remplace le fichier. La notification ne part qu'au clic sur « Distribuer ».</p>
+    </div>
+
+    <!-- Suivi de distribution -->
+    @if (lignes().length === 0) {
+      <div class="card card--padded"><div class="empty-state">Aucun bulletin déposé sur cette période.</div></div>
+    } @else {
+      <div class="card"><div class="card__body card__body--flush">
+        <table class="ct-table">
+          <thead>
+            <tr><th>Personne</th><th>Fichier</th><th>Déposé le</th><th>Notifié le</th><th>Téléchargé le</th><th class="ct-table__actions">Actions</th></tr>
+          </thead>
+          <tbody>
+            @for (l of lignes(); track l.id) {
+              <tr>
+                <td class="ct-nom">{{ l.joueurPrenom }} {{ l.joueurNom }}</td>
+                <td class="ct-fichier">{{ l.nomOriginal }}</td>
+                <td>{{ l.deposeLe | date:'dd/MM HH:mm' }}</td>
+                <td>
+                  @if (l.notifieLe) { <span class="ct-badge ct-badge--ok">{{ l.notifieLe | date:'dd/MM HH:mm' }}</span> }
+                  @else { <span class="ct-badge ct-badge--off">en attente</span> }
+                </td>
+                <td>
+                  @if (l.premierTelechargementLe) { <span class="ct-badge ct-badge--ok">{{ l.premierTelechargementLe | date:'dd/MM HH:mm' }}</span> }
+                  @else if (l.notifieLe) { <span class="ct-badge ct-badge--warn">pas encore</span> }
+                  @else { <span class="ct-badge ct-badge--off">—</span> }
+                </td>
+                <td>
+                  <div class="doc-actions">
+                    <button class="doc-iconbtn" title="Télécharger" (click)="telechargerBulletin(l)">⬇</button>
+                    <button class="doc-iconbtn doc-iconbtn--danger" title="Supprimer" (click)="supprimerBulletin(l)">🗑</button>
+                  </div>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div></div>
+    }
+  }
+
+</div>

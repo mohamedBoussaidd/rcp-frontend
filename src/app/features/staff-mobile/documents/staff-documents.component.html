@@ -1,0 +1,74 @@
+@if (chargement()) {
+  <div class="pwa-empty">Chargement…</div>
+} @else if (nonLie()) {
+  <div class="pwa-empty">
+    <div class="pwa-empty__ic">🔗</div>
+    <div class="pwa-empty__t">Compte non relié</div>
+    <div class="pwa-empty__s">Ton compte n'est pas encore relié à une fiche du club. Vois avec l'administrateur.</div>
+  </div>
+} @else {
+
+  <!-- Mon contrat & mes fiches de paye (module Contrats & paie, V59) -->
+  @if (contrats().length > 0) {
+    <p class="pwa-section-title">Mon contrat</p>
+    @for (c of contrats(); track c.id) {
+      <div class="sd-card pwa-rise">
+        <div class="sd-card__head">
+          <span class="sd-card__titre">{{ c.typeContrat }}</span>
+          <span class="sd-badge" [class]="c.actif ? 'sd-badge--ok' : 'sd-badge--off'">{{ c.actif ? 'Actif' : 'Non actif' }}</span>
+        </div>
+        <p class="sd-card__fichier">Du {{ c.dateDebut | date:'dd/MM/yyyy' }}@if (c.dateFin) { au {{ c.dateFin | date:'dd/MM/yyyy' }}} @else { — sans échéance }</p>
+        @if (c.nomOriginal) {
+          <div class="sd-card__acts">
+            <button type="button" class="pwa-btn pwa-btn--ghost" (click)="telechargerContrat(c)">⬇ {{ c.nomOriginal }}</button>
+          </div>
+        }
+      </div>
+    }
+  }
+
+  @if (bulletins().length > 0) {
+    <p class="pwa-section-title">Mes fiches de paye</p>
+    @for (b of bulletins(); track b.id) {
+      <div class="sd-card pwa-rise">
+        <div class="sd-card__head">
+          <span class="sd-card__titre" style="text-transform:capitalize">{{ b.periode | date:'MMMM yyyy':'':'fr' }}</span>
+          @if (!b.premierTelechargementLe) { <span class="sd-badge sd-badge--info">Nouveau</span> }
+        </div>
+        <p class="sd-card__fichier">📎 {{ b.nomOriginal }}</p>
+        <div class="sd-card__acts">
+          <button type="button" class="pwa-btn pwa-btn--secondary" (click)="telechargerBulletin(b)">⬇ Télécharger</button>
+        </div>
+      </div>
+    }
+  }
+
+  <p class="pwa-section-title">Documents requis</p>
+  @if (documents().length === 0) {
+    <div class="pwa-empty">
+      <div class="pwa-empty__ic">📁</div>
+      <div class="pwa-empty__t">Aucun document requis</div>
+      <div class="pwa-empty__s">Le club n'a défini aucun document pour le staff.</div>
+    </div>
+  }
+  @for (d of documents(); track d.typeId) {
+    <div class="sd-card pwa-rise">
+      <div class="sd-card__head">
+        <span class="sd-card__titre">{{ d.typeLibelle }}@if (d.obligatoire) { <span class="sd-req">requis</span> }</span>
+        <span class="sd-badge" [class]="statutClass(d.statut)">{{ statutLabel(d.statut) }}</span>
+      </div>
+      @if (d.typeDescription) { <p class="sd-card__desc">{{ d.typeDescription }}</p> }
+      @if (d.nomOriginal) { <p class="sd-card__fichier">📎 {{ d.nomOriginal }}@if (d.dateExpiration) { · expire le {{ d.dateExpiration | date:'dd/MM/yyyy' }}}</p> }
+      @if (d.motifRefus) { <p class="sd-card__refus">Refusé : {{ d.motifRefus }}</p> }
+      <div class="sd-card__acts">
+        <label class="pwa-btn pwa-btn--secondary sd-upload">
+          {{ envoiEnCours() === d.typeId ? 'Envoi…' : (d.documentId ? 'Remplacer' : 'Déposer') }}
+          <input type="file" accept=".pdf,.jpg,.jpeg,.png" hidden (change)="deposer(d, $event)">
+        </label>
+        @if (d.documentId) {
+          <button type="button" class="pwa-btn pwa-btn--ghost" (click)="telecharger(d)">⬇ Télécharger</button>
+        }
+      </div>
+    </div>
+  }
+}

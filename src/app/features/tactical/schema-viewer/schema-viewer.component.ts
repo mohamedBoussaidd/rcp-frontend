@@ -178,8 +178,6 @@ export class SchemaViewerComponent implements AfterViewInit, OnChanges, OnDestro
       }
       return best;
     };
-    const arrivants = (a: SchemaTrace) => fleches.filter(b =>
-      b.id !== a.id && Math.hypot(debut(a).x - fin(b).x, debut(a).y - fin(b).y) <= RAYON_LIEN);
     const predNature = (a: SchemaTrace, estType: (x: SchemaTrace) => boolean): SchemaTrace | undefined => {
       let best: SchemaTrace | undefined; let dMin = RAYON_LIEN;
       for (const b of fleches) {
@@ -190,10 +188,21 @@ export class SchemaViewerComponent implements AfterViewInit, OnChanges, OnDestro
       return best;
     };
 
+    // Lien EXPLICITE posé au dessin : une flèche dessinée sur un jeton/ballon lui est réservée
+    // — prioritaire sur toute déduction géométrique (aligné sur schema-editor).
+    const explicite = (a: SchemaTrace, type: 'ballon' | 'joueur'): SchemaElement | undefined => {
+      const id = type === 'joueur'
+        ? (estJoueur(a) ? a.elementId : undefined)
+        : (a.type === 'conduite' ? a.ballId : (estBallon(a) ? a.elementId : undefined));
+      return id ? this.elements.find(e => e.id === id && e.type === type) : undefined;
+    };
+
     const memo = { ballon: new Map<string, SchemaElement | undefined>(), joueur: new Map<string, SchemaElement | undefined>() };
     const owner = (a: SchemaTrace, type: 'ballon' | 'joueur', estType: (x: SchemaTrace) => boolean, vu = new Set<string>()): SchemaElement | undefined => {
       const m = memo[type];
       if (m.has(a.id)) return m.get(a.id);
+      const ex = explicite(a, type);
+      if (ex) { m.set(a.id, ex); return ex; }
       if (vu.has(a.id)) return undefined;
       vu.add(a.id);
       const p = predNature(a, estType);
@@ -201,6 +210,20 @@ export class SchemaViewerComponent implements AfterViewInit, OnChanges, OnDestro
       m.set(a.id, r);
       return r;
     };
+
+    // Arrivants de a : les chaînes de deux joueurs DIFFÉRENTS ne se synchronisent pas entre
+    // elles, sauf remise/relais où le MÊME ballon passe de l'un à l'autre (aligné schema-editor).
+    const arrivants = (a: SchemaTrace) => fleches.filter(b => {
+      if (b.id === a.id || Math.hypot(debut(a).x - fin(b).x, debut(a).y - fin(b).y) > RAYON_LIEN) return false;
+      const ja = estJoueur(a) ? owner(a, 'joueur', estJoueur) : undefined;
+      const jb = estJoueur(b) ? owner(b, 'joueur', estJoueur) : undefined;
+      if (ja && jb && ja.id !== jb.id) {
+        const ba = estBallon(a) ? owner(a, 'ballon', estBallon) : undefined;
+        const bb = estBallon(b) ? owner(b, 'ballon', estBallon) : undefined;
+        return !!ba && !!bb && ba.id === bb.id;
+      }
+      return true;
+    });
 
     // Vitesse (px/s) d'un segment : mode vitesse = vitesse réelle du joueur / de la balle ;
     // mode temps = distance brute (1), l'échelle ramène la plus longue séquence à la durée.

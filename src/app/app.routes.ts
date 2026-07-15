@@ -53,6 +53,14 @@ export const routes: Routes = [
     path: 'joueur', canActivate: [authGuard, roleGuard], data: { roles: ['JOUEUR'] },
     loadChildren: () => import('./features/joueur-mobile/joueur.routes').then(m => m.default)
   },
+  {
+    // Espace staff mobile (V58) : double verrou module (pack/add-on club) + permission
+    // espace_staff:access (matrice Rôles & accès). Pas de contexteGuard : la portée
+    // vient de l'identité (union des affectations staff) côté ScopeResolver.
+    path: 'staff', canActivate: [authGuard, roleGuard, saisonGuard, moduleGuard],
+    data: { roles: [...STAFF, 'ADMINISTRATIF'], perms: ['espace_staff:access'], module: 'espace_staff' },
+    loadChildren: () => import('./features/staff-mobile/staff.routes').then(m => m.default)
+  },
   // Suivi subjectif (wellness / sRPE) : rangé côté PRÉPA (module wellness), plus derrière une
   // permission GPS. Accès staff physique + joueur ; gaté par le module « Ressenti & RPE ».
   {
@@ -130,6 +138,12 @@ export const routes: Routes = [
     path: 'suivi-entretiens', canActivate: [authGuard, roleGuard, contexteGuard, saisonGuard, moduleGuard],
     data: { roles: STAFF, perms: ['entretien:read'], module: 'suivi_individuel' },
     loadComponent: () => import('./features/entretien/suivi-entretiens/suivi-entretiens.component').then(m => m.SuiviEntretiensComponent)
+  },
+  {
+    // Contrats & fiches de paye (V59) : confidentiel — Président/Administratif via contrats:manage.
+    path: 'contrats', canActivate: [authGuard, roleGuard, contexteGuard, moduleGuard],
+    data: { roles: ['SUPER_ADMIN'], perms: ['contrats:manage'], module: 'contrats' },
+    loadComponent: () => import('./features/contrats/contrats.component').then(m => m.ContratsComponent)
   },
   {
     path: 'documents-admin', canActivate: [authGuard, roleGuard, contexteGuard, saisonGuard, moduleGuard],

@@ -241,7 +241,7 @@ export class MatchComponent implements OnInit {
     this.onglet.set('avant');
     forkJoin({
       m: this.service.getMatch(id),
-      js: this.joueurService.getAll(),
+      js: this.joueurService.getEffectifEquipe(),   // effectif de l'équipe du match, pas tout le club
     }).subscribe({
       next: ({ m, js }) => {
         this.joueurs.set(js);          // alimente `blesses` (computed) avant placement

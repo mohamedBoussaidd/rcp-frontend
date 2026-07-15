@@ -1,0 +1,43 @@
+<!-- Navigation de semaine -->
+<div class="ag-nav pwa-rise">
+  <button type="button" class="ag-nav__btn" (click)="semaine(-1)" aria-label="Semaine précédente">‹</button>
+  <button type="button" class="ag-nav__periode" (click)="semaineCourante()">
+    {{ lundi() | date:'d MMM':'':'fr' }} – {{ dimanche() | date:'d MMM':'':'fr' }}
+    @if (!estSemaineCourante()) { <span class="ag-nav__retour">↺ cette semaine</span> }
+  </button>
+  <button type="button" class="ag-nav__btn" (click)="semaine(1)" aria-label="Semaine suivante">›</button>
+</div>
+
+@if (chargement()) {
+  <div class="pwa-empty">Chargement…</div>
+} @else if (jours().length === 0) {
+  <div class="pwa-empty">
+    <div class="pwa-empty__ic">🗓️</div>
+    <div class="pwa-empty__t">Semaine libre</div>
+    <div class="pwa-empty__s">Aucune séance ni match sur cette semaine.</div>
+  </div>
+} @else {
+  @for (j of jours(); track j.date) {
+    <p class="pwa-section-title" [class.ag-jour--today]="j.date === aujourdHui">
+      {{ j.date | date:'EEEE d MMMM':'':'fr' }}@if (j.date === aujourdHui) { · aujourd'hui }
+    </p>
+    @for (s of j.seances; track s.id) {
+      <div class="ag-card pwa-rise" [class.ag-card--annulee]="s.statut === 'ANNULEE'">
+        <span class="ag-card__heure">{{ s.heureDebut || '—' }}</span>
+        <span class="ag-card__body">
+          <span class="ag-card__titre">
+            @if (estMatch(s)) { <span class="ag-badge ag-badge--match">MATCH</span> }
+            @if (s.statut === 'ANNULEE') { <span class="ag-badge ag-badge--off">ANNULÉE</span> }
+            {{ s.titre || s.typeSeance.libelle }}@if (s.adversaire) { — {{ s.adversaire }}}
+          </span>
+          <span class="ag-card__sub">
+            {{ s.typeSeance.libelle }}@if (s.dureeMinutes) { · {{ s.dureeMinutes }} min}@if (s.terrain) { · {{ s.terrain }}}
+          </span>
+        </span>
+        @if (j.date === aujourdHui && s.statut !== 'ANNULEE' && auth.has('presence:write')) {
+          <a class="ag-card__appel" [routerLink]="['/staff/appel']" [queryParams]="{ seance: s.id }">Appel ›</a>
+        }
+      </div>
+    }
+  }
+}

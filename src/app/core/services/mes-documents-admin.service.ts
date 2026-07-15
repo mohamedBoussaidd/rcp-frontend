@@ -15,7 +15,11 @@ export interface MonDocumentAdmin {
   motifRefus?: string | null;
 }
 
-/** Mes documents administratifs (PWA joueur) — endpoints self-scope sous /api/moi. */
+/**
+ * Mes documents administratifs — endpoints self-scope. Deux montages backend identiques :
+ * /api/moi (rôle JOUEUR, PWA joueur) et /api/membre (tout compte relié à une fiche — espace
+ * staff, V58). Les méthodes *Membre servent aux écrans staff.
+ */
 @Injectable({ providedIn: 'root' })
 export class MesDocumentsAdminService {
   private http = inject(HttpClient);
@@ -32,5 +36,21 @@ export class MesDocumentsAdminService {
 
   telecharger(documentId: string): Observable<Blob> {
     return this.http.get(`/api/moi/documents-administratifs/${documentId}/fichier`, { responseType: 'blob' });
+  }
+
+  // ── Variante staff (compte relié à une fiche, tout rôle) ──
+
+  mesDocumentsMembre(): Observable<MonDocumentAdmin[]> {
+    return this.http.get<MonDocumentAdmin[]>('/api/membre/documents-administratifs');
+  }
+
+  deposerMembre(typeId: string, fichier: File): Observable<MonDocumentAdmin> {
+    const form = new FormData();
+    form.append('fichier', fichier);
+    return this.http.post<MonDocumentAdmin>(`/api/membre/documents-administratifs/${typeId}`, form);
+  }
+
+  telechargerMembre(documentId: string): Observable<Blob> {
+    return this.http.get(`/api/membre/documents-administratifs/${documentId}/fichier`, { responseType: 'blob' });
   }
 }
