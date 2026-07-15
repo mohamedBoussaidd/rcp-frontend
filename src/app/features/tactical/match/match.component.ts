@@ -11,6 +11,8 @@ import {
   SchemaMatch, SessionGpsOption, Surveille, SurveilleCible, TechniqueService,
 } from '@core/services/technique.service';
 import { Joueur, JoueurService } from '@core/services/joueur.service';
+import { AuthService } from '@core/services/auth.service';
+import { RegleTactiqueResume, ReglesTactiquesService } from '@core/services/regles-tactiques.service';
 import { SchemaEditorComponent } from '../schema-editor/schema-editor.component';
 import { FORMATIONS, Formation } from '../schema-editor/schema-formations.data';
 
@@ -33,6 +35,12 @@ export class MatchComponent implements OnInit {
   private joueurService = inject(JoueurService);
   private dialog = inject(MatDialog);
   private snack = inject(MatSnackBar);
+  private auth = inject(AuthService);
+  private reglesService = inject(ReglesTactiquesService);
+
+  // ── Moteur tactique : profils de règles adverses attachables au match ──
+  readonly moteurVisible = this.auth.has('regles_tactiques:read');
+  profilsAdverses = signal<RegleTactiqueResume[]>([]);
 
   @ViewChild('pitch') pitchRef?: ElementRef<HTMLDivElement>;
 
@@ -251,6 +259,11 @@ export class MatchComponent implements OnInit {
       error: () => this.snack.open('Match introuvable', 'Fermer', { duration: 3000 }),
     });
     this.service.sessionsGps().subscribe({ next: s => this.sessions.set(s), error: () => {} });
+    if (this.moteurVisible) {
+      this.reglesService.lister({ type: 'ADVERSAIRE' }).subscribe({
+        next: p => this.profilsAdverses.set(p), error: () => {},
+      });
+    }
     this.service.statsCompo().subscribe({
       next: s => this.titulCount.set(Object.fromEntries(s.map(x => [x.joueurId, x.titulaire]))),
       error: () => {},
@@ -613,6 +626,16 @@ export class MatchComponent implements OnInit {
     this.service.definirSessionGps(m.id, sessionGpsId || null).subscribe({
       next: maj => { this.appliquerDetail(maj); },
       error: () => this.snack.open('Liaison impossible', 'Fermer', { duration: 3000 }),
+    });
+  }
+
+  /** Attache un profil de règles adverses (moteur tactique) au match. */
+  changerProfilAdverse(profilAdverseId: string): void {
+    const m = this.detail();
+    if (!m) return;
+    this.service.definirProfilAdverse(m.id, profilAdverseId || null).subscribe({
+      next: maj => { this.appliquerDetail(maj); },
+      error: () => this.snack.open('Liaison du profil impossible', 'Fermer', { duration: 3000 }),
     });
   }
 

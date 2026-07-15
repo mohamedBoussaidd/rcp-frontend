@@ -313,6 +313,18 @@
                 <textarea class="input" [(ngModel)]="infosBuf.infosLogistiques" name="ilog" rows="2"
                           placeholder="Covoiturage, dress code, repas…" [disabled]="!modifiable()"></textarea>
               </div>
+              @if (moteurVisible && (profilsAdverses().length > 0 || detail()!.profilAdverseId)) {
+                <div class="field span2">
+                  <label class="field__label">Profil adverse (moteur tactique)</label>
+                  <select class="input select" [ngModel]="detail()!.profilAdverseId ?? ''"
+                          (ngModelChange)="changerProfilAdverse($event)" name="iprofadv" [disabled]="!modifiable()">
+                    <option value="">— Aucun profil lié —</option>
+                    @for (p of profilsAdverses(); track p.id) {
+                      <option [value]="p.id">{{ p.nom }} ({{ p.systeme }})</option>
+                    }
+                  </select>
+                </div>
+              }
             </div>
           </div>
 

@@ -12,6 +12,14 @@ import {
 } from './schema-geometrie';
 import { FORMATIONS, COUPS_DE_PIED_ARRETES } from './schema-formations.data';
 import { SchemaTerrainRenderer } from './schema-terrain.renderer';
+import { AuthService } from '@core/services/auth.service';
+import {
+  RegleTactiqueDetail, RegleTactiqueResume, ReglesTactiquesService,
+} from '@core/services/regles-tactiques.service';
+import {
+  PHASES, PHASE_ADVERSE, PhaseKey, Posture, ReglesJson,
+  ciblesPhase, miroir, parseRegles, pxVersRel, relVersPx, slotIdsPourRoles, zoneDuPoint,
+} from '../moteur/moteur-tactique';
 
 /**
  * Données du dialog : éditeur de schéma générique, agnostique de la source.
@@ -32,7 +40,8 @@ type Outil = 'select' | 'deplacement' | 'conduite' | 'passe' | 'tir' | 'surveill
 type TraceType = 'deplacement' | 'conduite' | 'passe' | 'tir';
 type FormeType = 'rect' | 'ellipse' | 'losange' | 'triangle';
 
-interface SchemaElement { id: string; type: string; couleur?: string; numero?: number; label?: string; joueurId?: string; surveille?: boolean; surveilleCouleur?: string; x: number; y: number; }
+// slotId = poste du moteur tactique (posé par les formations) : le mode Dynamique pilote ce jeton.
+interface SchemaElement { id: string; type: string; couleur?: string; numero?: number; label?: string; joueurId?: string; slotId?: string; surveille?: boolean; surveilleCouleur?: string; x: number; y: number; }
 // elementId = jeton/ballon qui suit le tracé ; ballId = ballon entraîné par une conduite.
 interface SchemaTrace { id: string; type: TraceType; points: number[]; elementId?: string; ballId?: string; }
 // Forme d'annotation (zone à entourer/montrer), redimensionnable et déplaçable.
@@ -134,6 +143,33 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
   private traces: SchemaTrace[] = [];
   private nodesById = new Map<string, Konva.Group>();
 
+  // ── Moteur tactique (mode Dynamique) ──
+  // Statique = éditeur classique. Dynamique = les jetons porteurs d'un slot (posés par une
+  // formation) et SANS flèche suivent les règles de positionnement quand le ballon bouge,
+  // à leur vitesse GPS réelle. Les flèches dessinées gardent le pipeline d'animation.
+  modeMoteur = signal(false);
+  jeuxMoteur = signal<RegleTactiqueResume[]>([]);
+  jeuNousId = signal<string>('');
+  profilAdverseId = signal<string>('');          // '' = miroir auto de notre jeu
+  phaseMoteur = signal<PhaseKey>('OFF');
+  phaseAuto = signal(false);                     // déduite de la possession (porteur du ballon)
+  sauverDansRegles = signal(false);              // corrections de jetons → mise à jour des postures
+  enregistrement = signal(false);                // REC : échantillonne le scénario en keyframes
+  readonly phasesMoteur = PHASES;
+  private jeuNous: RegleTactiqueDetail | null = null;
+  private reglesNous: ReglesJson | null = null;
+  private profilAdverse: RegleTactiqueDetail | null = null;
+  private reglesAdverse: ReglesJson | null = null;   // profil choisi (sinon miroir auto)
+  private moteurAnim?: Konva.Animation;
+  private possessionNous = true;
+  private transitionJusqua = 0;                  // fin de la phase transitoire (s, horloge perf)
+  /** Porteur désigné à la main (clic sur un jeton en mode Dynamique) ; null = porteur auto. */
+  porteurManuelId = signal<string | null>(null);
+  private porteurRing?: Konva.Circle;            // halo jaune qui suit le porteur du ballon
+  private recDebut = 0;                          // départ du REC (s, horloge perf)
+  private recDernierEch = 0;                     // dernier échantillon keyframe (s)
+  private saveReglesTimer: ReturnType<typeof setTimeout> | null = null;
+
   private dessinEnCours: Konva.Line | null = null;
   private pointsEnCours: number[] = [];
 
@@ -178,6 +214,12 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
   private snack = inject(MatSnackBar);
   private dialog = inject(MatDialog);
   private terrainRenderer = inject(SchemaTerrainRenderer);
+  private auth = inject(AuthService);
+  private reglesService = inject(ReglesTactiquesService);
+
+  /** Le mode Dynamique n'est proposé que si le module moteur_tactique est actif (perm résolue). */
+  readonly moteurDisponible = this.auth.has('regles_tactiques:read');
+  readonly peutEcrireRegles = this.auth.has('regles_tactiques:write');
 
   constructor() {
     const data = inject<SchemaEditorData>(MAT_DIALOG_DATA);
@@ -202,6 +244,7 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
     this.chargerFormations();
     this.chargerEffectif();
     this.chargerVitesses();
+    this.chargerJeuxMoteur();
     if (this.keyframes().length === 0) this.resetKeyframes();
     this.onFs = () => { this.estPleinEcran.set(!!document.fullscreenElement); setTimeout(() => this.ajusterAuConteneur(), 60); };
     document.addEventListener('fullscreenchange', this.onFs);
@@ -352,6 +395,8 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
 
   ngOnDestroy(): void {
     this.pause();
+    this.arreterMoteur();
+    if (this.saveReglesTimer) { clearTimeout(this.saveReglesTimer); this.pousserRegles(); }
     if (this.onFs) document.removeEventListener('fullscreenchange', this.onFs);
     window.removeEventListener('resize', this.onResize);
     if (document.fullscreenElement) document.exitFullscreen().catch(() => { });
@@ -393,8 +438,9 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
     this.layer.draw();
   }
 
-  /** Place une formation (11 joueurs) pour l'équipe choisie. Adverse = côté droit en miroir. */
-  appliquerFormation(f: { nom: string; positions: { x: number; y: number }[] }): void {
+  /** Place une formation (11 joueurs) pour l'équipe choisie. Adverse = côté droit en miroir.
+   *  Les formations standard portent des rôles → chaque jeton reçoit son slot du moteur tactique. */
+  appliquerFormation(f: { nom: string; positions: { x: number; y: number }[]; roles?: string[] }): void {
     if (this.terrain() !== 'complet') this.changerTerrain('complet'); // formations pensées pour le terrain complet
     const couleur = this.equipeFormation();
     const adverse = couleur === NOIR;
@@ -403,6 +449,7 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
     this.elements = this.elements.filter(e => !(e.type === 'joueur' && e.couleur === couleur));
     // « Mon équipe » (violet) = vrais joueurs affectés par ligne ; Adversaire (noir) = numéros génériques
     const affectes = adverse ? [] : this.affecterJoueurs(f.positions);
+    const slotIds = f.roles ? slotIdsPourRoles(f.roles) : [];
     const m = 24;
     f.positions.forEach((pos, i) => {
       const nx = adverse ? 1 - pos.x : pos.x;
@@ -410,6 +457,7 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
       const el: SchemaElement = {
         id: this.uid(), type: 'joueur', couleur,
         ...(j ? { label: this.labelJoueur(j), joueurId: j.id } : { numero: i + 1 }),
+        ...(slotIds[i] ? { slotId: slotIds[i] } : {}),
         x: m + nx * (this.W - 2 * m), y: m + pos.y * (this.H - 2 * m),
       };
       this.elements.push(el);
@@ -548,6 +596,9 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
     this.selection.clear();
     this.trForme = new Konva.Transformer({ rotateEnabled: false, ignoreStroke: true, padding: 4 });
     this.layer.add(this.trForme);
+    this.porteurRing = undefined;   // détruit avec la couche — recréé au prochain passage en Dynamique
+    this.porteurManuelId.set(null);
+    if (this.modeMoteur()) this.arreterMoteur();
     this.resetKeyframes();
     this.layer.draw();
   }
@@ -556,6 +607,260 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
     const url = this.stage.toDataURL({ pixelRatio: 2 });
     const a = document.createElement('a');
     a.href = url; a.download = `schema-${this.data.titre}.png`; a.click();
+  }
+
+  // ══════════ Moteur tactique : mode Dynamique ══════════
+
+  private chargerJeuxMoteur(): void {
+    if (!this.moteurDisponible) return;
+    this.reglesService.lister().subscribe({
+      next: js => {
+        this.jeuxMoteur.set(js);
+        const nous = js.find(j => j.type === 'NOUS');
+        if (nous) this.choisirJeuNous(nous.id);
+      },
+      error: () => { },   // hors contexte équipe (409) : le mode Dynamique restera indisponible
+    });
+  }
+
+  jeuxNous(): RegleTactiqueResume[] { return this.jeuxMoteur().filter(j => j.type === 'NOUS'); }
+  profilsAdverses(): RegleTactiqueResume[] { return this.jeuxMoteur().filter(j => j.type === 'ADVERSAIRE'); }
+
+  choisirJeuNous(id: string): void {
+    this.jeuNousId.set(id);
+    this.jeuNous = null; this.reglesNous = null;
+    if (!id) return;
+    this.reglesService.detail(id).subscribe({
+      next: d => { this.jeuNous = d; this.reglesNous = parseRegles(d.reglesJson); },
+      error: () => { },
+    });
+  }
+
+  choisirProfilAdverse(id: string): void {
+    this.profilAdverseId.set(id);
+    this.profilAdverse = null; this.reglesAdverse = null;
+    if (!id) return;   // '' = miroir auto de notre jeu
+    this.reglesService.detail(id).subscribe({
+      next: d => { this.profilAdverse = d; this.reglesAdverse = parseRegles(d.reglesJson); },
+      error: () => { },
+    });
+  }
+
+  /** Règles adverses effectives : le profil choisi, sinon le miroir auto de notre jeu. */
+  private reglesAdverseEffectives(): ReglesJson | null {
+    if (this.reglesAdverse) return this.reglesAdverse;
+    return this.reglesNous ? miroir(this.reglesNous) : null;
+  }
+
+  basculerMoteur(): void {
+    if (this.modeMoteur()) { this.arreterMoteur(); return; }
+    if (!this.jeuxMoteur().length) {
+      this.snack.open('Aucun jeu de règles pour cette équipe — calibre-les dans Plan de jeu → Règles de jeu', 'Fermer', { duration: 4000 });
+      return;
+    }
+    this.modeMoteur.set(true);
+    // Un ballon est requis (c'est lui que le moteur suit) : on réutilise celui du terrain,
+    // sinon on en pose un au rond central.
+    if (!this.elements.some(e => e.type === 'ballon')) {
+      this.ajouterElement({ id: this.uid(), type: 'ballon', couleur: '#ffffff', x: this.W / 2, y: this.H / 2 });
+    }
+    if (!this.porteurRing) {
+      this.porteurRing = new Konva.Circle({ radius: 20, stroke: '#fde047', strokeWidth: 3, dash: [5, 4], listening: false, visible: false });
+      this.layer.add(this.porteurRing);
+    }
+    this.moteurAnim?.stop();
+    this.moteurAnim = new Konva.Animation(frame => {
+      if (frame) this.tickMoteur(frame.timeDiff / 1000);
+    }, this.layer);
+    this.moteurAnim.start();
+  }
+
+  private arreterMoteur(): void {
+    this.moteurAnim?.stop();
+    this.moteurAnim = undefined;
+    if (this.enregistrement()) this.arreterRec(false);
+    this.porteurManuelId.set(null);
+    this.porteurRing?.visible(false);
+    this.modeMoteur.set(false);
+  }
+
+  /** Message d'aide contextuel du bandeau Dynamique. */
+  aideMoteur(): string {
+    if (this.enregistrement()) return 'REC en cours — joue ton scénario au ballon, puis Stop pour le capturer en keyframes.';
+    if (this.sauverDansRegles()) return 'Corrections actives : déplacer un jeton réécrit la posture de la zone du ballon (phase en cours).';
+    if (this.phaseAuto()) return 'Auto : la phase suit la possession — le ballon reste piloté par toi. Clic sur un jeton = porteur imposé.';
+    return 'Glisse le ballon : le bloc suit à vitesse réelle et un porteur vient au ballon. Clic sur un jeton = porteur manuel ; les flèches priment sur le moteur.';
+  }
+
+  /** Jeton piloté par le moteur : porteur d'un slot ET sans flèche dessinée (les flèches priment). */
+  private estPiloteMoteur(el: SchemaElement): boolean {
+    return el.type === 'joueur' && !!el.slotId && !this.traces.some(t => t.elementId === el.id);
+  }
+
+  /** Une frame du moteur : cibles interpolées selon le ballon, déplacement aux vitesses réelles. */
+  private tickMoteur(dt: number): void {
+    const ballon = this.elements.find(e => e.type === 'ballon');
+    if (!ballon || dt <= 0) return;
+    const bNode = this.nodesById.get(ballon.id);
+    if (bNode) { ballon.x = bNode.x(); ballon.y = bNode.y(); }   // suit le drag OU la timeline
+    const rel = pxVersRel({ x: ballon.x, y: ballon.y }, this.W, this.H);
+    const tNow = performance.now() / 1000;
+    if (this.phaseAuto()) this.majPossession(ballon, tNow);
+
+    const phaseNous = this.phaseMoteur();
+    const ciblesNous = this.reglesNous ? ciblesPhase(this.reglesNous, phaseNous, rel) : null;
+    const adverses = this.reglesAdverseEffectives();
+    const ciblesAdv = adverses ? ciblesPhase(adverses, PHASE_ADVERSE[phaseNous], rel) : null;
+
+    // ── Porteur : un joueur du camp en possession vient AU ballon (le conduit) ──
+    // Manuel (clic) s'il existe encore, sinon le jeton piloté du bon camp dont la CIBLE est la
+    // plus proche du ballon (stable, pas d'oscillation entre deux joueurs).
+    const manuel = this.porteurManuelId() ? this.elements.find(e => e.id === this.porteurManuelId()) : undefined;
+    const campNousPossede = manuel ? manuel.couleur !== NOIR
+      : (this.phaseAuto() ? this.possessionNous : (phaseNous === 'OFF' || phaseNous === 'T_DO'));
+    let porteur: SchemaElement | undefined = manuel && this.estPiloteMoteur(manuel) ? manuel : undefined;
+    if (!porteur) {
+      let dMin = Infinity;
+      for (const el of this.elements) {
+        if (!this.estPiloteMoteur(el)) continue;
+        if ((el.couleur !== NOIR) !== campNousPossede) continue;
+        const c = (el.couleur === NOIR ? ciblesAdv : ciblesNous)?.[el.slotId!];
+        if (!c) continue;
+        const p = relVersPx(c, this.W, this.H);
+        const d = Math.hypot(p.x - ballon.x, p.y - ballon.y);
+        if (d < dMin) { dMin = d; porteur = el; }
+      }
+    }
+
+    for (const el of this.elements) {
+      if (!this.estPiloteMoteur(el)) continue;
+      const n = this.nodesById.get(el.id);
+      if (!n || n.isDragging()) continue;   // une correction en cours ne doit pas être combattue
+      let cible: { x: number; y: number } | null = null;
+      if (porteur?.id === el.id) {
+        // Le porteur colle au ballon (léger décalage côté son propre but).
+        cible = { x: ballon.x + (el.couleur === NOIR ? 16 : -16), y: ballon.y };
+      } else {
+        const c = (el.couleur === NOIR ? ciblesAdv : ciblesNous)?.[el.slotId!];
+        if (c) cible = relVersPx(c, this.W, this.H);
+      }
+      if (!cible) continue;
+      const dx = cible.x - el.x, dy = cible.y - el.y;
+      const dist = Math.hypot(dx, dy);
+      if (dist < 0.5) continue;
+      const pas = this.vitesseJoueurPxS(el) * dt * this.vitesse();
+      const r = dist <= pas ? 1 : pas / dist;
+      el.x += dx * r; el.y += dy * r;
+      n.position({ x: el.x, y: el.y });
+    }
+
+    // Halo du porteur (suit son jeton ; masqué s'il n'y en a pas).
+    if (this.porteurRing) {
+      if (porteur) { this.porteurRing.visible(true); this.porteurRing.position({ x: porteur.x, y: porteur.y }); }
+      else this.porteurRing.visible(false);
+    }
+
+    // REC : échantillonne le scénario en keyframes toutes les 0,5 s.
+    if (this.enregistrement()) {
+      const t = tNow - this.recDebut;
+      if (t - this.recDernierEch >= 0.5) { this.recDernierEch = t; this.capturerKeyframe(t); }
+    }
+    // (Konva.Animation redessine la couche à chaque frame — pas de batchDraw manuel.)
+  }
+
+  /** Possession auto : camp du porteur (jeton le plus proche du ballon) → phase, avec une
+   *  phase transitoire (T_DO / T_OD) pendant dureeTransitionS au changement de possession. */
+  private majPossession(ballon: SchemaElement, tNow: number): void {
+    let camp: boolean | null = null; let dMin = RAYON_LIEN;
+    const manuel = this.porteurManuelId() ? this.elements.find(e => e.id === this.porteurManuelId()) : undefined;
+    if (manuel) {
+      camp = manuel.couleur !== NOIR;   // le porteur désigné à la main IMPOSE la possession
+    } else {
+      for (const e of this.elements) {
+        if (e.type !== 'joueur') continue;
+        const d = Math.hypot(e.x - ballon.x, e.y - ballon.y);
+        if (d <= dMin) { dMin = d; camp = e.couleur !== NOIR; }
+      }
+    }
+    if (camp !== null && camp !== this.possessionNous) {
+      this.possessionNous = camp;
+      this.phaseMoteur.set(camp ? 'T_DO' : 'T_OD');
+      this.transitionJusqua = tNow + (this.reglesNous?.dureeTransitionS ?? 3);
+    }
+    if (this.transitionJusqua && tNow >= this.transitionJusqua) {
+      this.transitionJusqua = 0;
+      this.phaseMoteur.set(this.possessionNous ? 'OFF' : 'DEF');
+    }
+  }
+
+  /** Correction en mode Dynamique : si « enregistrer dans les règles » est actif, le déplacement
+   *  d'un jeton piloté réécrit la posture de la zone du ballon pour la phase en cours. */
+  private corrigerRegleDepuis(el: SchemaElement): void {
+    if (!this.sauverDansRegles() || !this.peutEcrireRegles) return;
+    if (el.type !== 'joueur' || !el.slotId) return;
+    const adverse = el.couleur === NOIR;
+    const regles = adverse ? this.reglesAdverse : this.reglesNous;
+    const record = adverse ? this.profilAdverse : this.jeuNous;
+    if (!regles || !record) {
+      if (adverse) this.snack.open('Choisis un profil adverse enregistré pour corriger ses règles (le miroir auto n\'est pas modifiable)', 'Fermer', { duration: 3800 });
+      return;
+    }
+    const ballon = this.elements.find(e => e.type === 'ballon');
+    if (!ballon) return;
+    const relB = pxVersRel({ x: ballon.x, y: ballon.y }, this.W, this.H);
+    const zone = zoneDuPoint(relB.x, relB.y);
+    const phase = adverse ? PHASE_ADVERSE[this.phaseMoteur()] : this.phaseMoteur();
+    // Posture = positions actuelles de tous les jetons de ce camp porteurs d'un slot.
+    const posture: Posture = { ...(regles.phases[phase][zone.key] ?? {}) };
+    for (const e of this.elements) {
+      if (e.type !== 'joueur' || !e.slotId) continue;
+      if ((e.couleur === NOIR) !== adverse) continue;
+      posture[e.slotId] = pxVersRel({ x: e.x, y: e.y }, this.W, this.H);
+    }
+    regles.phases[phase][zone.key] = posture;
+    this.snack.open(`Règle mise à jour — zone ${zone.h + 1}·${zone.c + 1}, phase ${phase}`, 'Fermer', { duration: 2000 });
+    if (this.saveReglesTimer) clearTimeout(this.saveReglesTimer);
+    this.saveReglesTimer = setTimeout(() => this.pousserRegles(), 1200);
+  }
+
+  /** Pousse les jeux de règles corrigés vers l'API (PUT remplace-tout, débouncé). */
+  private pousserRegles(): void {
+    this.saveReglesTimer = null;
+    const pousser = (rec: RegleTactiqueDetail | null, regles: ReglesJson | null) => {
+      if (!rec || !regles) return;
+      this.reglesService.modifier(rec.id, {
+        type: rec.type, nom: rec.nom, systeme: rec.systeme, reglesJson: JSON.stringify(regles),
+      }).subscribe({ error: () => this.snack.open('Mise à jour des règles impossible', 'Fermer', { duration: 3000 }) });
+    };
+    pousser(this.jeuNous, this.reglesNous);
+    pousser(this.profilAdverse, this.reglesAdverse);
+  }
+
+  // ── REC : enregistre le scénario joué (moteur + ballon) en keyframes standard ──
+  basculerRec(): void {
+    if (this.enregistrement()) { this.arreterRec(true); return; }
+    if (!this.modeMoteur()) return;
+    this.pause();
+    this.resetKeyframes();   // t=0 = positions actuelles
+    this.recDebut = performance.now() / 1000;
+    this.recDernierEch = 0;
+    this.enregistrement.set(true);
+    this.snack.open('REC — déplace le ballon : le scénario s\'échantillonne en keyframes', 'Fermer', { duration: 3000 });
+  }
+
+  private arreterRec(garder: boolean): void {
+    this.enregistrement.set(false);
+    if (!garder) return;
+    const duree = Math.max(1, performance.now() / 1000 - this.recDebut);
+    this.capturerKeyframe(duree);
+    this.dureeSecondes.set(Math.max(5, Math.ceil(duree)));
+    this.scrub(0);
+    this.snack.open('Scénario capturé — « Enregistrer » pour le conserver, ▶ pour le rejouer', 'Fermer', { duration: 3500 });
+  }
+
+  private capturerKeyframe(t: number): void {
+    const positions = Object.fromEntries(this.elements.map(e => [e.id, { x: e.x, y: e.y }]));
+    this.keyframes.update(ks => [...ks.filter(k => Math.abs(k.t - t) >= 0.05), { t, positions }].sort((a, b) => a.t - b.t));
   }
 
   // ══════════ Rendu ══════════
@@ -592,11 +897,13 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
       const occupe = this.elements.length > 0 || this.traces.length > 0;
       if (occupe && !confirm('Remplacer le contenu actuel du terrain par ce schéma ?')) return;
       this.pause();
+      if (this.modeMoteur()) this.arreterMoteur();
       // Vider le terrain courant (sans la confirmation de viderTerrain).
       this.layer.destroyChildren();
       this.elements = [];
       this.traces = [];
       this.nodesById.clear();
+      this.porteurRing = undefined;   // détruit avec la couche
       try {
         const d = JSON.parse(schema.schemaJson);
         if (d.terrain === 'complet' || d.terrain === 'demi') { this.terrain.set(d.terrain); this.dessinerTerrain(); }
@@ -679,6 +986,14 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
       this.layer.batchDraw();
     });
     g.on('dragend', () => {
+      if (this.modeMoteur()) {
+        // Mode Dynamique : on synchronise le modèle (pas de keyframe) et on traite la
+        // correction éventuelle (toggle « enregistrer dans les règles »).
+        el.x = g.x(); el.y = g.y();
+        this.corrigerRegleDepuis(el);
+        this.dragBase.clear();
+        return;
+      }
       const kf = this.keyframeAt(this.tempsCourant(), true)!;   // crée une keyframe si on est entre deux
       const maj = (id: string) => {
         const n = this.nodesById.get(id); const e = this.elements.find(x => x.id === id);
@@ -689,12 +1004,22 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
       this.dragBase.clear();
     });
     g.on('click tap', () => {
+      if (this.modeMoteur()) {
+        // Mode Dynamique : le clic désigne / libère le porteur manuel (pas d'édition).
+        if (el.type === 'joueur' && el.slotId) {
+          const deja = this.porteurManuelId() === el.id;
+          this.porteurManuelId.set(deja ? null : el.id);
+          this.snack.open(deja ? 'Porteur automatique' : `Porteur : ${el.label ?? el.numero ?? el.slotId}`, 'Fermer', { duration: 1600 });
+        }
+        return;
+      }
       const o = this.outil();
       if (o === 'supprimer') {
         this.elements = this.elements.filter(e => e.id !== el.id);
         this.nodesById.delete(el.id);
         this.keyframes.update(ks => { ks.forEach(k => delete k.positions[el.id]); return [...ks]; });
         this.traces.forEach(t => { if (t.elementId === el.id) t.elementId = undefined; if (t.ballId === el.id) t.ballId = undefined; });
+        if (this.porteurManuelId() === el.id) this.porteurManuelId.set(null);
         g.destroy(); this.majJoueursPlaces(); this.layer.draw();
       } else if (o === 'surveiller') {
         el.surveille = !el.surveille;  // marque/démarque le jeton à surveiller
@@ -1136,6 +1461,9 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
     const kfs = this.keyframes();
     const traj = this.construireTrajectoires();   // id élément -> segments mobiles dans le temps
     for (const el of this.elements) {
+      // En mode Dynamique, les jetons pilotés par le moteur sont animés en direct
+      // (tickMoteur) : ni les keyframes ni les tracés ne doivent les écraser.
+      if (this.modeMoteur() && this.estPiloteMoteur(el)) continue;
       const legs = traj.get(el.id);
       const p = legs ? this.posTrajectoire(legs, t) : this.posElement(el, t, kfs);
       el.x = p.x; el.y = p.y;

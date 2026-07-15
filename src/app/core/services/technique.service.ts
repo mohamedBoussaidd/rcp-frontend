@@ -176,6 +176,7 @@ export interface MatchDetail {
   score?: string;
   notesDebrief?: string;
   sessionGpsId?: string;
+  profilAdverseId?: string;
   schemas: SchemaMatch[];
   compo: CompoItem[];
   surveilles: Surveille[];
@@ -365,6 +366,10 @@ export class TechniqueService {
   }
   definirSessionGps(id: string, sessionGpsId: string | null): Observable<MatchDetail> {
     return this.http.put<MatchDetail>(`/api/matchs/${id}/session-gps`, { sessionGpsId });
+  }
+  /** Attache (ou détache : null) un profil de règles adverses au match (moteur tactique). */
+  definirProfilAdverse(id: string, profilAdverseId: string | null): Observable<MatchDetail> {
+    return this.http.put<MatchDetail>(`/api/matchs/${id}/profil-adverse`, { profilAdverseId });
   }
   chargeGps(id: string): Observable<ChargeJoueur[]> {
     return this.http.get<ChargeJoueur[]>(`/api/matchs/${id}/charge-gps`);

@@ -1,16 +1,29 @@
 <div class="page-head">
   <div>
     <h1 class="page-head__title">Plan de jeu</h1>
-    <p class="page-head__sub">Identité de jeu de l'équipe · {{ sections().length }} section{{ sections().length > 1 ? 's' : '' }}</p>
+    <p class="page-head__sub">
+      @if (onglet() === 'sections') { Identité de jeu de l'équipe · {{ sections().length }} section{{ sections().length > 1 ? 's' : '' }} }
+      @else { Règles de positionnement du moteur tactique (calibration par zones) }
+    </p>
   </div>
-  @if (modifiable()) {
-    <div class="page-head__actions">
+  <div class="page-head__actions">
+    @if (reglesVisibles) {
+      <span class="segmented">
+        <button [class.is-active]="onglet() === 'sections'" (click)="onglet.set('sections')">Sections</button>
+        <button [class.is-active]="onglet() === 'regles'" (click)="onglet.set('regles')">Règles de jeu</button>
+      </span>
+    }
+    @if (onglet() === 'sections' && modifiable()) {
       <button class="btn btn--primary" (click)="ajouter()">
         <mat-icon>add</mat-icon>Ajouter une section
       </button>
-    </div>
-  }
+    }
+  </div>
 </div>
+
+@if (onglet() === 'regles') {
+  <app-regles-calibration />
+} @else {
 
 @if (loading()) {
   <div class="card card--padded"><div class="loading">Chargement…</div></div>
@@ -75,4 +88,6 @@
       </div>
     }
   </div>
+}
+
 }

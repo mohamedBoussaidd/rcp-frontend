@@ -6,7 +6,9 @@ import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { CdkDragDrop, DragDropModule, moveItemInArray } from '@angular/cdk/drag-drop';
 import { PlanDeJeu, SectionPlan, TechniqueService } from '@core/services/technique.service';
+import { AuthService } from '@core/services/auth.service';
 import { SchemaEditorComponent } from '../schema-editor/schema-editor.component';
+import { ReglesCalibrationComponent } from './regles-calibration.component';
 
 /**
  * Plan de jeu (« document d'identité équipe »), sous-menu « Plan de jeu ».
@@ -19,17 +21,23 @@ import { SchemaEditorComponent } from '../schema-editor/schema-editor.component'
   standalone: true,
   templateUrl: './plan-de-jeu.component.html',
   styleUrl: './plan-de-jeu.component.scss',
-  imports: [DatePipe, FormsModule, MatIcon, DragDropModule],
+  imports: [DatePipe, FormsModule, MatIcon, DragDropModule, ReglesCalibrationComponent],
 })
 export class PlanDeJeuComponent implements OnInit {
 
   private service = inject(TechniqueService);
   private dialog = inject(MatDialog);
   private snack = inject(MatSnackBar);
+  private auth = inject(AuthService);
 
   sections = signal<SectionPlan[]>([]);
   modifiable = signal(false);
   loading = signal(true);
+
+  /** Onglet actif : sections (document) ou règles du moteur tactique. */
+  onglet = signal<'sections' | 'regles'>('sections');
+  /** L'onglet Règles n'apparaît que si la permission (donc le module moteur_tactique) est active. */
+  readonly reglesVisibles = this.auth.has('regles_tactiques:read');
 
   /** Section en cours d'édition (titre/texte) + tampon de saisie. */
   editingId = signal<string | null>(null);

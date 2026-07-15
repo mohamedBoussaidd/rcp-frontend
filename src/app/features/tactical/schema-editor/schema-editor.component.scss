@@ -291,6 +291,75 @@
   gap: 12px;
 }
 
+// ── Bandeau du mode Dynamique (moteur tactique) ──
+.moteur-row {
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 14px;
+  background: rgba(124, 58, 237, 0.06);
+}
+
+.moteur-select {
+  background: var(--surface-2);
+  color: inherit;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 4px 8px;
+  font-size: 0.82rem;
+  max-width: 170px;
+}
+
+.moteur-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: inherit;
+  font-size: 0.8rem;
+  cursor: pointer;
+
+  mat-icon { font-size: 16px; width: 16px; height: 16px; }
+
+  &.on {
+    border-color: #7c3aed;
+    background: rgba(124, 58, 237, 0.18);
+  }
+}
+
+.moteur-rec {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(239, 68, 68, 0.6);
+  background: transparent;
+  color: inherit;
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+
+  .rec-dot { width: 9px; height: 9px; border-radius: 50%; background: #ef4444; }
+
+  &.on {
+    background: rgba(239, 68, 68, 0.18);
+    .rec-dot { animation: recblink 1s infinite; }
+  }
+}
+
+@keyframes recblink { 50% { opacity: 0.2; } }
+
+.moteur-aide {
+  font-size: 0.76rem;
+  opacity: 0.6;
+}
+
 .editor__pitch-body {
   flex: 1;
   padding: 16px;
