@@ -73,6 +73,15 @@
               <button [class.is-active]="terrain() === 'demi'" (click)="changerTerrain('demi')">Demi</button>
             </div>
           </div>
+          <div class="row" style="gap:6px">
+            <span class="head-label">Vue</span>
+            <div class="segmented">
+              <button [class.is-active]="styleRendu() === 'tableau'" (click)="styleRendu() === 'tableau' || basculerStyleRendu()"
+                title="Vue tableau : jetons historiques (rectangles).">Tableau</button>
+              <button [class.is-active]="styleRendu() === 'realiste'" (click)="styleRendu() === 'realiste' || basculerStyleRendu()"
+                title="Vue réaliste : silhouettes 2.5D aux couleurs des équipes.">Réaliste</button>
+            </div>
+          </div>
           <div class="vdiv"></div>
           <div class="row" style="gap:6px">
             <span class="head-label">Tracé</span>

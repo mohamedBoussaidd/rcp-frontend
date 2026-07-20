@@ -85,3 +85,70 @@
   padding: .5rem .8rem; border-radius: 8px; font-size: .85rem;
   a { color: #047857; font-weight: 600; margin-left: .35rem; }
 }
+
+/* ════════════ Mode avancé (module seance_avancee) ════════════
+   Mêmes rubriques que le formulaire de séance, transposées dans les conventions
+   `ms-*` de cet écran pour rester cohérent avec le reste de la bibliothèque. */
+
+.ms-toggle-avance {
+  display: inline-flex; align-items: center; gap: .4rem;
+  font-size: .85rem; color: #475569; cursor: pointer; margin-bottom: .5rem;
+  input { accent-color: #1a9c4d; width: 15px; height: 15px; cursor: pointer; }
+}
+
+.ms-tabs { display: flex; flex-wrap: wrap; gap: .3rem; margin-bottom: .7rem; }
+
+.ms-tab {
+  border: 1px solid var(--border, #e2e8f0); background: #fff; color: #475569;
+  border-radius: 8px; padding: .35rem .7rem; font: inherit; font-size: .82rem; cursor: pointer;
+
+  &.on { background: #1a9c4d; border-color: #1a9c4d; color: #fff; font-weight: 600; }
+}
+
+.ms-av { display: flex; flex-direction: column; gap: .55rem; }
+
+.ms-av__label {
+  font-size: .78rem; font-weight: 600; color: #475569;
+  margin-top: .3rem; padding-bottom: .2rem; border-bottom: 1px solid var(--border, #e2e8f0);
+}
+
+.ms-chips { display: flex; flex-wrap: wrap; gap: .35rem; }
+
+.ms-chip {
+  border: 1px solid var(--border, #e2e8f0); background: #fff; color: #475569;
+  border-radius: 16px; padding: .3rem .65rem; font: inherit; font-size: .78rem; cursor: pointer;
+  text-align: left;
+
+  &.on { background: #1a9c4d; border-color: #1a9c4d; color: #fff; font-weight: 600; }
+  &--soft.on { background: #ecfdf5; border-color: #1a9c4d; color: #047857; }
+}
+
+/* Le nom seul ne distingue pas les homonymes : un intervenant a un compte par équipe. */
+.ms-chip__meta { display: block; font-size: .64rem; font-weight: 500; line-height: 1.25; opacity: .75; }
+
+.ms-phase { display: flex; flex-direction: column; gap: .3rem; }
+.ms-phase__nom { font-size: .78rem; font-weight: 600; color: #64748b; }
+
+.ms-bloc {
+  border: 1px solid var(--border, #e2e8f0); border-radius: 10px;
+  padding: .6rem; display: flex; flex-direction: column; gap: .5rem;
+}
+
+.ms-bloc__head { display: flex; align-items: center; gap: .4rem; }
+
+.ms-bloc__num {
+  flex: none; width: 22px; height: 22px; border-radius: 50%;
+  background: #1a9c4d; color: #fff; font-size: .75rem; font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+}
+
+.ms-bloc__libelle {
+  flex: 1; min-width: 90px; font: inherit; font-size: .9rem; font-weight: 600;
+  border: 1px solid #cbd5e1; border-radius: 8px; padding: .35rem .5rem;
+}
+
+.ms-rangement {
+  display: flex; align-items: center; justify-content: space-between; gap: .6rem;
+  padding: .3rem 0; border-bottom: 1px dashed var(--border, #e2e8f0); font-size: .85rem;
+  select { border: 1px solid #cbd5e1; border-radius: 8px; padding: .3rem .5rem; font-size: .85rem; }
+}

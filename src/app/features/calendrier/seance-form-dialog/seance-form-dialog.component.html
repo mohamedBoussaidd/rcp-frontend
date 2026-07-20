@@ -3,9 +3,26 @@
   <div class="form-card__header">
     <div>
       <h2 class="form-card__title">{{ editMode ? 'Modifier la séance' : 'Nouvelle séance' }}</h2>
-      <span class="form-card__subtitle">{{ selectedType?.libelle || 'Choisir un type' }} · {{ form?.get('date')?.value }}</span>
+      <span class="form-card__subtitle">
+        {{ selectedType?.libelle || 'Choisir un type' }} · {{ form?.get('date')?.value }}
+        @if (perimatch; as p) {
+          <span class="perimatch-badge">{{ p.libelle }}<app-info-bulle [texte]="aide.perimatch" /></span>
+        }
+      </span>
     </div>
-    <button type="button" class="form-card__close" (click)="annuler()" aria-label="Fermer">✕</button>
+    <div class="form-card__header-actions">
+      @if (peutImportPhoto()) {
+        <button type="button" class="btn-ajout-exo" (click)="importerDepuisPhoto()"
+                title="Photographier une fiche papier : l'IA pré-remplit le formulaire">📷 Photo</button>
+      }
+      @if (peutAvance()) {
+        <label class="mode-avance-toggle">
+          <input type="checkbox" [checked]="modeAvance()" (change)="basculerModeAvance()">
+          <span>Mode avancé</span>
+        </label>
+      }
+      <button type="button" class="form-card__close" (click)="annuler()" aria-label="Fermer">✕</button>
+    </div>
   </div>
 
   <form [formGroup]="form" class="form-card__body">
@@ -60,6 +77,13 @@
               <span class="form-field__error">Durée obligatoire</span>
             }
           </div>
+
+          @if (modeAvance()) {
+            <div class="form-field">
+              <label class="form-field__label">Durée effective (min)<app-info-bulle [texte]="aide.dureeEffective" /></label>
+              <input type="number" formControlName="dureeEffectiveMinutes" min="1" placeholder="ex : 68">
+            </div>
+          }
 
           <!-- Alerte écart durée -->
           @if (alerteEcart) {
@@ -251,6 +275,231 @@
 
         </div>
       </mat-tab>
+
+      <!-- ══════════ Onglets AVANCÉS (module seance_avancee + mode activé) ══════════ -->
+      @if (modeAvance()) {
+
+        <!-- Onglet 3 : Objectifs & Projet de jeu -->
+        <mat-tab label="Objectifs & Projet de jeu">
+          <div class="tab-grid av-tab">
+
+            <div class="section-label">Dominantes de la séance<app-info-bulle [texte]="aide.dominantesSeance" /></div>
+            <div class="chips-select">
+              @for (d of dominantes('SEANCE'); track d.id) {
+                <button type="button" class="chip-select" [class.on]="dominanteIds.has(d.id)"
+                        (click)="toggleDominante(d.id)">{{ d.libelle }}</button>
+              }
+            </div>
+
+            <div class="section-label">Dominantes athlétiques</div>
+            <div class="chips-select">
+              @for (d of dominantes('ATHLETIQUE'); track d.id) {
+                <button type="button" class="chip-select" [class.on]="dominanteIds.has(d.id)"
+                        (click)="toggleDominante(d.id)">{{ d.libelle }}</button>
+              }
+            </div>
+
+            <div class="section-label">Objectifs pédagogiques</div>
+            <div class="dom-table">
+              <div class="dom-row"><span class="dom-label">Tactique <em>organisationnelle</em></span>
+                <input class="form-field__control" formControlName="objTactiqueOrg" placeholder="—"></div>
+              <div class="dom-row"><span class="dom-label">Tactique <em>fonctionnelle</em></span>
+                <input class="form-field__control" formControlName="objTactiqueFonc" placeholder="ex : créer des lignes de passes"></div>
+              <div class="dom-row"><span class="dom-label">Mental</span>
+                <input class="form-field__control" formControlName="objMental" placeholder="ex : rigueur, concentration"></div>
+              <div class="dom-row"><span class="dom-label">Technique</span>
+                <input class="form-field__control" formControlName="objTechnique" placeholder="ex : passes courtes"></div>
+              <div class="dom-row"><span class="dom-label">Athlétique</span>
+                <input class="form-field__control" formControlName="objAthletique" placeholder="ex : aérobie, force"></div>
+            </div>
+
+            <div class="section-label">Phases du projet de jeu travaillées<app-info-bulle [texte]="aide.phasesProjetJeu" /></div>
+            @for (ph of phasesProjet; track ph.code) {
+              @if (sousPrincipes(ph.code).length > 0) {
+                <div class="phase-groupe">
+                  <span class="phase-libelle">{{ ph.libelle }}</span>
+                  <div class="chips-select">
+                    @for (p of sousPrincipes(ph.code); track p.id) {
+                      <button type="button" class="chip-select chip-select--soft" [class.on]="sousPrincipeIds.has(p.id)"
+                              (click)="toggleSousPrincipe(p.id)">{{ p.libelle }}</button>
+                    }
+                  </div>
+                </div>
+              }
+            }
+          </div>
+        </mat-tab>
+
+        <!-- Onglet 4 : Déroulé (blocs) -->
+        <mat-tab label="Déroulé">
+          <div class="tab-grid av-tab">
+            <div class="section-label-row">
+              <span class="section-label">Blocs de séance<app-info-bulle [texte]="aide.blocs" /></span>
+              <button type="button" class="btn-ajout-exo" (click)="ajouterBloc()">＋ Ajouter un bloc</button>
+            </div>
+
+            @if (blocs.length === 0) {
+              <span class="form-field__hint">Sans bloc, la séance garde sa liste d'exercices habituelle (onglet Séance).</span>
+            }
+
+            @for (b of blocs; track $index; let bi = $index) {
+              <div class="bloc-card">
+                <div class="bloc-card__head">
+                  <span class="bloc-card__num">{{ bi + 1 }}</span>
+                  <input class="bloc-card__libelle" [(ngModel)]="b.libelle" [ngModelOptions]="{standalone: true}"
+                         placeholder="ex : Soins & activation">
+                  <div class="bloc-card__actions">
+                    <button type="button" class="btn-mini" (click)="deplacerBloc(bi, -1)" [disabled]="bi === 0" title="Monter">↑</button>
+                    <button type="button" class="btn-mini" (click)="deplacerBloc(bi, 1)" [disabled]="bi === blocs.length - 1" title="Descendre">↓</button>
+                    <button type="button" class="btn-mini btn-mini--danger" (click)="supprimerBloc(bi)" title="Supprimer">✕</button>
+                  </div>
+                </div>
+                <div class="bloc-card__body">
+                  <div class="bloc-card__grid">
+                    <div class="form-field">
+                      <label class="form-field__label">Séquençage<app-info-bulle [texte]="aide.sequencage" /></label>
+                      <input [(ngModel)]="b.sequencage" [ngModelOptions]="{standalone: true}" placeholder="ex : 3 × 2'">
+                    </div>
+                    <div class="form-field">
+                      <label class="form-field__label">Durée (min)</label>
+                      <input type="number" [(ngModel)]="b.dureeMinutes" [ngModelOptions]="{standalone: true}" min="1">
+                    </div>
+                    <div class="form-field">
+                      <label class="form-field__label">Zone du terrain</label>
+                      <input [(ngModel)]="b.zoneTerrain" [ngModelOptions]="{standalone: true}" placeholder="ex : demi-terrain gauche">
+                    </div>
+                  </div>
+                  <div class="bloc-card__staff">
+                    <span class="dom-label">Staff affecté</span>
+                    <div class="chips-select">
+                      @for (st of staffClub; track st.id) {
+                        <button type="button" class="chip-select chip-select--soft" [class.on]="b.staffIds.includes(st.id)"
+                                (click)="toggleStaffBloc(b, st.id)">
+                          {{ st.nom }}
+                          @if (metaStaff(st)) {
+                            <small class="chip-select__meta">{{ metaStaff(st) }}</small>
+                          }
+                        </button>
+                      }
+                    </div>
+                  </div>
+                  <div class="bloc-card__exos">
+                    <span class="dom-label">Exercices du bloc</span>
+                    @if (exercicesDuBloc(bi).length === 0) {
+                      <span class="form-field__hint">Aucun — range un exercice ci-dessous.</span>
+                    } @else {
+                      <div class="exo-chips">
+                        @for (x of exercicesDuBloc(bi); track x.exo.id) {
+                          <span class="exo-chip on">{{ x.exo.nom }}
+                            @if (x.exo.dureeMinutes) { <small>{{ x.exo.dureeMinutes }}'</small> }
+                          </span>
+                        }
+                      </div>
+                    }
+                  </div>
+                </div>
+              </div>
+            }
+
+            @if (selection.length > 0 && blocs.length > 0) {
+              <div class="section-label" style="margin-top:8px">Rangement des exercices</div>
+              @for (e of selection; track e.id; let si = $index) {
+                <div class="rangement-row">
+                  <span class="rangement-nom">{{ e.nom }}</span>
+                  <select class="form-field__control" [(ngModel)]="blocParExo[si]" [ngModelOptions]="{standalone: true}">
+                    <option [ngValue]="null">— hors bloc</option>
+                    @for (b of blocs; track $index; let bi = $index) {
+                      <option [ngValue]="bi">{{ bi + 1 }} · {{ b.libelle }}</option>
+                    }
+                  </select>
+                </div>
+              }
+            } @else if (selection.length === 0) {
+              <span class="form-field__hint">Ajoute d'abord des exercices dans l'onglet Séance.</span>
+            }
+          </div>
+        </mat-tab>
+
+        <!-- Onglet 5 : Effectifs (groupes du jour) -->
+        <mat-tab label="Effectifs">
+          <div class="tab-grid av-tab">
+
+            <!-- Groupes auto (calculés, lecture seule) -->
+            <div class="section-label">Pré-remplis automatiquement<app-info-bulle [texte]="aide.effectifsJour" /></div>
+            <div class="groupes-auto">
+              <div class="grp-auto grp-auto--med">
+                <b>Blessés <span class="auto-badge">⚡ auto · médical</span></b>
+                @if ((groupesAuto?.blesses ?? []).length === 0) { <span class="form-field__hint">aucun</span> }
+                @for (j of groupesAuto?.blesses ?? []; track j.id) { <span class="pl pl--med">{{ j.nom }}</span> }
+              </div>
+              <div class="grp-auto grp-auto--reath">
+                <b>Réathlétisation <span class="auto-badge">⚡ auto · protocole RTP</span></b>
+                @if ((groupesAuto?.reathletisation ?? []).length === 0) { <span class="form-field__hint">aucun</span> }
+                @for (j of groupesAuto?.reathletisation ?? []; track j.id) { <span class="pl pl--reath">{{ j.nom }}</span> }
+              </div>
+            </div>
+
+            <!-- Portée : séance entière ou bloc -->
+            @if (blocs.length > 0) {
+              <div class="section-label-row">
+                <span class="section-label">Portée des groupes</span>
+                <select class="form-field__control portee-select" [ngModel]="porteeActive()" (ngModelChange)="porteeActive.set($event)"
+                        [ngModelOptions]="{standalone: true}">
+                  <option [ngValue]="null">Toute la séance</option>
+                  @for (b of blocs; track $index; let bi = $index) {
+                    <option [ngValue]="bi">Bloc {{ bi + 1 }} · {{ b.libelle }}</option>
+                  }
+                </select>
+              </div>
+              <span class="form-field__hint">Un bloc sans groupes propres utilise les groupes « toute la séance ».</span>
+            }
+
+            <!-- Groupes de la portée -->
+            <div class="section-label-row">
+              <span class="section-label">Groupes</span>
+              <div style="display:flex;gap:6px">
+                <button type="button" class="btn-ajout-exo" (click)="ajouterGroupe('COULEUR')">＋ Équipe couleur</button>
+                <button type="button" class="btn-ajout-exo" (click)="ajouterGroupe('LIBRE')">＋ Groupe libre</button>
+              </div>
+            </div>
+
+            @for (x of groupesPortee(); track x.index) {
+              <div class="groupe-card" [class.actif]="groupeActif() === x.index" (click)="groupeActif.set(x.index)">
+                <span class="pastille pastille--{{ x.g.couleur }}"></span>
+                <input class="groupe-card__libelle" [(ngModel)]="x.g.libelle" [ngModelOptions]="{standalone: true}"
+                       (click)="$event.stopPropagation()">
+                <select class="form-field__control groupe-card__couleur" [(ngModel)]="x.g.couleur"
+                        [ngModelOptions]="{standalone: true}" (click)="$event.stopPropagation()">
+                  @for (c of couleursGroupe; track c) { <option [value]="c">{{ c }}</option> }
+                </select>
+                <span class="groupe-card__count">{{ x.g.joueurIds.length }} j.</span>
+                <button type="button" class="btn-mini btn-mini--danger"
+                        (click)="supprimerGroupe(x.index); $event.stopPropagation()" title="Supprimer">✕</button>
+              </div>
+            }
+            @if (groupesPortee().length === 0) {
+              <span class="form-field__hint">Crée une équipe couleur ou un groupe libre, puis clique sur les joueurs pour les répartir.</span>
+            }
+
+            <!-- Répartition : clic joueur → groupe actif -->
+            @if (groupesPortee().length > 0) {
+              <div class="section-label">Répartition
+                @if (groupeActif() !== null && groupes[groupeActif()!]) {
+                  <span class="form-field__hint">— clique un joueur pour l'affecter à « {{ groupes[groupeActif()!].libelle }} »</span>
+                } @else {
+                  <span class="form-field__hint">— sélectionne d'abord un groupe ci-dessus</span>
+                }
+              </div>
+              <div class="exo-chips">
+                @for (j of joueursDisponibles(); track j.id) {
+                  <button type="button" class="pl pl--dispo pl--{{ couleurJoueur(j.id) || 'aucun' }}"
+                          (click)="affecterJoueur(j.id)">{{ j.nom }}</button>
+                }
+              </div>
+            }
+          </div>
+        </mat-tab>
+      }
 
     </mat-tab-group>
   </form>

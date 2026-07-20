@@ -37,7 +37,7 @@ const STYLE_TEXTE_DEFAUT: StyleTexte = {
       <div class="pl__stage" #stage>
         @if (slide(); as s) {
           @switch (s.type) {
-            @case ('SCHEMA') { <app-schema-viewer [schemaJson]="s.schemaJson" [largeur]="largeurSchema()" /> }
+            @case ('SCHEMA') { <app-schema-viewer [schemaJson]="s.schemaJson" [largeur]="largeurSchema()" [controlesStyle]="true" [presentation]="true" /> }
             @case ('IMAGE')  { <img class="pl__img" [src]="s.imageSrc" alt=""> }
             @case ('VIDEO_LIEN') {
               @if (videoUrl(); as v) { <iframe class="pl__video" [src]="v" allow="fullscreen; encrypted-media" allowfullscreen></iframe> }

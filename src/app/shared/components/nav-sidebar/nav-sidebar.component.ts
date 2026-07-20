@@ -67,7 +67,10 @@ const ALL_MODULES: NavModule[] = [
     perms: ['coaching:access'],
     subnav: [
       { label: 'Vue d\'ensemble',     link: '/coaching', roles: ['SUPER_ADMIN'], perms: ['coaching:access'] },
-      { label: 'Séances',             link: '/seances-modeles', roles: ['SUPER_ADMIN'], perms: ['seances_modeles:access'], module: 'seances_modeles' },
+      // « Modèles de séance » et non « Séances » : cet écran est la bibliothèque de GABARITS,
+      // les séances planifiées vivent dans le Calendrier — le libellé générique faisait chercher
+      // ici les séances créées au planning.
+      { label: 'Modèles de séance',   link: '/seances-modeles', roles: ['SUPER_ADMIN'], perms: ['seances_modeles:access'], module: 'seances_modeles' },
       { label: 'Schémas',             link: '/planning-technique', section: 'schemas',   roles: ['SUPER_ADMIN', 'ENTRAINEUR'], perms: ['schemas:write'], module: 'tactique' },
       { label: 'Exercices',           link: '/planning-technique', section: 'exercices', roles: ['SUPER_ADMIN', 'ENTRAINEUR'], perms: ['exercices:write'], module: 'tactique' },
       { label: 'Plan de jeu',         link: '/planning-technique', section: 'planjeu',   roles: ['SUPER_ADMIN', 'ENTRAINEUR'], perms: ['plandejeu:write'], module: 'tactique' },
@@ -151,6 +154,7 @@ const ALL_MODULES: NavModule[] = [
       { label: 'Clubs',          link: '/admin/clubs', roles: ['SUPER_ADMIN'] },
       { label: 'Packs & modules', link: '/admin/abonnements', roles: ['SUPER_ADMIN'] },
       { label: 'Rôles globaux',  link: '/admin/roles-globaux', roles: ['SUPER_ADMIN'] },
+      { label: 'Paramètres IA',  link: '/admin/parametres-ia', roles: ['SUPER_ADMIN'] },
       { label: 'Mon club',       link: '/mon-club',    roles: ['PRESIDENT', 'ENTRAINEUR', 'ADMINISTRATIF'], perms: ['club:manage', 'membres:manage'] },
     ],
   },

@@ -5,6 +5,39 @@ import { Observable } from 'rxjs';
 /** Type de contenu d'un exercice (porte ou non des attentes physiques). */
 export type TypeExercice = 'PHYSIQUE' | 'TECHNIQUE' | 'MIXTE';
 
+/** Niveau d'objectif pédagogique (mode avancé, fiche OL). */
+export type NiveauObjectif =
+  'TEMPS_DE_JEU' | 'PRINCIPE_ACTION' | 'REGLE_ACTION_COLLECTIVE' | 'REGLE_ACTION_INDIVIDUELLE' | 'MOYEN';
+
+/** Échelle d'effectif concernée par l'objectif (mode avancé). */
+export type EchelleEffectif = 'COLLECTIF' | 'INTERSECTORIEL' | 'SECTORIEL' | 'GROUPAL' | 'INDIVIDUEL';
+
+/**
+ * Champs du mode avancé d'un exercice (module seance_avancee) : cadre pédagogique +
+ * organisation. Envoyés/appliqués seulement si l'utilisateur a `seance_avancee:access`.
+ * La densité m²/joueur n'est JAMAIS stockée : calculée depuis dimensions ÷ nb joueurs.
+ */
+export interface ExerciceAvance {
+  contextePedagogique?: string | null;
+  niveauObjectif?: NiveauObjectif | null;
+  echelleEffectif?: EchelleEffectif | null;
+  dominanteTactiqueOrg?: string | null;
+  dominanteTactiqueFonc?: string | null;
+  dominanteMental?: string | null;
+  dominanteTechnique?: string | null;
+  dominanteAthletique?: string | null;
+  butSystemeMarque?: string | null;
+  reglesJeu?: string | null;
+  variablesPedagogiques?: string | null;
+  reperesPerceptifs?: string | null;
+  comportementsAttendus?: string | null;
+  terrainLongueurM?: number | null;
+  terrainLargeurM?: number | null;
+  formatJoueurs?: string | null;
+  nbJoueursTotal?: number | null;
+  sequencage?: string | null;
+}
+
 export interface Exercice {
   id: string;
   nom: string;
@@ -24,6 +57,7 @@ export interface Exercice {
   equipeOrigineId?: string;
   equipeOrigineNom?: string;
   modifiable: boolean;
+  avance?: ExerciceAvance;
 }
 
 export interface ExerciceRequest {
@@ -37,6 +71,9 @@ export interface ExerciceRequest {
   distanceAttendueM?: number | null;
   distanceHauteIntensiteM?: number | null;
   nbSprints?: number | null;
+  avance?: ExerciceAvance | null;
+  /** Import photo d'origine (pièce jointe), posé à la création depuis une photo. */
+  photoImportId?: string;
 }
 
 export interface ExerciceLigne {

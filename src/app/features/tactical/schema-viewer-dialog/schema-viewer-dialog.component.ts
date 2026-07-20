@@ -20,7 +20,7 @@ export interface SchemaViewerData {
       </div>
       <div class="svd__body">
         @if (data.schemaJson) {
-          <app-schema-viewer [schemaJson]="data.schemaJson" [largeur]="720"></app-schema-viewer>
+          <app-schema-viewer [schemaJson]="data.schemaJson" [largeur]="720" [controlesStyle]="true"></app-schema-viewer>
         } @else {
           <p class="svd__vide">Aucun schéma pour cet exercice.</p>
         }

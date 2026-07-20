@@ -13,6 +13,8 @@ import {
 import { FORMATIONS, COUPS_DE_PIED_ARRETES } from './schema-formations.data';
 import { SchemaTerrainRenderer } from './schema-terrain.renderer';
 import { AuthService } from '@core/services/auth.service';
+import { PreferencesService, PREF_STYLE_RENDU_SCHEMA } from '@core/services/preferences.service';
+import { StyleRendu, centreVisuel, dessinerCorpsElement, ordonnerParProfondeur } from '../schema-render/schema-render';
 import {
   RegleTactiqueDetail, RegleTactiqueResume, ReglesTactiquesService,
 } from '@core/services/regles-tactiques.service';
@@ -216,10 +218,36 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
   private terrainRenderer = inject(SchemaTerrainRenderer);
   private auth = inject(AuthService);
   private reglesService = inject(ReglesTactiquesService);
+  private prefs = inject(PreferencesService);
 
   /** Le mode Dynamique n'est proposé que si le module moteur_tactique est actif (perm résolue). */
   readonly moteurDisponible = this.auth.has('regles_tactiques:read');
   readonly peutEcrireRegles = this.auth.has('regles_tactiques:write');
+
+  /** Style de rendu (préférence par entraîneur, persistée serveur) : tableau ou réaliste. */
+  styleRendu(): StyleRendu {
+    return this.prefs.valeur(PREF_STYLE_RENDU_SCHEMA) === 'realiste' ? 'realiste' : 'tableau';
+  }
+
+  basculerStyleRendu(): void {
+    const nouveau: StyleRendu = this.styleRendu() === 'realiste' ? 'tableau' : 'realiste';
+    this.prefs.definir(PREF_STYLE_RENDU_SCHEMA, nouveau);
+    this.redessinerElements();
+  }
+
+  /** Re-rend tous les jetons avec le style courant (positions et données inchangées). */
+  private redessinerElements(): void {
+    this.elements.forEach(el => {
+      const n = this.nodesById.get(el.id);
+      const pos = n ? { x: n.x(), y: n.y() } : { x: el.x, y: el.y };
+      n?.destroy();
+      this.nodesById.delete(el.id);
+      this.dessinerElement(el);
+      this.nodesById.get(el.id)?.position(pos);
+    });
+    if (this.styleRendu() === 'realiste') ordonnerParProfondeur(this.nodesById.values());
+    this.layer.draw();
+  }
 
   constructor() {
     const data = inject<SchemaEditorData>(MAT_DIALOG_DATA);
@@ -238,6 +266,7 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
     // Transformer (poignées) pour redimensionner la forme d'annotation sélectionnée.
     this.trForme = new Konva.Transformer({ rotateEnabled: false, ignoreStroke: true, padding: 4 });
     this.layer.add(this.trForme);
+    this.prefs.charger();   // style de rendu (tableau / réaliste) persisté par entraîneur
     this.dessinerTerrain();
     this.chargerSchema();
     this.brancherDessin();
@@ -873,6 +902,7 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
   private chargerContenu(d: any): void {
     (d.formes ?? []).forEach((f: SchemaForme) => { this.formes.push(f); this.dessinerForme(f); });
     (d.elements ?? []).forEach((el: SchemaElement) => { this.elements.push(el); this.dessinerElement(el); });
+    if (this.styleRendu() === 'realiste') ordonnerParProfondeur(this.nodesById.values());
     (d.traces ?? []).forEach((t: SchemaTrace) => { this.traces.push(t); this.dessinerTrace(t); });
     if (d.modeAnim === 'temps' || d.modeAnim === 'vitesse') this.modeAnim.set(d.modeAnim);
     if (d.metriqueVitesse === 'max' || d.metriqueVitesse === 'moyenne') this.metriqueVitesse.set(d.metriqueVitesse);
@@ -922,39 +952,25 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
   }
 
   private dessinerElement(el: SchemaElement): void {
+    const style = this.styleRendu();
     const g = new Konva.Group({ x: el.x, y: el.y, draggable: true });
+    const centre = centreVisuel(style);
     // Halo lumineux « joueur à surveiller » (dessiné en premier = derrière le jeton).
     if (el.surveille) {
       const c = el.surveilleCouleur || '#ef4444';
+      const hy = style === 'realiste' ? -16 : 0;
       g.add(new Konva.Circle({   // disque flou = effet projecteur
-        radius: 24, fill: c, opacity: 0.28,
+        y: hy, radius: 24, fill: c, opacity: 0.28,
         shadowColor: c, shadowBlur: 22, shadowOpacity: 1,
       }));
-      g.add(new Konva.Circle({ radius: 22, stroke: c, strokeWidth: 3 }));
+      g.add(new Konva.Circle({ y: hy, radius: 22, stroke: c, strokeWidth: 3 }));
     }
-    if (el.type === 'joueur') {
-      const texte = el.label ?? String(el.numero);
-      const h = 22;
-      const txt = new Konva.Text({ text: texte, fontSize: 11, fontStyle: 'bold', fill: '#fff', wrap: 'none' });
-      const w = Math.max(34, Math.ceil(txt.width()) + 14);   // rectangle ajusté au nom
-      txt.width(w); txt.height(h); txt.offsetX(w / 2); txt.offsetY(h / 2); txt.align('center'); txt.verticalAlign('middle');
-      g.add(new Konva.Rect({ x: -w / 2, y: -h / 2, width: w, height: h, cornerRadius: 5, fill: el.couleur, stroke: '#fff', strokeWidth: 2 }));
-      g.add(txt);
-    } else if (el.type === 'ballon') {
-      g.add(new Konva.Circle({ radius: 9, fill: '#fff', stroke: '#111', strokeWidth: 2 }));
-    } else if (el.type === 'plot') {
-      g.add(new Konva.RegularPolygon({ sides: 3, radius: 13, fill: el.couleur, stroke: '#00000055', strokeWidth: 1 }));
-    } else if (el.type === 'but') {
-      g.add(new Konva.Rect({ x: -22, y: -6, width: 44, height: 12, stroke: '#fff', strokeWidth: 3 }));
-    } else if (el.type === 'cerceau') {
-      g.add(new Konva.Ring({ innerRadius: 9, outerRadius: 14, fill: el.couleur }));
-    } else if (el.type === 'mannequin') {
-      g.add(new Konva.Rect({ x: -7, y: -16, width: 14, height: 32, cornerRadius: 4, fill: el.couleur, stroke: '#fff', strokeWidth: 1.5 }));
-    }
+    // Visuel de base : module de rendu partagé (tableau = formes historiques, réaliste = sprites).
+    dessinerCorpsElement(g, el, style);
 
     // Badge d'alerte « à surveiller » (au-dessus du jeton, coin haut-droit).
     if (el.surveille) {
-      const badge = new Konva.Group({ x: 13, y: -13 });
+      const badge = new Konva.Group({ x: centre.x, y: centre.y });
       badge.add(new Konva.Circle({ radius: 8, fill: '#ef4444', stroke: '#fff', strokeWidth: 1.5 }));
       const bt = new Konva.Text({ text: '!', fontSize: 12, fontStyle: 'bold', fill: '#fff', width: 16, height: 16, align: 'center', verticalAlign: 'middle' });
       bt.offsetX(8); bt.offsetY(8);
@@ -964,7 +980,10 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
 
     // Surbrillance de sélection multiple : enfant nommé (suit le déplacement du groupe).
     if (this.selection.has(el.id)) {
-      g.add(new Konva.Rect({ name: 'sel-hi', x: -22, y: -18, width: 44, height: 36, cornerRadius: 6, stroke: '#38bdf8', strokeWidth: 2, dash: [4, 3], listening: false }));
+      const selRect = style === 'realiste'
+        ? { x: -18, y: -42, width: 36, height: 50 }
+        : { x: -22, y: -18, width: 44, height: 36 };
+      g.add(new Konva.Rect({ name: 'sel-hi', ...selRect, cornerRadius: 6, stroke: '#38bdf8', strokeWidth: 2, dash: [4, 3], listening: false }));
     }
 
     g.on('dragstart', () => {

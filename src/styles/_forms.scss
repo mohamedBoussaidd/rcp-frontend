@@ -147,7 +147,11 @@
   .req { color: var(--bad); margin-left: 2px; }
 }
 
-/* Contrôles natifs : input / select / textarea */
+/* Contrôles natifs : input / select / textarea.
+   `.form-field__control` est l'échappatoire pour un contrôle qui ne peut pas être enfant
+   DIRECT d'un `.form-field` (grilles compactes, cartes) : sans elle, le champ retombe sur
+   le rendu navigateur. L'autre convention du projet (`.field` + `.input`) est stylée dans
+   styles.scss et n'a pas besoin d'être reprise ici. */
 .form-field__control,
 .form-field > input,
 .form-field > select,
@@ -187,6 +191,7 @@
 }
 
 /* Select natif : chevron custom + pas de flèche système */
+select.form-field__control,
 .form-field > select {
   appearance: none;
   -webkit-appearance: none;
@@ -198,6 +203,7 @@
 }
 
 /* Nombres : pas de spinners */
+input.form-field__control[type=number],
 .form-field > input[type=number] {
   -moz-appearance: textfield;
   appearance: textfield;
@@ -210,6 +216,8 @@
 }
 
 /* Dates : icône du calendrier en clair */
+input.form-field__control[type=date],
+input.form-field__control[type=time],
 .form-field > input[type=date],
 .form-field > input[type=time] {
   &::-webkit-calendar-picker-indicator { filter: none; cursor: pointer; }

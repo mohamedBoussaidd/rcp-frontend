@@ -1,0 +1,87 @@
+:host { display: block; }
+
+.pia-sec-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 6px;
+}
+
+.pia-sec-titre {
+  margin: 0;
+  font-size: 14.5px;
+  color: var(--text);
+}
+
+.pia-hint {
+  font-size: 12px;
+  color: var(--text-2);
+  margin: 4px 0 10px;
+}
+
+.pia-textarea {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface-2);
+  color: var(--text);
+  font-family: ui-monospace, 'Cascadia Code', Consolas, monospace;
+  font-size: 12px;
+  line-height: 1.5;
+  padding: 12px;
+  resize: vertical;
+}
+
+.pia-hist {
+  margin-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.pia-hist__ligne {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+  color: var(--text-2);
+  border: 1px dashed var(--border);
+  border-radius: 8px;
+  padding: 6px 10px;
+}
+
+.pia-hist__extrait {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: ui-monospace, Consolas, monospace;
+}
+
+.pia-quota-input { max-width: 90px; }
+
+.pia-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+
+  th {
+    text-align: left;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: .5px;
+    color: var(--text-2);
+    padding: 6px 8px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  td {
+    padding: 7px 8px;
+    border-bottom: 1px solid var(--border);
+    color: var(--text);
+  }
+}
+
+.pia-plein { color: #DC2626; font-weight: 700; }

@@ -3,7 +3,7 @@ import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { Joueur, GpsPoint } from './joueur.service';
 import { Blessure } from './blessure.service';
-import { Seance, ContenuSeance, StatutPresence, LignePresence } from './seance.service';
+import { Seance, ContenuSeance, FicheSeanceJoueur, StatutPresence, LignePresence } from './seance.service';
 import { Conseil } from './conseil.service';
 
 /** Ce que le joueur a déjà déclaré pour une séance (pré-remplissage des boutons PWA). */
@@ -200,6 +200,12 @@ export class EspaceJoueurService {
   /** Contenu (exercices + schémas) d'une séance de mon équipe (lecture seule). */
   getContenuSeance(seanceId: string): Observable<ContenuSeance> {
     return this.http.get<ContenuSeance>(`${this.base}/seances/${seanceId}/exercices`);
+  }
+
+  /** Fiche séance version joueur, filtrée serveur : déroulé (blocs + schémas) + MON groupe.
+   *  Jamais d'objectifs pédagogiques, dominantes, projet de jeu ni affectation staff. */
+  getFicheSeance(seanceId: string): Observable<FicheSeanceJoueur> {
+    return this.http.get<FicheSeanceJoueur>(`${this.base}/seances/${seanceId}/fiche`);
   }
 
   // ── Présence (auto-déclaration) ──

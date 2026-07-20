@@ -1,0 +1,201 @@
+<div class="fiche-page">
+
+  @if (loading()) {
+    <div class="fiche-loading">Chargement de la fiche…</div>
+  } @else {
+    @if (resume(); as r) {
+
+    @if (verif()) {
+      <div class="verif-bandeau no-print">
+        ✅ Séance créée — vérifie la fiche ci-dessous, puis imprime-la ou partage-la au staff.
+      </div>
+    }
+
+    <div class="toolbar no-print">
+      <span class="toolbar__titre">Fiche séance</span>
+      <div class="toolbar__btns">
+        <button class="btn btn--secondary" (click)="retour()">← Retour</button>
+        <button class="btn btn--secondary" (click)="imprimer()">🖨 Imprimer / PDF</button>
+        @if (peutEcrire()) {
+          <button class="btn btn--secondary" (click)="modifier()">✏️ Modifier</button>
+          <button class="btn btn--primary" (click)="partager()" [disabled]="partageEnCours()">
+            {{ partageEnCours() ? 'Partage…' : '📤 Partager au staff' }}
+          </button>
+        }
+      </div>
+    </div>
+
+    <div class="sheet">
+
+      <!-- En-tête club -->
+      <div class="sheet__head">
+        <div class="sheet__club">
+          <div class="sheet__logo">{{ clubInitiales() }}</div>
+          <div>
+            <h1>{{ r.titre || r.typeLibelle || 'Séance' }}</h1>
+            <div class="sheet__meta">
+              {{ r.date | date: 'EEEE d MMMM' }}
+              @if (r.heureDebut) { · {{ r.heureDebut }} }
+              @if (r.terrain) { · {{ r.terrain }} }
+              @if (r.responsable) { · Resp. {{ r.responsable }} }
+              @if (r.equipeNom) { · {{ r.equipeNom }} }
+            </div>
+          </div>
+        </div>
+        @if (r.perimatch.libelle) {
+          <span class="jbadge">{{ r.perimatch.libelle }}</span>
+        }
+      </div>
+
+      <!-- Bandeau durées / effectif -->
+      <div class="band">
+        <div class="band__cell"><label>Type</label><b>{{ r.typeLibelle || '—' }}</b></div>
+        <div class="band__cell"><label>Durée globale</label><b>{{ r.dureeMinutes ? r.dureeMinutes + ' min' : '—' }}</b></div>
+        @if (r.dureeEffectiveMinutes) {
+          <div class="band__cell"><label>Durée effective</label><b>{{ r.dureeEffectiveMinutes }} min</b></div>
+        }
+        <div class="band__cell"><label>Effectif dispo</label><b>{{ effectifPrevu() }} joueurs</b></div>
+        @if (r.statut === 'REALISEE') {
+          <div class="band__cell"><label>Statut</label><b>Réalisée ✓</b></div>
+        }
+      </div>
+
+      <div class="sheet__body">
+
+        <!-- Dominantes -->
+        @if (r.dominantes.length > 0) {
+          <div class="sec">Dominantes</div>
+          <div class="chips">
+            @for (d of chipsDominantes('SEANCE'); track d) { <span class="chip">{{ d }}</span> }
+            @if (chipsDominantes('ATHLETIQUE').length > 0) {
+              <span class="chip chip--soft">Athlétique : {{ chipsDominantes('ATHLETIQUE').join(' · ') }}</span>
+            }
+          </div>
+        }
+
+        <!-- Objectifs pédagogiques -->
+        @if (aObjectifs()) {
+          <div class="sec">Objectifs pédagogiques</div>
+          <div class="objgrid">
+            @if (r.objectifs.tactiqueOrg) { <div class="obj"><label>Tactique org.</label><span>{{ r.objectifs.tactiqueOrg }}</span></div> }
+            @if (r.objectifs.tactiqueFonc) { <div class="obj"><label>Tactique fonct.</label><span>{{ r.objectifs.tactiqueFonc }}</span></div> }
+            @if (r.objectifs.technique) { <div class="obj"><label>Technique</label><span>{{ r.objectifs.technique }}</span></div> }
+            @if (r.objectifs.mental) { <div class="obj"><label>Mental</label><span>{{ r.objectifs.mental }}</span></div> }
+            @if (r.objectifs.athletique) { <div class="obj"><label>Athlétique</label><span>{{ r.objectifs.athletique }}</span></div> }
+          </div>
+        }
+
+        <!-- Projet de jeu -->
+        @if (r.sousPrincipes.length > 0) {
+          <div class="sec">Projet de jeu travaillé</div>
+          <div class="chips">
+            @for (p of chipsProjet(); track p) { <span class="chip">{{ p }}</span> }
+          </div>
+        }
+
+        <!-- Déroulé en blocs -->
+        @if (r.blocs.length > 0) {
+          <div class="sec">Déroulé — {{ r.blocs.length }} bloc{{ r.blocs.length > 1 ? 's' : '' }}</div>
+          <div class="blocs">
+            @for (b of r.blocs; track b.bloc.id; let bi = $index) {
+              <div class="bloc">
+                <div class="bloc__head">
+                  <b>{{ bi + 1 }} · {{ b.bloc.libelle }}</b>
+                  <span class="bloc__duree">{{ b.bloc.sequencage || (b.bloc.dureeMinutes ? b.bloc.dureeMinutes + "'" : '') }}</span>
+                </div>
+                @for (e of b.exercices; track e.exerciceId) {
+                  @if (e.schemaJson) {
+                    <div class="bloc__schema">
+                      <app-schema-viewer [schemaJson]="e.schemaJson" [largeur]="330" />
+                    </div>
+                  }
+                }
+                <div class="bloc__body">
+                  @if (b.bloc.staff.length > 0 || b.bloc.zoneTerrain) {
+                    <span class="bloc__who">
+                      @if (b.bloc.staff.length > 0) { 👤 {{ b.bloc.staff[0].nom }}@for (s of b.bloc.staff.slice(1); track s.id) { + {{ s.nom }} } }
+                      @if (b.bloc.zoneTerrain) { · {{ b.bloc.zoneTerrain }} }
+                    </span>
+                  }
+                  @for (e of b.exercices; track e.exerciceId) {
+                    <div class="bloc__exo">
+                      <b>{{ e.nom }}</b>@if (e.dureeMinutes) { · {{ e.dureeMinutes }}' }
+                      @if (e.description) { <span class="bloc__desc">{{ e.description }}</span> }
+                    </div>
+                  }
+                </div>
+              </div>
+            }
+          </div>
+        }
+
+        <!-- Exercices hors bloc (ou liste plate) -->
+        @if (r.exercicesSansBloc.length > 0) {
+          <div class="sec">{{ r.blocs.length > 0 ? 'Autres exercices' : 'Exercices' }}</div>
+          <div class="blocs">
+            @for (e of r.exercicesSansBloc; track e.exerciceId) {
+              <div class="bloc">
+                <div class="bloc__head">
+                  <b>{{ e.nom }}</b>
+                  <span class="bloc__duree">{{ e.dureeMinutes ? e.dureeMinutes + "'" : '' }}</span>
+                </div>
+                @if (e.schemaJson) {
+                  <div class="bloc__schema">
+                    <app-schema-viewer [schemaJson]="e.schemaJson" [largeur]="330" />
+                  </div>
+                }
+                @if (e.description || e.objectif) {
+                  <div class="bloc__body">
+                    @if (e.objectif) { <span class="bloc__who">{{ e.objectif }}</span> }
+                    @if (e.description) { <span class="bloc__desc">{{ e.description }}</span> }
+                  </div>
+                }
+              </div>
+            }
+          </div>
+        }
+
+        <!-- Effectifs du jour -->
+        @if (r.groupes.length > 0 || r.groupesAuto.blesses.length > 0 || r.groupesAuto.reathletisation.length > 0 || r.absents.length > 0) {
+          <div class="sec">Effectifs du jour</div>
+          <div class="eff">
+            @if (r.groupesAuto.blesses.length > 0) {
+              <div class="grp"><b>Blessés (médical)</b>
+                @for (j of r.groupesAuto.blesses; track j.id) { <span class="pl pl--med">{{ j.nom }}</span> }
+              </div>
+            }
+            @if (r.groupesAuto.reathletisation.length > 0) {
+              <div class="grp"><b>Réathlétisation (RTP)</b>
+                @for (j of r.groupesAuto.reathletisation; track j.id) { <span class="pl pl--reath">{{ j.nom }}</span> }
+              </div>
+            }
+            @if (r.absents.length > 0) {
+              <div class="grp"><b>Absents (appel)</b>
+                @for (j of r.absents; track j.id) { <span class="pl">{{ j.nom }}</span> }
+              </div>
+            }
+            @for (g of r.groupes; track g.id) {
+              <div class="grp">
+                <b>{{ g.libelle }}</b>
+                @for (j of g.joueurs; track j.id) { <span class="pl pl--{{ g.couleur || 'aucun' }}">{{ j.nom }}</span> }
+              </div>
+            }
+          </div>
+        }
+      </div>
+
+      <!-- Pied -->
+      <div class="sheet__foot">
+        <span>{{ clubNom() }}@if (r.equipeNom) { · {{ r.equipeNom }} }</span>
+        @if (aChargeCible()) {
+          <span>Charge cible :
+            @if (r.objectifDistanceM) { {{ r.objectifDistanceM }} m }
+            @if (r.objectifDistanceHauteIntensiteM) { · HI {{ r.objectifDistanceHauteIntensiteM }} m }
+            @if (r.objectifIntensite) { · intensité {{ r.objectifIntensite }}/5 }
+          </span>
+        }
+      </div>
+    </div>
+    }
+  }
+</div>

@@ -1,7 +1,8 @@
 import { Component, inject } from '@angular/core';
 import { MAT_DIALOG_DATA, MatDialog, MatDialogRef } from '@angular/material/dialog';
 import { DatePipe } from '@angular/common';
-import { ContenuSeance, Seance } from '@core/services/seance.service';
+import { Router } from '@angular/router';
+import { ContenuSeance, FicheSeanceJoueur, Seance } from '@core/services/seance.service';
 import { AuthService } from '@core/services/auth.service';
 import { SchemaViewerComponent } from '../../tactical/schema-viewer/schema-viewer.component';
 import { PresenceDialogComponent } from '../../performance/presence-dialog/presence-dialog.component';
@@ -24,12 +25,27 @@ export interface SeanceContenuData {
 export class SeanceContenuDialogComponent {
   dialogRef = inject<MatDialogRef<SeanceContenuDialogComponent>>(MatDialogRef);
   data = inject<SeanceContenuData>(MAT_DIALOG_DATA);
+
+  /** Version joueur (PWA) : fiche filtrée serveur — déroulé en blocs + SON groupe du jour. */
+  ficheJoueur: FicheSeanceJoueur | null = null;
   private dialog = inject(MatDialog);
   private auth = inject(AuthService);
+  private router = inject(Router);
 
   /** Appel possible : c'est un entraînement (pas un match) et l'utilisateur peut saisir la présence. */
   get peutFaireAppel(): boolean {
     return !!this.data.seance && !this.data.seance.adversaire && this.auth.has('presence:write');
+  }
+
+  /** Fiche imprimable réservée au staff (le joueur a sa propre vue PWA). */
+  get peutVoirFiche(): boolean {
+    return !!this.data.seance && this.auth.has('seances:read');
+  }
+
+  ouvrirFiche(): void {
+    if (!this.data.seance) return;
+    this.dialogRef.close();
+    this.router.navigate(['/seances', this.data.seance.id, 'fiche']);
   }
 
   ouvrirAppel(): void {

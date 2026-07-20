@@ -1,8 +1,8 @@
 <div class="ms-wrap">
   <header class="ms-head">
     <div>
-      <h1>Séances</h1>
-      <p class="ms-sub">Bibliothèque de séances-modèles réutilisables — planifiez-les sur une date pour générer une séance.</p>
+      <h1>Modèles de séance</h1>
+      <p class="ms-sub">Bibliothèque de gabarits réutilisables — planifiez-en un sur une date pour créer une séance. Les séances déjà planifiées se trouvent dans le Calendrier.</p>
     </div>
     <div class="ms-head__actions">
       <a routerLink="/coaching" class="ms-btn ms-btn--ghost">← Coaching</a>
@@ -54,6 +54,26 @@
       <div class="ms-modal__panel" (click)="$event.stopPropagation()">
         <h2>{{ editionId ? 'Modifier le modèle' : 'Nouveau modèle' }}</h2>
 
+        <!-- Mode avancé (module seance_avancee) : mêmes rubriques que le formulaire de séance,
+             pour qu'un gabarit puisse porter le même contenu qu'une séance planifiée. -->
+        @if (peutAvance()) {
+          <label class="ms-toggle-avance">
+            <input type="checkbox" [checked]="modeAvance()" (change)="basculerModeAvance()">
+            <span>Mode avancé</span>
+          </label>
+          @if (modeAvance()) {
+            <div class="ms-tabs">
+              <button type="button" class="ms-tab" [class.on]="ongletAvance === 'cadre'"
+                      (click)="ongletAvance = 'cadre'">Cadre</button>
+              <button type="button" class="ms-tab" [class.on]="ongletAvance === 'objectifs'"
+                      (click)="ongletAvance = 'objectifs'">Objectifs &amp; projet de jeu</button>
+              <button type="button" class="ms-tab" [class.on]="ongletAvance === 'deroule'"
+                      (click)="ongletAvance = 'deroule'">Déroulé</button>
+            </div>
+          }
+        }
+
+        @if (!modeAvance() || ongletAvance === 'cadre') {
         <div class="ms-form-grid">
           <label class="ms-field">
             <span>Nom</span>
@@ -131,6 +151,123 @@
             </div>
           }
         </div>
+        }
+
+        <!-- ══ Onglet avancé : objectifs & projet de jeu ══ -->
+        @if (modeAvance() && ongletAvance === 'objectifs') {
+          <div class="ms-av">
+            <div class="ms-av__label">Dominantes de la séance</div>
+            <div class="ms-chips">
+              @for (d of dominantes('SEANCE'); track d.id) {
+                <button type="button" class="ms-chip" [class.on]="dominanteIds.has(d.id)"
+                        (click)="toggleDominante(d.id)">{{ d.libelle }}</button>
+              }
+            </div>
+
+            <div class="ms-av__label">Dominantes athlétiques</div>
+            <div class="ms-chips">
+              @for (d of dominantes('ATHLETIQUE'); track d.id) {
+                <button type="button" class="ms-chip" [class.on]="dominanteIds.has(d.id)"
+                        (click)="toggleDominante(d.id)">{{ d.libelle }}</button>
+              }
+            </div>
+
+            <div class="ms-av__label">Objectifs pédagogiques</div>
+            <div class="ms-form-grid">
+              <label class="ms-field"><span>Tactique organisationnelle</span>
+                <input [(ngModel)]="edition.objTactiqueOrg" placeholder="—" /></label>
+              <label class="ms-field"><span>Tactique fonctionnelle</span>
+                <input [(ngModel)]="edition.objTactiqueFonc" placeholder="ex : créer des lignes de passes" /></label>
+              <label class="ms-field"><span>Mental</span>
+                <input [(ngModel)]="edition.objMental" placeholder="ex : rigueur, concentration" /></label>
+              <label class="ms-field"><span>Technique</span>
+                <input [(ngModel)]="edition.objTechnique" placeholder="ex : passes courtes" /></label>
+              <label class="ms-field"><span>Athlétique</span>
+                <input [(ngModel)]="edition.objAthletique" placeholder="ex : aérobie, force" /></label>
+            </div>
+
+            <div class="ms-av__label">Phases du projet de jeu travaillées</div>
+            @for (ph of phasesProjet; track ph.code) {
+              @if (sousPrincipes(ph.code).length > 0) {
+                <div class="ms-phase">
+                  <span class="ms-phase__nom">{{ ph.libelle }}</span>
+                  <div class="ms-chips">
+                    @for (p of sousPrincipes(ph.code); track p.id) {
+                      <button type="button" class="ms-chip ms-chip--soft" [class.on]="sousPrincipeIds.has(p.id)"
+                              (click)="toggleSousPrincipe(p.id)">{{ p.libelle }}</button>
+                    }
+                  </div>
+                </div>
+              }
+            }
+          </div>
+        }
+
+        <!-- ══ Onglet avancé : déroulé (blocs) ══ -->
+        @if (modeAvance() && ongletAvance === 'deroule') {
+          <div class="ms-av">
+            <div class="ms-creneaux-edit__head">
+              <h3>Blocs ({{ blocs.length }})</h3>
+              <button class="ms-btn" (click)="ajouterBloc()">+ Ajouter un bloc</button>
+            </div>
+            @if (!blocs.length) {
+              <p class="ms-muted">Sans bloc, le modèle garde sa liste d'exercices habituelle.</p>
+            }
+
+            @for (b of blocs; track $index; let bi = $index) {
+              <div class="ms-bloc">
+                <div class="ms-bloc__head">
+                  <span class="ms-bloc__num">{{ bi + 1 }}</span>
+                  <input class="ms-bloc__libelle" [(ngModel)]="b.libelle" placeholder="ex : Soins &amp; activation" />
+                  <button class="ms-btn ms-btn--icon" (click)="deplacerBloc(bi, -1)" [disabled]="bi === 0" title="Monter">↑</button>
+                  <button class="ms-btn ms-btn--icon" (click)="deplacerBloc(bi, 1)" [disabled]="bi === blocs.length - 1" title="Descendre">↓</button>
+                  <button class="ms-btn ms-btn--danger ms-btn--icon" (click)="supprimerBloc(bi)" title="Supprimer">✕</button>
+                </div>
+                <div class="ms-form-grid">
+                  <label class="ms-field"><span>Séquençage</span>
+                    <input [(ngModel)]="b.sequencage" placeholder="ex : 3 × 2'" /></label>
+                  <label class="ms-field"><span>Durée (min)</span>
+                    <input type="number" min="1" [(ngModel)]="b.dureeMinutes" /></label>
+                  <label class="ms-field"><span>Zone du terrain</span>
+                    <input [(ngModel)]="b.zoneTerrain" placeholder="ex : demi-terrain gauche" /></label>
+                </div>
+                <div class="ms-av__label">Staff affecté par défaut</div>
+                <div class="ms-chips">
+                  @for (st of staffClub; track st.id) {
+                    <button type="button" class="ms-chip ms-chip--soft" [class.on]="b.staffIds.includes(st.id)"
+                            (click)="toggleStaffBloc(b, st.id)">
+                      {{ st.nom }}
+                      @if (metaStaff(st)) { <small class="ms-chip__meta">{{ metaStaff(st) }}</small> }
+                    </button>
+                  }
+                </div>
+                @if (exercicesDuBloc(bi).length) {
+                  <div class="ms-av__label">Exercices du bloc</div>
+                  <div class="ms-chips">
+                    @for (x of exercicesDuBloc(bi); track x.id) { <span class="ms-pill">{{ x.nom }}</span> }
+                  </div>
+                }
+              </div>
+            }
+
+            @if (selection.length && blocs.length) {
+              <div class="ms-av__label">Rangement des exercices</div>
+              @for (e of selection; track e.id; let si = $index) {
+                <div class="ms-rangement">
+                  <span class="ms-exo-nom">{{ e.nom }}</span>
+                  <select [(ngModel)]="blocParExo[si]">
+                    <option [ngValue]="null">— hors bloc</option>
+                    @for (b of blocs; track $index; let bi = $index) {
+                      <option [ngValue]="bi">{{ bi + 1 }} · {{ b.libelle }}</option>
+                    }
+                  </select>
+                </div>
+              }
+            } @else if (!selection.length) {
+              <p class="ms-muted">Ajoutez d'abord des exercices dans l'onglet Cadre.</p>
+            }
+          </div>
+        }
 
         <div class="ms-modal__actions">
           <button class="ms-btn" (click)="annulerEdition()">Annuler</button>

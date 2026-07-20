@@ -5,8 +5,21 @@ import { RouterLink } from '@angular/router';
 import {
   SeanceModeleService, SeanceModele, SeanceModeleRequest, PlanifieResponse,
 } from '@core/services/seance-modele.service';
-import { SeanceService, TypeSeance } from '@core/services/seance.service';
+import {
+  SeanceService, TypeSeance, RefDominante, RefSousPrincipe, StaffRef,
+} from '@core/services/seance.service';
 import { TechniqueService, Exercice } from '@core/services/technique.service';
+import { AuthService } from '@core/services/auth.service';
+import { PreferencesService } from '@core/services/preferences.service';
+
+/** Bloc en cours d'édition (miroir du dialog de séance). */
+interface BlocForm {
+  libelle: string;
+  sequencage: string;
+  dureeMinutes: number | null;
+  zoneTerrain: string;
+  staffIds: string[];
+}
 
 /**
  * Bibliothèque de séances-modèles (espace Coaching). Gabarits réutilisables : on les crée/édite
@@ -25,6 +38,8 @@ export class SeancesModelesComponent implements OnInit {
   private service = inject(SeanceModeleService);
   private seanceService = inject(SeanceService);
   private technique = inject(TechniqueService);
+  private auth = inject(AuthService);
+  private prefs = inject(PreferencesService);
 
   modeles: SeanceModele[] = [];
   types: TypeSeance[] = [];
@@ -39,6 +54,30 @@ export class SeancesModelesComponent implements OnInit {
   exoListeOuverte = false;
   filtreExo = '';
 
+  // ── Mode avancé (module seance_avancee), même gating que le dialog de séance ──
+  ongletAvance: 'cadre' | 'objectifs' | 'deroule' = 'cadre';
+  refDominantes: RefDominante[] = [];
+  refSousPrincipes: RefSousPrincipe[] = [];
+  staffClub: StaffRef[] = [];
+  dominanteIds = new Set<string>();
+  sousPrincipeIds = new Set<string>();
+  blocs: BlocForm[] = [];
+  /** Index du bloc par exercice sélectionné (aligné sur `selection`). null = hors bloc. */
+  blocParExo: (number | null)[] = [];
+
+  readonly phasesProjet = [
+    { code: 'OFF', libelle: 'Phase offensive' },
+    { code: 'DEF', libelle: 'Phase défensive' },
+    { code: 'T_OD', libelle: 'Transition off. → déf.' },
+    { code: 'T_DO', libelle: 'Transition déf. → off.' },
+    { code: 'CPA_OFF', libelle: 'Coups de pied arrêtés offensifs' },
+    { code: 'CPA_DEF', libelle: 'Coups de pied arrêtés défensifs' },
+  ];
+
+  peutAvance(): boolean { return this.auth.has('seance_avancee:access'); }
+  modeAvance(): boolean { return this.peutAvance() && this.prefs.modeAvanceSeance(); }
+  basculerModeAvance(): void { this.prefs.basculerModeAvanceSeance(!this.prefs.modeAvanceSeance()); }
+
   // Planification (instanciation en séance)
   planifId: string | null = null;
   planifNom = '';
@@ -50,6 +89,14 @@ export class SeancesModelesComponent implements OnInit {
     this.seanceService.getTypeSeances().subscribe(t => this.types = t);
     this.technique.listerExercices().subscribe(ex =>
       this.exercices = ex.slice().sort((a, b) => (a.nom || '').localeCompare(b.nom || '')));
+    this.prefs.charger();
+    if (this.peutAvance()) {
+      this.seanceService.getReferentielsSeanceAvancee().subscribe({
+        next: r => { this.refDominantes = r.dominantes; this.refSousPrincipes = r.sousPrincipes; },
+        error: () => {},
+      });
+      this.seanceService.getStaffClub().subscribe({ next: st => this.staffClub = st, error: () => {} });
+    }
     this.charger();
   }
 
@@ -66,9 +113,15 @@ export class SeancesModelesComponent implements OnInit {
     this.editionId = null;
     this.selection = [];
     this.exoListeOuverte = false;
+    this.ongletAvance = 'cadre';
+    this.dominanteIds.clear();
+    this.sousPrincipeIds.clear();
+    this.blocs = [];
+    this.blocParExo = [];
     this.edition = {
       nom: '', typeSeanceId: this.types[0]?.id ?? '', objectif: '', dureeMinutes: null,
       objectifDistanceM: null, objectifIntensite: null, objectifDistanceHauteIntensiteM: null, description: '',
+      objTactiqueOrg: '', objTactiqueFonc: '', objMental: '', objTechnique: '', objAthletique: '',
     };
   }
 
@@ -76,6 +129,7 @@ export class SeancesModelesComponent implements OnInit {
     this.service.detail(m.id).subscribe(d => {
       this.editionId = m.id;
       this.exoListeOuverte = false;
+      this.ongletAvance = 'cadre';
       this.edition = {
         nom: d.modele.nom,
         typeSeanceId: d.modele.typeSeanceId ?? this.types[0]?.id ?? '',
@@ -85,10 +139,25 @@ export class SeancesModelesComponent implements OnInit {
         objectifIntensite: d.modele.objectifIntensite ?? null,
         objectifDistanceHauteIntensiteM: d.modele.objectifDistanceHauteIntensiteM ?? null,
         description: d.modele.description ?? '',
+        objTactiqueOrg: d.modele.objTactiqueOrg ?? '',
+        objTactiqueFonc: d.modele.objTactiqueFonc ?? '',
+        objMental: d.modele.objMental ?? '',
+        objTechnique: d.modele.objTechnique ?? '',
+        objAthletique: d.modele.objAthletique ?? '',
       };
       this.selection = d.exercices
         .map(l => this.exercices.find(e => e.id === l.exerciceId))
         .filter((e): e is Exercice => !!e);
+
+      this.dominanteIds = new Set(d.dominanteIds ?? []);
+      this.sousPrincipeIds = new Set(d.sousPrincipeIds ?? []);
+      this.blocs = (d.blocs ?? []).map(b => ({
+        libelle: b.libelle, sequencage: b.sequencage ?? '', dureeMinutes: b.dureeMinutes ?? null,
+        zoneTerrain: b.zoneTerrain ?? '', staffIds: b.staff.map(st => st.id),
+      }));
+      // Rattachement : on retrouve l'index du bloc à partir de son identifiant serveur.
+      const indexParBlocId = new Map((d.blocs ?? []).map((b, i) => [b.id, i]));
+      this.blocParExo = d.exercices.map(l => (l.blocId != null ? indexParBlocId.get(l.blocId) ?? null : null));
     });
   }
 
@@ -96,6 +165,62 @@ export class SeancesModelesComponent implements OnInit {
     this.edition = null;
     this.editionId = null;
     this.selection = [];
+    this.blocs = [];
+    this.blocParExo = [];
+    this.dominanteIds.clear();
+    this.sousPrincipeIds.clear();
+  }
+
+  // ── Mode avancé : référentiels, blocs, rattachement ──
+
+  dominantes(famille: 'SEANCE' | 'ATHLETIQUE'): RefDominante[] {
+    return this.refDominantes.filter(d => d.famille === famille);
+  }
+
+  sousPrincipes(phase: string): RefSousPrincipe[] {
+    return this.refSousPrincipes.filter(p => p.phase === phase);
+  }
+
+  toggleDominante(id: string): void {
+    this.dominanteIds.has(id) ? this.dominanteIds.delete(id) : this.dominanteIds.add(id);
+  }
+
+  toggleSousPrincipe(id: string): void {
+    this.sousPrincipeIds.has(id) ? this.sousPrincipeIds.delete(id) : this.sousPrincipeIds.add(id);
+  }
+
+  ajouterBloc(): void {
+    this.blocs.push({
+      libelle: `Bloc ${this.blocs.length + 1}`, sequencage: '', dureeMinutes: null,
+      zoneTerrain: '', staffIds: [],
+    });
+  }
+
+  supprimerBloc(i: number): void {
+    this.blocs.splice(i, 1);
+    // Les exercices rangés dans ce bloc repassent hors bloc ; les suivants se décalent.
+    this.blocParExo = this.blocParExo.map(b => (b === i ? null : b !== null && b > i ? b - 1 : b));
+  }
+
+  deplacerBloc(i: number, sens: -1 | 1): void {
+    const j = i + sens;
+    if (j < 0 || j >= this.blocs.length) return;
+    [this.blocs[i], this.blocs[j]] = [this.blocs[j], this.blocs[i]];
+    this.blocParExo = this.blocParExo.map(b => (b === i ? j : b === j ? i : b));
+  }
+
+  toggleStaffBloc(bloc: BlocForm, staffId: string): void {
+    const k = bloc.staffIds.indexOf(staffId);
+    k >= 0 ? bloc.staffIds.splice(k, 1) : bloc.staffIds.push(staffId);
+  }
+
+  /** Complément affiché sous le nom dans la puce (« Entraîneur · U19 »). */
+  metaStaff(s: StaffRef): string {
+    return [s.role, s.equipe].filter(v => !!v).join(' · ');
+  }
+
+  exercicesDuBloc(index: number): Exercice[] {
+    return this.selection.filter((_, i) => this.blocParExo[i] === index);
   }
 
   // ── Sélection d'exercices ──
@@ -109,14 +234,20 @@ export class SeancesModelesComponent implements OnInit {
   estSelectionne(e: Exercice): boolean { return this.selection.some(x => x.id === e.id); }
 
   toggleSelection(e: Exercice): void {
-    this.selection = this.estSelectionne(e)
-      ? this.selection.filter(x => x.id !== e.id)
-      : [...this.selection, e];
+    if (this.estSelectionne(e)) {
+      this.retirer(e);
+      return;
+    }
+    this.selection = [...this.selection, e];
+    this.blocParExo = [...this.blocParExo, null];   // reste aligné sur `selection`
     this.recalculerDuree();
   }
 
   retirer(e: Exercice): void {
-    this.selection = this.selection.filter(x => x.id !== e.id);
+    const i = this.selection.findIndex(x => x.id === e.id);
+    if (i < 0) return;
+    this.selection = this.selection.filter((_, k) => k !== i);
+    this.blocParExo = this.blocParExo.filter((_, k) => k !== i);
     this.recalculerDuree();
   }
 
@@ -142,12 +273,37 @@ export class SeancesModelesComponent implements OnInit {
       objectifIntensite: this.edition.objectifIntensite ?? null,
       objectifDistanceHauteIntensiteM: this.edition.objectifDistanceHauteIntensiteM ?? null,
       description: this.edition.description || null,
+      ...(this.peutAvance() && {
+        objTactiqueOrg: this.edition.objTactiqueOrg || null,
+        objTactiqueFonc: this.edition.objTactiqueFonc || null,
+        objMental: this.edition.objMental || null,
+        objTechnique: this.edition.objTechnique || null,
+        objAthletique: this.edition.objAthletique || null,
+      }),
     };
-    const lignes = this.selection.map(e => ({ exerciceId: e.id }));
+    const avance = this.modeAvance();
+    const lignes = this.selection.map((e, i) => ({
+      exerciceId: e.id,
+      ...(avance && { blocIndex: this.blocParExo[i] ?? null }),
+    }));
     const obs = this.editionId ? this.service.modifier(this.editionId, req) : this.service.creer(req);
     obs.subscribe({
       next: saved => {
-        this.service.remplacerExercices(saved.id, lignes).subscribe({
+        // En mode avancé, un seul appel pose les exercices ET les blocs/référentiels ;
+        // sinon on garde l'endpoint historique (liste plate).
+        const contenu = avance
+          ? this.service.remplacerContenuAvance(saved.id, {
+              blocs: this.blocs.map(b => ({
+                libelle: b.libelle, sequencage: b.sequencage || null,
+                dureeMinutes: b.dureeMinutes ?? null, zoneTerrain: b.zoneTerrain || null,
+                staffIds: b.staffIds,
+              })),
+              exercices: lignes,
+              dominanteIds: [...this.dominanteIds],
+              sousPrincipeIds: [...this.sousPrincipeIds],
+            })
+          : this.service.remplacerExercices(saved.id, lignes);
+        contenu.subscribe({
           next: () => { this.message = 'Modèle enregistré.'; this.annulerEdition(); this.charger(); },
           error: e => { this.message = 'Échec : ' + (e?.error?.message ?? 'erreur'); },
         });

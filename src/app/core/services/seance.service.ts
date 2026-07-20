@@ -45,11 +45,19 @@ export interface Seance {
   objectifDistanceM?: number;
   objectifIntensite?: number;
   objectifDistanceHauteIntensiteM?: number;
+  // ── Mode avancé (module seance_avancee), tout optionnel ──
+  dureeEffectiveMinutes?: number;
+  objTactiqueOrg?: string;
+  objTactiqueFonc?: string;
+  objMental?: string;
+  objTechnique?: string;
+  objAthletique?: string;
 }
 
 // ── Préparation : exercices de la séance (référence + overrides) ──
 
-/** Override d'une ligne d'exercice envoyé au serveur (null = valeur par défaut de l'exercice). */
+/** Override d'une ligne d'exercice envoyé au serveur (null = valeur par défaut de l'exercice).
+ *  `blocIndex` (mode avancé) : index du bloc dans le même payload, null = hors bloc. */
 export interface LigneExerciceRequest {
   exerciceId: string;
   dureeMinutes?: number | null;
@@ -57,6 +65,7 @@ export interface LigneExerciceRequest {
   distanceAttendueM?: number | null;
   distanceHauteIntensiteM?: number | null;
   nbSprints?: number | null;
+  blocIndex?: number | null;
 }
 
 /** Ligne d'exercice telle qu'affichée : valeurs effectives (override sinon défaut) + libellés. */
@@ -74,6 +83,59 @@ export interface ExerciceLigneSeance {
   distanceAttendueM?: number;
   distanceHauteIntensiteM?: number;
   nbSprints?: number;
+  blocId?: string | null;
+}
+
+// ── Mode avancé : blocs, groupes, référentiels ──
+
+/** `role`/`equipe` départagent les homonymes (un compte staff par équipe). `equipe` null = club seul. */
+export interface StaffRef { id: string; nom: string; role?: string | null; equipe?: string | null; }
+export interface JoueurRefSeance { id: string; nom: string; prenom?: string; }
+
+export interface BlocSeanceDto {
+  id: string;
+  ordre: number;
+  libelle: string;
+  sequencage?: string;
+  dureeMinutes?: number;
+  zoneTerrain?: string;
+  staff: StaffRef[];
+}
+
+/** Groupe du jour stocké (COULEUR / LIBRE). `blocId` null = toute la séance. */
+export interface GroupeSeanceDto {
+  id: string;
+  blocId?: string | null;
+  type: 'COULEUR' | 'LIBRE';
+  libelle: string;
+  couleur?: string;
+  ordre: number;
+  joueurs: JoueurRefSeance[];
+}
+
+export interface BlocRequest {
+  libelle: string;
+  sequencage?: string | null;
+  dureeMinutes?: number | null;
+  zoneTerrain?: string | null;
+  staffIds: string[];
+}
+
+export interface GroupeRequest {
+  blocIndex?: number | null;
+  type: 'COULEUR' | 'LIBRE';
+  libelle: string;
+  couleur?: string | null;
+  joueurIds: string[];
+}
+
+/** Remplacement complet du contenu avancé (PUT /contenu, module seance_avancee). */
+export interface ContenuAvanceRequest {
+  blocs: BlocRequest[];
+  exercices: LigneExerciceRequest[];
+  groupes: GroupeRequest[];
+  dominanteIds: string[];
+  sousPrincipeIds: string[];
 }
 
 /** Contenu d'une séance : exercices + agrégats (servent à pré-remplir l'objectif d'équipe). */
@@ -85,6 +147,91 @@ export interface ContenuSeance {
   distanceTotaleAttendueM?: number;
   distanceHauteIntensiteTotaleM?: number;
   nbSprintsTotal?: number;
+  blocs: BlocSeanceDto[];
+  groupes: GroupeSeanceDto[];
+  dominanteIds: string[];
+  sousPrincipeIds: string[];
+}
+
+// ── Référentiels du mode avancé (globaux, seedés V61) ──
+
+export interface RefDominante { id: string; code: string; libelle: string; famille: 'SEANCE' | 'ATHLETIQUE'; ordre: number; }
+export interface RefSousPrincipe { id: string; code: string; libelle: string; phase: 'OFF' | 'DEF' | 'T_OD' | 'T_DO' | 'CPA_OFF' | 'CPA_DEF'; ordre: number; }
+export interface ReferentielsSeance { dominantes: RefDominante[]; sousPrincipes: RefSousPrincipe[]; }
+
+// ── Fiche séance (résumé), périodisation, groupes auto ──
+
+export interface Perimatch {
+  jRelatif?: number | null;
+  libelle?: string | null;
+  dateMatch?: string | null;
+  adversaire?: string | null;
+  scoreMatch?: string | null;
+  prochain: boolean;
+}
+
+export interface GroupesAuto {
+  blesses: JoueurRefSeance[];
+  reathletisation: JoueurRefSeance[];
+  disponibles: JoueurRefSeance[];
+}
+
+export interface RefItem { code: string; libelle: string; groupe: string; }
+
+export interface BlocResume { bloc: BlocSeanceDto; exercices: ExerciceLigneSeance[]; }
+
+export interface ResumeSeance {
+  seanceId: string;
+  titre?: string;
+  statut: string;
+  date: string;
+  heureDebut?: string;
+  dureeMinutes?: number;
+  dureeEffectiveMinutes?: number;
+  terrain?: string;
+  responsable?: string;
+  typeCode?: string;
+  typeLibelle?: string;
+  equipeNom?: string;
+  perimatch: Perimatch;
+  dominantes: RefItem[];
+  sousPrincipes: RefItem[];
+  objectifs: { tactiqueOrg?: string; tactiqueFonc?: string; mental?: string; technique?: string; athletique?: string };
+  objectifDistanceM?: number;
+  objectifDistanceHauteIntensiteM?: number;
+  objectifIntensite?: number;
+  blocs: BlocResume[];
+  exercicesSansBloc: ExerciceLigneSeance[];
+  groupes: GroupeSeanceDto[];
+  groupesAuto: GroupesAuto;
+  absents: JoueurRefSeance[];
+}
+
+// ── Fiche séance version joueur (filtrée serveur, /api/moi) ──
+
+export interface ExerciceJoueurFiche { nom: string; dureeMinutes?: number; schemaJson?: string; }
+
+export interface BlocJoueurFiche {
+  libelle: string;
+  sequencage?: string;
+  dureeMinutes?: number;
+  zoneTerrain?: string;
+  exercices: ExerciceJoueurFiche[];
+}
+
+export interface MonGroupeFiche { libelle: string; couleur?: string; blocLibelle?: string; coequipiers: string[]; }
+
+export interface FicheSeanceJoueur {
+  seanceId: string;
+  titre?: string;
+  date: string;
+  heureDebut?: string;
+  dureeMinutes?: number;
+  terrain?: string;
+  typeLibelle?: string;
+  blocs: BlocJoueurFiche[];
+  exercicesSansBloc: ExerciceJoueurFiche[];
+  mesGroupes: MonGroupeFiche[];
 }
 
 // ── Présence ──
@@ -196,6 +343,41 @@ export class SeanceService {
 
   remplacerExercices(seanceId: string, exercices: LigneExerciceRequest[]): Observable<ContenuSeance> {
     return this.http.put<ContenuSeance>(`${this.base}/${seanceId}/exercices`, { exercices });
+  }
+
+  // ── Mode avancé : contenu complet, fiche, périodisation, groupes ──
+
+  /** Remplacement complet du contenu avancé (blocs + lignes + groupes + référentiels). */
+  remplacerContenuAvance(seanceId: string, req: ContenuAvanceRequest): Observable<ContenuSeance> {
+    return this.http.put<ContenuSeance>(`${this.base}/${seanceId}/contenu`, req);
+  }
+
+  getResume(seanceId: string): Observable<ResumeSeance> {
+    return this.http.get<ResumeSeance>(`${this.base}/${seanceId}/resume`);
+  }
+
+  /** Badge J±X pour une équipe et une date (fenêtre ±10 j sur les matchs du calendrier). */
+  getPerimatch(equipeId: string, date: string): Observable<Perimatch> {
+    return this.http.get<Perimatch>(`${this.base}/perimatch`, { params: { equipeId, date } });
+  }
+
+  /** Groupes calculés (blessés / réathlétisation / disponibles) pour l'onglet Effectifs. */
+  getGroupesAuto(equipeId: string): Observable<GroupesAuto> {
+    return this.http.get<GroupesAuto>(`${this.base}/groupes-auto`, { params: { equipeId } });
+  }
+
+  /** Comptes staff du club (sélecteur d'affectation des blocs). */
+  getStaffClub(): Observable<StaffRef[]> {
+    return this.http.get<StaffRef[]>(`${this.base}/staff-club`);
+  }
+
+  /** Notifie le staff de l'équipe (in-app + push) avec un lien vers la fiche. */
+  partagerAuStaff(seanceId: string): Observable<{ notifies: number }> {
+    return this.http.post<{ notifies: number }>(`${this.base}/${seanceId}/partage-staff`, {});
+  }
+
+  getReferentielsSeanceAvancee(): Observable<ReferentielsSeance> {
+    return this.http.get<ReferentielsSeance>('/api/referentiels/seance-avancee');
   }
 
   // ── Présence ──

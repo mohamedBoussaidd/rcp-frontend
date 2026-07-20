@@ -42,6 +42,10 @@ export const routes: Routes = [
     loadComponent: () => import('./features/admin/abonnements/abonnements.component').then(m => m.AbonnementsComponent)
   },
   {
+    path: 'admin/parametres-ia', canActivate: [authGuard, roleGuard], data: { roles: ['SUPER_ADMIN'] },
+    loadComponent: () => import('./features/admin/parametres-ia/parametres-ia.component').then(m => m.ParametresIaComponent)
+  },
+  {
     path: 'mon-club', canActivate: [authGuard, roleGuard, contexteGuard], data: { roles: ['PRESIDENT', 'ENTRAINEUR', 'SUPER_ADMIN'], perms: ['club:manage', 'membres:manage'] },
     loadComponent: () => import('./features/admin/mon-club/mon-club.component').then(m => m.MonClubComponent)
   },
@@ -167,6 +171,12 @@ export const routes: Routes = [
   {
     path: 'calendrier', canActivate: [authGuard, roleGuard, contexteGuard, saisonGuard], data: { roles: [...STAFF, 'JOUEUR'] },
     loadComponent: () => import('./features/calendrier/calendrier.component').then(m => m.CalendrierComponent)
+  },
+  // Fiche séance (résumé imprimable) : lisible par tout le staff — les sections avancées
+  // n'apparaissent que si remplies (le module seance_avancee ne gate que l'ÉCRITURE).
+  {
+    path: 'seances/:id/fiche', canActivate: [authGuard, roleGuard, contexteGuard, saisonGuard], data: { roles: STAFF },
+    loadComponent: () => import('./features/seances/fiche-seance/fiche-seance.component').then(m => m.FicheSeanceComponent)
   },
   {
     path: 'pesees', canActivate: [authGuard, roleGuard, contexteGuard, saisonGuard, moduleGuard], data: { roles: STAFF_PHYSIQUE, perms: PERMS_GPS, module: 'pesees' },

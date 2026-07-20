@@ -8,6 +8,7 @@ import {
   RegleTactiqueDetail, RegleTactiqueResume, ReglesTactiquesService,
 } from '@core/services/regles-tactiques.service';
 import { SchemaTerrainRenderer } from '../schema-editor/schema-terrain.renderer';
+import { jetonChip } from '../schema-render/schema-render';
 import {
   GRILLE_C, GRILLE_H, PHASES, PhaseKey, Posture, ReglesJson, SYSTEMES,
   centreZone, ciblesPhase, miroir, nbZonesCalibrees, parseRegles, postureParDefaut,
@@ -541,11 +542,7 @@ export class ReglesCalibrationComponent implements AfterViewInit, OnDestroy {
     const couleur = adverse ? '#1f2937' : '#7c3aed';
     for (const slot of this.regles.slots) {
       const g = new Konva.Group({ draggable: this.peutEcrire });
-      const txt = new Konva.Text({ text: slot.id, fontSize: 11, fontStyle: 'bold', fill: '#fff', wrap: 'none' });
-      const w = Math.max(34, Math.ceil(txt.width()) + 14), h = 22;
-      txt.width(w); txt.height(h); txt.offsetX(w / 2); txt.offsetY(h / 2); txt.align('center'); txt.verticalAlign('middle');
-      g.add(new Konva.Rect({ x: -w / 2, y: -h / 2, width: w, height: h, cornerRadius: 5, fill: couleur, stroke: '#fff', strokeWidth: 2 }));
-      g.add(txt);
+      jetonChip(g, slot.id, couleur);   // même chip que l'éditeur/viewer (rendu partagé)
       g.on('dragend', () => { this.calibrerZone(); });
       this.tokens.set(slot.id, g);
       this.layer.add(g);

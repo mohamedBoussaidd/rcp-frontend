@@ -148,3 +148,333 @@
 
 .seance-tabs { margin-top: 4px; }
 .tab-grid { padding-top: 16px; }
+
+/* ══════════ Mode avancé (module seance_avancee) ══════════ */
+
+.form-card__header-actions {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.mode-avance-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12.5px;
+  color: var(--text-2);
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+
+  input { accent-color: var(--green-500, #1A9C4D); width: 16px; height: 16px; cursor: pointer; }
+}
+
+.perimatch-badge {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 8px;
+  background: var(--green-50, #ECFDF5);
+  color: var(--green-700, #047857);
+  border-radius: 8px;
+  padding: 2px 8px;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.av-tab {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* Chips multi-sélection (dominantes, sous-principes, staff) */
+.chips-select {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.chip-select {
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 5px 11px;
+  font: inherit;
+  font-size: 12px;
+  color: var(--text-2);
+  background: var(--surface);
+  cursor: pointer;
+
+  &.on {
+    background: var(--green-500, #1A9C4D);
+    border-color: var(--green-500, #1A9C4D);
+    color: #fff;
+    font-weight: 600;
+  }
+
+  &--soft.on {
+    background: var(--green-50, #ECFDF5);
+    border-color: var(--green-500, #1A9C4D);
+    color: var(--green-700, #047857);
+  }
+}
+
+/* Puce staff sur 2 lignes : le nom seul ne suffit pas à distinguer les homonymes
+   (un même intervenant a un compte par équipe) — d'où « Rôle · Équipe » en dessous. */
+.chip-select__meta {
+  display: block;
+  font-size: 10px;
+  font-weight: 500;
+  line-height: 1.25;
+  opacity: .75;
+}
+
+/* Grille d'objectifs pédagogiques / dominantes en interaction */
+.dom-table {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.dom-row {
+  display: grid;
+  grid-template-columns: minmax(150px, 34%) 1fr;
+  gap: 8px;
+  align-items: center;
+}
+
+.dom-label {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--text-2);
+
+  em { display: block; font-style: normal; font-size: 10px; color: var(--text-3, #94A3B8); }
+}
+
+.phase-groupe {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.phase-libelle {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--text-2);
+}
+
+/* ── Blocs (Déroulé) ── */
+.bloc-card {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.bloc-card__head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  background: var(--surface-2);
+}
+
+.bloc-card__num {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--green-500, #1A9C4D);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Titre du bloc : édition en place dans l'en-tête — volontairement sans cadre, avec une
+   affordance au survol pour qu'il se lise quand même comme un champ modifiable. */
+.bloc-card__libelle {
+  flex: 1;
+  font-weight: 600;
+  border: 1px solid transparent;
+  border-radius: var(--r-sm, 6px);
+  background: transparent;
+  color: var(--text);
+  font-family: inherit;
+  font-size: 13.5px;
+  min-width: 100px;
+  padding: 3px 6px;
+  transition: background .15s, border-color .15s;
+
+  &:hover:not(:focus) { background: var(--surface); border-color: var(--border); }
+
+  &:focus {
+    outline: none;
+    background: var(--surface-input);
+    border-color: var(--green-600);
+    box-shadow: 0 0 0 3px rgba(21, 128, 61, 0.12);
+  }
+}
+
+.bloc-card__actions { display: flex; gap: 4px; }
+
+.btn-mini {
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-2);
+  border-radius: 6px;
+  width: 24px;
+  height: 24px;
+  font-size: 12px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  &:disabled { opacity: .35; cursor: default; }
+  &--danger { color: var(--red-600, #DC2626); }
+}
+
+.bloc-card__body {
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.bloc-card__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 8px;
+}
+
+.rangement-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 5px 0;
+  border-bottom: 1px dashed var(--border);
+
+  select { max-width: 260px; }
+}
+
+.rangement-nom { font-size: 13px; color: var(--text); }
+
+/* ── Effectifs (groupes du jour) ── */
+.groupes-auto {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 8px;
+}
+
+.grp-auto {
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  padding: 8px 10px;
+  font-size: 12px;
+
+  b { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text); margin-bottom: 4px; }
+}
+
+.auto-badge {
+  display: inline-flex;
+  align-items: center;
+  background: var(--green-50, #ECFDF5);
+  color: var(--green-700, #047857);
+  font-size: 10px;
+  font-weight: 600;
+  border-radius: 8px;
+  padding: 2px 7px;
+}
+
+.pl {
+  display: inline-block;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 3px 8px;
+  font-size: 11.5px;
+  margin: 2px 3px 0 0;
+  color: var(--text-2);
+  background: var(--surface);
+}
+
+.pl--med   { background: #FEE2E2; border-color: #FECACA; color: #B91C1C; }
+.pl--reath { background: #FEF3C7; border-color: #FDE68A; color: #92400E; }
+
+.pl--dispo { cursor: pointer; font: inherit; font-size: 11.5px; }
+.pl--bleu   { background: #DBEAFE; border-color: #BFDBFE; color: #1D4ED8; }
+.pl--rouge  { background: #FEE2E2; border-color: #FECACA; color: #B91C1C; }
+.pl--jaune  { background: #FEF9C3; border-color: #FEF08A; color: #854D0E; }
+.pl--vert   { background: #DCFCE7; border-color: #BBF7D0; color: #15803D; }
+.pl--orange { background: #FFEDD5; border-color: #FED7AA; color: #C2410C; }
+.pl--violet { background: #EDE9FE; border-color: #DDD6FE; color: #6D28D9; }
+
+.groupe-card {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  padding: 7px 10px;
+  cursor: pointer;
+
+  &.actif { border-color: var(--green-500, #1A9C4D); box-shadow: 0 0 0 1px var(--green-500, #1A9C4D); }
+}
+
+/* Sélecteur de couleur : compact, il partage le rendu natif du design system. */
+.groupe-card__couleur {
+  max-width: 130px;
+  padding-top: 5px;
+  padding-bottom: 5px;
+  font-size: 0.8rem;
+}
+
+.pastille {
+  flex: none;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--border);
+
+  &--bleu { background: #3B82F6; }
+  &--rouge { background: #EF4444; }
+  &--jaune { background: #EAB308; }
+  &--vert { background: #22C55E; }
+  &--orange { background: #F97316; }
+  &--violet { background: #8B5CF6; }
+}
+
+/* Même logique d'édition en place que .bloc-card__libelle. */
+.groupe-card__libelle {
+  flex: 1;
+  border: 1px solid transparent;
+  border-radius: var(--r-sm, 6px);
+  background: transparent;
+  color: var(--text);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  min-width: 80px;
+  padding: 3px 6px;
+  transition: background .15s, border-color .15s;
+
+  &:hover:not(:focus) { background: var(--surface); border-color: var(--border); }
+
+  &:focus {
+    outline: none;
+    background: var(--surface-input);
+    border-color: var(--green-600);
+    box-shadow: 0 0 0 3px rgba(21, 128, 61, 0.12);
+  }
+}
+
+.groupe-card__count {
+  font-size: 11.5px;
+  color: var(--text-2);
+  white-space: nowrap;
+}
+
+.portee-select { max-width: 260px; }

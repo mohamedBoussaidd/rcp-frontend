@@ -1,0 +1,68 @@
+<div class="ip-card">
+
+  <div class="ip-head">
+    <div>
+      <h2>📷 Importer depuis une photo</h2>
+      <span class="ip-sub">Photographie ta fiche papier — l'IA pré-remplit le formulaire et le schéma (~80 %), tu ajustes.</span>
+    </div>
+    <button type="button" class="ip-close" (click)="annuler()" aria-label="Fermer">✕</button>
+  </div>
+
+  <div class="ip-body">
+
+    <!-- Choix / prise de photo -->
+    @if (!resultat()) {
+      <label class="ip-drop" [class.ip-drop--rempli]="apercuUrl()">
+        <input type="file" accept="image/jpeg,image/png" capture="environment" (change)="choisir($event)" hidden>
+        @if (apercuUrl(); as url) {
+          <img [src]="url" alt="Photo choisie" class="ip-apercu">
+          <span class="ip-drop__hint">Toucher pour changer de photo</span>
+        } @else {
+          <span class="ip-drop__icone">📸</span>
+          <span><b>Prendre une photo</b> ou choisir une image</span>
+          <span class="ip-drop__hint">JPEG ou PNG · bien à plat, lumière franche</span>
+        }
+      </label>
+
+      @if (erreur(); as e) {
+        <div class="ip-erreur">⚠ {{ e }}</div>
+      }
+
+      <div class="ip-actions">
+        <button type="button" class="btn btn--secondary" (click)="annuler()">Annuler</button>
+        <button type="button" class="btn btn--primary" (click)="analyser()"
+                [disabled]="!fichier() || analyseEnCours()">
+          {{ analyseEnCours() ? 'Analyse en cours…' : 'Analyser la photo' }}
+        </button>
+      </div>
+
+      @if (analyseEnCours()) {
+        <div class="ip-loader">
+          <div class="ip-loader__barre"></div>
+          <span>Lecture de la fiche… (10 à 20 secondes)</span>
+        </div>
+      }
+    }
+
+    <!-- Aperçu du résultat -->
+    @if (resultat(); as r) {
+      <div class="ip-resultat">
+        <div class="ip-resultat__texte">
+          <h3>Contenu détecté</h3>
+          @for (l of resume(); track l) { <div class="ip-ligne">{{ l }}</div> }
+          @if (resume().length === 0) { <div class="ip-ligne">Aucun texte exploitable détecté.</div> }
+        </div>
+        @if (r.schemaJson) {
+          <div class="ip-resultat__schema">
+            <h3>Schéma détecté</h3>
+            <app-schema-viewer [schemaJson]="r.schemaJson" [largeur]="300" />
+          </div>
+        }
+      </div>
+      <div class="ip-actions">
+        <button type="button" class="btn btn--secondary" (click)="resultat.set(null)">← Autre photo</button>
+        <button type="button" class="btn btn--primary" (click)="utiliser()">Utiliser → ouvrir le formulaire</button>
+      </div>
+    }
+  </div>
+</div>

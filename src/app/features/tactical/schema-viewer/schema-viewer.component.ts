@@ -1,6 +1,11 @@
 import { AfterViewInit, Component, ElementRef, Input, OnChanges, OnDestroy, ViewChild, inject } from '@angular/core';
 import Konva from 'konva';
 import { JoueurService } from '@core/services/joueur.service';
+import { PreferencesService, PREF_STYLE_RENDU_SCHEMA } from '@core/services/preferences.service';
+import { SchemaTerrainRenderer } from '../schema-editor/schema-terrain.renderer';
+import {
+  StyleRendu, dessinerCorpsElement, ordonnerParProfondeur, projeter, projeterPoints,
+} from '../schema-render/schema-render';
 
 interface SchemaElement { id: string; type: string; couleur?: string; numero?: number; label?: string; joueurId?: string; x: number; y: number; }
 interface SchemaTrace { id: string; type: string; points: number[]; elementId?: string; ballId?: string; }
@@ -15,7 +20,9 @@ const LONGUEUR_TERRAIN_M: Record<string, number> = { complet: 105, demi: 52.5 };
 // pour que la courbe affichée et la trajectoire du jeton soient les mêmes des deux côtés.
 const TENSION_TRACE = 0.8;
 
-/** Rendu en lecture seule d'un schéma tactique (terrain + éléments + tracés) + lecture animée. */
+/** Rendu en lecture seule d'un schéma tactique (terrain + éléments + tracés) + lecture animée.
+ *  Styles partagés avec l'éditeur (schema-render) : tableau / réaliste, et en mode
+ *  présentation (diaporama) un terrain en perspective « tribune ». */
 @Component({
   selector: 'app-schema-viewer',
   standalone: true,
@@ -26,6 +33,15 @@ const TENSION_TRACE = 0.8;
         <button type="button" class="sv-play" (click)="basculerLecture()" [title]="enLecture ? 'Pause' : 'Lire'">
           {{ enLecture ? '⏸' : '▶' }}
         </button>
+      }
+      @if (controlesStyle) {
+        <div class="sv-styles">
+          <button type="button" [class.on]="styleRendu() === 'tableau'" (click)="choisirStyle('tableau')" title="Vue tableau">▦</button>
+          <button type="button" [class.on]="styleRendu() === 'realiste'" (click)="choisirStyle('realiste')" title="Vue réaliste">⚽</button>
+          @if (presentation) {
+            <button type="button" [class.on]="perspective" (click)="basculerPerspective()" title="Terrain en perspective">⛰</button>
+          }
+        </div>
       }
     </div>
   `,
@@ -40,12 +56,28 @@ const TENSION_TRACE = 0.8;
       transition:background .12s;
     }
     .sv-play:hover { background:rgba(20,24,40,.95); }
+    .sv-styles {
+      position:absolute; right:8px; bottom:8px; display:flex; gap:4px;
+    }
+    .sv-styles button {
+      width:28px; height:28px; border-radius:7px;
+      border:1px solid #ffffff55; background:rgba(20,24,40,.7); color:#fff;
+      font-size:.85rem; cursor:pointer; display:flex; align-items:center; justify-content:center;
+    }
+    .sv-styles button.on { background:#1A9C4D; border-color:#1A9C4D; }
   `],
 })
 export class SchemaViewerComponent implements AfterViewInit, OnChanges, OnDestroy {
 
   @Input() schemaJson?: string | null;
   @Input() largeur = 460;
+  /** Affiche les boutons de style (tableau/réaliste) en overlay. */
+  @Input() controlesStyle = false;
+  /** Mode présentation (diaporama) : propose en plus le terrain en perspective. */
+  @Input() presentation = false;
+
+  /** Terrain en perspective (réservé au mode présentation, l'édition reste vue de dessus). */
+  perspective = false;
 
   @ViewChild('c', { static: true }) containerRef!: ElementRef<HTMLDivElement>;
 
@@ -68,9 +100,34 @@ export class SchemaViewerComponent implements AfterViewInit, OnChanges, OnDestro
   enLecture = false;
 
   private joueurService = inject(JoueurService);
+  private prefs = inject(PreferencesService);
+  private terrainRenderer = inject(SchemaTerrainRenderer);
+
+  /** Style de rendu (préférence par utilisateur, persistée serveur). */
+  styleRendu(): StyleRendu {
+    return this.prefs.valeur(PREF_STYLE_RENDU_SCHEMA) === 'realiste' ? 'realiste' : 'tableau';
+  }
+
+  choisirStyle(style: StyleRendu): void {
+    if (this.styleRendu() === style) return;
+    this.prefs.definir(PREF_STYLE_RENDU_SCHEMA, style);
+    if (style === 'tableau') this.perspective = false;
+    this.rendre();
+  }
+
+  basculerPerspective(): void {
+    this.perspective = !this.perspective;
+    this.rendre();
+  }
+
+  /** Perspective effective : demandée ET en mode présentation ET style réaliste. */
+  private enPerspective(): boolean {
+    return this.perspective && this.presentation && this.styleRendu() === 'realiste';
+  }
 
   ngAfterViewInit(): void {
     this.pret = true;
+    this.prefs.charger();
     this.joueurService.getVitesses().subscribe({
       next: vs => { this.vitesses.clear(); vs.forEach(v => this.vitesses.set(v.joueurId, { vmax: v.vmaxKmh, vmoy: v.vmoyKmh })); },
       error: () => { },
@@ -104,11 +161,18 @@ export class SchemaViewerComponent implements AfterViewInit, OnChanges, OnDestro
     const fond = new Konva.Layer();
     const couche = new Konva.Layer();
     this.stage.add(fond); this.stage.add(couche);
-    this.dessinerTerrain(fond, data.terrain, W, H);
+    // Terrain partagé avec l'éditeur (une seule source de rendu) ; en mode présentation,
+    // variante perspective « tribune ».
+    if (this.enPerspective()) {
+      this.terrainRenderer.dessinerPerspective(fond, this.terrain as 'complet' | 'demi', W, H);
+    } else {
+      this.terrainRenderer.dessiner(fond, this.terrain as 'complet' | 'demi', W, H);
+    }
     this.elements = data.elements ?? [];
     this.traces = data.traces ?? [];
     this.elements.forEach(el => this.dessinerElement(couche, el));
     this.traces.forEach(t => this.dessinerTrace(couche, t));
+    if (this.styleRendu() === 'realiste') ordonnerParProfondeur(this.nodesById.values());
     fond.draw(); couche.draw();
 
     // Animation dispo si plusieurs keyframes OU au moins une flèche liée à un élément.
@@ -150,8 +214,23 @@ export class SchemaViewerComponent implements AfterViewInit, OnChanges, OnDestro
     this.elements.forEach(el => {
       const legs = traj.get(el.id);
       const p = legs ? this.posTrajectoire(legs, t) : this.posElement(el, t);
-      this.nodesById.get(el.id)?.position(p);
+      this.placerNode(el.id, p);
     });
+    if (this.styleRendu() === 'realiste') ordonnerParProfondeur(this.nodesById.values());
+  }
+
+  /** Positionne un jeton : coordonnées vue-de-dessus, projetées (+ échelle) en perspective. */
+  private placerNode(id: string, p: { x: number; y: number }): void {
+    const n = this.nodesById.get(id);
+    if (!n) return;
+    if (this.enPerspective()) {
+      const pr = projeter(p.x, p.y, this.W, 680);
+      n.position({ x: pr.x, y: pr.y });
+      n.scale({ x: pr.echelle, y: pr.echelle });
+    } else {
+      n.position(p);
+      n.scale({ x: 1, y: 1 });
+    }
   }
 
   // Même modèle que l'éditeur : chaque mobile suit ses flèches, minutage global
@@ -366,60 +445,25 @@ export class SchemaViewerComponent implements AfterViewInit, OnChanges, OnDestro
     return kfs[kfs.length - 1].positions[el.id];
   }
 
-  private dessinerTerrain(layer: Konva.Layer, terrain: string, W: number, H: number): void {
-    const m = 24;
-    layer.add(new Konva.Rect({ x: 0, y: 0, width: W, height: H, fill: '#3f8f43' }));
-    layer.add(new Konva.Rect({ x: m, y: m, width: W - 2 * m, height: H - 2 * m, stroke: '#fff', strokeWidth: 2 }));
-    if (terrain !== 'demi') {
-      layer.add(new Konva.Line({ points: [W / 2, m, W / 2, H - m], stroke: '#fff', strokeWidth: 2 }));
-      layer.add(new Konva.Circle({ x: W / 2, y: H / 2, radius: 68, stroke: '#fff', strokeWidth: 2 }));
-      layer.add(new Konva.Circle({ x: W / 2, y: H / 2, radius: 3, fill: '#fff' }));
-      this.surface(layer, m, H, false);
-      this.surface(layer, W - m, H, true);
-    } else {
-      layer.add(new Konva.Line({ points: [m, H - m, W - m, H - m], stroke: '#fff', strokeWidth: 2 }));
-      layer.add(new Konva.Arc({ x: W / 2, y: H - m, innerRadius: 0, outerRadius: 68, angle: 180, rotation: 180, stroke: '#fff', strokeWidth: 2 }));
-      const gW = 300, gH = 110, bW = 150, bH = 44;
-      layer.add(new Konva.Rect({ x: W / 2 - gW / 2, y: m, width: gW, height: gH, stroke: '#fff', strokeWidth: 2 }));
-      layer.add(new Konva.Rect({ x: W / 2 - bW / 2, y: m, width: bW, height: bH, stroke: '#fff', strokeWidth: 2 }));
-    }
-  }
-
-  private surface(layer: Konva.Layer, xBord: number, H: number, droite: boolean): void {
-    const dir = droite ? -1 : 1;
-    layer.add(new Konva.Rect({ x: xBord, y: H / 2 - 150, width: 110 * dir, height: 300, stroke: '#fff', strokeWidth: 2 }));
-    layer.add(new Konva.Rect({ x: xBord, y: H / 2 - 75, width: 44 * dir, height: 150, stroke: '#fff', strokeWidth: 2 }));
-  }
+  // Terrain : rendu partagé SchemaTerrainRenderer (la copie locale historique est supprimée).
 
   private dessinerElement(layer: Konva.Layer, el: SchemaElement): void {
     const g = new Konva.Group({ x: el.x, y: el.y });
-    if (el.type === 'joueur') {
-      const texte = el.label ?? String(el.numero);
-      const h = 22;
-      const txt = new Konva.Text({ text: texte, fontSize: 11, fontStyle: 'bold', fill: '#fff', wrap: 'none' });
-      const w = Math.max(34, Math.ceil(txt.width()) + 14);
-      txt.width(w); txt.height(h); txt.offsetX(w / 2); txt.offsetY(h / 2); txt.align('center'); txt.verticalAlign('middle');
-      g.add(new Konva.Rect({ x: -w / 2, y: -h / 2, width: w, height: h, cornerRadius: 5, fill: el.couleur, stroke: '#fff', strokeWidth: 2 }));
-      g.add(txt);
-    } else if (el.type === 'ballon') {
-      g.add(new Konva.Circle({ radius: 9, fill: '#fff', stroke: '#111', strokeWidth: 2 }));
-    } else if (el.type === 'plot') {
-      g.add(new Konva.RegularPolygon({ sides: 3, radius: 13, fill: el.couleur, stroke: '#00000055', strokeWidth: 1 }));
-    } else if (el.type === 'but') {
-      g.add(new Konva.Rect({ x: -22, y: -6, width: 44, height: 12, stroke: '#fff', strokeWidth: 3 }));
-    } else if (el.type === 'cerceau') {
-      g.add(new Konva.Ring({ innerRadius: 9, outerRadius: 14, fill: el.couleur }));
-    } else if (el.type === 'mannequin') {
-      g.add(new Konva.Rect({ x: -7, y: -16, width: 14, height: 32, cornerRadius: 4, fill: el.couleur, stroke: '#fff', strokeWidth: 1.5 }));
-    }
+    // Visuel de base partagé avec l'éditeur (styles tableau / réaliste).
+    dessinerCorpsElement(g, el, this.styleRendu());
     this.nodesById.set(el.id, g);
     layer.add(g);
+    this.placerNode(el.id, { x: el.x, y: el.y });
   }
+
   private dessinerTrace(layer: Konva.Layer, t: SchemaTrace): void {
-    //decommentez pour  enleve les fleches dans le visuel 
+    //decommentez pour  enleve les fleches dans le visuel
     // t = { ...t, points: [], elementId: undefined, ballId: undefined };
     const couleur = '#fde047';
-    const base = { points: t.points, stroke: couleur, strokeWidth: 3, tension: TENSION_TRACE, lineCap: 'round' as const, lineJoin: 'round' as const };
+    // Les tracés gardent leur rendu dans les deux styles ; en perspective, seuls les
+    // points sont projetés (le style de flèche reste identique).
+    const pts = this.enPerspective() ? projeterPoints(t.points, this.W, 680) : t.points;
+    const base = { points: pts, stroke: couleur, strokeWidth: 3, tension: TENSION_TRACE, lineCap: 'round' as const, lineJoin: 'round' as const };
     if (t.type === 'deplacement') {
       layer.add(new Konva.Arrow({ ...base, dash: [11, 7], fill: couleur, pointerLength: 11, pointerWidth: 11 }));
     } else if (t.type === 'passe') {
@@ -428,8 +472,8 @@ export class SchemaViewerComponent implements AfterViewInit, OnChanges, OnDestro
       layer.add(new Konva.Line({ ...base }));
     } else {
       layer.add(new Konva.Line({ ...base }));
-      const n = t.points.length;
-      layer.add(new Konva.Circle({ x: t.points[n - 2], y: t.points[n - 1], radius: 6, fill: couleur }));
+      const n = pts.length;
+      layer.add(new Konva.Circle({ x: pts[n - 2], y: pts[n - 1], radius: 6, fill: couleur }));
     }
   }
 

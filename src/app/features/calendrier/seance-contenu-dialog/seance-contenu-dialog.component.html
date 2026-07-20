@@ -9,6 +9,9 @@
       </span>
     </div>
     <div class="sc-head-actions">
+      @if (peutVoirFiche) {
+        <button type="button" class="sc-appel-btn" (click)="ouvrirFiche()">📄 Fiche</button>
+      }
       @if (peutFaireAppel) {
         <button type="button" class="sc-appel-btn" (click)="ouvrirAppel()">📋 Appel</button>
       }
@@ -17,6 +20,36 @@
   </div>
 
   <div class="form-card__body">
+
+    <!-- Version joueur : mon groupe du jour + déroulé en blocs (fiche filtrée serveur) -->
+    @if (ficheJoueur; as f) {
+      @if (f.mesGroupes.length > 0) {
+        <div class="sc-mon-groupe">
+          @for (g of f.mesGroupes; track g.libelle) {
+            <div class="sc-groupe-badge sc-groupe--{{ g.couleur || 'aucun' }}">
+              <b>{{ g.libelle }}</b>
+              @if (g.blocLibelle) { <small>({{ g.blocLibelle }})</small> }
+              @if (g.coequipiers.length > 0) { <small>avec {{ g.coequipiers.join(', ') }}</small> }
+            </div>
+          }
+        </div>
+      }
+      @if (f.blocs.length > 0) {
+        <div class="sc-blocs">
+          @for (b of f.blocs; track b.libelle; let bi = $index) {
+            <div class="sc-bloc">
+              <span class="sc-bloc__num">{{ bi + 1 }}</span>
+              <span class="sc-bloc__lib">{{ b.libelle }}</span>
+              <span class="sc-bloc__meta">
+                {{ b.sequencage || (b.dureeMinutes ? b.dureeMinutes + "'" : '') }}
+                @if (b.zoneTerrain) { · {{ b.zoneTerrain }} }
+              </span>
+            </div>
+          }
+        </div>
+      }
+    }
+
     @if (!data.contenu || data.contenu.exercices.length === 0) {
       <div class="sc-vide">Aucun exercice renseigné pour cette séance.</div>
     } @else {

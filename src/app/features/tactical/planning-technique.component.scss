@@ -262,3 +262,135 @@
     grid-column: span 1;
   }
 }
+/* ── Mode avancé : onglets du formulaire exercice ── */
+.exo-form-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+  border-bottom: 1px solid var(--border);
+}
+
+.exo-tabs {
+  display: flex;
+  gap: 2px;
+  overflow-x: auto;
+}
+
+.exo-tab {
+  padding: 9px 13px;
+  border: none;
+  background: none;
+  font: inherit;
+  font-size: 13px;
+  color: var(--text-2);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  white-space: nowrap;
+  display: flex;
+  gap: 6px;
+  align-items: center;
+
+  &.active {
+    color: var(--green-700, #047857);
+    border-color: var(--green-500, #1A9C4D);
+    font-weight: 600;
+  }
+
+  &__adv {
+    font-size: 9.5px;
+    background: var(--surface-2);
+    color: var(--text-2);
+    border-radius: 8px;
+    padding: 2px 6px;
+    font-weight: 600;
+    letter-spacing: .3px;
+  }
+
+  &.active &__adv {
+    background: var(--green-50, #ECFDF5);
+    color: var(--green-700, #047857);
+  }
+}
+
+.mode-avance-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12.5px;
+  color: var(--text-2);
+  cursor: pointer;
+  user-select: none;
+
+  input { accent-color: var(--green-500, #1A9C4D); width: 16px; height: 16px; cursor: pointer; }
+}
+
+/* ── Chips à choix unique (niveau d'objectif, échelle d'effectif) ── */
+.chips-select {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.chip-select {
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 5px 11px;
+  font: inherit;
+  font-size: 12px;
+  color: var(--text-2);
+  background: var(--surface);
+  cursor: pointer;
+
+  &.on {
+    background: var(--green-500, #1A9C4D);
+    border-color: var(--green-500, #1A9C4D);
+    color: #fff;
+    font-weight: 600;
+  }
+}
+
+/* ── Tableau des dominantes en interaction ── */
+.dom-table {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.dom-row {
+  display: grid;
+  grid-template-columns: minmax(150px, 38%) 1fr;
+  gap: 8px;
+  align-items: center;
+}
+
+.dom-label {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--text-2);
+
+  em { display: block; font-style: normal; font-size: 10px; color: var(--text-3, #94A3B8); }
+}
+
+/* ── Densité auto ── */
+.densite-badge {
+  min-height: 35px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--text);
+}
+
+.auto-badge {
+  display: inline-flex;
+  align-items: center;
+  background: var(--green-50, #ECFDF5);
+  color: var(--green-700, #047857);
+  font-size: 11px;
+  font-weight: 600;
+  border-radius: 8px;
+  padding: 3px 8px;
+}

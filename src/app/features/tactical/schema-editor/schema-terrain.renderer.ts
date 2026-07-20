@@ -1,12 +1,14 @@
 import { Injectable } from '@angular/core';
 import Konva from 'konva';
+import { projeter } from '../schema-render/schema-render';
 
 export type Terrain = 'complet' | 'demi';
 
 /**
  * Dessine le terrain de foot (gazon rayé + lignes blanches translucides) sur une couche
  * Konva, en complet ou demi-terrain. Rendu pur : aucun état, on lui passe la couche et les
- * dimensions courantes.
+ * dimensions courantes. Deux modes : vue de dessus (édition, historique) et perspective
+ * « tribune » (présentation/diaporama, cf. dessinerPerspective).
  */
 @Injectable({ providedIn: 'root' })
 export class SchemaTerrainRenderer {
@@ -80,5 +82,93 @@ export class SchemaTerrainRenderer {
       data: `M ${W / 2 - dx} ${ye} A 80 80 0 0 1 ${W / 2 + dx} ${ye}`,
       stroke: blanc, strokeWidth: 2.5,
     }));
+  }
+
+  // ═══════════════ Perspective « tribune » (présentation / diaporama) ═══════════════
+
+  /**
+   * Terrain en trapèze perspective : mêmes tracés que la vue de dessus, chaque point
+   * passant par {@link projeter}. Les cercles/arcs sont échantillonnés en polylignes
+   * projetées. Réservé au RENDU présentation — l'édition reste en vue de dessus.
+   */
+  dessinerPerspective(layer: Konva.Layer, terrain: Terrain, W: number, H: number): void {
+    layer.destroyChildren();
+    const m = 24, blanc = SchemaTerrainRenderer.BLANC;
+    const P = (x: number, y: number) => projeter(x, y, W, H);
+
+    const polyProj = (pts: number[], closed = false, fill?: string, opacity = 1) => {
+      const out: number[] = [];
+      for (let i = 0; i < pts.length - 1; i += 2) { const p = P(pts[i], pts[i + 1]); out.push(p.x, p.y); }
+      return new Konva.Line({ points: out, closed, fill, opacity, ...(fill ? {} : { stroke: blanc, strokeWidth: 2 }) });
+    };
+    const ligneProj = (pts: number[]) => layer.add(polyProj(pts));
+    const cercleProj = (cx: number, cy: number, r: number, a0 = 0, a1 = Math.PI * 2) => {
+      const pts: number[] = [];
+      const n = 48;
+      for (let i = 0; i <= n; i++) {
+        const a = a0 + (a1 - a0) * (i / n);
+        pts.push(cx + r * Math.cos(a), cy + r * Math.sin(a));
+      }
+      ligneProj(pts);
+    };
+    /** Pastille pleine (point central, points de penalty) : rayon réduit avec la profondeur. */
+    const pointProj = (x: number, y: number, r = 3) => {
+      const p = P(x, y);
+      layer.add(new Konva.Circle({ x: p.x, y: p.y, radius: r * p.echelle, fill: blanc }));
+    };
+    /** Rectangle projeté fermé (cages en débord de la ligne de but). */
+    const rectProj = (x: number, y: number, w: number, h: number) =>
+      ligneProj([x, y, x + w, y, x + w, y + h, x, y + h, x, y]);
+
+    // Ciel/fond sombre derrière la ligne d'horizon (ambiance présentation).
+    layer.add(new Konva.Rect({ x: 0, y: 0, width: W, height: H, fill: '#0B1220' }));
+    // Gazon rayé projeté : chaque bande devient un trapèze.
+    const bande = 104;
+    for (let x = 0, i = 0; x < W; x += bande, i++) {
+      const x1 = Math.min(x + bande, W);
+      const c1 = P(x, 0), c2 = P(x1, 0), c3 = P(x1, H), c4 = P(x, H);
+      layer.add(new Konva.Line({
+        points: [c1.x, c1.y, c2.x, c2.y, c3.x, c3.y, c4.x, c4.y], closed: true,
+        fill: i % 2 ? '#0F7E43' : '#118A4A',
+      }));
+    }
+    // Contour du terrain.
+    ligneProj([m, m, W - m, m, W - m, H - m, m, H - m, m, m]);
+
+    if (terrain === 'complet') {
+      ligneProj([W / 2, m, W / 2, H - m]);
+      cercleProj(W / 2, H / 2, 80);
+      pointProj(W / 2, H / 2);
+      // Surfaces gauche/droite (grande + petite), point de penalty, arc de « D » et cage.
+      for (const droite of [false, true]) {
+        const xB = droite ? W - m : m, dir = droite ? -1 : 1;
+        const gW = 110, gH = 300, bW = 44, bH = 150;
+        ligneProj([xB, H / 2 - gH / 2, xB + gW * dir, H / 2 - gH / 2, xB + gW * dir, H / 2 + gH / 2, xB, H / 2 + gH / 2]);
+        ligneProj([xB, H / 2 - bH / 2, xB + bW * dir, H / 2 - bH / 2, xB + bW * dir, H / 2 + bH / 2, xB, H / 2 + bH / 2]);
+        // Le « D » = portion du cercle (r=80, centré sur le penalty) située HORS de la surface.
+        // Le bord de surface est à |gW - 80| = 30 du centre, d'où un demi-angle acos(30/80),
+        // orienté vers l'intérieur du terrain (0 à gauche, π à droite).
+        const demi = Math.acos((gW - 80) / 80);
+        const axe = droite ? Math.PI : 0;
+        cercleProj(xB + 80 * dir, H / 2, 80, axe - demi, axe + demi);
+        pointProj(xB + 80 * dir, H / 2);
+        rectProj(droite ? xB : xB - 14, H / 2 - 33, 14, 66);
+      }
+      // Arcs de corner (quart de cercle r=10 tourné vers l'intérieur).
+      cercleProj(m, m, 10, 0, Math.PI / 2);
+      cercleProj(W - m, m, 10, Math.PI / 2, Math.PI);
+      cercleProj(W - m, H - m, 10, Math.PI, Math.PI * 1.5);
+      cercleProj(m, H - m, 10, Math.PI * 1.5, Math.PI * 2);
+    } else {
+      ligneProj([m, H - m, W - m, H - m]);
+      cercleProj(W / 2, H - m, 80, Math.PI, Math.PI * 2);
+      const gW = 300, gH = 110, bW = 150, bH = 44;
+      ligneProj([W / 2 - gW / 2, m, W / 2 - gW / 2, m + gH, W / 2 + gW / 2, m + gH, W / 2 + gW / 2, m]);
+      ligneProj([W / 2 - bW / 2, m, W / 2 - bW / 2, m + bH, W / 2 + bW / 2, m + bH, W / 2 + bW / 2, m]);
+      cercleProj(W / 2, m + 80, 80, Math.asin(30 / 80), Math.PI - Math.asin(30 / 80));
+      pointProj(W / 2, m + 80);
+      rectProj(W / 2 - 33, m - 14, 66, 14);
+    }
+    layer.draw();
   }
 }

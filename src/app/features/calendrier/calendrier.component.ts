@@ -1,5 +1,5 @@
 import { Component, OnInit, inject } from '@angular/core';
-import { Router } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { FormsModule } from '@angular/forms';
@@ -89,6 +89,7 @@ export class CalendrierComponent implements OnInit {
   private dialog = inject(MatDialog);
   private snackBar = inject(MatSnackBar);
   private router = inject(Router);
+  private route = inject(ActivatedRoute);
   auth = inject(AuthService);
   contexte = inject(ContexteService);
   private espaceJoueur = inject(EspaceJoueurService);
@@ -104,8 +105,24 @@ export class CalendrierComponent implements OnInit {
   }
 
   ngOnInit(): void {
-    if (!this.lectureSeule) this.seanceService.getTypeSeances().subscribe(t => this.typeSeances = t);
+    if (!this.lectureSeule) {
+      this.seanceService.getTypeSeances().subscribe(t => {
+        this.typeSeances = t;
+        this.ouvrirEditionDemandee();
+      });
+    }
     this.charger();
+  }
+
+  /** ?editer=<id> (bouton « Modifier » de la fiche séance) : rouvre le dialog d'édition. */
+  private ouvrirEditionDemandee(): void {
+    const id = this.route.snapshot.queryParamMap.get('editer');
+    if (!id) return;
+    this.router.navigate([], { queryParams: {}, replaceUrl: true });
+    this.seanceService.getAll().subscribe(seances => {
+      const s = seances.find(x => x.id === id);
+      if (s) this.editerSeance(s, new MouseEvent('click'));
+    });
   }
 
   // ══════════ Chargement / période ══════════
@@ -320,14 +337,23 @@ export class CalendrierComponent implements OnInit {
     });
     ref.afterClosed().subscribe((result: SeanceFormResult | null) => {
       if (result) {
-        const { exercices, ...seance } = result;
+        const { exercices, avance, ...seance } = result;
         this.seanceService.create(seance).subscribe(creee => {
-          if (exercices.length) {
+          const apres = () => {
+            this.charger();
+            // Mode avancé : ouvre la fiche pour vérification (impression / partage / retouche).
+            if (avance) this.router.navigate(['/seances', creee.id, 'fiche'], { queryParams: { verif: 1 } });
+          };
+          if (avance) {
+            this.seanceService.remplacerContenuAvance(creee.id, { ...avance, exercices }).subscribe({
+              next: apres, error: apres,
+            });
+          } else if (exercices.length) {
             this.seanceService.remplacerExercices(creee.id, exercices).subscribe({
-              next: () => this.charger(), error: () => this.charger(),
+              next: apres, error: apres,
             });
           } else {
-            this.charger();
+            apres();
           }
         });
       }
@@ -342,13 +368,19 @@ export class CalendrierComponent implements OnInit {
     });
     ref.afterClosed().subscribe((result: SeanceFormResult | null) => {
       if (result) {
-        const { exercices, ...payload } = result;
+        const { exercices, avance, ...payload } = result;
         this.seanceService.update(seance.id, payload as Partial<Seance>).subscribe({
           next: () => {
-            this.seanceService.remplacerExercices(seance.id, exercices).subscribe({
-              next: () => { this.charger(); this.snackBar.open('Séance modifiée', 'OK', { duration: 2500 }); },
-              error: () => { this.charger(); this.snackBar.open('Séance modifiée', 'OK', { duration: 2500 }); },
-            });
+            const fini = () => { this.charger(); this.snackBar.open('Séance modifiée', 'OK', { duration: 2500 }); };
+            if (avance) {
+              this.seanceService.remplacerContenuAvance(seance.id, { ...avance, exercices }).subscribe({
+                next: fini, error: fini,
+              });
+            } else {
+              this.seanceService.remplacerExercices(seance.id, exercices).subscribe({
+                next: fini, error: fini,
+              });
+            }
           },
           error: () => this.snackBar.open('Modification impossible', 'OK', { duration: 3000 }),
         });
@@ -370,10 +402,17 @@ export class CalendrierComponent implements OnInit {
   }
 
   private ouvrirContenuDialog(titre: string, date: string, contenu: any, seance: Seance): void {
-    this.dialog.open(SeanceContenuDialogComponent, {
+    const ref = this.dialog.open(SeanceContenuDialogComponent, {
       width: '900px', maxWidth: '96vw', panelClass: 'app-dialog',
       data: { titre, date, contenu, seance },
     });
+    // Joueur : complète (best-effort) avec sa fiche filtrée serveur — déroulé en blocs + SON groupe.
+    if (this.lectureSeule) {
+      this.espaceJoueur.getFicheSeance(seance.id).subscribe({
+        next: fiche => { ref.componentInstance.ficheJoueur = fiche; },
+        error: () => {},
+      });
+    }
   }
 
   marquerRealisee(seance: Seance, event: MouseEvent): void {
