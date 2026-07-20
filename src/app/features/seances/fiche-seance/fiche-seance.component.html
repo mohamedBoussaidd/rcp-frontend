@@ -62,6 +62,18 @@
 
       <div class="sheet__body">
 
+        <!-- Contexte : le problème qui a motivé la séance. STAFF UNIQUEMENT (la fiche joueur
+             est une autre vue, filtrée serveur — ce bloc n'y est jamais rendu). -->
+        @if (r.contexte || r.contexteLibelle) {
+          <div class="sec">Contexte <span class="sec__staff">staff</span></div>
+          <div class="contexte">
+            @if (r.contexte) { <p class="contexte__texte">{{ r.contexte }}</p> }
+            @if (r.contexteLibelle) {
+              <p class="contexte__source">Suite à : {{ r.contexteLibelle }}</p>
+            }
+          </div>
+        }
+
         <!-- Dominantes -->
         @if (r.dominantes.length > 0) {
           <div class="sec">Dominantes</div>
@@ -77,11 +89,17 @@
         @if (aObjectifs()) {
           <div class="sec">Objectifs pédagogiques</div>
           <div class="objgrid">
-            @if (r.objectifs.tactiqueOrg) { <div class="obj"><label>Tactique org.</label><span>{{ r.objectifs.tactiqueOrg }}</span></div> }
-            @if (r.objectifs.tactiqueFonc) { <div class="obj"><label>Tactique fonct.</label><span>{{ r.objectifs.tactiqueFonc }}</span></div> }
-            @if (r.objectifs.technique) { <div class="obj"><label>Technique</label><span>{{ r.objectifs.technique }}</span></div> }
-            @if (r.objectifs.mental) { <div class="obj"><label>Mental</label><span>{{ r.objectifs.mental }}</span></div> }
-            @if (r.objectifs.athletique) { <div class="obj"><label>Athlétique</label><span>{{ r.objectifs.athletique }}</span></div> }
+            @for (a of axesFiche(); track a.libelle) {
+              <div class="obj">
+                <label>{{ a.libelle }}</label>
+                <span class="obj__dose" [attr.aria-label]="a.dose + ' sur 5'">
+                  @for (pleine of a.puces; track $index) {
+                    <i class="dose-puce" [class.pleine]="pleine"></i>
+                  }
+                </span>
+                @if (a.note) { <span class="obj__note">{{ a.note }}</span> }
+              </div>
+            }
           </div>
         }
 
@@ -91,6 +109,12 @@
           <div class="chips">
             @for (p of chipsProjet(); track p) { <span class="chip">{{ p }}</span> }
           </div>
+        }
+
+        <!-- Occupation du terrain : qui est où, avec qui -->
+        @if (aZones()) {
+          <div class="sec">Occupation du terrain</div>
+          <app-terrain-zones [occupations]="occupationTerrain()" />
         }
 
         <!-- Déroulé en blocs -->
@@ -111,16 +135,34 @@
                   }
                 }
                 <div class="bloc__body">
-                  @if (b.bloc.staff.length > 0 || b.bloc.zoneTerrain) {
+                  @if (b.bloc.staff.length > 0 || b.bloc.zones.length > 0) {
                     <span class="bloc__who">
-                      @if (b.bloc.staff.length > 0) { 👤 {{ b.bloc.staff[0].nom }}@for (s of b.bloc.staff.slice(1); track s.id) { + {{ s.nom }} } }
-                      @if (b.bloc.zoneTerrain) { · {{ b.bloc.zoneTerrain }} }
+                      @for (s of b.bloc.staff; track s.id) {
+                        <span class="bloc__staff">{{ libelleStaffRole(s) }}</span>
+                      }
+                      @if (b.bloc.zones.length > 0) {
+                        <span class="bloc__zones">· zone{{ b.bloc.zones.length > 1 ? 's' : '' }} {{ b.bloc.zones.join(', ') }}</span>
+                      }
                     </span>
                   }
                   @for (e of b.exercices; track e.exerciceId) {
                     <div class="bloc__exo">
                       <b>{{ e.nom }}</b>@if (e.dureeMinutes) { · {{ e.dureeMinutes }}' }
                       @if (e.description) { <span class="bloc__desc">{{ e.description }}</span> }
+                    </div>
+                  }
+
+                  <!-- Effectif DE CE BLOC : il doit se lire ici, pas en vrac en bas de fiche -->
+                  @if (groupesDuBloc(b.bloc.id).length > 0) {
+                    <div class="bloc__eff">
+                      @for (g of groupesDuBloc(b.bloc.id); track g.id) {
+                        <div class="grp grp--bloc">
+                          <b>{{ g.libelle }}</b>
+                          @for (j of g.joueurs; track j.id) {
+                            <span class="pl pl--{{ g.couleur || 'aucun' }}">{{ j.nom }}</span>
+                          }
+                        </div>
+                      }
                     </div>
                   }
                 </div>
@@ -155,9 +197,13 @@
           </div>
         }
 
-        <!-- Effectifs du jour -->
-        @if (r.groupes.length > 0 || r.groupesAuto.blesses.length > 0 || r.groupesAuto.reathletisation.length > 0 || r.absents.length > 0) {
-          <div class="sec">Effectifs du jour</div>
+        <!-- Effectifs du jour : uniquement ceux qui valent pour TOUTE la séance.
+             Les groupes propres à un bloc sont affichés dans leur bloc, ci-dessus. -->
+        @if (groupesSeance().length > 0 || r.groupesAuto.blesses.length > 0 || r.groupesAuto.reathletisation.length > 0 || r.absents.length > 0) {
+          <div class="sec">
+            Effectifs du jour
+            @if (aGroupesParBloc()) { <span class="sec__note">— valables pour toute la séance</span> }
+          </div>
           <div class="eff">
             @if (r.groupesAuto.blesses.length > 0) {
               <div class="grp"><b>Blessés (médical)</b>
@@ -174,7 +220,7 @@
                 @for (j of r.absents; track j.id) { <span class="pl">{{ j.nom }}</span> }
               </div>
             }
-            @for (g of r.groupes; track g.id) {
+            @for (g of groupesSeance(); track g.id) {
               <div class="grp">
                 <b>{{ g.libelle }}</b>
                 @for (j of g.joueurs; track j.id) { <span class="pl pl--{{ g.couleur || 'aucun' }}">{{ j.nom }}</span> }

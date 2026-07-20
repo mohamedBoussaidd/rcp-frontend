@@ -1,0 +1,133 @@
+:host {
+  display: block;
+}
+
+.jauges {
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  overflow: hidden;
+}
+
+.jauge {
+  background: var(--surface);
+  transition: background .14s ease;
+
+  + .jauge {
+    border-top: 1px solid var(--border);
+  }
+
+  /* Un axe dosé se teinte : la ligne devient repérable sans avoir à compter les pastilles. */
+  &--active {
+    background: var(--green-50);
+  }
+}
+
+.jauge__ligne {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+}
+
+.jauge__label {
+  flex: 1;
+  min-width: 0;
+  font-size: 13.5px;
+  font-weight: 500;
+  color: var(--text-2);
+
+  .jauge--active & {
+    font-weight: 700;
+    color: var(--text);
+  }
+}
+
+.jauge__barre {
+  width: 120px;
+  flex: none;
+  height: 6px;
+  border-radius: var(--r-pill);
+  background: var(--surface-3);
+  overflow: hidden;
+}
+
+.jauge__barre-remplie {
+  display: block;
+  height: 100%;
+  border-radius: var(--r-pill);
+  background: var(--green-500);
+  transition: width .18s cubic-bezier(.22, 1, .36, 1);
+}
+
+.jauge__crans {
+  display: flex;
+  gap: 5px;
+  flex: none;
+}
+
+.jauge__cran {
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border-radius: var(--r-sm);
+  border: 1.5px solid var(--border-strong);
+  background: var(--surface);
+  cursor: pointer;
+  transition: all .12s cubic-bezier(.22, 1, .36, 1);
+
+  &:hover {
+    border-color: var(--green-500);
+  }
+
+  &.on {
+    border-color: var(--green-600);
+    background: var(--green-500);
+  }
+}
+
+.jauge__note-btn {
+  width: 28px;
+  height: 28px;
+  flex: none;
+  border-radius: var(--r-sm);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-3);
+  font-size: 13px;
+  cursor: pointer;
+
+  &.on {
+    background: var(--green-50);
+    color: var(--green-700);
+  }
+
+  /* Note écrite : le crayon reste allumé mais ne se replie plus (on ne cache pas du contenu). */
+  &:disabled {
+    cursor: default;
+    color: var(--green-700);
+  }
+}
+
+.jauge__note {
+  padding: 0 14px 12px;
+
+  .input {
+    width: 100%;
+    font-size: 13px;
+  }
+}
+
+@media (max-width: 720px) {
+  .jauge__barre {
+    display: none;
+  }
+
+  .jauge__ligne {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .jauge__label {
+    flex: 1 0 100%;
+  }
+}

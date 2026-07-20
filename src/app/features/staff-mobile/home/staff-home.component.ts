@@ -6,8 +6,20 @@ import { AuthService } from '@core/services/auth.service';
 import { ContexteService } from '@core/services/contexte.service';
 import { NotificationPushService } from '@core/services/notification-push.service';
 import { NotificationService } from '@core/services/notification.service';
-import { Seance, SeanceService } from '@core/services/seance.service';
+import { ResumeSeance, Seance, SeanceService } from '@core/services/seance.service';
 import { NotificationBellComponent } from '@shared/components/notification-bell/notification-bell.component';
+import { TerrainZonesComponent } from '@shared/components/terrain-zones/terrain-zones.component';
+
+/** Une ligne de la feuille de route : ce que CE membre du staff fait sur un bloc précis. */
+export interface EtapeFeuilleRoute {
+  seance: string;
+  bloc: string;
+  dureeMinutes?: number;
+  sequencage?: string;
+  zones: number[];
+  /** Rôles tenus, déjà mis en forme (« ⚖ Arbitre »). Vide = présent sans rôle précisé. */
+  roles: string[];
+}
 
 /**
  * Accueil de l'espace staff mobile : salutation + cloche, sélecteur d'équipe
@@ -20,7 +32,7 @@ import { NotificationBellComponent } from '@shared/components/notification-bell/
   standalone: true,
   templateUrl: './staff-home.component.html',
   styleUrl: './staff-home.component.scss',
-  imports: [DatePipe, FormsModule, RouterLink, NotificationBellComponent],
+  imports: [DatePipe, FormsModule, RouterLink, NotificationBellComponent, TerrainZonesComponent],
 })
 export class StaffHomeComponent implements OnInit {
 
@@ -60,12 +72,56 @@ export class StaffHomeComponent implements OnInit {
     return !!s.adversaire || s.typeSeance?.code?.toLowerCase() === 'match';
   }
 
+  /**
+   * Feuille de route personnelle : les blocs du jour où CE membre du staff est affecté, avec
+   * son rôle et sa zone. C'est le vrai gain des rôles de bloc — on passe d'une fiche que le
+   * coach lit pour tout le monde à « Bloc 2 · 15 min · zone 3 — tu arbitres » sur son téléphone.
+   */
+  readonly feuilleRoute = signal<EtapeFeuilleRoute[]>([]);
+
+  private static readonly ICONES: Record<string, string> = {
+    MENEUR: '▶ Tu mènes ce bloc', ARBITRE: '⚖ Tu arbitres', BALLONS: '⚽ Tu donnes les ballons',
+    CHRONO: '⏱ Tu tiens le chrono', OBSERVATION: '👁 Tu observes', SOINS: '🩺 Soins / sécurité',
+  };
+
   private chargerJour(): void {
     const jour = this.today.toISOString().slice(0, 10);
     this.seanceService.getSemaine(jour, jour).subscribe({
-      next: s => this.seancesJour.set(s.filter(x => x.statut !== 'ANNULEE')),
-      error: () => this.seancesJour.set([]),
+      next: s => {
+        const seances = s.filter(x => x.statut !== 'ANNULEE');
+        this.seancesJour.set(seances);
+        this.chargerFeuilleRoute(seances);
+      },
+      error: () => { this.seancesJour.set([]); this.feuilleRoute.set([]); },
     });
+  }
+
+  private chargerFeuilleRoute(seances: Seance[]): void {
+    const moi = this.auth.currentUser()?.id;
+    this.feuilleRoute.set([]);
+    if (!moi) return;
+    for (const s of seances) {
+      this.seanceService.getResume(s.id).subscribe({
+        next: (r: ResumeSeance) => {
+          const etapes: EtapeFeuilleRoute[] = [];
+          r.blocs.forEach((b, i) => {
+            const moiDansBloc = (b.bloc.staff ?? []).find(st => st.id === moi);
+            if (!moiDansBloc) return;
+            etapes.push({
+              seance: r.typeLibelle || 'Séance',
+              bloc: `${i + 1} · ${b.bloc.libelle}`,
+              dureeMinutes: b.bloc.dureeMinutes,
+              sequencage: b.bloc.sequencage,
+              zones: b.bloc.zones ?? [],
+              roles: (moiDansBloc.roleBloc ?? [])
+                .map(c => StaffHomeComponent.ICONES[c]).filter(x => !!x),
+            });
+          });
+          if (etapes.length) this.feuilleRoute.update(f => [...f, ...etapes]);
+        },
+        error: () => {},
+      });
+    }
   }
 
   deconnexion(): void { this.auth.logout(); }

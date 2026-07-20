@@ -119,8 +119,8 @@
             </div>
 
             <div class="lc-droite">
-              @if (seance.responsable) {
-                <span class="lc-resp" matTooltip="Responsable">⌂ {{ seance.responsable }}</span>
+              @if (nomResponsable(seance); as resp) {
+                <span class="lc-resp" matTooltip="Responsable">⌂ {{ resp }}</span>
               }
               <span class="lc-statut statut-{{ seance.statut | lowercase }}">{{ libelleStatut(seance.statut) }}</span>
               @if (auth.canEcrireSeances()) {

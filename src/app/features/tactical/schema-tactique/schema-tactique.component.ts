@@ -1,5 +1,5 @@
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
-import { DatePipe } from '@angular/common';
+import { DatePipe, NgTemplateOutlet } from '@angular/common';
 import { MatIcon } from '@angular/material/icon';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
@@ -22,7 +22,7 @@ interface SchemaCarte extends SchemaTactique { animee: boolean; frames: number; 
   standalone: true,
   templateUrl: './schema-tactique.component.html',
   styleUrl: './schema-tactique.component.scss',
-  imports: [DatePipe, MatIcon],
+  imports: [DatePipe, MatIcon, NgTemplateOutlet],
 })
 export class SchemaTactiqueComponent implements OnInit {
 
@@ -33,6 +33,9 @@ export class SchemaTactiqueComponent implements OnInit {
 
   /** Peut créer/dupliquer un schéma (permission d'écriture). */
   canEcrire(): boolean { return this.auth.has('schemas:write'); }
+
+  /** Seul le super-admin pose des schémas FOURNIS (contenu commun à tous les clubs). */
+  estSuperAdmin(): boolean { return this.auth.currentUser()?.role === 'SUPER_ADMIN'; }
 
   schemas = signal<SchemaTactique[]>([]);
   loading = signal(true);
@@ -48,6 +51,12 @@ export class SchemaTactiqueComponent implements OnInit {
     return { ...s, frames, animee: traces > 0 || frames > 1 };
   }));
 
+  /** Bibliothèque du club : ce que le staff a construit lui-même. */
+  readonly cartesClub = computed(() => this.cartes().filter(s => !s.fourni));
+
+  /** Schémas fournis : point de départ commun, affiché en second (c'est une base, pas la vitrine). */
+  readonly cartesFournies = computed(() => this.cartes().filter(s => s.fourni));
+
   ngOnInit(): void { this.charger(); }
 
   charger(): void {
@@ -60,10 +69,13 @@ export class SchemaTactiqueComponent implements OnInit {
 
   label(v?: string): string { return v ? v.replace(/_/g, ' ') : '—'; }
 
-  /** Nouveau schéma : mini-formulaire (nom + catégorie) puis ouverture de l'éditeur. */
-  nouveau(): void {
+  /**
+   * Nouveau schéma : mini-formulaire (nom + catégorie) puis ouverture de l'éditeur.
+   * `fourni` (super-admin only) crée un schéma commun à tous les clubs au lieu d'un schéma de club.
+   */
+  nouveau(fourni = false): void {
     this.dialog.open(SchemaMetaDialogComponent, {
-      panelClass: 'app-dialog', data: { titre: 'Nouveau schéma' },
+      panelClass: 'app-dialog', data: { titre: fourni ? 'Nouveau schéma fourni' : 'Nouveau schéma' },
     }).afterClosed().subscribe((meta: SchemaMeta | undefined) => {
       if (!meta) return;
       this.dialog.open(SchemaEditorComponent, {
@@ -71,9 +83,21 @@ export class SchemaTactiqueComponent implements OnInit {
         data: {
           titre: meta.nom,
           enregistrer: (json: string, apercu: string) =>
-            this.service.creerSchema({ nom: meta.nom, categorie: meta.categorie, schemaJson: json, apercu }),
+            this.service.creerSchema({ nom: meta.nom, categorie: meta.categorie, schemaJson: json, apercu, fourni }),
         },
       }).afterClosed().subscribe(saved => { if (saved) this.charger(); });
+    });
+  }
+
+  /**
+   * Copie un schéma fourni dans la bibliothèque du club : la copie appartient au club et devient
+   * librement modifiable, l'original reste intact pour les autres clubs.
+   */
+  copier(s: SchemaTactique, ev: Event): void {
+    ev.stopPropagation();
+    this.service.dupliquerSchema(s.id).subscribe({
+      next: () => { this.charger(); this.snack.open('Copié dans votre bibliothèque', 'Fermer', { duration: 2500 }); },
+      error: () => this.snack.open('Copie impossible', 'Fermer', { duration: 3000 }),
     });
   }
 

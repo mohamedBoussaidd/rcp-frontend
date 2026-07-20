@@ -42,7 +42,7 @@
               <span class="sc-bloc__lib">{{ b.libelle }}</span>
               <span class="sc-bloc__meta">
                 {{ b.sequencage || (b.dureeMinutes ? b.dureeMinutes + "'" : '') }}
-                @if (b.zoneTerrain) { · {{ b.zoneTerrain }} }
+                @if (b.zones.length > 0) { · zone{{ b.zones.length > 1 ? 's' : '' }} {{ b.zones.join(', ') }} }
               </span>
             </div>
           }
@@ -59,7 +59,7 @@
             <div class="sc-exo__info">
               <div class="sc-exo__titre">{{ ex.nom }}</div>
               <div class="sc-exo__meta">
-                @if (ex.categorie) { <span class="tag">{{ joli(ex.categorie) }}</span> }
+                @if (ex.forme) { <span class="tag">{{ joli(ex.forme) }}</span> }
                 @if (ex.dureeMinutes) { <span class="tag">{{ ex.dureeMinutes }} min</span> }
                 @if (ex.intensite) { <span class="tag">int. {{ ex.intensite }}</span> }
               </div>

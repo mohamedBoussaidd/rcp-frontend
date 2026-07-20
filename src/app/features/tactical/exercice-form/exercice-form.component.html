@@ -1,0 +1,408 @@
+<div class="exo-page">
+
+  <!-- ══════════ En-tête collant : l'action d'enregistrer suit le défilement ══════════ -->
+  <header class="exo-head">
+    <div class="exo-head__inner">
+      <div class="exo-head__ident">
+        <span class="exo-head__badge">EX</span>
+        <div class="exo-head__titres">
+          <div class="exo-head__kicker">BIBLIOTHÈQUE · EXERCICE</div>
+          <div class="exo-head__nom">{{ titreAffiche() }}</div>
+        </div>
+      </div>
+      <div class="exo-head__spacer"></div>
+      <button type="button" class="btn btn--secondary" (click)="retour()">Annuler</button>
+      <button type="button" class="btn btn--primary"
+              [disabled]="!form.nom || enregistrement()" (click)="enregistrer()">
+        {{ enregistrement() ? '…' : 'Enregistrer' }}
+      </button>
+    </div>
+  </header>
+
+  @if (chargement()) {
+    <div class="exo-body"><div class="card card--padded"><div class="loading">Chargement…</div></div></div>
+  } @else {
+
+  <div class="exo-body">
+
+    <!-- ══════════ Colonne de saisie ══════════ -->
+    <main class="exo-col">
+
+      <!-- Ce que la fiche attend vraiment, dit avant de la remplir -->
+      <div class="exo-guide">
+        <span class="exo-guide__pastille"></span>
+        <span class="exo-guide__texte">Une fiche correcte en 3 champs.</span>
+        <span class="exo-head__spacer"></span>
+        <span class="exo-guide__legende"><b>✓ Essentiel</b></span>
+        @if (peutAvance()) {
+          <span class="exo-guide__legende">Pédagogie <i class="tag-facultatif">facultatif</i></span>
+          <span class="exo-guide__legende">Organisation <i class="tag-facultatif">facultatif</i></span>
+        }
+      </div>
+
+      <!-- ─────────── 1 · Essentiel ─────────── -->
+      <section class="exo-section">
+        <div class="exo-section__head">
+          <span class="exo-section__num on">1</span>
+          <h2 class="exo-section__titre">Essentiel</h2>
+          <span class="exo-section__sous">le strict nécessaire pour ranger l'exercice</span>
+        </div>
+
+        <div class="exo-section__corps">
+
+          <label class="champ">
+            <span class="champ__label">Nom de l'exercice</span>
+            <input class="input input--fort" [(ngModel)]="form.nom" name="nom"
+                   placeholder="ex. Tour d'horloge — passe et suit">
+          </label>
+
+          <div class="champ">
+            <span class="champ__label">Forme de travail</span>
+            <div class="segments">
+              @for (f of formes; track f.code) {
+                <button type="button" class="segment" [class.on]="form.forme === f.code"
+                        (click)="choisirForme(f.code)">{{ f.libelle }}</button>
+              }
+            </div>
+          </div>
+
+          <div class="duo">
+            <div class="champ">
+              <span class="champ__label">Type</span>
+              <div class="segments">
+                @for (t of types; track t.code) {
+                  <button type="button" class="segment segment--sm" [class.on]="form.type === t.code"
+                          (click)="choisirType(t.code)">{{ t.libelle }}</button>
+                }
+              </div>
+            </div>
+            <div class="champ">
+              <span class="champ__label">Durée</span>
+              <div class="ligne-unite">
+                <input class="input input--num mono" type="number" min="0"
+                       [(ngModel)]="form.dureeMinutes" name="duree">
+                <span class="unite">min</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="champ">
+            <span class="champ__label">Intensité</span>
+            <div class="ligne-unite">
+              <div class="pastilles">
+                @for (n of crans; track n) {
+                  <button type="button" class="pastille-int" [class.on]="n <= (form.intensite ?? 0)"
+                          [attr.aria-label]="'Intensité ' + n + ' sur 5'"
+                          (click)="choisirIntensite(n)"></button>
+                }
+              </div>
+              <span class="pastilles__label">{{ libelleIntensite() }}</span>
+            </div>
+          </div>
+
+          <!-- Charge physique : n'apparaît que si le type l'appelle, sinon c'est du bruit -->
+          @if (montrerPhysique) {
+            <div class="encart-physique">
+              <div class="encart-physique__titre">CHARGE PHYSIQUE ATTENDUE</div>
+              <div class="trio">
+                <label class="champ">
+                  <span class="champ__label champ__label--sm">Distance attendue</span>
+                  <div class="ligne-unite">
+                    <input class="input mono" type="number" min="0" [(ngModel)]="form.distanceAttendueM" name="dist">
+                    <span class="unite">m</span>
+                  </div>
+                </label>
+                <label class="champ">
+                  <span class="champ__label champ__label--sm">dont haute intensité</span>
+                  <div class="ligne-unite">
+                    <input class="input mono" type="number" min="0" [(ngModel)]="form.distanceHauteIntensiteM" name="distHi">
+                    <span class="unite">m</span>
+                  </div>
+                </label>
+                <label class="champ">
+                  <span class="champ__label champ__label--sm">Nombre de sprints</span>
+                  <input class="input mono" type="number" min="0" [(ngModel)]="form.nbSprints" name="nbSpr">
+                </label>
+              </div>
+            </div>
+          }
+
+          <label class="champ">
+            <span class="champ__label">Objectif <em>— une ligne</em></span>
+            <input class="input" [(ngModel)]="form.objectif" name="obj"
+                   placeholder="ex. Améliorer la qualité de passe en mouvement">
+          </label>
+
+          <label class="champ">
+            <span class="champ__label">Description <em>— consignes</em></span>
+            <textarea class="input" rows="3" [(ngModel)]="form.description" name="desc"
+                      placeholder="Déroulé, consignes, contraintes…"></textarea>
+          </label>
+
+          <!-- Thèmes de jeu : MÊME référentiel que la séance (un seul vocabulaire) -->
+          <div class="champ">
+            <span class="champ__label">
+              Thèmes de jeu travaillés
+              <span class="champ__compte">
+                {{ nbThemes() ? nbThemes() + ' sélectionné' + (nbThemes() > 1 ? 's' : '') : 'aucun encore' }}
+              </span>
+            </span>
+            <div class="themes">
+              @for (ph of phasesProjet; track ph.code) {
+                @if (sousPrincipesDe(ph.code).length > 0) {
+                  <div class="theme-groupe">
+                    <div class="theme-groupe__head">
+                      <span class="theme-groupe__pastille" [style.background]="ph.couleur"></span>
+                      <span class="theme-groupe__libelle">{{ ph.libelle }}</span>
+                    </div>
+                    <div class="chips">
+                      @for (p of sousPrincipesDe(ph.code); track p.id) {
+                        <button type="button" class="chip" [class.on]="sousPrincipeIds.has(p.id)"
+                                (click)="toggleSousPrincipe(p.id)">{{ p.libelle }}</button>
+                      }
+                    </div>
+                  </div>
+                }
+              }
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+      @if (peutAvance()) {
+
+      <!-- ─────────── 2 · Pédagogie (repliée) ─────────── -->
+      <section class="exo-section">
+        <button type="button" class="exo-section__toggle" (click)="pedagoOuvert.set(!pedagoOuvert())">
+          <span class="exo-section__num">2</span>
+          <span class="exo-section__toggle-texte">
+            <span class="exo-section__titre-ligne">
+              <h2 class="exo-section__titre">Pédagogie</h2>
+              <span class="tag-facultatif">facultatif</span>
+            </span>
+            <span class="exo-section__resume">{{ resumePedago() ?? 'Rien de rempli — et c’est ok' }}</span>
+          </span>
+          <span class="exo-section__chevron" [class.ouvert]="pedagoOuvert()">⌄</span>
+        </button>
+
+        @if (pedagoOuvert()) {
+          <div class="exo-section__corps exo-section__corps--replie">
+
+            <div class="duo">
+              <div class="champ">
+                <span class="champ__label">Niveau d'objectif<app-info-bulle [texte]="aide.niveauObjectif" /></span>
+                <div class="chips">
+                  @for (n of niveauxObjectif; track n.code) {
+                    <button type="button" class="chip chip--seg" [class.on]="avance.niveauObjectif === n.code"
+                            (click)="choisirNiveau(n.code)">{{ n.libelle }}</button>
+                  }
+                </div>
+              </div>
+              <div class="champ">
+                <span class="champ__label">Échelle d'effectif<app-info-bulle [texte]="aide.echelleEffectif" /></span>
+                <div class="chips">
+                  @for (e of echellesEffectif; track e.code) {
+                    <button type="button" class="chip chip--seg" [class.on]="avance.echelleEffectif === e.code"
+                            (click)="choisirEchelle(e.code)">{{ e.libelle }}</button>
+                  }
+                </div>
+              </div>
+            </div>
+
+            <div class="champ">
+              <span class="champ__label">
+                Dominantes<app-info-bulle [texte]="aide.dominantesInteraction" />
+                <em>— dose chaque axe, laisse à 0 ce qui n'entre pas en jeu</em>
+              </span>
+              <app-jauge-dominantes [dosages]="dosages" (dosagesChange)="dosages = $event"
+                                    [notes]="notesDom" (notesChange)="notesDom = $event" />
+            </div>
+
+            <div class="champ">
+              <span class="champ__label">Pour aller plus loin <em>— ouvre ce qui te sert</em></span>
+              <div class="cartes">
+                @for (c of cartes; track c.cle) {
+                  <div class="carte" [class.carte--remplie]="valeurCarte(c)">
+                    <button type="button" class="carte__head" (click)="basculerCarte(c)">
+                      <span class="carte__icone">{{ c.icone }}</span>
+                      <span class="carte__libelle">{{ c.libelle }}</span>
+                      <span class="carte__hint">
+                        {{ valeurCarte(c) ? '✓ rempli' : (carteOuverte(c) ? '' : '+ ajouter') }}
+                      </span>
+                    </button>
+                    @if (carteOuverte(c)) {
+                      <div class="carte__corps">
+                        <textarea class="input" rows="2" [value]="valeurCarte(c)"
+                                  (input)="saisirCarte(c, $any($event.target).value)"
+                                  [placeholder]="c.placeholder"></textarea>
+                      </div>
+                    }
+                  </div>
+                }
+              </div>
+            </div>
+
+          </div>
+        }
+      </section>
+
+      <!-- ─────────── 3 · Organisation (repliée) ─────────── -->
+      <section class="exo-section">
+        <button type="button" class="exo-section__toggle" (click)="orgaOuvert.set(!orgaOuvert())">
+          <span class="exo-section__num">3</span>
+          <span class="exo-section__toggle-texte">
+            <span class="exo-section__titre-ligne">
+              <h2 class="exo-section__titre">Organisation</h2>
+              <span class="tag-facultatif">facultatif</span>
+            </span>
+            <span class="exo-section__resume">{{ resumeOrga() ?? 'Dimensions, format, densité' }}</span>
+          </span>
+          <span class="exo-section__chevron" [class.ouvert]="orgaOuvert()">⌄</span>
+        </button>
+
+        @if (orgaOuvert()) {
+          <div class="exo-section__corps exo-section__corps--replie">
+
+            <div class="duo">
+              <div class="champ">
+                <span class="champ__label">Dimensions du terrain</span>
+                <div class="ligne-unite">
+                  <input class="input input--num mono" type="number" min="1" step="0.5"
+                         [(ngModel)]="avance.terrainLongueurM" name="avLong">
+                  <span class="unite">m</span>
+                  <span class="croix">×</span>
+                  <input class="input input--num mono" type="number" min="1" step="0.5"
+                         [(ngModel)]="avance.terrainLargeurM" name="avLarg">
+                  <span class="unite">m</span>
+                </div>
+              </div>
+              <label class="champ">
+                <span class="champ__label">Format joueurs</span>
+                <input class="input mono" [(ngModel)]="avance.formatJoueurs" name="avFormat"
+                       (ngModelChange)="formatJoueursChange()"
+                       placeholder="ex. 3 + joker + GB vs 3 + joker + GB">
+              </label>
+            </div>
+
+            <div class="duo">
+              <!-- Déduit du format, mais toujours corrigeable : d'où le badge, pas un verrou -->
+              <div class="encart-calcul">
+                <div class="encart-calcul__head">
+                  <span class="champ__label">Nombre de joueurs</span>
+                  @if (!nbJoueursManuel && avance.nbJoueursTotal) {
+                    <span class="auto-badge">⚡ auto</span>
+                  } @else if (nbJoueursManuel) {
+                    <span class="badge-modifie">✎ modifié</span>
+                  }
+                </div>
+                <div class="ligne-unite">
+                  <input class="input input--num input--gros mono" type="number" min="1"
+                         [(ngModel)]="avance.nbJoueursTotal" name="avNb"
+                         (ngModelChange)="nbJoueursManuel = true">
+                  @if (nbJoueursManuel && nbJoueursDeduit()) {
+                    <button type="button" class="lien-recalcul" (click)="recalculerNbJoueurs()">↺ recalculer</button>
+                  }
+                </div>
+              </div>
+
+              <!-- Purement calculée : jamais saisie, jamais stockée -->
+              <div class="encart-calcul">
+                <div class="encart-calcul__head">
+                  <span class="champ__label">Densité<app-info-bulle [texte]="aide.densite" /></span>
+                  <span class="auto-badge">⚡ auto</span>
+                </div>
+                @if (densite() !== null) {
+                  <div class="ligne-unite">
+                    <span class="valeur-calcul mono">{{ densite() }}</span>
+                    <span class="unite">m²/joueur</span>
+                  </div>
+                } @else {
+                  <span class="champ__hint">renseigne dimensions + nb joueurs</span>
+                }
+              </div>
+            </div>
+
+            <span class="champ__hint">
+              Le <strong>séquençage</strong> se saisit sur le bloc de séance : il change d'une séance
+              à l'autre, alors qu'un exercice de bibliothèque est réutilisé tel quel.
+            </span>
+
+          </div>
+        }
+      </section>
+
+      }
+    </main>
+
+    <!-- ══════════ Aperçu de la fiche : ce qu'on construit, pendant qu'on l'écrit ══════════ -->
+    <aside class="exo-apercu">
+      <div class="apercu-carte">
+        <div class="apercu-carte__head">APERÇU DE LA FICHE</div>
+        <div class="apercu-carte__corps">
+
+          <div class="apercu-badges">
+            <span class="badge-forme">{{ libelleForme(form.forme) }}</span>
+            <span class="badge-type">{{ libelleType() }}</span>
+          </div>
+
+          <div class="apercu-titre">{{ titreAffiche() }}</div>
+          <div class="apercu-objectif">{{ form.objectif || 'Objectif à préciser' }}</div>
+
+          <div class="apercu-kpis">
+            <div class="apercu-kpi">
+              <div class="apercu-kpi__valeur mono">{{ form.dureeMinutes || '—' }}</div>
+              <div class="apercu-kpi__label">minutes</div>
+            </div>
+            <div class="apercu-kpi__sep"></div>
+            <div class="apercu-kpi">
+              <div class="apercu-kpi__barres">
+                @for (n of crans; track n) {
+                  <span class="apercu-barre" [class.on]="n <= (form.intensite ?? 0)"></span>
+                }
+              </div>
+              <div class="apercu-kpi__label">intensité</div>
+            </div>
+            <div class="apercu-kpi__sep"></div>
+            <div class="apercu-kpi">
+              <div class="apercu-kpi__valeur mono">{{ nbThemes() }}</div>
+              <div class="apercu-kpi__label">thèmes</div>
+            </div>
+          </div>
+
+          @if (peutAvance() && axesDoses().length > 0) {
+            <div class="apercu-bloc">
+              <div class="apercu-bloc__titre">DOMINANTES</div>
+              @for (a of axesDoses(); track a) {
+                <div class="apercu-dom">
+                  <span class="apercu-dom__nom">{{ libelleAxe(a) }}</span>
+                  <span class="apercu-dom__barre">
+                    <span class="apercu-dom__remplie" [style.width.%]="dosages[a] * 20"></span>
+                  </span>
+                </div>
+              }
+            </div>
+          }
+
+          @if (peutAvance() && densite() !== null) {
+            <div class="apercu-orga">
+              <span>👥 <b class="mono">{{ avance.nbJoueursTotal }}</b> joueurs</span>
+              <span class="apercu-orga__sep">·</span>
+              <span><b class="mono">{{ densite() }}</b> m²/j</span>
+              <span class="apercu-orga__sep">·</span>
+              <span class="mono">{{ avance.terrainLongueurM }}×{{ avance.terrainLargeurM }} m</span>
+            </div>
+          }
+
+        </div>
+      </div>
+
+      <div class="apercu-conseil">
+        <span class="apercu-conseil__icone">💡</span>
+        <span>{{ conseil() }}</span>
+      </div>
+    </aside>
+
+  </div>
+  }
+</div>

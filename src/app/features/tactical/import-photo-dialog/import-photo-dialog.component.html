@@ -3,7 +3,7 @@
   <div class="ip-head">
     <div>
       <h2>📷 Importer depuis une photo</h2>
-      <span class="ip-sub">Photographie ta fiche papier — l'IA pré-remplit le formulaire et le schéma (~80 %), tu ajustes.</span>
+      <span class="ip-sub">Photographie ta fiche papier — l'IA pré-remplit un brouillon (texte fiable, schéma à vérifier), tu ajustes.</span>
     </div>
     <button type="button" class="ip-close" (click)="annuler()" aria-label="Fermer">✕</button>
   </div>
@@ -56,6 +56,10 @@
           <div class="ip-resultat__schema">
             <h3>Schéma détecté</h3>
             <app-schema-viewer [schemaJson]="r.schemaJson" [largeur]="300" />
+            <div class="ip-avertissement">
+              ⚠ Base de travail, pas un résultat final — vérifie et corrige dans l'éditeur.
+              Plus la photo comporte d'éléments (plots, ateliers, joueurs…), moins l'IA est précise.
+            </div>
           </div>
         }
       </div>

@@ -1,0 +1,38 @@
+<div class="jauges">
+  @for (a of axes; track a.cle) {
+    <div class="jauge" [class.jauge--active]="valeur(a.cle) > 0">
+      <div class="jauge__ligne">
+        <span class="jauge__label">{{ a.libelle }}</span>
+
+        @if (barres) {
+          <span class="jauge__barre">
+            <span class="jauge__barre-remplie" [style.width]="pourcentage(a.cle)"></span>
+          </span>
+        }
+
+        <span class="jauge__crans">
+          @for (c of crans; track c) {
+            <button type="button" class="jauge__cran" [class.on]="c <= valeur(a.cle)"
+                    [attr.aria-label]="a.libelle + ' : ' + c + ' sur 5'"
+                    (click)="doser(a.cle, c)"></button>
+          }
+        </span>
+
+        @if (notes) {
+          <button type="button" class="jauge__note-btn" [class.on]="noteOuverte(a.cle)"
+                  [disabled]="!!note(a.cle)"
+                  [title]="note(a.cle) ? 'Note renseignée' : 'Ajouter une note'"
+                  (click)="basculerNote(a.cle)">✎</button>
+        }
+      </div>
+
+      @if (notes && noteOuverte(a.cle)) {
+        <div class="jauge__note">
+          <input class="input" [value]="note(a.cle)"
+                 (input)="saisirNote(a.cle, $any($event.target).value)"
+                 placeholder="précision libre sur cet axe (optionnel)">
+        </div>
+      }
+    </div>
+  }
+</div>

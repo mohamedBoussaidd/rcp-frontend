@@ -1,0 +1,180 @@
+:host { display: block; }
+
+.tz { display: flex; flex-direction: column; gap: 8px; }
+
+/* ── Raccourcis (un demi-terrain = 4 zones, personne ne veut les cliquer une par une) ── */
+.tz__raccourcis {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.tz__rac {
+  height: 24px;
+  padding: 0 9px;
+  border-radius: 999px;
+  border: 1px solid var(--border-strong, #D1D5DB);
+  background: var(--surface, #fff);
+  color: var(--text-2, #374151);
+  font-family: inherit;
+  font-size: 11.5px;
+  font-weight: 600;
+  cursor: pointer;
+
+  &:hover { background: var(--surface-3, #F3F4F6); }
+}
+
+.tz__resume {
+  margin-left: auto;
+  font-size: 11.5px;
+  color: var(--text-3, #6B7280);
+  font-style: italic;
+}
+
+/* ── Le terrain ── */
+.tz__terrain {
+  position: relative;
+  border: 2px solid var(--green-600, #059669);
+  border-radius: 6px;
+  background: var(--green-50, #ECFDF5);
+  padding: 6px;
+}
+
+/* Repères de terrain : cages, ligne médiane, rond central. Purement décoratifs. */
+.tz__but {
+  position: absolute;
+  top: 50%;
+  width: 5px;
+  height: 22%;
+  transform: translateY(-50%);
+  border: 2px solid var(--green-600, #059669);
+  pointer-events: none;
+}
+
+.tz__but--g { left: -5px; border-right: 0; border-radius: 3px 0 0 3px; }
+.tz__but--d { right: -5px; border-left: 0; border-radius: 0 3px 3px 0; }
+
+.tz__mediane {
+  position: absolute;
+  left: 50%;
+  top: 6px;
+  bottom: 6px;
+  width: 0;
+  border-left: 1px dashed var(--green-600, #059669);
+  opacity: .5;
+  pointer-events: none;
+}
+
+.tz__rond {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 34px;
+  height: 34px;
+  margin: -17px 0 0 -17px;
+  border: 1px dashed var(--green-600, #059669);
+  border-radius: 50%;
+  opacity: .5;
+  pointer-events: none;
+}
+
+/* Moitié A à gauche, moitié B à droite ; 4 bandes en longueur dans chaque moitié. */
+.tz__grille {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: repeat(4, 1fr);
+  grid-auto-flow: column;
+  gap: 3px;
+}
+
+.tz__zone {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+  min-height: 44px;
+  padding: 4px 6px;
+  border: 1px dashed rgba(5, 150, 105, .45);
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-2, #374151);
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background 120ms ease, border-color 120ms ease;
+
+  &:hover { background: rgba(5, 150, 105, .10); }
+}
+
+.tz__zone--fige { cursor: default; &:hover { background: transparent; } }
+
+.tz__zone--on {
+  background: var(--green-600, #059669);
+  border-style: solid;
+  border-color: var(--green-700, #047857);
+  color: #fff;
+}
+
+.tz__zone--occupee {
+  background: rgba(5, 150, 105, .13);
+  border-style: solid;
+}
+
+/* Conflit : deux blocs se partagent la zone. Trame + liseré, pour rester visible en noir et blanc. */
+.tz__zone--conflit {
+  border-color: var(--warn, #B45309);
+  background: repeating-linear-gradient(
+    45deg,
+    rgba(180, 83, 9, .12) 0 6px,
+    rgba(180, 83, 9, .04) 6px 12px
+  );
+}
+
+.tz__num {
+  font-size: 10px;
+  font-weight: 700;
+  opacity: .55;
+  line-height: 1;
+}
+
+.tz__occ {
+  display: block;
+  font-size: 11px;
+  line-height: 1.3;
+
+  b { display: block; font-weight: 700; }
+  em { font-style: normal; color: var(--text-3, #6B7280); }
+}
+
+.tz__zone--on .tz__occ em { color: rgba(255, 255, 255, .85); }
+
+.tz__vide {
+  margin: 0;
+  font-size: 12px;
+  color: var(--text-3, #6B7280);
+}
+
+/* ── Variante compacte (vignette de bloc, feuille de route mobile) ── */
+.tz--compact {
+  .tz__zone { min-height: 22px; padding: 2px 3px; }
+  .tz__num { font-size: 9px; }
+  .tz__rond { width: 20px; height: 20px; margin: -10px 0 0 -10px; }
+}
+
+/* ── Impression : la fiche part souvent en noir et blanc au bord du terrain ── */
+@media print {
+  .tz__raccourcis { display: none; }
+
+  .tz__zone--on,
+  .tz__zone--occupee {
+    background: #EEE !important;
+    border: 1px solid #333 !important;
+    color: #000 !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .tz__zone--conflit { border: 2px dashed #000 !important; }
+}

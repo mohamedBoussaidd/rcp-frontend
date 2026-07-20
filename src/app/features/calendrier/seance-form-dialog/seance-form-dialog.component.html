@@ -1,326 +1,417 @@
-<div class="form-card seance-modal">
+<div class="seance-modal">
 
-  <div class="form-card__header">
-    <div>
-      <h2 class="form-card__title">{{ editMode ? 'Modifier la séance' : 'Nouvelle séance' }}</h2>
-      <span class="form-card__subtitle">
-        {{ selectedType?.libelle || 'Choisir un type' }} · {{ form?.get('date')?.value }}
-        @if (perimatch; as p) {
-          <span class="perimatch-badge">{{ p.libelle }}<app-info-bulle [texte]="aide.perimatch" /></span>
-        }
-      </span>
+  <!-- ══════════ En-tête : porte la chaîne CONTEXTE → OBJECTIF → DÉROULÉ ══════════ -->
+  <header class="sm-head">
+    <div class="sm-head__ident">
+      <span class="sm-head__badge">SÉ</span>
+      <div>
+        <div class="sm-head__kicker">SÉANCE · {{ dateLisible }}</div>
+        <div class="sm-head__titre">{{ objectifTitre }}</div>
+      </div>
     </div>
-    <div class="form-card__header-actions">
+
+    <div class="sm-chaine">
+      @for (c of chaine(); track c.tag; let dernier = $last) {
+        <div class="sm-chaine__item">
+          <div class="sm-maillon sm-maillon--{{ c.ton }}">
+            <span class="sm-maillon__tag">{{ c.tag }}</span>
+            <span class="sm-maillon__val">{{ c.valeur }}</span>
+          </div>
+          @if (!dernier) { <span class="sm-chaine__fleche">→</span> }
+        </div>
+      }
+    </div>
+
+    <div class="sm-head__actions">
+      @if (perimatch; as p) {
+        <span class="perimatch-badge">{{ p.libelle }}<app-info-bulle [texte]="aide.perimatch" /></span>
+      }
       @if (peutImportPhoto()) {
         <button type="button" class="btn-ajout-exo" (click)="importerDepuisPhoto()"
                 title="Photographier une fiche papier : l'IA pré-remplit le formulaire">📷 Photo</button>
       }
-      @if (peutAvance()) {
-        <label class="mode-avance-toggle">
-          <input type="checkbox" [checked]="modeAvance()" (change)="basculerModeAvance()">
-          <span>Mode avancé</span>
-        </label>
-      }
-      <button type="button" class="form-card__close" (click)="annuler()" aria-label="Fermer">✕</button>
+      <button type="button" class="sm-head__close" (click)="annuler()" aria-label="Fermer">✕</button>
     </div>
-  </div>
+  </header>
 
-  <form [formGroup]="form" class="form-card__body">
-    <mat-tab-group class="seance-tabs" animationDuration="0ms" mat-stretch-tabs="false">
+  <form [formGroup]="form" class="sm-corps">
 
-      <!-- ══════════ Onglet 1 : Séance (cadre + contenu) ══════════ -->
-      <mat-tab label="Séance">
-        <div class="form-grid form-grid--3 tab-grid">
+    <!-- ══════════ Rail : les cinq étapes et leur avancement, toujours visibles ══════════ -->
+    <nav class="sm-rail">
+      @for (e of etapes(); track e.cle) {
+        <button type="button" class="sm-rail__item" [class.on]="onglet() === e.cle"
+                (click)="onglet.set(e.cle)">
+          <span class="sm-rail__num">{{ e.num }}</span>
+          <span class="sm-rail__texte">
+            <span class="sm-rail__libelle">{{ e.libelle }}</span>
+            <span class="sm-rail__repere">{{ e.repere }}</span>
+          </span>
+          @if (e.rempli) { <span class="sm-rail__pastille"></span> }
+        </button>
+      }
+      <div class="sm-rail__spacer"></div>
+      <div class="sm-rail__duree">
+        <div class="sm-rail__duree-label">DURÉE TOTALE</div>
+        <div class="sm-rail__duree-val">
+          <span class="mono">{{ form.get('dureeMinutes')?.value || 0 }}</span><span class="unite">min</span>
+        </div>
+        @if (dureeSelection > 0) {
+          <div class="sm-rail__duree-auto">⚡ somme des exercices</div>
+        }
+      </div>
+    </nav>
 
-          <!-- Type de séance + Date -->
-          <div class="form-field" [class.form-field--error]="form.get('typeSeanceId')?.invalid && form.get('typeSeanceId')?.touched">
-            <label class="form-field__label">Type de séance <span class="req">*</span></label>
-            <select formControlName="typeSeanceId">
+    <!-- ══════════ Contenu de l'étape active ══════════ -->
+    <main class="sm-main">
+
+      <!-- ─────────── 1 · Séance ─────────── -->
+      @if (onglet() === 'seance') {
+        <div class="sm-pile">
+
+          <div class="champ">
+            <span class="champ__label">Type de séance <span class="req">*</span></span>
+            <div class="segments">
               @for (t of typeSeances; track t.id) {
-                <option [value]="t.id">{{ t.libelle }}</option>
-              }
-            </select>
-            @if (form.get('typeSeanceId')?.invalid && form.get('typeSeanceId')?.touched) {
-              <span class="form-field__error">Type obligatoire</span>
-            }
-          </div>
-
-          <div class="form-field" [class.form-field--error]="form.get('date')?.invalid && form.get('date')?.touched">
-            <label class="form-field__label">Date <span class="req">*</span></label>
-            <input type="date" formControlName="date">
-          </div>
-
-          <div class="form-field">
-            <label class="form-field__label">Heure de début</label>
-            <input type="time" formControlName="heureDebut">
-          </div>
-
-          <!-- Titre -->
-          <div class="form-field form-field--full">
-            <label class="form-field__label">Titre</label>
-            <input formControlName="titre" [placeholder]="selectedType?.libelle || 'Séance'">
-          </div>
-
-          <!-- Responsable (encadrant) -->
-          <div class="form-field form-field--full">
-            <label class="form-field__label">Responsable</label>
-            <input formControlName="responsable" placeholder="ex : Rémi.">
-          </div>
-
-          <!-- Durée (calculée depuis les exercices, modifiable) -->
-          <div class="form-field" [class.form-field--error]="form.get('dureeMinutes')?.invalid && form.get('dureeMinutes')?.touched">
-            <label class="form-field__label">Durée (min) <span class="req">*</span></label>
-            <input type="number" formControlName="dureeMinutes" min="1">
-            @if (dureeSelection > 0) {
-              <span class="form-field__hint">= Σ exercices ({{ dureeSelection }} min) · modifiable</span>
-            } @else if (form.get('dureeMinutes')?.invalid && form.get('dureeMinutes')?.touched) {
-              <span class="form-field__error">Durée obligatoire</span>
-            }
-          </div>
-
-          @if (modeAvance()) {
-            <div class="form-field">
-              <label class="form-field__label">Durée effective (min)<app-info-bulle [texte]="aide.dureeEffective" /></label>
-              <input type="number" formControlName="dureeEffectiveMinutes" min="1" placeholder="ex : 68">
-            </div>
-          }
-
-          <!-- Alerte écart durée -->
-          @if (alerteEcart) {
-            <div class="alerte-ecart form-field--full" [class.alerte-long]="alerteEcart === 'long'">
-              <span class="alerte-icon">⚠</span>
-              <span class="alerte-texte">
-                @if (alerteEcart === 'court') {
-                  Séance écourtée (théorique : {{ dureeTheorique }} min) — pourquoi ?
-                } @else {
-                  Séance prolongée (théorique : {{ dureeTheorique }} min) — pourquoi ?
-                }
-              </span>
-            </div>
-
-            <div class="form-field form-field--full">
-              <div class="suggestions">
-                @for (s of (alerteEcart === 'court' ? suggestionsEcourt : suggestionsLong); track s) {
-                  <button type="button" class="suggestion-chip"
-                          [class.active]="form.get('raisonEcartDuree')?.value === s"
-                          (click)="appliquerSuggestion(s)">{{ s }}</button>
-                }
-              </div>
-              <input formControlName="raisonEcartDuree" placeholder="Autre raison…">
-            </div>
-          }
-
-          <!-- Champs MATCH -->
-          @if (estMatch) {
-            <div class="form-field form-field--full">
-              <div class="section-label">Informations match</div>
-            </div>
-
-            <div class="form-field" [class.form-field--error]="form.get('adversaire')?.invalid && form.get('adversaire')?.touched">
-              <label class="form-field__label">Adversaire <span class="req">*</span></label>
-              <input formControlName="adversaire" placeholder="ex : US Clermont">
-              @if (form.get('adversaire')?.invalid && form.get('adversaire')?.touched) {
-                <span class="form-field__error">Adversaire obligatoire</span>
+                <button type="button" class="segment segment--sm"
+                        [class.on]="form.get('typeSeanceId')?.value === t.id"
+                        (click)="form.get('typeSeanceId')?.setValue(t.id)">{{ t.libelle }}</button>
               }
             </div>
+          </div>
 
-            <div class="form-field">
-              <label class="form-field__label">Compétition</label>
-              <input formControlName="competition" placeholder="ex : Championnat N3">
+          <div class="duo">
+            <label class="champ">
+              <span class="champ__label">Date <span class="req">*</span></span>
+              <input class="input mono" type="date" formControlName="date">
+            </label>
+            <label class="champ">
+              <span class="champ__label">Heure de début</span>
+              <input class="input mono" type="time" formControlName="heureDebut">
+            </label>
+          </div>
+
+          <!-- Contexte : réservé au staff. Ton informatif, pas alarmant — ce n'est pas une faute. -->
+          <div class="encart-contexte">
+            <div class="encart-contexte__head">
+              <span>🔒</span>
+              <span class="encart-contexte__titre">Contexte</span>
+              <span class="encart-contexte__tag">visible staff uniquement</span>
+              <span class="sm-spacer"></span>
+              <span class="encart-contexte__note">jamais montré aux joueurs</span>
             </div>
+            <textarea class="encart-contexte__saisie" formControlName="contexte" rows="2"
+                      placeholder="Le problème constaté — ex. 3 buts encaissés sur CPA samedi"></textarea>
+          </div>
 
-            <div class="form-field" [class.form-field--error]="form.get('domicileExterieur')?.invalid && form.get('domicileExterieur')?.touched">
-              <label class="form-field__label">Domicile / Extérieur <span class="req">*</span></label>
-              <select formControlName="domicileExterieur">
-                <option value="">— Choisir</option>
-                <option value="DOMICILE">Domicile</option>
-                <option value="EXTERIEUR">Extérieur</option>
+          <div class="duo">
+            <label class="champ">
+              <span class="champ__label">Suite à <em>— facultatif</em></span>
+              <select class="input select" formControlName="contexteSeanceId">
+                <option value="">— Aucun événement précis</option>
+                @for (o of seancesOrigine; track o.id) {
+                  <option [value]="o.id">{{ libelleOrigine(o) }}</option>
+                }
               </select>
-              @if (form.get('domicileExterieur')?.invalid && form.get('domicileExterieur')?.touched) {
-                <span class="form-field__error">Champ obligatoire</span>
-              }
+            </label>
+            <label class="champ">
+              <span class="champ__label">Responsable</span>
+              <select class="input select" formControlName="responsableId">
+                <option value="">— Non défini</option>
+                @for (st of staffClub; track st.id) {
+                  <option [value]="st.id">{{ libelleStaff(st) }}</option>
+                }
+              </select>
+            </label>
+          </div>
+
+          <!-- Champs match : seulement si le type en est un -->
+          @if (estMatch) {
+            <div class="encart-match">
+              <div class="trio">
+                <label class="champ">
+                  <span class="champ__label champ__label--sm">Adversaire <span class="req">*</span></span>
+                  <input class="input" formControlName="adversaire" placeholder="ex : US Clermont">
+                  @if (form.get('adversaire')?.invalid && form.get('adversaire')?.touched) {
+                    <span class="champ__erreur">Adversaire obligatoire</span>
+                  }
+                </label>
+                <label class="champ">
+                  <span class="champ__label champ__label--sm">Compétition</span>
+                  <input class="input" formControlName="competition" placeholder="ex : Championnat N3">
+                </label>
+                <div class="champ">
+                  <span class="champ__label champ__label--sm">Lieu <span class="req">*</span></span>
+                  <div class="segments">
+                    <button type="button" class="segment segment--sm"
+                            [class.on]="form.get('domicileExterieur')?.value === 'DOMICILE'"
+                            (click)="form.get('domicileExterieur')?.setValue('DOMICILE')">Domicile</button>
+                    <button type="button" class="segment segment--sm"
+                            [class.on]="form.get('domicileExterieur')?.value === 'EXTERIEUR'"
+                            (click)="form.get('domicileExterieur')?.setValue('EXTERIEUR')">Extérieur</button>
+                  </div>
+                  @if (form.get('domicileExterieur')?.invalid && form.get('domicileExterieur')?.touched) {
+                    <span class="champ__erreur">Champ obligatoire</span>
+                  }
+                </div>
+              </div>
             </div>
           }
 
-          <!-- Exercices (bibliothèque) -->
-          <div class="form-field form-field--full">
-            <div class="section-label-row">
-              <span class="section-label">Exercices ({{ dureeSelection }} min)</span>
-              <button type="button" class="btn-ajout-exo" (click)="toggleExoListe()">
-                {{ exoListeOuverte ? '✕ Fermer la bibliothèque' : '＋ Ajouter un exercice' }}
-              </button>
-            </div>
-          </div>
-
-          <!-- Exercices sélectionnés -->
-          <div class="form-field form-field--full">
-            @if (selection.length === 0) {
-              <span class="form-field__hint">Aucun exercice. Cliquez sur « Ajouter un exercice ».</span>
+          <div class="champ">
+            <span class="champ__label">
+              Exercices depuis la bibliothèque
+              <span class="champ__compte">{{ selection.length }} sélectionné{{ selection.length > 1 ? 's' : '' }}</span>
+            </span>
+            @if (exercices.length === 0) {
+              <span class="champ__hint">Aucun exercice dans la bibliothèque.</span>
             } @else {
               <div class="exo-chips">
-                @for (e of selection; track e.id) {
-                  <button type="button" class="exo-chip on" (click)="toggleSelection(e)" title="Retirer">
-                    {{ e.nom }}
-                    @if (e.dureeMinutes) { <small>{{ e.dureeMinutes }}'</small> }
+                @for (e of exercices; track e.id) {
+                  <button type="button" class="exo-chip" [class.on]="estSelectionne(e)"
+                          (click)="toggleSelection(e)">
+                    <span>{{ e.nom }}</span>
+                    @if (e.dureeMinutes) { <small class="mono">{{ e.dureeMinutes }}'</small> }
                     @if (e.type === 'PHYSIQUE') { <small class="tag-phys">phys</small> }
                     @else if (e.type === 'MIXTE') { <small class="tag-mixte">mixte</small> }
-                    <small class="exo-remove">✕</small>
                   </button>
                 }
               </div>
             }
           </div>
 
-          <!-- Bibliothèque (révélée par le bouton) -->
-          @if (exoListeOuverte) {
-            <div class="form-field form-field--full">
-              @if (exercices.length === 0) {
-                <span class="form-field__hint">Aucun exercice dans la bibliothèque.</span>
-              } @else {
-                <div class="exo-biblio">
-                  @for (e of exercices; track e.id) {
-                    <button type="button" class="exo-chip" [class.on]="estSelectionne(e)" (click)="toggleSelection(e)">
-                      {{ e.nom }}
-                      @if (e.dureeMinutes) { <small>{{ e.dureeMinutes }}'</small> }
-                      @if (e.type === 'PHYSIQUE') { <small class="tag-phys">phys</small> }
-                      @else if (e.type === 'MIXTE') { <small class="tag-mixte">mixte</small> }
-                    </button>
+          <label class="champ">
+            <span class="champ__label">Objectif <em>— ce qu'on veut obtenir</em></span>
+            <input class="input input--fort" formControlName="objectif"
+                   placeholder="ex : resserrer le marquage sur corner">
+          </label>
+
+          <div class="duo">
+            <div class="encart-calcul">
+              <div class="encart-calcul__head">
+                <span class="champ__label">Durée prévue <span class="req">*</span></span>
+                @if (dureeSelection > 0) { <span class="auto-badge">⚡ auto</span> }
+              </div>
+              <div class="ligne-unite">
+                <input class="input input--num input--gros mono" type="number" min="1"
+                       formControlName="dureeMinutes">
+                <span class="unite">
+                  @if (dureeSelection > 0) { min = Σ exercices } @else { min }
+                </span>
+              </div>
+              @if (form.get('dureeMinutes')?.invalid && form.get('dureeMinutes')?.touched) {
+                <span class="champ__erreur">Durée obligatoire</span>
+              }
+            </div>
+
+            @if (peutAvance()) {
+              <div class="encart-calcul">
+                <div class="encart-calcul__head">
+                  <span class="champ__label">Durée effective<app-info-bulle [texte]="aide.dureeEffective" /></span>
+                </div>
+                <div class="ligne-unite">
+                  <input class="input input--num input--gros mono" type="number" min="1"
+                         formControlName="dureeEffectiveMinutes" placeholder="—">
+                  <span class="unite">min sur le terrain</span>
+                </div>
+              </div>
+            }
+          </div>
+
+          @if (alerteEcart) {
+            <div class="alerte-ecart" [class.alerte-long]="alerteEcart === 'long'">
+              <span class="alerte-icon">⚠</span>
+              <div class="alerte-corps">
+                <div class="alerte-texte">
+                  @if (compareEffective) {
+                    @if (alerteEcart === 'court') {
+                      Séance écourtée — {{ form.get('dureeEffectiveMinutes')?.value }} min effectives
+                      contre {{ form.get('dureeMinutes')?.value }} min prévues. Pourquoi ?
+                    } @else {
+                      Séance prolongée — {{ form.get('dureeEffectiveMinutes')?.value }} min effectives
+                      contre {{ form.get('dureeMinutes')?.value }} min prévues. Pourquoi ?
+                    }
+                  } @else if (alerteEcart === 'court') {
+                    Séance écourtée (théorique : {{ dureeTheorique }} min) — pourquoi ?
+                  } @else {
+                    Séance prolongée (théorique : {{ dureeTheorique }} min) — pourquoi ?
                   }
                 </div>
-              }
+                <div class="suggestions">
+                  <span class="suggestions__label">Raison :</span>
+                  @for (s of (alerteEcart === 'court' ? suggestionsEcourt : suggestionsLong); track s) {
+                    <button type="button" class="chip"
+                            [class.on]="form.get('raisonEcartDuree')?.value === s"
+                            (click)="appliquerSuggestion(s)">{{ s }}</button>
+                  }
+                </div>
+                <input class="input" formControlName="raisonEcartDuree" placeholder="Autre raison…">
+              </div>
             </div>
           }
 
-          <!-- Objectif texte -->
-          <div class="form-field form-field--full">
-            <label class="form-field__label">Objectif de la séance (texte)</label>
-            <input formControlName="objectif" placeholder="ex : travail de conservation haute intensité">
-          </div>
-
         </div>
-      </mat-tab>
+      }
 
-      <!-- ══════════ Onglet 2 : Charge & conditions (préparateur) ══════════ -->
-      <mat-tab label="Charge & conditions">
-        <div class="form-grid form-grid--3 tab-grid">
+      <!-- ─────────── 2 · Charge & conditions ─────────── -->
+      @if (onglet() === 'charge') {
+        <div class="sm-pile">
 
-          <!-- Cibles physiques d'équipe -->
-          <div class="form-field form-field--full">
-            <div class="section-label-row">
-              <span class="section-label">Cibles physiques d'équipe</span>
-              @if (selectedType) {
-                <button type="button" class="btn-ajout-exo" (click)="appliquerCiblesType()">↻ Cibles du type</button>
-              }
-            </div>
-          </div>
-
-          <div class="form-field">
-            <label class="form-field__label">Distance cible (m)</label>
-            <input type="number" formControlName="objectifDistanceM" min="0" placeholder="ex : 6000">
-            @if (suggestionDistanceM > 0) {
-              <span class="form-field__hint">Σ exercices physiques : {{ suggestionDistanceM }} m</span>
+          <div class="sm-section-head">
+            <span class="sm-section-titre">Cibles physiques d'équipe</span>
+            @if (selectedType) {
+              <button type="button" class="btn-ajout-exo" (click)="appliquerCiblesType()">↻ Cibles du type</button>
             }
           </div>
-          <div class="form-field">
-            <label class="form-field__label">Dont haute intensité (m)</label>
-            <input type="number" formControlName="objectifDistanceHauteIntensiteM" min="0" placeholder="ex : 1000">
-          </div>
-          <div class="form-field">
-            <label class="form-field__label">Intensité cible (1–5)</label>
-            <input type="number" formControlName="objectifIntensite" min="1" max="5" placeholder="ex : 4">
+
+          <div class="trio">
+            <label class="champ">
+              <span class="champ__label">Distance cible</span>
+              <div class="ligne-unite">
+                <input class="input mono" type="number" min="0" formControlName="objectifDistanceM"
+                       placeholder="ex : 6000">
+                <span class="unite">m</span>
+              </div>
+              @if (suggestionDistanceM > 0) {
+                <span class="champ__hint">Σ exercices physiques : {{ suggestionDistanceM }} m</span>
+              }
+            </label>
+            <label class="champ">
+              <span class="champ__label">dont haute intensité</span>
+              <div class="ligne-unite">
+                <input class="input mono" type="number" min="0"
+                       formControlName="objectifDistanceHauteIntensiteM" placeholder="ex : 1000">
+                <span class="unite">m</span>
+              </div>
+            </label>
+            <label class="champ">
+              <span class="champ__label">Intensité cible</span>
+              <div class="ligne-unite">
+                <input class="input input--num mono" type="number" min="1" max="5"
+                       formControlName="objectifIntensite" placeholder="1–5">
+                <span class="unite">sur 5</span>
+              </div>
+            </label>
           </div>
 
-          <!-- Conditions -->
-          <div class="form-field form-field--full">
-            <div class="section-label">Conditions</div>
+          <!-- Chaque météo annonce sa correction : le coach voit ce que son choix implique -->
+          <div class="champ">
+            <span class="champ__label">
+              Météo <em>— la correction de charge s'affiche sur chaque choix</em>
+            </span>
+            <div class="meteos">
+              @for (m of meteos; track m.code) {
+                <button type="button" class="meteo"
+                        [class.on]="form.get('conditionsMeteo')?.value === m.code"
+                        (click)="choisirMeteo(m.code)">
+                  <span class="meteo__icone">{{ m.icone }}</span>
+                  <span class="meteo__libelle">{{ m.libelle }}</span>
+                  <span class="meteo__corr mono">{{ m.correction }}</span>
+                </button>
+              }
+            </div>
           </div>
 
-          <div class="form-field form-field--full">
-            <label class="form-field__label">Météo</label>
-            <select formControlName="conditionsMeteo">
-              <option value="">— Non défini</option>
-              <option value="beau">☀️ Soleil — aucune correction</option>
-              <option value="nuageux">⛅ Nuageux — aucune correction</option>
-              <option value="pluie">🌧️ Pluie — −3% sur la distance attendue</option>
-              <option value="vent_fort">💨 Vent fort — −3% sur la distance attendue</option>
-              <option value="neige">❄️ Neige — −12% sur la distance attendue</option>
-              <option value="ARRET_INTEMPERIE">🛑 Arrêt cause intempérie — séance exclue de la baseline</option>
-            </select>
+          <div class="duo">
+            <label class="champ">
+              <span class="champ__label">Terrain</span>
+              <select class="input select" formControlName="terrain">
+                <option value="">— Non défini</option>
+                <option value="SYNTHETIQUE">Synthétique</option>
+                <option value="HERBE">Herbe</option>
+                <option value="HERBE_GRASSE">Herbe grasse</option>
+                <option value="PARQUET">Parquet</option>
+                <option value="GOUDRON">Goudron</option>
+                <option value="FORET">Forêt</option>
+              </select>
+            </label>
+            <label class="champ">
+              <span class="champ__label">Température</span>
+              <div class="ligne-unite">
+                <input class="input input--num mono" type="number" min="-20" max="50"
+                       formControlName="temperature" placeholder="ex : 22">
+                <span class="unite">°C</span>
+              </div>
+              <span class="champ__hint">&gt; 28 °C : −5 %&nbsp;·&nbsp;&gt; 32 °C : −10 %</span>
+            </label>
           </div>
 
-          <div class="form-field">
-            <label class="form-field__label">Terrain</label>
-            <select formControlName="terrain">
-              <option value="">— Non défini</option>
-              <option value="SYNTHETIQUE">Synthétique</option>
-              <option value="HERBE">Herbe</option>
-              <option value="HERBE_GRASSE">Herbe grasse</option>
-              <option value="PARQUET">Parquet</option>
-              <option value="GOUDRON">Goudron</option>
-              <option value="FORET">Forêt</option>
-            </select>
-          </div>
-
-          <div class="form-field">
-            <label class="form-field__label">Température (°C)</label>
-            <input type="number" formControlName="temperature" min="-20" max="50" placeholder="ex : 22">
-            <span class="form-field__hint">&gt; 28°C : −5%&nbsp;·&nbsp;&gt; 32°C : −10%</span>
-          </div>
-
-          <!-- Notes -->
-          <div class="form-field form-field--full">
-            <label class="form-field__label">Notes</label>
-            <textarea formControlName="description" rows="2" placeholder="Consignes, remarques…"></textarea>
-          </div>
+          <label class="champ">
+            <span class="champ__label">Notes</span>
+            <textarea class="input" formControlName="description" rows="2"
+                      placeholder="Précautions, hydratation, adaptations…"></textarea>
+          </label>
 
         </div>
-      </mat-tab>
+      }
 
-      <!-- ══════════ Onglets AVANCÉS (module seance_avancee + mode activé) ══════════ -->
-      @if (modeAvance()) {
+      <!-- ─────────── 3 · Objectifs & projet de jeu ─────────── -->
+      @if (onglet() === 'objectifs' && peutAvance()) {
+        <div class="sm-pile">
 
-        <!-- Onglet 3 : Objectifs & Projet de jeu -->
-        <mat-tab label="Objectifs & Projet de jeu">
-          <div class="tab-grid av-tab">
+          <div class="champ">
+            <span class="champ__label">
+              Dominantes<app-info-bulle [texte]="aide.dominantesSeance" />
+              <span class="auto-badge">⚡ auto</span>
+              <em>— déduites des exercices, corrigeables</em>
+            </span>
+            <app-jauge-dominantes [dosages]="dosages" (dosagesChange)="majDosages($event)" [barres]="true" />
+          </div>
 
-            <div class="section-label">Dominantes de la séance<app-info-bulle [texte]="aide.dominantesSeance" /></div>
-            <div class="chips-select">
-              @for (d of dominantes('SEANCE'); track d.id) {
-                <button type="button" class="chip-select" [class.on]="dominanteIds.has(d.id)"
-                        (click)="toggleDominante(d.id)">{{ d.libelle }}</button>
-              }
-            </div>
-
-            <div class="section-label">Dominantes athlétiques</div>
-            <div class="chips-select">
-              @for (d of dominantes('ATHLETIQUE'); track d.id) {
-                <button type="button" class="chip-select" [class.on]="dominanteIds.has(d.id)"
-                        (click)="toggleDominante(d.id)">{{ d.libelle }}</button>
-              }
-            </div>
-
-            <div class="section-label">Objectifs pédagogiques</div>
+          <div class="champ">
+            <span class="champ__label">
+              Objectifs pédagogiques <em>— 5 lignes, remplis ce qui te sert</em>
+            </span>
             <div class="dom-table">
               <div class="dom-row"><span class="dom-label">Tactique <em>organisationnelle</em></span>
-                <input class="form-field__control" formControlName="objTactiqueOrg" placeholder="—"></div>
+                <input class="input" formControlName="objTactiqueOrg"
+                       placeholder="ex : bloc médian resserré sur corner"></div>
               <div class="dom-row"><span class="dom-label">Tactique <em>fonctionnelle</em></span>
-                <input class="form-field__control" formControlName="objTactiqueFonc" placeholder="ex : créer des lignes de passes"></div>
+                <input class="input" formControlName="objTactiqueFonc"
+                       placeholder="ex : sortie de balle après récupération"></div>
               <div class="dom-row"><span class="dom-label">Mental</span>
-                <input class="form-field__control" formControlName="objMental" placeholder="ex : rigueur, concentration"></div>
+                <input class="input" formControlName="objMental" placeholder="ex : rester concentré sur les CPA"></div>
               <div class="dom-row"><span class="dom-label">Technique</span>
-                <input class="form-field__control" formControlName="objTechnique" placeholder="ex : passes courtes"></div>
+                <input class="input" formControlName="objTechnique" placeholder="ex : dégagement de la tête propre"></div>
               <div class="dom-row"><span class="dom-label">Athlétique</span>
-                <input class="form-field__control" formControlName="objAthletique" placeholder="ex : aérobie, force"></div>
+                <input class="input" formControlName="objAthletique" placeholder="ex : duels aériens répétés"></div>
             </div>
+          </div>
 
-            <div class="section-label">Phases du projet de jeu travaillées<app-info-bulle [texte]="aide.phasesProjetJeu" /></div>
+          <!-- Taxonomie distincte des cinq axes : elle dit de quoi la séance EST faite -->
+          <div class="champ">
+            <span class="champ__label">
+              Nature de la séance
+              <em>— de quoi elle est faite, en plus du dosage des cinq axes ci-dessus</em>
+            </span>
+            <div class="chips">
+              @for (d of dominantes('SEANCE'); track d.id) {
+                <button type="button" class="chip" [class.on]="dominanteIds.has(d.id)"
+                        [class.chip--auto]="dominantesSuggerees().has(d.id)"
+                        (click)="toggleDominante(d.id)">{{ d.libelle }}</button>
+              }
+            </div>
+          </div>
+
+          <div class="champ">
+            <span class="champ__label">Dominantes athlétiques</span>
+            <div class="chips">
+              @for (d of dominantes('ATHLETIQUE'); track d.id) {
+                <button type="button" class="chip" [class.on]="dominanteIds.has(d.id)"
+                        [class.chip--auto]="dominantesSuggerees().has(d.id)"
+                        (click)="toggleDominante(d.id)">{{ d.libelle }}</button>
+              }
+            </div>
+          </div>
+
+          <div class="champ">
+            <span class="champ__label">Sous-principes travaillés<app-info-bulle [texte]="aide.phasesProjetJeu" /></span>
             @for (ph of phasesProjet; track ph.code) {
               @if (sousPrincipes(ph.code).length > 0) {
                 <div class="phase-groupe">
                   <span class="phase-libelle">{{ ph.libelle }}</span>
-                  <div class="chips-select">
+                  <div class="chips">
                     @for (p of sousPrincipes(ph.code); track p.id) {
-                      <button type="button" class="chip-select chip-select--soft" [class.on]="sousPrincipeIds.has(p.id)"
+                      <button type="button" class="chip" [class.on]="sousPrincipeIds.has(p.id)"
                               (click)="toggleSousPrincipe(p.id)">{{ p.libelle }}</button>
                     }
                   </div>
@@ -328,185 +419,301 @@
               }
             }
           </div>
-        </mat-tab>
 
-        <!-- Onglet 4 : Déroulé (blocs) -->
-        <mat-tab label="Déroulé">
-          <div class="tab-grid av-tab">
-            <div class="section-label-row">
-              <span class="section-label">Blocs de séance<app-info-bulle [texte]="aide.blocs" /></span>
-              <button type="button" class="btn-ajout-exo" (click)="ajouterBloc()">＋ Ajouter un bloc</button>
+        </div>
+      }
+
+      <!-- ─────────── 4 · Déroulé ─────────── -->
+      @if (onglet() === 'deroule' && peutAvance()) {
+        <div class="sm-pile">
+
+          @if (zonesEnConflit().length > 0) {
+            <div class="alerte-ecart alerte-conflit">
+              <span class="alerte-icon">⚠</span>
+              <span class="alerte-texte">
+                Zone{{ zonesEnConflit().length > 1 ? 's' : '' }} {{ zonesEnConflit().join(', ') }}
+                occupée{{ zonesEnConflit().length > 1 ? 's' : '' }} par plusieurs blocs. Volontaire
+                s'ils se succèdent, à corriger s'ils tournent en même temps.
+              </span>
             </div>
+          }
 
-            @if (blocs.length === 0) {
-              <span class="form-field__hint">Sans bloc, la séance garde sa liste d'exercices habituelle (onglet Séance).</span>
-            }
+          @if (blocs.length === 0) {
+            <span class="champ__hint">
+              Sans bloc, la séance garde sa liste d'exercices habituelle (étape Séance).
+            </span>
+          }
 
-            @for (b of blocs; track $index; let bi = $index) {
-              <div class="bloc-card">
-                <div class="bloc-card__head">
-                  <span class="bloc-card__num">{{ bi + 1 }}</span>
-                  <input class="bloc-card__libelle" [(ngModel)]="b.libelle" [ngModelOptions]="{standalone: true}"
-                         placeholder="ex : Soins & activation">
-                  <div class="bloc-card__actions">
-                    <button type="button" class="btn-mini" (click)="deplacerBloc(bi, -1)" [disabled]="bi === 0" title="Monter">↑</button>
-                    <button type="button" class="btn-mini" (click)="deplacerBloc(bi, 1)" [disabled]="bi === blocs.length - 1" title="Descendre">↓</button>
-                    <button type="button" class="btn-mini btn-mini--danger" (click)="supprimerBloc(bi)" title="Supprimer">✕</button>
-                  </div>
+          @for (b of blocs; track $index; let bi = $index) {
+            <div class="bloc-card" [class.bloc-card--conflit]="blocEnConflit(b)">
+
+              <div class="bloc-card__head">
+                <span class="bloc-card__num">{{ bi + 1 }}</span>
+                <input class="bloc-card__libelle" [(ngModel)]="b.libelle"
+                       [ngModelOptions]="{standalone: true}" placeholder="ex : Soins & activation">
+                <select class="input select input--mini" [(ngModel)]="b.type"
+                        [ngModelOptions]="{standalone: true}">
+                  <option [ngValue]="null">— type</option>
+                  @for (t of typesBloc; track t.code) { <option [ngValue]="t.code">{{ t.libelle }}</option> }
+                </select>
+                <input class="input input--mini mono" [(ngModel)]="b.sequencage"
+                       [ngModelOptions]="{standalone: true}" placeholder="3 × 2'"
+                       title="Séquençage">
+                <span class="bloc-card__duree">
+                  <input type="number" min="1" class="mono" [(ngModel)]="b.dureeMinutes"
+                         [ngModelOptions]="{standalone: true}" (ngModelChange)="b.dureeManuelle = true">
+                  <span class="unite">min</span>
+                </span>
+                <div class="bloc-card__actions">
+                  <button type="button" class="btn-mini" (click)="deplacerBloc(bi, -1)"
+                          [disabled]="bi === 0" title="Monter">↑</button>
+                  <button type="button" class="btn-mini" (click)="deplacerBloc(bi, 1)"
+                          [disabled]="bi === blocs.length - 1" title="Descendre">↓</button>
+                  <button type="button" class="btn-mini btn-mini--danger" (click)="supprimerBloc(bi)"
+                          title="Supprimer">✕</button>
                 </div>
-                <div class="bloc-card__body">
-                  <div class="bloc-card__grid">
-                    <div class="form-field">
-                      <label class="form-field__label">Séquençage<app-info-bulle [texte]="aide.sequencage" /></label>
-                      <input [(ngModel)]="b.sequencage" [ngModelOptions]="{standalone: true}" placeholder="ex : 3 × 2'">
-                    </div>
-                    <div class="form-field">
-                      <label class="form-field__label">Durée (min)</label>
-                      <input type="number" [(ngModel)]="b.dureeMinutes" [ngModelOptions]="{standalone: true}" min="1">
-                    </div>
-                    <div class="form-field">
-                      <label class="form-field__label">Zone du terrain</label>
-                      <input [(ngModel)]="b.zoneTerrain" [ngModelOptions]="{standalone: true}" placeholder="ex : demi-terrain gauche">
-                    </div>
-                  </div>
+              </div>
+
+              @if (!b.dureeManuelle && dureeDeduiteBloc(bi) > 0) {
+                <div class="bloc-card__note"><span class="auto-badge">⚡ auto</span> durée = Σ exercices du bloc</div>
+              } @else if (ecartDureeBloc(bi) !== null) {
+                <div class="bloc-card__note bloc-card__note--warn">
+                  Σ exercices = {{ dureeDeduiteBloc(bi) }} min
+                  ({{ (ecartDureeBloc(bi) ?? 0) > 0 ? '+' : '' }}{{ ecartDureeBloc(bi) }})
+                </div>
+              }
+
+              <div class="bloc-card__body">
+
+                <div class="bloc-card__zones">
+                  <span class="dom-label">Zones occupées</span>
+                  <app-terrain-zones [editable]="true" [zones]="b.zones"
+                                     (zonesChange)="zonesBloc(b, $event)" />
+                </div>
+
+                <div class="bloc-card__droite">
+
                   <div class="bloc-card__staff">
-                    <span class="dom-label">Staff affecté</span>
-                    <div class="chips-select">
+                    <span class="dom-label">
+                      Staff &amp; rôles <em>— cumul autorisé, un seul ▶ meneur par bloc</em>
+                    </span>
+
+                    @for (st of staffClub; track st.id) {
+                      @if (b.staffIds.includes(st.id)) {
+                        <div class="role-row">
+                          <span class="role-row__nom">{{ st.nom }}</span>
+                          <div class="role-row__roles">
+                            @for (r of rolesBloc; track r.code) {
+                              <button type="button" class="chip-role" [class.on]="aRole(b, st.id, r.code)"
+                                      [title]="r.libelle" (click)="toggleRole(b, st.id, r.code)">
+                                {{ r.icone }}
+                              </button>
+                            }
+                          </div>
+                          <button type="button" class="btn-mini" (click)="toggleStaffBloc(b, st.id)"
+                                  title="Retirer du bloc">✕</button>
+                        </div>
+                      }
+                    }
+
+                    <div class="chips">
                       @for (st of staffClub; track st.id) {
-                        <button type="button" class="chip-select chip-select--soft" [class.on]="b.staffIds.includes(st.id)"
-                                (click)="toggleStaffBloc(b, st.id)">
-                          {{ st.nom }}
-                          @if (metaStaff(st)) {
-                            <small class="chip-select__meta">{{ metaStaff(st) }}</small>
-                          }
-                        </button>
+                        @if (!b.staffIds.includes(st.id)) {
+                          <button type="button" class="chip chip--ajout" (click)="toggleStaffBloc(b, st.id)">
+                            + {{ st.nom }}
+                            @if (metaStaff(st)) { <small class="chip__meta">{{ metaStaff(st) }}</small> }
+                          </button>
+                        }
                       }
                     </div>
                   </div>
+
+                  <!-- Les exercices se rangent ici, dans le bloc qu'on regarde -->
                   <div class="bloc-card__exos">
                     <span class="dom-label">Exercices du bloc</span>
-                    @if (exercicesDuBloc(bi).length === 0) {
-                      <span class="form-field__hint">Aucun — range un exercice ci-dessous.</span>
-                    } @else {
-                      <div class="exo-chips">
-                        @for (x of exercicesDuBloc(bi); track x.exo.id) {
-                          <span class="exo-chip on">{{ x.exo.nom }}
-                            @if (x.exo.dureeMinutes) { <small>{{ x.exo.dureeMinutes }}'</small> }
-                          </span>
-                        }
-                      </div>
+                    <div class="chips">
+                      @for (x of exercicesDuBloc(bi); track x.exo.id) {
+                        <span class="exo-chip on">
+                          {{ x.exo.nom }}
+                          @if (x.exo.dureeMinutes) { <small class="mono">{{ x.exo.dureeMinutes }}'</small> }
+                          <button type="button" class="exo-chip__retirer"
+                                  (click)="sortirDuBloc(x.selIndex)" title="Sortir du bloc">✕</button>
+                        </span>
+                      }
+                      @for (x of exercicesARanger(); track x.exo.id) {
+                        <button type="button" class="chip chip--ajout" (click)="rangerDansBloc(x.selIndex, bi)">
+                          + {{ x.exo.nom }}
+                        </button>
+                      }
+                    </div>
+                    @if (exercicesDuBloc(bi).length === 0 && exercicesARanger().length === 0 && selection.length === 0) {
+                      <span class="champ__hint">Ajoute d'abord des exercices à l'étape Séance.</span>
                     }
                   </div>
+
                 </div>
               </div>
-            }
-
-            @if (selection.length > 0 && blocs.length > 0) {
-              <div class="section-label" style="margin-top:8px">Rangement des exercices</div>
-              @for (e of selection; track e.id; let si = $index) {
-                <div class="rangement-row">
-                  <span class="rangement-nom">{{ e.nom }}</span>
-                  <select class="form-field__control" [(ngModel)]="blocParExo[si]" [ngModelOptions]="{standalone: true}">
-                    <option [ngValue]="null">— hors bloc</option>
-                    @for (b of blocs; track $index; let bi = $index) {
-                      <option [ngValue]="bi">{{ bi + 1 }} · {{ b.libelle }}</option>
-                    }
-                  </select>
-                </div>
-              }
-            } @else if (selection.length === 0) {
-              <span class="form-field__hint">Ajoute d'abord des exercices dans l'onglet Séance.</span>
-            }
-          </div>
-        </mat-tab>
-
-        <!-- Onglet 5 : Effectifs (groupes du jour) -->
-        <mat-tab label="Effectifs">
-          <div class="tab-grid av-tab">
-
-            <!-- Groupes auto (calculés, lecture seule) -->
-            <div class="section-label">Pré-remplis automatiquement<app-info-bulle [texte]="aide.effectifsJour" /></div>
-            <div class="groupes-auto">
-              <div class="grp-auto grp-auto--med">
-                <b>Blessés <span class="auto-badge">⚡ auto · médical</span></b>
-                @if ((groupesAuto?.blesses ?? []).length === 0) { <span class="form-field__hint">aucun</span> }
-                @for (j of groupesAuto?.blesses ?? []; track j.id) { <span class="pl pl--med">{{ j.nom }}</span> }
-              </div>
-              <div class="grp-auto grp-auto--reath">
-                <b>Réathlétisation <span class="auto-badge">⚡ auto · protocole RTP</span></b>
-                @if ((groupesAuto?.reathletisation ?? []).length === 0) { <span class="form-field__hint">aucun</span> }
-                @for (j of groupesAuto?.reathletisation ?? []; track j.id) { <span class="pl pl--reath">{{ j.nom }}</span> }
-              </div>
             </div>
+          }
 
-            <!-- Portée : séance entière ou bloc -->
-            @if (blocs.length > 0) {
-              <div class="section-label-row">
-                <span class="section-label">Portée des groupes</span>
-                <select class="form-field__control portee-select" [ngModel]="porteeActive()" (ngModelChange)="porteeActive.set($event)"
-                        [ngModelOptions]="{standalone: true}">
-                  <option [ngValue]="null">Toute la séance</option>
-                  @for (b of blocs; track $index; let bi = $index) {
-                    <option [ngValue]="bi">Bloc {{ bi + 1 }} · {{ b.libelle }}</option>
-                  }
-                </select>
-              </div>
-              <span class="form-field__hint">Un bloc sans groupes propres utilise les groupes « toute la séance ».</span>
-            }
+          <button type="button" class="bloc-ajout" (click)="ajouterBloc()">+ Ajouter un bloc</button>
 
-            <!-- Groupes de la portée -->
-            <div class="section-label-row">
-              <span class="section-label">Groupes</span>
-              <div style="display:flex;gap:6px">
-                <button type="button" class="btn-ajout-exo" (click)="ajouterGroupe('COULEUR')">＋ Équipe couleur</button>
-                <button type="button" class="btn-ajout-exo" (click)="ajouterGroupe('LIBRE')">＋ Groupe libre</button>
-              </div>
-            </div>
-
-            @for (x of groupesPortee(); track x.index) {
-              <div class="groupe-card" [class.actif]="groupeActif() === x.index" (click)="groupeActif.set(x.index)">
-                <span class="pastille pastille--{{ x.g.couleur }}"></span>
-                <input class="groupe-card__libelle" [(ngModel)]="x.g.libelle" [ngModelOptions]="{standalone: true}"
-                       (click)="$event.stopPropagation()">
-                <select class="form-field__control groupe-card__couleur" [(ngModel)]="x.g.couleur"
-                        [ngModelOptions]="{standalone: true}" (click)="$event.stopPropagation()">
-                  @for (c of couleursGroupe; track c) { <option [value]="c">{{ c }}</option> }
-                </select>
-                <span class="groupe-card__count">{{ x.g.joueurIds.length }} j.</span>
-                <button type="button" class="btn-mini btn-mini--danger"
-                        (click)="supprimerGroupe(x.index); $event.stopPropagation()" title="Supprimer">✕</button>
-              </div>
-            }
-            @if (groupesPortee().length === 0) {
-              <span class="form-field__hint">Crée une équipe couleur ou un groupe libre, puis clique sur les joueurs pour les répartir.</span>
-            }
-
-            <!-- Répartition : clic joueur → groupe actif -->
-            @if (groupesPortee().length > 0) {
-              <div class="section-label">Répartition
-                @if (groupeActif() !== null && groupes[groupeActif()!]) {
-                  <span class="form-field__hint">— clique un joueur pour l'affecter à « {{ groupes[groupeActif()!].libelle }} »</span>
-                } @else {
-                  <span class="form-field__hint">— sélectionne d'abord un groupe ci-dessus</span>
-                }
-              </div>
-              <div class="exo-chips">
-                @for (j of joueursDisponibles(); track j.id) {
-                  <button type="button" class="pl pl--dispo pl--{{ couleurJoueur(j.id) || 'aucun' }}"
-                          (click)="affecterJoueur(j.id)">{{ j.nom }}</button>
-                }
-              </div>
-            }
-          </div>
-        </mat-tab>
+        </div>
       }
 
-    </mat-tab-group>
+      <!-- ─────────── 5 · Effectifs ─────────── -->
+      @if (onglet() === 'effectifs' && peutAvance()) {
+        <div class="sm-pile">
+
+          <div class="champ">
+            <span class="champ__label">
+              Groupes automatiques <em>— calculés, lecture seule</em>
+              <app-info-bulle [texte]="aide.effectifsJour" />
+            </span>
+            <div class="duo">
+              <div class="grp-auto grp-auto--med">
+                <div class="grp-auto__head">
+                  <span>🩹</span><b>Blessés</b>
+                  <span class="auto-badge">⚡ auto · médical</span>
+                  <span class="sm-spacer"></span>
+                  <span class="mono">{{ (groupesAuto?.blesses ?? []).length }}</span>
+                </div>
+                <div class="chips">
+                  @if ((groupesAuto?.blesses ?? []).length === 0) { <span class="champ__hint">aucun</span> }
+                  @for (j of groupesAuto?.blesses ?? []; track j.id) { <span class="pl pl--med">{{ j.nom }}</span> }
+                </div>
+              </div>
+              <div class="grp-auto grp-auto--reath">
+                <div class="grp-auto__head">
+                  <span>🏃</span><b>Réathlétisation</b>
+                  <span class="auto-badge">⚡ auto · protocole RTP</span>
+                  <span class="sm-spacer"></span>
+                  <span class="mono">{{ (groupesAuto?.reathletisation ?? []).length }}</span>
+                </div>
+                <div class="chips">
+                  @if ((groupesAuto?.reathletisation ?? []).length === 0) { <span class="champ__hint">aucun</span> }
+                  @for (j of groupesAuto?.reathletisation ?? []; track j.id) { <span class="pl pl--reath">{{ j.nom }}</span> }
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="sm-section-head">
+            <span class="sm-section-titre">Équipes &amp; groupes</span>
+            <div class="sm-section-head__actions">
+              <button type="button" class="btn btn--primary btn--sm" (click)="ajouterGroupe('COULEUR')">+ Équipe couleur</button>
+              <button type="button" class="btn btn--secondary btn--sm" (click)="ajouterGroupe('LIBRE')">+ Groupe libre</button>
+            </div>
+          </div>
+
+          @if (groupes.length === 0) {
+            <div class="groupe-vide">
+              Aucun groupe pour l'instant. Crée une équipe couleur pour un jeu, ou un groupe libre
+              pour un atelier.
+            </div>
+          }
+
+          @for (g of groupes; track $index; let gi = $index) {
+            <div class="groupe-card pastille--{{ g.couleur }}">
+              <div class="groupe-card__head">
+                <input class="groupe-card__libelle" [(ngModel)]="g.libelle"
+                       [ngModelOptions]="{standalone: true}">
+                <span class="groupe-card__count mono">{{ g.joueurIds.length }} joueurs</span>
+                <select class="input select input--mini groupe-card__couleur" [(ngModel)]="g.couleur"
+                        [ngModelOptions]="{standalone: true}">
+                  @for (c of couleursGroupe; track c) { <option [value]="c">{{ c }}</option> }
+                </select>
+                <span class="sm-spacer"></span>
+                <!-- La portée se lit sur le groupe qu'elle concerne, pas sur un filtre global -->
+                <span class="groupe-card__portee-label">VAUT POUR</span>
+                <select class="input select input--mini" [(ngModel)]="g.blocIndex"
+                        [ngModelOptions]="{standalone: true}">
+                  @for (p of porteesPossibles(); track p.libelle) {
+                    <option [ngValue]="p.valeur">{{ p.libelle }}</option>
+                  }
+                </select>
+                <button type="button" class="btn-mini btn-mini--danger" (click)="supprimerGroupe(gi)"
+                        title="Supprimer">✕</button>
+              </div>
+              <div class="groupe-card__body">
+                <div class="groupe-card__portee" [class.sur-bloc]="g.blocIndex != null">
+                  <span class="groupe-card__portee-pastille"></span>{{ libellePortee(g) }}
+                </div>
+                <div class="chips">
+                  @for (j of joueursDisponibles(); track j.id) {
+                    <button type="button" class="pl pl--dispo" [class.on]="dansGroupe(g, j.id)"
+                            (click)="basculerJoueur(gi, j.id)">{{ j.nom }}</button>
+                  }
+                  @if (joueursDisponibles().length === 0) {
+                    <span class="champ__hint">Aucun joueur disponible dans l'effectif du jour.</span>
+                  }
+                </div>
+              </div>
+            </div>
+          }
+
+        </div>
+      }
+    </main>
+
+    <!-- ══════════ Aperçu live ══════════ -->
+    <aside class="sm-apercu">
+      <div class="sm-apercu__kicker">APERÇU DE LA SÉANCE</div>
+
+      <div class="sm-apercu__carte">
+        @if (perimatch; as p) {
+          <span class="sm-apercu__badge">{{ p.libelle }}</span>
+        }
+        <div class="sm-apercu__titre">{{ objectifTitre }}</div>
+        <div class="sm-apercu__meta">
+          {{ selectedType?.libelle || '—' }} · {{ dateLisible }}
+          @if (form.get('heureDebut')?.value) { · {{ form.get('heureDebut')?.value }} }
+        </div>
+        <div class="sm-apercu__kpis">
+          <div class="sm-apercu__kpi">
+            <div class="sm-apercu__kpi-val mono">{{ form.get('dureeMinutes')?.value || 0 }}</div>
+            <div class="sm-apercu__kpi-lab">MIN</div>
+          </div>
+          <div class="sm-apercu__kpi-sep"></div>
+          <div class="sm-apercu__kpi">
+            <div class="sm-apercu__kpi-val mono">{{ blocs.length }}</div>
+            <div class="sm-apercu__kpi-lab">BLOCS</div>
+          </div>
+          <div class="sm-apercu__kpi-sep"></div>
+          <div class="sm-apercu__kpi">
+            <div class="sm-apercu__kpi-val mono">{{ selection.length }}</div>
+            <div class="sm-apercu__kpi-lab">EXOS</div>
+          </div>
+        </div>
+      </div>
+
+      @if (blocs.length > 0) {
+        <div>
+          <div class="sm-apercu__kicker">DÉROULÉ</div>
+          <div class="sm-apercu__blocs">
+            @for (b of blocs; track $index) {
+              <div class="sm-apercu__bloc">
+                <span class="sm-apercu__puce"></span>
+                <span class="sm-apercu__bloc-nom">{{ b.libelle }}</span>
+                <span class="sm-apercu__bloc-duree mono">{{ b.dureeMinutes || 0 }}'</span>
+              </div>
+            }
+          </div>
+        </div>
+      }
+
+      <div class="sm-apercu__conseil">
+        <span>💡</span><span>{{ conseil() }}</span>
+      </div>
+    </aside>
+
   </form>
 
-  <div class="form-card__footer">
+  <div class="sm-pied">
     <button type="button" class="btn btn--secondary" (click)="annuler()">Annuler</button>
-    <button type="button" class="btn btn--primary" (click)="valider()">{{ editMode ? 'Enregistrer' : 'Créer la séance' }}</button>
+    <button type="button" class="btn btn--primary" (click)="valider()">
+      {{ editMode ? 'Enregistrer' : 'Créer la séance' }}
+    </button>
   </div>
 
 </div>

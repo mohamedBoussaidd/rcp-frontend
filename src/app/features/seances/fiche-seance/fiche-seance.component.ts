@@ -2,10 +2,11 @@ import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { DatePipe } from '@angular/common';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { ResumeSeance, SeanceService } from '@core/services/seance.service';
+import { GroupeSeanceDto, ResumeSeance, SeanceService } from '@core/services/seance.service';
 import { AuthService } from '@core/services/auth.service';
 import { ContexteService } from '@core/services/contexte.service';
 import { SchemaViewerComponent } from '../../tactical/schema-viewer/schema-viewer.component';
+import { OccupationZone, TerrainZonesComponent } from '@shared/components/terrain-zones/terrain-zones.component';
 
 /**
  * Fiche séance (résumé) — triple usage : vérification après création (?verif=1),
@@ -18,7 +19,7 @@ import { SchemaViewerComponent } from '../../tactical/schema-viewer/schema-viewe
   standalone: true,
   templateUrl: './fiche-seance.component.html',
   styleUrl: './fiche-seance.component.scss',
-  imports: [DatePipe, SchemaViewerComponent],
+  imports: [DatePipe, SchemaViewerComponent, TerrainZonesComponent],
 })
 export class FicheSeanceComponent implements OnInit {
 
@@ -43,6 +44,72 @@ export class FicheSeanceComponent implements OnInit {
   });
 
   peutEcrire(): boolean { return this.auth.has('seances:write'); }
+
+  /**
+   * Occupation du terrain : une entrée par (bloc, zone), avec le staff et son pictogramme de
+   * rôle. C'est ce qui rend la fiche lisible en 2 secondes au bord du terrain — « qui est où,
+   * avec qui » — au lieu d'être écrit dans une phrase.
+   */
+  readonly occupationTerrain = computed<OccupationZone[]>(() => {
+    const r = this.resume();
+    if (!r) return [];
+    // Une zone tenue par deux blocs est signalée : c'est le conflit d'occupation du terrain.
+    const compte = new Map<number, number>();
+    for (const b of r.blocs) {
+      for (const z of new Set(b.bloc.zones ?? [])) compte.set(z, (compte.get(z) ?? 0) + 1);
+    }
+    const occupations: OccupationZone[] = [];
+    r.blocs.forEach((b, i) => {
+      const staff = (b.bloc.staff ?? []).map(s => {
+        const icones = (s.roleBloc ?? []).map(code => this.iconeRole(code)).filter(x => !!x);
+        return `${icones.join('')} ${s.nom}`.trim();
+      });
+      for (const zone of b.bloc.zones ?? []) {
+        occupations.push({
+          zone,
+          bloc: `${i + 1} · ${b.bloc.libelle}`,
+          staff,
+          conflit: (compte.get(zone) ?? 0) > 1,
+        });
+      }
+    });
+    return occupations;
+  });
+
+  readonly aZones = computed(() => this.occupationTerrain().length > 0);
+
+  /**
+   * Groupes propres à UN bloc. Ils étaient jusqu'ici noyés avec les autres en bas de fiche, sans
+   * qu'on sache lequel travaillait où — c'est précisément l'information dont le staff a besoin.
+   */
+  groupesDuBloc(blocId: string): GroupeSeanceDto[] {
+    return (this.resume()?.groupes ?? []).filter(g => g.blocId === blocId);
+  }
+
+  /**
+   * Groupes valables pour TOUTE la séance ({@code blocId} null). Un bloc sans groupes propres
+   * retombe sur eux — c'est la règle de résolution du serveur, rappelée sur la fiche.
+   */
+  readonly groupesSeance = computed<GroupeSeanceDto[]>(() =>
+    (this.resume()?.groupes ?? []).filter(g => !g.blocId));
+
+  /** Y a-t-il au moins un groupe rattaché à un bloc précis ? (pilote la mention d'explication) */
+  readonly aGroupesParBloc = computed(() =>
+    (this.resume()?.groupes ?? []).some(g => !!g.blocId));
+
+  /** « ▶⚖ Rémi » — le pictogramme d'abord, il porte l'information la plus utile sur le terrain. */
+  libelleStaffRole(s: { nom: string; roleBloc?: string[] }): string {
+    const icones = (s.roleBloc ?? []).map(c => this.iconeRole(c)).filter(x => !!x).join('');
+    return icones ? `${icones} ${s.nom}` : `👤 ${s.nom}`;
+  }
+
+  /** Pictogrammes des rôles — repris du référentiel figé (V66), en dur ici pour l'impression. */
+  private iconeRole(code: string): string {
+    return ({
+      MENEUR: '▶', ARBITRE: '⚖', BALLONS: '⚽',
+      CHRONO: '⏱', OBSERVATION: '👁', SOINS: '🩺',
+    } as Record<string, string>)[code] ?? '';
+  }
 
   ngOnInit(): void {
     this.verif.set(this.route.snapshot.queryParamMap.get('verif') === '1');
@@ -106,9 +173,30 @@ export class FicheSeanceComponent implements OnInit {
       .map(p => `${libelles[p.groupe] ?? p.groupe} · ${p.libelle}`);
   }
 
-  aObjectifs(): boolean {
+  /**
+   * Les cinq axes tels qu'ils s'impriment : dosage d'abord, détail ensuite. Un axe n'apparaît
+   * que s'il porte quelque chose — une fiche terrain n'a pas de place pour cinq lignes vides.
+   *
+   * Le dosage est rendu en pastilles pleines/creuses et non en couleur : cette fiche se lit
+   * imprimée en noir et blanc, au bord du terrain.
+   */
+  axesFiche(): { libelle: string; dose: number; puces: boolean[]; note: string }[] {
     const o = this.resume()?.objectifs;
-    return !!(o && (o.tactiqueOrg || o.tactiqueFonc || o.mental || o.technique || o.athletique));
+    if (!o) return [];
+    const lignes = [
+      { libelle: 'Tactique org.',   dose: o.tactiqueOrgIntensite  ?? 0, note: o.tactiqueOrg  ?? '' },
+      { libelle: 'Tactique fonct.', dose: o.tactiqueFoncIntensite ?? 0, note: o.tactiqueFonc ?? '' },
+      { libelle: 'Technique',       dose: o.techniqueIntensite    ?? 0, note: o.technique    ?? '' },
+      { libelle: 'Mental',          dose: o.mentalIntensite       ?? 0, note: o.mental       ?? '' },
+      { libelle: 'Athlétique',      dose: o.athletiqueIntensite   ?? 0, note: o.athletique   ?? '' },
+    ];
+    return lignes
+      .filter(l => l.dose > 0 || !!l.note)
+      .map(l => ({ ...l, puces: [1, 2, 3, 4, 5].map(n => n <= l.dose) }));
+  }
+
+  aObjectifs(): boolean {
+    return this.axesFiche().length > 0;
   }
 
   aChargeCible(): boolean {

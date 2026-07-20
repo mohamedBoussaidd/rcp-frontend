@@ -99,6 +99,24 @@ export class CalendrierComponent implements OnInit {
   /** Joueur : calendrier en lecture seule, données scopées via /api/moi (endpoints staff bloqués). */
   get lectureSeule(): boolean { return this.auth.hasRole('JOUEUR'); }
 
+  /**
+   * Noms du staff par id : depuis V65 la séance porte un `responsableId` (compte réel) et non
+   * plus un nom tapé à la main. La liste résout donc l'id en nom ici, sans alourdir l'API.
+   */
+  private nomsStaff = new Map<string, string>();
+
+  nomResponsable(s: Seance): string | null {
+    return s.responsableId ? (this.nomsStaff.get(s.responsableId) ?? null) : null;
+  }
+
+  private chargerStaff(): void {
+    if (this.lectureSeule) return;   // le joueur ne voit pas l'affectation du staff
+    this.seanceService.getStaffClub().subscribe({
+      next: liste => this.nomsStaff = new Map(liste.map(st => [st.id, st.nom])),
+      error: () => {},
+    });
+  }
+
   /** Filtre de couche affiché si la couche RDV peut exister (droit staff, ou espace joueur). */
   get montrerFiltreCouche(): boolean {
     return this.lectureSeule || this.auth.has('entretien:read');
@@ -110,6 +128,7 @@ export class CalendrierComponent implements OnInit {
         this.typeSeances = t;
         this.ouvrirEditionDemandee();
       });
+      this.chargerStaff();
     }
     this.charger();
   }
@@ -332,7 +351,7 @@ export class CalendrierComponent implements OnInit {
   ouvrirCreation(dateStr?: string): void {
     if (!this.typeSeances.length) return;
     const ref = this.dialog.open(SeanceFormDialogComponent, {
-      width: '760px', maxWidth: '96vw', panelClass: 'app-dialog',
+      width: '1180px', maxWidth: '96vw', maxHeight: '92vh', panelClass: 'app-dialog',
       data: { typeSeances: this.typeSeances, date: dateStr ?? this.toDateStr(this.ancre) }
     });
     ref.afterClosed().subscribe((result: SeanceFormResult | null) => {
@@ -363,7 +382,7 @@ export class CalendrierComponent implements OnInit {
   editerSeance(seance: Seance, event: MouseEvent): void {
     event.stopPropagation();
     const ref = this.dialog.open(SeanceFormDialogComponent, {
-      width: '760px', maxWidth: '96vw', panelClass: 'app-dialog',
+      width: '1180px', maxWidth: '96vw', maxHeight: '92vh', panelClass: 'app-dialog',
       data: { typeSeances: this.typeSeances, date: seance.date, seance }
     });
     ref.afterClosed().subscribe((result: SeanceFormResult | null) => {

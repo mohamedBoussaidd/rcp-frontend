@@ -21,6 +21,12 @@ export interface SeanceModele {
   equipeOrigineId?: string;
   equipeOrigineNom?: string;
   modifiable: boolean;
+  // V68 : dosage 0-5 des cinq axes, recopié tel quel par `planifier()`.
+  dominanteTactiqueOrgIntensite?: number | null;
+  dominanteTactiqueFoncIntensite?: number | null;
+  dominanteMentalIntensite?: number | null;
+  dominanteTechniqueIntensite?: number | null;
+  dominanteAthletiqueIntensite?: number | null;
   objTactiqueOrg?: string | null;
   objTactiqueFonc?: string | null;
   objMental?: string | null;
@@ -52,6 +58,12 @@ export interface SeanceModeleRequest {
   objectifIntensite?: number | null;
   objectifDistanceHauteIntensiteM?: number | null;
   description?: string | null;
+  // V68 : dosage 0-5 des cinq axes, recopié tel quel par `planifier()`.
+  dominanteTactiqueOrgIntensite?: number | null;
+  dominanteTactiqueFoncIntensite?: number | null;
+  dominanteMentalIntensite?: number | null;
+  dominanteTechniqueIntensite?: number | null;
+  dominanteAthletiqueIntensite?: number | null;
   objTactiqueOrg?: string | null;
   objTactiqueFonc?: string | null;
   objMental?: string | null;

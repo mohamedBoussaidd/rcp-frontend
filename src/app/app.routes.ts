@@ -88,6 +88,18 @@ export const routes: Routes = [
     path: 'planning-technique', canActivate: [authGuard, roleGuard, contexteGuard, saisonGuard, moduleGuard], data: { roles: ['ENTRAINEUR', 'SUPER_ADMIN'], perms: PERMS_TACTIQUE, modulesAny: ['tactique', 'match', 'diaporama'] },
     loadComponent: () => import('./features/tactical/planning-technique.component').then(m => m.PlanningTechniqueComponent)
   },
+  // Fiche d'exercice sur sa propre page (sortie de la bibliothèque) : l'URL est partageable
+  // et le retour du navigateur ramène au catalogue.
+  {
+    path: 'exercices/nouveau', canActivate: [authGuard, roleGuard, contexteGuard, saisonGuard, moduleGuard],
+    data: { roles: ['ENTRAINEUR', 'SUPER_ADMIN'], perms: ['exercices:write'], module: 'tactique' },
+    loadComponent: () => import('./features/tactical/exercice-form/exercice-form.component').then(m => m.ExerciceFormComponent)
+  },
+  {
+    path: 'exercices/:id/editer', canActivate: [authGuard, roleGuard, contexteGuard, saisonGuard, moduleGuard],
+    data: { roles: ['ENTRAINEUR', 'SUPER_ADMIN'], perms: ['exercices:write'], module: 'tactique' },
+    loadComponent: () => import('./features/tactical/exercice-form/exercice-form.component').then(m => m.ExerciceFormComponent)
+  },
   // Redirecteur d'accueil : renvoie chaque rôle vers sa vue d'ensemble (cf. auth.homeRoute()).
   {
     path: 'dashboard', canActivate: [authGuard],

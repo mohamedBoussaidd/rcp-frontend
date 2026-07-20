@@ -43,7 +43,8 @@ type TraceType = 'deplacement' | 'conduite' | 'passe' | 'tir';
 type FormeType = 'rect' | 'ellipse' | 'losange' | 'triangle';
 
 // slotId = poste du moteur tactique (posé par les formations) : le mode Dynamique pilote ce jeton.
-interface SchemaElement { id: string; type: string; couleur?: string; numero?: number; label?: string; joueurId?: string; slotId?: string; surveille?: boolean; surveilleCouleur?: string; x: number; y: number; }
+// rotation = orientation en degrés du visuel (absente = 0) : échelle/haie posées en diagonale…
+interface SchemaElement { id: string; type: string; couleur?: string; numero?: number; label?: string; joueurId?: string; slotId?: string; surveille?: boolean; surveilleCouleur?: string; rotation?: number; x: number; y: number; }
 // elementId = jeton/ballon qui suit le tracé ; ballId = ballon entraîné par une conduite.
 interface SchemaTrace { id: string; type: TraceType; points: number[]; elementId?: string; ballId?: string; }
 // Forme d'annotation (zone à entourer/montrer), redimensionnable et déplaçable.
@@ -53,6 +54,8 @@ interface Keyframe { t: number; positions: Record<string, { x: number; y: number
 const VIOLET = '#7c3aed', JAUNE = '#eab308', ROUGE = '#ef4444';
 const BLEU = '#2563eb';
 const NOIR = '#1f2937';   // jetons « Adversaire » (génériques, éditables)
+// Jokers : couleur PROPRE (et non le rouge de l'Équipe 1, indistinguable à l'œil comme à l'import photo).
+const ORANGE = '#f97316';
 
 // Brique 3 : vitesses réelles. Joueur sans donnée GPS → vitesse de course par défaut.
 const VITESSE_DEFAUT_KMH = 24;   // course modérée
@@ -111,7 +114,7 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
   readonly equipeJaune = { couleur: JAUNE, nums: Array.from({ length: 11 }, (_, i) => i + 1) };
   // Adversaire : jetons génériques numérotés, éditables (double-clic → texte libre).
   readonly adversaire = { couleur: NOIR, nums: Array.from({ length: 11 }, (_, i) => i + 1) };
-  readonly jokers = { couleur: ROUGE, nums: [1, 2, 3, 4] };
+  readonly jokers = { couleur: ORANGE, nums: [1, 2, 3, 4] };
 
   // Vrais joueurs (joueurId) actuellement posés sur le terrain : grisés/désactivés dans les
   // palettes Mon équipe / Équipe 1 / Équipe 2 tant qu'ils y sont (un joueur = un seul jeton).
@@ -119,9 +122,13 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
   readonly equipement = [
     { type: 'plot', couleur: ROUGE, label: 'Plot rouge' },
     { type: 'plot', couleur: BLEU, label: 'Plot bleu' },
+    { type: 'coupelle', couleur: '#f59e0b', label: 'Coupelle' },
     { type: 'but', couleur: '#ffffff', label: 'Mini-but' },
     { type: 'cerceau', couleur: '#f97316', label: 'Cerceau' },
     { type: 'mannequin', couleur: '#64748b', label: 'Mannequin' },
+    { type: 'echelle', couleur: JAUNE, label: 'Échelle de rythme' },
+    { type: 'haie', couleur: '#f97316', label: 'Haie' },
+    { type: 'piquet', couleur: '#22c55e', label: 'Jalon' },
     { type: 'ballon', couleur: '#ffffff', label: 'Ballon' },
   ];
 
@@ -195,6 +202,7 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
   private formes: SchemaForme[] = [];
   private formeNodes = new Map<string, Konva.Group>();
   private trForme!: Konva.Transformer;          // poignées de redimensionnement de la forme sélectionnée
+  private trElement!: Konva.Transformer;        // poignée d'ORIENTATION du jeton/matériel sélectionné
   private formeEnCours: Konva.Group | null = null;
   private formeEnCoursModel: SchemaForme | null = null;
   private formeStart: { x: number; y: number } | null = null;
@@ -266,6 +274,7 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
     // Transformer (poignées) pour redimensionner la forme d'annotation sélectionnée.
     this.trForme = new Konva.Transformer({ rotateEnabled: false, ignoreStroke: true, padding: 4 });
     this.layer.add(this.trForme);
+    this.creerTransformerRotation();
     this.prefs.charger();   // style de rendu (tableau / réaliste) persisté par entraîneur
     this.dessinerTerrain();
     this.chargerSchema();
@@ -425,6 +434,7 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
   ngOnDestroy(): void {
     this.pause();
     this.arreterMoteur();
+    this.fermerPanneauZone();   // barrette « matérialiser » : posée sur document.body
     if (this.saveReglesTimer) { clearTimeout(this.saveReglesTimer); this.pousserRegles(); }
     if (this.onFs) document.removeEventListener('fullscreenchange', this.onFs);
     window.removeEventListener('resize', this.onResize);
@@ -582,7 +592,8 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
   // ── Sauvegarde ──
   enregistrer(): void {
     this.pause();
-    this.detacherForme();   // retire les poignées de l'aperçu
+    this.detacherForme();      // retire les poignées de l'aperçu
+    this.detacherRotation();
     this.scrub(0);   // état de départ : positions cohérentes avec le début des flèches/keyframes
     const data = {
       terrain: this.terrain(),
@@ -625,6 +636,7 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
     this.selection.clear();
     this.trForme = new Konva.Transformer({ rotateEnabled: false, ignoreStroke: true, padding: 4 });
     this.layer.add(this.trForme);
+    this.creerTransformerRotation();
     this.porteurRing = undefined;   // détruit avec la couche — recréé au prochain passage en Dynamique
     this.porteurManuelId.set(null);
     if (this.modeMoteur()) this.arreterMoteur();
@@ -1123,6 +1135,7 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
   private remonterElements(): void {
     this.nodesById.forEach(g => g.moveToTop());
     this.trForme?.moveToTop();
+    this.trElement?.moveToTop();
   }
 
   // ══════════ Sélection multiple (cadre / lasso) ══════════
@@ -1130,7 +1143,7 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
   private surInteractif(e: Konva.KonvaEventObject<any>): boolean {
     if (this.surElement(e)) return true;
     let p: Konva.Node | null = e.target.getParent();
-    while (p) { if (p === this.trForme) return true; p = p.getParent(); }
+    while (p) { if (p === this.trForme || p === this.trElement) return true; p = p.getParent(); }
     return false;
   }
 
@@ -1138,9 +1151,63 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
     this.selection = new Set(ids);
     this.detacherForme();
     this.majSurbrillance();
+    // Un seul jeton sélectionné → poignée d'orientation (échelle en diagonale, cage de biais…).
+    if (ids.length === 1) this.attacherRotation(ids[0]); else this.detacherRotation();
   }
   private clearSelection(): void {
+    this.detacherRotation();
     if (this.selection.size) { this.selection.clear(); this.majSurbrillance(); }
+  }
+
+  // ══════════ Orientation d'un élément ══════════
+
+  /**
+   * Poignée de rotation libre, avec aimantation tous les 45° si Maj est enfoncée.
+   * Le transformer fait tourner le GROUPE pendant le geste ; au relâchement l'angle passe dans
+   * `el.rotation` et le groupe revient à 0 — ainsi seul le visuel tourne au redessin, jamais le
+   * badge « à surveiller » ni l'étiquette du joueur (cf. dessinerCorpsElement).
+   */
+  private creerTransformerRotation(): void {
+    this.trElement = new Konva.Transformer({
+      resizeEnabled: false, rotateEnabled: true, ignoreStroke: true, padding: 6,
+      rotateAnchorOffset: 26, borderStroke: '#38bdf8', borderDash: [4, 3], anchorStroke: '#38bdf8',
+    });
+    this.layer.add(this.trElement);
+  }
+
+  private attacherRotation(id: string): void {
+    const g = this.nodesById.get(id);
+    const el = this.elements.find(e => e.id === id);
+    if (!g || !el || !this.trElement || this.modeMoteur()) return;
+    // g reste à 0 : l'angle déjà acquis (el.rotation) est porté par le sous-groupe interne du
+    // sprite (dessinerCorpsElement) — le Transformer ne pilote qu'un DELTA ajouté à la fin.
+    // (Bug précédent : g.rotation(el.rotation) ici doublait l'angle à chaque re-sélection.)
+    const base = el.rotation ?? 0;
+    this.trElement.nodes([g]);
+    this.trElement.moveToTop();
+    this.trElement.off('transform.snap transformend.snap');
+    this.trElement.on('transform.snap', (e: Konva.KonvaEventObject<any>) => {
+      if ((e.evt as MouseEvent | undefined)?.shiftKey) {
+        g.rotation(Math.round((base + g.rotation()) / 45) * 45 - base);
+      }
+    });
+    this.trElement.on('transformend.snap', () => {
+      const angle = (((base + Math.round(g.rotation())) % 360) + 360) % 360;
+      el.rotation = angle || undefined;   // 0 → champ absent (schémas inchangés)
+      g.rotation(0);
+      g.destroy(); this.nodesById.delete(el.id);
+      this.dessinerElement(el);
+      this.definirSelection([el.id]);
+      this.layer.draw();
+    });
+    this.layer.batchDraw();
+  }
+
+  private detacherRotation(): void {
+    if (this.trElement && this.trElement.nodes().length) {
+      this.trElement.nodes([]);
+      this.layer.batchDraw();
+    }
   }
   /** Ajoute/retire le liseré de sélection (enfant nommé) sur chaque jeton. */
   private majSurbrillance(): void {
@@ -1183,7 +1250,11 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
   private dessinerForme(f: SchemaForme): Konva.Group {
     const g = new Konva.Group({ x: f.x, y: f.y, draggable: true, name: 'forme' });
     this.dessinerContenuForme(g, f);
-    g.on('dragend', () => { f.x = g.x(); f.y = g.y(); });
+    g.on('dragstart', () => this.fermerPanneauZone());
+    g.on('dragend', () => {
+      f.x = g.x(); f.y = g.y();
+      if (this.trForme?.nodes()[0] === g) this.afficherPanneauZone(f, g);
+    });
     g.on('dblclick dbltap', (e) => { e.cancelBubble = true; this.editerTexteForme(f, g); });
     g.on('click tap', (e) => {
       const o = this.outil();
@@ -1195,7 +1266,7 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
         g.destroy(); this.layer.draw();
       } else if (o === 'select' || o === 'forme') {
         e.cancelBubble = true;
-        this.selectionnerForme(g);
+        this.selectionnerForme(g, f);
       }
     });
     // Le Transformer agit par mise à l'échelle : on la « cuit » dans w/h au relâcher.
@@ -1205,6 +1276,7 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
       f.x = g.x(); f.y = g.y();
       g.scale({ x: 1, y: 1 });
       this.dessinerContenuForme(g, f);
+      this.afficherPanneauZone(f, g);   // la barrette suit la nouvelle taille/position
       this.layer.batchDraw();
     });
     this.formeNodes.set(f.id, g);
@@ -1212,14 +1284,119 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
     return g;
   }
 
-  private selectionnerForme(g: Konva.Group): void {
+  private selectionnerForme(g: Konva.Group, f: SchemaForme): void {
     this.clearSelection();
     this.trForme.nodes([g]);
     this.trForme.moveToTop();
     this.layer.draw();
+    this.afficherPanneauZone(f, g);
   }
   private detacherForme(): void {
+    this.fermerPanneauZone();
     if (this.trForme && this.trForme.nodes().length) { this.trForme.nodes([]); this.layer.batchDraw(); }
+  }
+
+  // ══════════ Matérialiser une zone (plots/coupelles/jalons le long de la forme) ══════════
+
+  private panneauZone?: HTMLDivElement;
+
+  private fermerPanneauZone(): void {
+    this.panneauZone?.remove();
+    this.panneauZone = undefined;
+  }
+
+  /** Barrette flottante au-dessus de la forme sélectionnée : matériel + coins/contour. */
+  private afficherPanneauZone(f: SchemaForme, g: Konva.Group): void {
+    this.fermerPanneauZone();
+    const box = this.stage.container().getBoundingClientRect();
+    const pos = g.getAbsolutePosition();
+    const d = document.createElement('div');
+    Object.assign(d.style, {
+      position: 'fixed',
+      left: `${box.left + pos.x}px`,
+      top: `${Math.max(box.top + 2, box.top + pos.y - 38)}px`,
+      display: 'flex', gap: '5px', alignItems: 'center',
+      padding: '5px 7px', borderRadius: '8px',
+      background: 'rgba(15,23,42,0.94)', color: '#e2e8f0',
+      font: '600 11px sans-serif', zIndex: '9999',
+      boxShadow: '0 4px 14px rgba(0,0,0,0.35)',
+    } as CSSStyleDeclaration);
+
+    const select = document.createElement('select');
+    Object.assign(select.style, { font: 'inherit', borderRadius: '5px', border: 'none', padding: '2px 4px' } as CSSStyleDeclaration);
+    [['plot', 'Plots'], ['coupelle', 'Coupelles'], ['piquet', 'Jalons']].forEach(([v, t]) => {
+      const o = document.createElement('option'); o.value = v; o.textContent = t; select.appendChild(o);
+    });
+    d.append('Matérialiser :', select);
+
+    ([['coins', 'Coins'], ['contour', 'Contour']] as const).forEach(([mode, libelle]) => {
+      const b = document.createElement('button');
+      b.type = 'button'; b.textContent = libelle;
+      Object.assign(b.style, {
+        font: 'inherit', cursor: 'pointer', borderRadius: '5px', border: 'none',
+        padding: '3px 7px', background: '#38bdf8', color: '#0f172a',
+      } as CSSStyleDeclaration);
+      b.addEventListener('click', () => this.materialiserZone(f, select.value, mode));
+      d.appendChild(b);
+    });
+
+    document.body.appendChild(d);
+    this.panneauZone = d;
+  }
+
+  /** Pose le matériel choisi sur les sommets (coins) ou tout le pourtour (contour) de la zone. */
+  private materialiserZone(f: SchemaForme, type: string, mode: 'coins' | 'contour'): void {
+    const couleur = type === 'plot' ? ROUGE : type === 'coupelle' ? '#f59e0b' : '#22c55e';
+    const points = mode === 'coins' ? this.sommetsZone(f) : this.contourZone(f);
+    points.forEach(p => this.ajouterElement({
+      id: this.uid(), type, couleur, x: Math.round(p.x), y: Math.round(p.y),
+    }));
+    this.snack.open(`${points.length} élément(s) posé(s)`, 'Fermer', { duration: 1800 });
+  }
+
+  /** Sommets de la forme (points cardinaux pour l'ellipse). */
+  private sommetsZone(f: SchemaForme): { x: number; y: number }[] {
+    const { x, y, w, h } = f;
+    if (f.type === 'triangle') return [{ x: x + w / 2, y }, { x: x + w, y: y + h }, { x, y: y + h }];
+    if (f.type === 'losange' || f.type === 'ellipse') {
+      return [{ x: x + w / 2, y }, { x: x + w, y: y + h / 2 }, { x: x + w / 2, y: y + h }, { x, y: y + h / 2 }];
+    }
+    return [{ x, y }, { x: x + w, y }, { x: x + w, y: y + h }, { x, y: y + h }];
+  }
+
+  /** Points régulièrement espacés sur le pourtour (~1 tous les 55 px, de 4 à 24). */
+  private contourZone(f: SchemaForme): { x: number; y: number }[] {
+    const ESPACEMENT = 55, MIN = 4, MAX = 24;
+    const nombre = (perimetre: number) => Math.min(MAX, Math.max(MIN, Math.round(perimetre / ESPACEMENT)));
+
+    if (f.type === 'ellipse') {
+      const rx = f.w / 2, ry = f.h / 2;
+      // Périmètre d'ellipse : approximation de Ramanujan.
+      const p = Math.PI * (3 * (rx + ry) - Math.sqrt((3 * rx + ry) * (rx + 3 * ry)));
+      const n = nombre(p);
+      return Array.from({ length: n }, (_, i) => {
+        const a = (2 * Math.PI * i) / n;
+        return { x: f.x + rx + rx * Math.cos(a), y: f.y + ry + ry * Math.sin(a) };
+      });
+    }
+
+    const s = this.sommetsZone(f);
+    const segments = s.map((a, i) => ({ a, b: s[(i + 1) % s.length] }));
+    const cumul: number[] = [];
+    let total = 0;
+    segments.forEach(({ a, b }) => { total += Math.hypot(b.x - a.x, b.y - a.y); cumul.push(total); });
+    if (total === 0) return s;
+
+    const n = nombre(total);
+    return Array.from({ length: n }, (_, i) => {
+      const d = (total * i) / n;
+      let k = cumul.findIndex(c => c >= d);
+      if (k < 0) k = segments.length - 1;
+      const debut = k === 0 ? 0 : cumul[k - 1];
+      const { a, b } = segments[k];
+      const t = (d - debut) / ((cumul[k] - debut) || 1);
+      return { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t };
+    });
   }
 
   /** Édite le texte d'une forme : textarea HTML superposé (Entrée = valider, Maj+Entrée = saut de ligne). */
@@ -1388,7 +1565,7 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
       if (this.formeEnCours && this.formeEnCoursModel) {
         const f = this.formeEnCoursModel;
         if (f.w < 12 || f.h < 12) { this.formeEnCours.destroy(); this.formeNodes.delete(f.id); }
-        else { this.formes.push(f); this.selectionnerForme(this.formeEnCours); }
+        else { this.formes.push(f); this.selectionnerForme(this.formeEnCours, f); }
         this.formeEnCours = null; this.formeEnCoursModel = null; this.formeStart = null;
         this.remonterElements();
         this.layer.draw();

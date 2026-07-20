@@ -60,6 +60,35 @@
   }
 </section>
 
+<!-- Feuille de route personnelle : ce que TOI tu fais, pas ce que fait l'équipe -->
+@if (feuilleRoute().length > 0) {
+  <section class="pwa-card home-route">
+    <div class="home-today__head">
+      <span class="home-today__label">Ta feuille de route</span>
+    </div>
+    @for (e of feuilleRoute(); track e.bloc + e.seance) {
+      <div class="route-item">
+        <div class="route-item__head">
+          <b>{{ e.bloc }}</b>
+          <span class="route-item__duree">
+            {{ e.sequencage || (e.dureeMinutes ? e.dureeMinutes + ' min' : '') }}
+          </span>
+        </div>
+        @if (e.roles.length > 0) {
+          <div class="route-item__roles">
+            @for (r of e.roles; track r) { <span class="route-role">{{ r }}</span> }
+          </div>
+        } @else {
+          <span class="route-item__sansrole">Présent — rôle non précisé</span>
+        }
+        @if (e.zones.length > 0) {
+          <app-terrain-zones [zones]="e.zones" [compact]="true" />
+        }
+      </div>
+    }
+  </section>
+}
+
 <!-- Tuiles -->
 <h2 class="pwa-section-title">Raccourcis</h2>
 <div class="home-tiles">

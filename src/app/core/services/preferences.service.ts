@@ -2,7 +2,9 @@ import { Injectable, inject, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 
 /** Clés de préférence connues (self-scope : chaque compte ne voit que les siennes). */
-export const PREF_MODE_AVANCE_SEANCE = 'mode_avance_seance';
+// `mode_avance_seance` a disparu : les rubriques avancées dépendent désormais du seul module
+// `seance_avancee`, sans interrupteur à armer. Les lignes déjà en base restent inertes — elles
+// ne valent pas une migration de suppression.
 export const PREF_STYLE_RENDU_SCHEMA = 'style_rendu_schema';
 
 /**
@@ -32,17 +34,8 @@ export class PreferencesService {
     return this.prefs()[cle];
   }
 
-  /** Le mode avancé séances/exercices est-il activé pour cet entraîneur ? */
-  modeAvanceSeance(): boolean {
-    return this.prefs()[PREF_MODE_AVANCE_SEANCE] === 'true';
-  }
-
   definir(cle: string, valeur: string): void {
     this.prefs.update(p => ({ ...p, [cle]: valeur }));
     this.http.put(`/api/preferences/${cle}`, { valeur }).subscribe({ error: () => {} });
-  }
-
-  basculerModeAvanceSeance(actif: boolean): void {
-    this.definir(PREF_MODE_AVANCE_SEANCE, actif ? 'true' : 'false');
   }
 }

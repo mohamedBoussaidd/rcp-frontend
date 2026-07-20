@@ -18,15 +18,23 @@ export type EchelleEffectif = 'COLLECTIF' | 'INTERSECTORIEL' | 'SECTORIEL' | 'GR
  * La densité m²/joueur n'est JAMAIS stockée : calculée depuis dimensions ÷ nb joueurs.
  */
 export interface ExerciceAvance {
-  contextePedagogique?: string | null;
+  // V65 : `contextePedagogique` a rejoint la séance (il décrit un moment, pas un exercice de
+  // bibliothèque) et `sequencage` a rejoint le bloc (paramètre d'exécution du jour).
   niveauObjectif?: NiveauObjectif | null;
   echelleEffectif?: EchelleEffectif | null;
+  // V68 : chaque axe se DOSE de 0 à 5 (0 = non travaillé). Le texte `dominante*` associé n'est
+  // plus qu'une note facultative qui précise l'axe — il ne le porte plus à lui seul.
+  dominanteTactiqueOrgIntensite?: number | null;
+  dominanteTactiqueFoncIntensite?: number | null;
+  dominanteMentalIntensite?: number | null;
+  dominanteTechniqueIntensite?: number | null;
+  dominanteAthletiqueIntensite?: number | null;
   dominanteTactiqueOrg?: string | null;
   dominanteTactiqueFonc?: string | null;
   dominanteMental?: string | null;
   dominanteTechnique?: string | null;
   dominanteAthletique?: string | null;
-  butSystemeMarque?: string | null;
+  /** V65 : règles ET système de marque (« 1 but = 1 pt » est une règle). */
   reglesJeu?: string | null;
   variablesPedagogiques?: string | null;
   reperesPerceptifs?: string | null;
@@ -34,14 +42,17 @@ export interface ExerciceAvance {
   terrainLongueurM?: number | null;
   terrainLargeurM?: number | null;
   formatJoueurs?: string | null;
+  /** Pré-rempli depuis `formatJoueurs`, corrigeable à la main. */
   nbJoueursTotal?: number | null;
-  sequencage?: string | null;
 }
 
 export interface Exercice {
   id: string;
   nom: string;
-  categorie?: string;
+  /** V65 : forme de travail — remplace `categorie`, qui mélangeait forme, moment et thème. */
+  forme?: FormeExercice | null;
+  /** V65 : thèmes de jeu, pris dans le MÊME référentiel de sous-principes que la séance. */
+  sousPrincipeIds?: string[];
   type?: TypeExercice;
   dureeMinutes?: number;
   objectif?: string;
@@ -62,7 +73,8 @@ export interface Exercice {
 
 export interface ExerciceRequest {
   nom: string;
-  categorie?: string;
+  forme?: FormeExercice | null;
+  sousPrincipeIds?: string[];
   type?: TypeExercice;
   dureeMinutes?: number | null;
   objectif?: string;
@@ -79,7 +91,7 @@ export interface ExerciceRequest {
 export interface ExerciceLigne {
   exerciceId: string;
   nom: string;
-  categorie?: string;
+  forme?: FormeExercice | null;
   dureeMinutes?: number;
   intensite?: number;
   objectif?: string;
@@ -107,6 +119,8 @@ export interface SchemaTactique {
   creeParNom?: string;
   updatedAt: string;
   modifiable: boolean;
+  /** Schéma FOURNI : posé par le super-admin, commun à tous les clubs, copiable mais pas éditable. */
+  fourni: boolean;
 }
 
 export interface SchemaTactiqueRequest {
@@ -114,6 +128,8 @@ export interface SchemaTactiqueRequest {
   categorie?: string;
   schemaJson: string;
   apercu?: string;
+  /** Crée un schéma fourni (global). Ignoré côté serveur si l'appelant n'est pas super-admin. */
+  fourni?: boolean;
 }
 
 /** Section d'un plan de jeu (phase de jeu) : texte + éventuel schéma (copie). */
@@ -280,9 +296,20 @@ export interface ChargeJoueur {
   vitesseMaxKmh?: number;
 }
 
-export const CATEGORIES_EXERCICE = [
-  'echauffement', 'technique', 'tactique', 'conservation',
-  'jeu_reduit', 'match_a_theme', 'finition', 'transition', 'coup_pied_arrete',
+/**
+ * Forme de travail (V65). L'ancienne liste `CATEGORIES_EXERCICE` mélangeait trois natures :
+ * un moment de séance (échauffement), des formes de travail (jeu réduit, match à thème) et des
+ * thèmes de jeu (conservation, finition, transition, CPA) qui doublonnaient le référentiel des
+ * sous-principes. Les thèmes ont rejoint ce référentiel ; il ne reste ici que la forme.
+ */
+export type FormeExercice = 'ECHAUFFEMENT' | 'ANALYTIQUE' | 'SITUATION' | 'JEU_REDUIT' | 'MATCH_A_THEME';
+
+export const FORMES_EXERCICE: { code: FormeExercice; libelle: string }[] = [
+  { code: 'ECHAUFFEMENT',  libelle: 'Échauffement' },
+  { code: 'ANALYTIQUE',    libelle: 'Analytique' },
+  { code: 'SITUATION',     libelle: 'Situation' },
+  { code: 'JEU_REDUIT',    libelle: 'Jeu réduit' },
+  { code: 'MATCH_A_THEME', libelle: 'Match à thème' },
 ];
 
 @Injectable({ providedIn: 'root' })

@@ -39,7 +39,13 @@ export interface Seance {
   scoreMatch?: string;
   description?: string;
   // Nom de l'encadrant en charge (affiché en vue Liste)
-  responsable?: string;
+  equipeId?: string;
+  /** V65 : compte staff responsable (remplace l'ancien nom tapé à la main). */
+  responsableId?: string;
+  /** Le problème constaté qui motive la séance — STAFF UNIQUEMENT. */
+  contexte?: string;
+  /** Séance ou match à l'origine du contexte (facultatif). */
+  contexteSeanceId?: string;
   // Objectif d'équipe (préparation) — pré-rempli par Σ exercices physiques, modifiable
   objectif?: string;
   objectifDistanceM?: number;
@@ -47,6 +53,14 @@ export interface Seance {
   objectifDistanceHauteIntensiteM?: number;
   // ── Mode avancé (module seance_avancee), tout optionnel ──
   dureeEffectiveMinutes?: number;
+  // V68 : dosage 0-5 des cinq axes pédagogiques. Les `obj*` restent la ligne de détail.
+  // À ne pas confondre avec `dominanteIds` du contenu avancé, qui tague la NATURE de la
+  // séance (technique, musculaire, vivacité, PMA…) et non le dosage de ces cinq axes.
+  dominanteTactiqueOrgIntensite?: number | null;
+  dominanteTactiqueFoncIntensite?: number | null;
+  dominanteMentalIntensite?: number | null;
+  dominanteTechniqueIntensite?: number | null;
+  dominanteAthletiqueIntensite?: number | null;
   objTactiqueOrg?: string;
   objTactiqueFonc?: string;
   objMental?: string;
@@ -72,7 +86,8 @@ export interface LigneExerciceRequest {
 export interface ExerciceLigneSeance {
   exerciceId: string;
   nom: string;
-  categorie?: string;
+  /** V65 : forme de travail de l'exercice (ex-categorie). */
+  forme?: string | null;
   type?: string;
   ordre: number;
   dureeMinutes?: number;
@@ -89,16 +104,28 @@ export interface ExerciceLigneSeance {
 // ── Mode avancé : blocs, groupes, référentiels ──
 
 /** `role`/`equipe` départagent les homonymes (un compte staff par équipe). `equipe` null = club seul. */
-export interface StaffRef { id: string; nom: string; role?: string | null; equipe?: string | null; }
+export interface StaffRef {
+  id: string;
+  nom: string;
+  role?: string | null;
+  equipe?: string | null;
+  /** V66 : rôles tenus sur CE bloc (codes de referentiel_role_bloc). Cumul libre. */
+  roleBloc?: string[];
+}
 export interface JoueurRefSeance { id: string; nom: string; prenom?: string; }
+
+/** Moment de séance porté par le bloc (V66). */
+export type TypeBloc = 'ECHAUFFEMENT' | 'SITUATION' | 'JEU' | 'RETOUR_AU_CALME';
 
 export interface BlocSeanceDto {
   id: string;
   ordre: number;
   libelle: string;
+  type?: TypeBloc | null;
   sequencage?: string;
   dureeMinutes?: number;
-  zoneTerrain?: string;
+  /** Zones du terrain occupées, 1..8 (V66 — remplace l'ancien texte libre). */
+  zones: number[];
   staff: StaffRef[];
 }
 
@@ -113,12 +140,17 @@ export interface GroupeSeanceDto {
   joueurs: JoueurRefSeance[];
 }
 
+/** Un rôle attribué à une personne sur un bloc (plusieurs lignes possibles par personne). */
+export interface StaffRoleRequest { utilisateurId: string; role: string; }
+
 export interface BlocRequest {
   libelle: string;
+  type?: TypeBloc | null;
   sequencage?: string | null;
   dureeMinutes?: number | null;
-  zoneTerrain?: string | null;
+  zones: number[];
   staffIds: string[];
+  staffRoles: StaffRoleRequest[];
 }
 
 export interface GroupeRequest {
@@ -157,7 +189,14 @@ export interface ContenuSeance {
 
 export interface RefDominante { id: string; code: string; libelle: string; famille: 'SEANCE' | 'ATHLETIQUE'; ordre: number; }
 export interface RefSousPrincipe { id: string; code: string; libelle: string; phase: 'OFF' | 'DEF' | 'T_OD' | 'T_DO' | 'CPA_OFF' | 'CPA_DEF'; ordre: number; }
-export interface ReferentielsSeance { dominantes: RefDominante[]; sousPrincipes: RefSousPrincipe[]; }
+/** Rôle de bloc du référentiel figé (super-admin), ex. { code: 'ARBITRE', icone: '⚖' }. */
+export interface RoleBloc { code: string; libelle: string; icone: string; }
+
+export interface ReferentielsSeance {
+  dominantes: RefDominante[];
+  sousPrincipes: RefSousPrincipe[];
+  rolesBloc: RoleBloc[];
+}
 
 // ── Fiche séance (résumé), périodisation, groupes auto ──
 
@@ -189,14 +228,26 @@ export interface ResumeSeance {
   dureeMinutes?: number;
   dureeEffectiveMinutes?: number;
   terrain?: string;
+  /** Nom du compte staff responsable (résolu serveur depuis responsableId). */
   responsable?: string;
+  /** Problème constaté à l'origine de la séance — STAFF UNIQUEMENT, absent de la fiche joueur. */
+  contexte?: string;
+  /** ex. « ⚽ Clermont — sam. 18/07 (1-3) », null si aucun lien posé. */
+  contexteLibelle?: string;
   typeCode?: string;
   typeLibelle?: string;
   equipeNom?: string;
   perimatch: Perimatch;
   dominantes: RefItem[];
   sousPrincipes: RefItem[];
-  objectifs: { tactiqueOrg?: string; tactiqueFonc?: string; mental?: string; technique?: string; athletique?: string };
+  /** V68 : chaque axe porte son dosage 0-5 en plus de sa ligne de détail. */
+  objectifs: {
+    tactiqueOrgIntensite?: number; tactiqueOrg?: string;
+    tactiqueFoncIntensite?: number; tactiqueFonc?: string;
+    mentalIntensite?: number; mental?: string;
+    techniqueIntensite?: number; technique?: string;
+    athletiqueIntensite?: number; athletique?: string;
+  };
   objectifDistanceM?: number;
   objectifDistanceHauteIntensiteM?: number;
   objectifIntensite?: number;
@@ -215,7 +266,7 @@ export interface BlocJoueurFiche {
   libelle: string;
   sequencage?: string;
   dureeMinutes?: number;
-  zoneTerrain?: string;
+  zones: number[];
   exercices: ExerciceJoueurFiche[];
 }
 
@@ -282,7 +333,9 @@ export interface SeanceCreate {
   domicileExterieur?: string;
   description?: string;
   raisonEcartDuree?: string;
-  responsable?: string;
+  responsableId?: string;
+  contexte?: string;
+  contexteSeanceId?: string;
   // Objectif d'équipe (préparation)
   objectif?: string;
   objectifDistanceM?: number;

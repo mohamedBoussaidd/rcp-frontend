@@ -13,196 +13,11 @@
         @if (peutImportPhoto() && canEcrire()) {
           <button class="btn btn--secondary" (click)="importerDepuisPhoto()">📷 Importer d'une photo</button>
         }
-        <button class="btn btn--primary" (click)="showExoForm() ? annulerExo() : nouvelExo()">
-          <mat-icon>add</mat-icon>{{ showExoForm() ? 'Annuler' : 'Nouvel exercice' }}
+        <button class="btn btn--primary" (click)="nouvelExo()">
+          <mat-icon>add</mat-icon>Nouvel exercice
         </button>
       </div>
     </div>
-
-    <!-- Formulaire exercice -->
-    @if (showExoForm()) {
-      <div class="card card--padded" style="margin-bottom:16px">
-        <form (ngSubmit)="enregistrerExo()">
-
-          <!-- Mode avancé (module seance_avancee) : toggle + onglets -->
-          @if (peutAvance()) {
-            <div class="exo-form-head">
-              <div class="exo-tabs">
-                <button type="button" class="exo-tab" [class.active]="ongletExo() === 'essentiel'"
-                        (click)="ongletExo.set('essentiel')">Essentiel</button>
-                @if (modeAvance()) {
-                  <button type="button" class="exo-tab" [class.active]="ongletExo() === 'pedagogie'"
-                          (click)="ongletExo.set('pedagogie')">Pédagogie <span class="exo-tab__adv">AVANCÉ</span></button>
-                  <button type="button" class="exo-tab" [class.active]="ongletExo() === 'organisation'"
-                          (click)="ongletExo.set('organisation')">Organisation <span class="exo-tab__adv">AVANCÉ</span></button>
-                }
-              </div>
-              <label class="mode-avance-toggle">
-                <input type="checkbox" [checked]="modeAvance()" (change)="basculerModeAvance()">
-                <span>Mode avancé</span>
-              </label>
-            </div>
-          }
-
-          @if (ongletExo() === 'pedagogie' && modeAvance()) {
-            <div class="form-grid">
-              <div class="field span2">
-                <label class="field__label">Contexte (problème de jeu)<app-info-bulle [texte]="aide.contextePedagogique" /></label>
-                <textarea class="input" rows="2" [(ngModel)]="exoAvance.contextePedagogique" name="avCtx"
-                          placeholder="ex : séance à J+2 — récupération active tout en conservant une logique de jeu"></textarea>
-              </div>
-              <div class="field span2">
-                <label class="field__label">Niveau d'objectif<app-info-bulle [texte]="aide.niveauObjectif" /></label>
-                <div class="chips-select">
-                  @for (n of niveauxObjectif; track n.code) {
-                    <button type="button" class="chip-select" [class.on]="exoAvance.niveauObjectif === n.code"
-                            (click)="choisirNiveau(n.code)">{{ n.libelle }}</button>
-                  }
-                </div>
-              </div>
-              <div class="field span2">
-                <label class="field__label">Échelle d'effectif<app-info-bulle [texte]="aide.echelleEffectif" /></label>
-                <div class="chips-select">
-                  @for (n of echellesEffectif; track n.code) {
-                    <button type="button" class="chip-select" [class.on]="exoAvance.echelleEffectif === n.code"
-                            (click)="choisirEchelle(n.code)">{{ n.libelle }}</button>
-                  }
-                </div>
-              </div>
-              <div class="field span2">
-                <label class="field__label">Dominantes en interaction<app-info-bulle [texte]="aide.dominantesInteraction" /></label>
-                <div class="dom-table">
-                  <div class="dom-row"><span class="dom-label">Tactique <em>organisationnelle</em></span>
-                    <input class="input" [(ngModel)]="exoAvance.dominanteTactiqueOrg" name="avDomOrg" placeholder="—"></div>
-                  <div class="dom-row"><span class="dom-label">Tactique <em>fonctionnelle</em></span>
-                    <input class="input" [(ngModel)]="exoAvance.dominanteTactiqueFonc" name="avDomFonc" placeholder="ex : trouver le joueur soutien"></div>
-                  <div class="dom-row"><span class="dom-label">Mental</span>
-                    <input class="input" [(ngModel)]="exoAvance.dominanteMental" name="avDomMen" placeholder="ex : engagement"></div>
-                  <div class="dom-row"><span class="dom-label">Technique</span>
-                    <input class="input" [(ngModel)]="exoAvance.dominanteTechnique" name="avDomTec" placeholder="—"></div>
-                  <div class="dom-row"><span class="dom-label">Athlétique</span>
-                    <input class="input" [(ngModel)]="exoAvance.dominanteAthletique" name="avDomAth" placeholder="ex : aérobie (travail compensatoire)"></div>
-                </div>
-              </div>
-              <div class="field span2">
-                <label class="field__label">But du jeu &amp; système de marque<app-info-bulle [texte]="aide.butSystemeMarque" /></label>
-                <input class="input" [(ngModel)]="exoAvance.butSystemeMarque" name="avBut" placeholder="ex : 1 but = 1 pt">
-              </div>
-              <div class="field span2">
-                <label class="field__label">Règles</label>
-                <textarea class="input" rows="2" [(ngModel)]="exoAvance.reglesJeu" name="avRegles"
-                          placeholder="ex : avant d'attaquer, trouver le joueur soutien de son équipe…"></textarea>
-              </div>
-              <div class="field span2">
-                <label class="field__label">Variables pédagogiques<app-info-bulle [texte]="aide.variablesPedagogiques" /></label>
-                <input class="input" [(ngModel)]="exoAvance.variablesPedagogiques" name="avVar" placeholder="ex : idem avec GB">
-              </div>
-              <div class="field">
-                <label class="field__label">Repères perceptifs<app-info-bulle [texte]="aide.reperesPerceptifs" /></label>
-                <textarea class="input" rows="2" [(ngModel)]="exoAvance.reperesPerceptifs" name="avRep"
-                          placeholder="espaces disponibles · position des partenaires…"></textarea>
-              </div>
-              <div class="field">
-                <label class="field__label">Comportements attendus<app-info-bulle [texte]="aide.comportementsAttendus" /></label>
-                <textarea class="input" rows="2" [(ngModel)]="exoAvance.comportementsAttendus" name="avComp"
-                          placeholder="continuité du jeu · être compétiteur…"></textarea>
-              </div>
-            </div>
-          } @else if (ongletExo() === 'organisation' && modeAvance()) {
-            <div class="form-grid">
-              <div class="field">
-                <label class="field__label">Longueur (m)</label>
-                <input class="input" type="number" [(ngModel)]="exoAvance.terrainLongueurM" name="avLong" min="1" step="0.5">
-              </div>
-              <div class="field">
-                <label class="field__label">Largeur (m)</label>
-                <input class="input" type="number" [(ngModel)]="exoAvance.terrainLargeurM" name="avLarg" min="1" step="0.5">
-              </div>
-              <div class="field">
-                <label class="field__label">Format joueurs</label>
-                <input class="input" [(ngModel)]="exoAvance.formatJoueurs" name="avFormat" placeholder="ex : 3 + joker + GB vs 3 + joker + GB">
-              </div>
-              <div class="field">
-                <label class="field__label">Nb joueurs total</label>
-                <input class="input" type="number" [(ngModel)]="exoAvance.nbJoueursTotal" name="avNb" min="1">
-              </div>
-              <div class="field">
-                <label class="field__label">Densité<app-info-bulle [texte]="aide.densite" /></label>
-                <div class="densite-badge">
-                  @if (densite() !== null) { <span class="auto-badge">⚡ auto</span> {{ densite() }} m²/joueur }
-                  @else { <span class="field__hint">renseigne dimensions + nb joueurs</span> }
-                </div>
-              </div>
-              <div class="field span2">
-                <label class="field__label">Séquençage<app-info-bulle [texte]="aide.sequencage" /></label>
-                <input class="input" [(ngModel)]="exoAvance.sequencage" name="avSeq" placeholder="ex : 2 × (4 × 1' travail + 1' récup)">
-              </div>
-            </div>
-          } @else {
-          <div class="form-grid">
-            <div class="field">
-              <label class="field__label">Nom *</label>
-              <input class="input" [(ngModel)]="exoForm.nom" name="nom" placeholder="Conservation 4v2">
-            </div>
-            <div class="field">
-              <label class="field__label">Catégorie</label>
-              <select class="input select" [(ngModel)]="exoForm.categorie" name="cat">
-                <option value="">—</option>
-                @for (c of categories; track c) { <option [value]="c">{{ label(c) }}</option> }
-              </select>
-            </div>
-            <div class="field">
-              <label class="field__label">Durée (min)</label>
-              <input class="input" type="number" [(ngModel)]="exoForm.dureeMinutes" name="duree" min="1">
-            </div>
-            <div class="field">
-              <label class="field__label">Intensité (1-5)</label>
-              <select class="input select" [(ngModel)]="exoForm.intensite" name="int">
-                <option [ngValue]="null">—</option>
-                @for (i of [1,2,3,4,5]; track i) { <option [ngValue]="i">{{ i }}</option> }
-              </select>
-            </div>
-            <div class="field">
-              <label class="field__label">Type</label>
-              <select class="input select" [(ngModel)]="exoForm.type" name="type">
-                <option value="TECHNIQUE">Technique</option>
-                <option value="PHYSIQUE">Physique</option>
-                <option value="MIXTE">Mixte</option>
-              </select>
-            </div>
-            @if (exoForm.type === 'PHYSIQUE' || exoForm.type === 'MIXTE') {
-              <div class="field">
-                <label class="field__label">Distance attendue (m)</label>
-                <input class="input" type="number" [(ngModel)]="exoForm.distanceAttendueM" name="dist" min="0">
-              </div>
-              <div class="field">
-                <label class="field__label">Dont haute intensité (m)</label>
-                <input class="input" type="number" [(ngModel)]="exoForm.distanceHauteIntensiteM" name="distHi" min="0">
-              </div>
-              <div class="field">
-                <label class="field__label">Nb sprints</label>
-                <input class="input" type="number" [(ngModel)]="exoForm.nbSprints" name="nbSpr" min="0">
-              </div>
-            }
-            <div class="field span2">
-              <label class="field__label">Objectif</label>
-              <input class="input" [(ngModel)]="exoForm.objectif" name="obj" placeholder="vitesse de passe…">
-            </div>
-            <div class="field span2">
-              <label class="field__label">Description</label>
-              <input class="input" [(ngModel)]="exoForm.description" name="desc" placeholder="Consignes, dispositif…">
-            </div>
-          </div>
-          }
-          <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:12px">
-            <button type="button" class="btn btn--secondary btn--sm" (click)="annulerExo()">Annuler</button>
-            <button type="submit" class="btn btn--primary btn--sm" [disabled]="savingExo() || !exoForm.nom">
-              {{ savingExo() ? '…' : (editingExoId() ? 'Enregistrer' : 'Créer') }}
-            </button>
-          </div>
-        </form>
-      </div>
-    }
 
     <!-- Filtres -->
     @if (exercices().length > 0) {
@@ -216,9 +31,9 @@
             <option value="">Toutes les équipes</option>
             @for (e of equipesOrigine(); track e.id) { <option [value]="e.id">{{ e.nom }}</option> }
           </select>
-          <select class="input select" style="max-width:200px" [ngModel]="filtreCategorie()" (ngModelChange)="filtreCategorie.set($event)" name="fcat">
-            <option value="">Toutes les catégories</option>
-            @for (c of categories; track c) { <option [value]="c">{{ label(c) }}</option> }
+          <select class="input select" style="max-width:200px" [ngModel]="filtreForme()" (ngModelChange)="filtreForme.set($event)" name="fforme">
+            <option value="">Toutes les formes</option>
+            @for (f of formes; track f.code) { <option [value]="f.code">{{ f.libelle }}</option> }
           </select>
         </div>
       </div>
@@ -237,7 +52,7 @@
               @if (e.intensite) { <span class="badge int-badge int-{{ e.intensite }}">int. {{ e.intensite }}</span> }
             </div>
             <div class="row" style="gap:6px;flex-wrap:wrap">
-              @if (e.categorie) { <span class="badge badge--neutral">{{ label(e.categorie) }}</span> }
+              @if (e.forme) { <span class="badge badge--neutral">{{ libelleForme(e.forme) }}</span> }
               @if (e.dureeMinutes) { <span class="badge badge--neutral">{{ e.dureeMinutes }} min</span> }
             </div>
             @if (e.objectif) { <p class="exo-card__obj">{{ e.objectif }}</p> }

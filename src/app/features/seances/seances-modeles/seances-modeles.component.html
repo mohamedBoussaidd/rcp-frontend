@@ -54,26 +54,21 @@
       <div class="ms-modal__panel" (click)="$event.stopPropagation()">
         <h2>{{ editionId ? 'Modifier le modèle' : 'Nouveau modèle' }}</h2>
 
-        <!-- Mode avancé (module seance_avancee) : mêmes rubriques que le formulaire de séance,
-             pour qu'un gabarit puisse porter le même contenu qu'une séance planifiée. -->
+        <!-- Rubriques avancées (module seance_avancee) : mêmes que le formulaire de séance,
+             pour qu'un gabarit porte le même contenu qu'une séance planifiée. Plus de case à
+             cocher : le module décide de leur existence, pas une préférence à armer. -->
         @if (peutAvance()) {
-          <label class="ms-toggle-avance">
-            <input type="checkbox" [checked]="modeAvance()" (change)="basculerModeAvance()">
-            <span>Mode avancé</span>
-          </label>
-          @if (modeAvance()) {
-            <div class="ms-tabs">
-              <button type="button" class="ms-tab" [class.on]="ongletAvance === 'cadre'"
-                      (click)="ongletAvance = 'cadre'">Cadre</button>
-              <button type="button" class="ms-tab" [class.on]="ongletAvance === 'objectifs'"
-                      (click)="ongletAvance = 'objectifs'">Objectifs &amp; projet de jeu</button>
-              <button type="button" class="ms-tab" [class.on]="ongletAvance === 'deroule'"
-                      (click)="ongletAvance = 'deroule'">Déroulé</button>
-            </div>
-          }
+          <div class="ms-tabs">
+            <button type="button" class="ms-tab" [class.on]="ongletAvance === 'cadre'"
+                    (click)="ongletAvance = 'cadre'">Cadre</button>
+            <button type="button" class="ms-tab" [class.on]="ongletAvance === 'objectifs'"
+                    (click)="ongletAvance = 'objectifs'">Objectifs &amp; projet de jeu</button>
+            <button type="button" class="ms-tab" [class.on]="ongletAvance === 'deroule'"
+                    (click)="ongletAvance = 'deroule'">Déroulé</button>
+          </div>
         }
 
-        @if (!modeAvance() || ongletAvance === 'cadre') {
+        @if (!peutAvance() || ongletAvance === 'cadre') {
         <div class="ms-form-grid">
           <label class="ms-field">
             <span>Nom</span>
@@ -154,9 +149,13 @@
         }
 
         <!-- ══ Onglet avancé : objectifs & projet de jeu ══ -->
-        @if (modeAvance() && ongletAvance === 'objectifs') {
+        @if (peutAvance() && ongletAvance === 'objectifs') {
           <div class="ms-av">
-            <div class="ms-av__label">Dominantes de la séance</div>
+            <!-- V68 : le dosage des cinq axes, recopié tel quel par `planifier()` -->
+            <div class="ms-av__label">Dominantes — dosage des cinq axes</div>
+            <app-jauge-dominantes [dosages]="dosages" (dosagesChange)="dosages = $event" [barres]="true" />
+
+            <div class="ms-av__label">Nature de la séance</div>
             <div class="ms-chips">
               @for (d of dominantes('SEANCE'); track d.id) {
                 <button type="button" class="ms-chip" [class.on]="dominanteIds.has(d.id)"
@@ -204,7 +203,7 @@
         }
 
         <!-- ══ Onglet avancé : déroulé (blocs) ══ -->
-        @if (modeAvance() && ongletAvance === 'deroule') {
+        @if (peutAvance() && ongletAvance === 'deroule') {
           <div class="ms-av">
             <div class="ms-creneaux-edit__head">
               <h3>Blocs ({{ blocs.length }})</h3>
@@ -224,13 +223,21 @@
                   <button class="ms-btn ms-btn--danger ms-btn--icon" (click)="supprimerBloc(bi)" title="Supprimer">✕</button>
                 </div>
                 <div class="ms-form-grid">
+                  <label class="ms-field"><span>Type de bloc</span>
+                    <select [(ngModel)]="b.type">
+                      <option [ngValue]="null">— Non défini</option>
+                      @for (t of typesBloc; track t.code) {
+                        <option [ngValue]="t.code">{{ t.libelle }}</option>
+                      }
+                    </select></label>
                   <label class="ms-field"><span>Séquençage</span>
                     <input [(ngModel)]="b.sequencage" placeholder="ex : 3 × 2'" /></label>
                   <label class="ms-field"><span>Durée (min)</span>
                     <input type="number" min="1" [(ngModel)]="b.dureeMinutes" /></label>
-                  <label class="ms-field"><span>Zone du terrain</span>
-                    <input [(ngModel)]="b.zoneTerrain" placeholder="ex : demi-terrain gauche" /></label>
                 </div>
+                <div class="ms-av__label">Zones du terrain par défaut</div>
+                <app-terrain-zones [editable]="true" [zones]="b.zones"
+                                   (zonesChange)="majZonesBloc(b, $event)" />
                 <div class="ms-av__label">Staff affecté par défaut</div>
                 <div class="ms-chips">
                   @for (st of staffClub; track st.id) {

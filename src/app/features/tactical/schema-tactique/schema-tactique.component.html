@@ -4,79 +4,127 @@
   <div class="page-head">
     <div>
       <h1 class="page-head__title">Schémas tactiques</h1>
-      <p class="page-head__sub">Bibliothèque de phases de jeu réutilisables · {{ schemas().length }} schéma(s)</p>
+      <p class="page-head__sub">
+        Bibliothèque de phases de jeu réutilisables · {{ cartesClub().length }} schéma(s)
+        @if (cartesFournies().length > 0) { · {{ cartesFournies().length }} fourni(s) }
+      </p>
     </div>
     <div class="page-head__actions">
+      @if (estSuperAdmin()) {
+        <button class="btn btn--secondary" (click)="nouveau(true)" title="Schéma commun à tous les clubs">
+          <mat-icon>public</mat-icon>Nouveau schéma fourni
+        </button>
+      }
       <button class="btn btn--primary" (click)="nouveau()"><mat-icon>add</mat-icon>Nouveau schéma</button>
     </div>
   </div>
 
   @if (loading()) {
     <div class="lib-empty">Chargement…</div>
-  } @else if (schemas().length === 0) {
-    <div class="lib-empty">
-      <mat-icon>sports_soccer</mat-icon>
-      <p>Aucun schéma pour l'instant.</p>
-      <button class="btn btn--primary btn--sm" (click)="nouveau()"><mat-icon>add</mat-icon>Créer le premier</button>
-    </div>
   } @else {
-    <div class="lib-grid">
-      @for (s of cartes(); track s.id) {
-        <div class="lib-card" (click)="ouvrir(s)">
-          <div class="lib-card__thumb">
-            @if (s.apercu) {
-              <img [src]="s.apercu" [alt]="s.nom" />
-            } @else {
-              <div class="lib-card__noimg"><mat-icon>sports_soccer</mat-icon></div>
-            }
-            @if (s.animee) {
-              <span class="lib-card__play" title="Schéma animé"><mat-icon>play_arrow</mat-icon></span>
-            }
-          </div>
-          <div class="lib-card__body">
-            <div class="lib-card__top">
-              <span class="lib-card__name">{{ s.nom }}</span>
-              @if (s.categorie) {
-                <span class="badge badge--neutral">{{ label(s.categorie) }}</span>
-              }
-            </div>
-            <div class="lib-card__meta">
-              @if (s.animee) {
-                <span class="lib-card__anim"><mat-icon>movie</mat-icon>animé · {{ s.frames }} frames</span>
-              } @else {
-                <span class="lib-card__anim lib-card__anim--static"><mat-icon>image</mat-icon>statique</span>
-              }
-              <span>· {{ s.updatedAt | date:'dd/MM/yyyy' }}</span>
-            </div>
-          </div>
-          <div class="lib-card__actions">
-            <button class="btn btn--ghost btn--icon btn--sm lib-card__attach" title="Ajouter à un exercice"
-                    (click)="ajouterAExercice(s, $event)">
-              <mat-icon>add_task</mat-icon>
-            </button>
-            <button class="btn btn--ghost btn--icon btn--sm"
-                    [title]="s.modifiable ? 'Ouvrir l\'éditeur' : 'Éditer une copie (l\'original n\'est pas modifié)'"
-                    (click)="ouvrir(s)">
-              <mat-icon>edit</mat-icon>
-            </button>
-            @if (s.modifiable) {
-              <button class="btn btn--ghost btn--icon btn--sm" title="Renommer / catégorie"
-                      (click)="renommer(s, $event)">
-                <mat-icon>drive_file_rename_outline</mat-icon>
-              </button>
-              <button class="btn btn--ghost btn--icon btn--sm lib-card__del" title="Supprimer"
-                      (click)="supprimer(s, $event)">
-                <mat-icon>delete_outline</mat-icon>
-              </button>
-            } @else if (canEcrire()) {
-              <button class="btn btn--ghost btn--icon btn--sm" title="Dupliquer à mon nom"
-                      (click)="dupliquer(s, $event)">
-                <mat-icon>content_copy</mat-icon>
-              </button>
-            }
-          </div>
-        </div>
-      }
-    </div>
+
+    <!-- ── Bibliothèque du club ── -->
+    @if (cartesClub().length === 0) {
+      <div class="lib-empty">
+        <mat-icon>sports_soccer</mat-icon>
+        <p>Aucun schéma dans votre bibliothèque.</p>
+        @if (cartesFournies().length > 0) {
+          <p class="lib-empty__hint">Copiez un schéma fourni ci-dessous pour démarrer, ou créez le vôtre.</p>
+        }
+        <button class="btn btn--primary btn--sm" (click)="nouveau()"><mat-icon>add</mat-icon>Créer le premier</button>
+      </div>
+    } @else {
+      <div class="lib-grid">
+        @for (s of cartesClub(); track s.id) {
+          <ng-container *ngTemplateOutlet="carte; context: { $implicit: s }" />
+        }
+      </div>
+    }
+
+    <!-- ── Schémas fournis (communs à tous les clubs) ── -->
+    @if (cartesFournies().length > 0) {
+      <div class="lib-section">
+        <h2 class="lib-section__title"><mat-icon>public</mat-icon>Schémas fournis</h2>
+        <p class="lib-section__sub">
+          Mis à disposition de tous les clubs. Copiez-en un dans votre bibliothèque pour l'adapter —
+          l'original n'est jamais modifié.
+        </p>
+      </div>
+      <div class="lib-grid">
+        @for (s of cartesFournies(); track s.id) {
+          <ng-container *ngTemplateOutlet="carte; context: { $implicit: s }" />
+        }
+      </div>
+    }
   }
 </div>
+
+<!-- ═══ Carte de schéma (partagée entre la bibliothèque du club et les schémas fournis) ═══ -->
+<ng-template #carte let-s>
+  <div class="lib-card" [class.lib-card--fourni]="s.fourni" (click)="ouvrir(s)">
+    <div class="lib-card__thumb">
+      @if (s.apercu) {
+        <img [src]="s.apercu" [alt]="s.nom" />
+      } @else {
+        <div class="lib-card__noimg"><mat-icon>sports_soccer</mat-icon></div>
+      }
+      @if (s.animee) {
+        <span class="lib-card__play" title="Schéma animé"><mat-icon>play_arrow</mat-icon></span>
+      }
+      @if (s.fourni) {
+        <span class="lib-card__fourni" title="Schéma fourni, commun à tous les clubs">Fourni</span>
+      }
+    </div>
+    <div class="lib-card__body">
+      <div class="lib-card__top">
+        <span class="lib-card__name">{{ s.nom }}</span>
+        @if (s.categorie) {
+          <span class="badge badge--neutral">{{ label(s.categorie) }}</span>
+        }
+      </div>
+      <div class="lib-card__meta">
+        @if (s.animee) {
+          <span class="lib-card__anim"><mat-icon>movie</mat-icon>animé · {{ s.frames }} frames</span>
+        } @else {
+          <span class="lib-card__anim lib-card__anim--static"><mat-icon>image</mat-icon>statique</span>
+        }
+        <span>· {{ s.updatedAt | date:'dd/MM/yyyy' }}</span>
+      </div>
+    </div>
+    <div class="lib-card__actions">
+      @if (!s.fourni) {
+        <button class="btn btn--ghost btn--icon btn--sm lib-card__attach" title="Ajouter à un exercice"
+                (click)="ajouterAExercice(s, $event)">
+          <mat-icon>add_task</mat-icon>
+        </button>
+      }
+      <button class="btn btn--ghost btn--icon btn--sm"
+              [title]="s.modifiable ? 'Ouvrir l\'éditeur' : 'Éditer une copie (l\'original n\'est pas modifié)'"
+              (click)="ouvrir(s)">
+        <mat-icon>edit</mat-icon>
+      </button>
+      @if (s.modifiable) {
+        <button class="btn btn--ghost btn--icon btn--sm" title="Renommer / catégorie"
+                (click)="renommer(s, $event)">
+          <mat-icon>drive_file_rename_outline</mat-icon>
+        </button>
+        <button class="btn btn--ghost btn--icon btn--sm lib-card__del" title="Supprimer"
+                (click)="supprimer(s, $event)">
+          <mat-icon>delete_outline</mat-icon>
+        </button>
+      } @else if (canEcrire()) {
+        @if (s.fourni) {
+          <button class="btn btn--ghost btn--icon btn--sm" title="Copier dans ma bibliothèque"
+                  (click)="copier(s, $event)">
+            <mat-icon>library_add</mat-icon>
+          </button>
+        } @else {
+          <button class="btn btn--ghost btn--icon btn--sm" title="Dupliquer à mon nom"
+                  (click)="dupliquer(s, $event)">
+            <mat-icon>content_copy</mat-icon>
+          </button>
+        }
+      }
+    </div>
+  </div>
+</ng-template>

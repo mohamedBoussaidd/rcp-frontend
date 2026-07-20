@@ -348,6 +348,67 @@
   color: var(--green-500, #22c55e);
 }
 
+/* ── Schémas fournis (contenu commun à tous les clubs) ── */
+.lib-empty__hint {
+  font-size: 12.5px;
+  color: var(--text-3);
+  max-width: 340px;
+}
+
+.lib-section {
+  margin: 28px 0 12px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border);
+}
+
+.lib-section__title {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+
+  mat-icon {
+    font-size: 17px;
+    width: 17px;
+    height: 17px;
+    color: var(--text-3);
+  }
+}
+
+.lib-section__sub {
+  margin: 4px 0 0;
+  font-size: 12.5px;
+  color: var(--text-3);
+  max-width: 620px;
+}
+
+/* Le liseré distingue le contenu fourni de celui du club, sans le dévaloriser. */
+.lib-card--fourni {
+  border-style: dashed;
+
+  &:hover {
+    border-style: solid;
+  }
+}
+
+.lib-card__fourni {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: #fff;
+  background: rgba(0, 0, 0, .5);
+  backdrop-filter: blur(2px);
+}
+
 /* ── Segmented (formations) ── */
 .segmented {
   display: inline-flex;

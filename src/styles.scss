@@ -82,6 +82,14 @@ body {
   --copper-soft: #ECFDF5;
   --copper-border: #BBF7D0;
 
+  /* Cuivre véritable. --copper porte le vert primaire (41 appels dans l'app) : il ne peut donc
+     pas servir de second accent. Réservé aux repères qui doivent se distinguer du vert sans
+     signifier une alerte — libellé « charge physique », phase de transition défensive,
+     portée limitée à un bloc. */
+  --cuivre: #B45309;
+  --cuivre-bg: #FFF7ED;
+  --cuivre-bd: #FED7AA;
+
   /* Semantic statuts */
   --ok: #15803D;
   --ok-bg: #ECFDF5;

@@ -1,0 +1,47 @@
+<div class="tz" [class.tz--compact]="compact" [class.tz--lecture]="!editable">
+
+  @if (editable) {
+    <div class="tz__raccourcis">
+      <button type="button" class="tz__rac" (click)="raccourci('A')">Demi-terrain A</button>
+      <button type="button" class="tz__rac" (click)="raccourci('B')">Demi-terrain B</button>
+      <button type="button" class="tz__rac" (click)="raccourci('TOUT')">Terrain entier</button>
+      <span class="tz__resume">{{ resume() }}</span>
+    </div>
+  }
+
+  <div class="tz__terrain">
+    <span class="tz__but tz__but--g" aria-hidden="true"></span>
+    <span class="tz__mediane" aria-hidden="true"></span>
+    <span class="tz__rond" aria-hidden="true"></span>
+    <span class="tz__but tz__but--d" aria-hidden="true"></span>
+
+    <div class="tz__grille">
+      @for (zone of [1,2,3,4,5,6,7,8]; track zone) {
+        <button type="button"
+                class="tz__zone"
+                [class.tz__zone--on]="estChoisie(zone)"
+                [class.tz__zone--occupee]="occupationsDe(zone).length > 0"
+                [class.tz__zone--conflit]="enConflit(zone)"
+                [class.tz__zone--fige]="!editable"
+                [attr.aria-pressed]="editable ? estChoisie(zone) : null"
+                [attr.tabindex]="editable ? 0 : -1"
+                [title]="libelle(zone)"
+                (click)="basculer(zone)">
+          <span class="tz__num">{{ zone }}</span>
+          @for (o of occupationsDe(zone); track o.bloc) {
+            <span class="tz__occ">
+              <b>{{ o.bloc }}</b>
+              @if (o.staff.length > 0) {
+                <em>{{ o.staff.join(' · ') }}</em>
+              }
+            </span>
+          }
+        </button>
+      }
+    </div>
+  </div>
+
+  @if (!editable && occupations.length === 0) {
+    <p class="tz__vide">Aucune zone renseignée sur cette séance.</p>
+  }
+</div>

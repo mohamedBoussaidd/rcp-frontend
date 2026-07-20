@@ -7,7 +7,7 @@ import {
   StyleRendu, dessinerCorpsElement, ordonnerParProfondeur, projeter, projeterPoints,
 } from '../schema-render/schema-render';
 
-interface SchemaElement { id: string; type: string; couleur?: string; numero?: number; label?: string; joueurId?: string; x: number; y: number; }
+interface SchemaElement { id: string; type: string; couleur?: string; numero?: number; label?: string; joueurId?: string; rotation?: number; x: number; y: number; }
 interface SchemaTrace { id: string; type: string; points: number[]; elementId?: string; ballId?: string; }
 interface Keyframe { t: number; positions: Record<string, { x: number; y: number }>; }
 
