@@ -1,4 +1,4 @@
-import { AfterViewInit, Component, ElementRef, OnDestroy, ViewChild, inject, signal } from '@angular/core';
+import { AfterViewInit, Component, ElementRef, OnDestroy, ViewChild, effect, inject, signal } from '@angular/core';
 import { MAT_DIALOG_DATA, MatDialog, MatDialogRef } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { Observable } from 'rxjs';
@@ -12,9 +12,14 @@ import {
 } from './schema-geometrie';
 import { FORMATIONS, COUPS_DE_PIED_ARRETES } from './schema-formations.data';
 import { SchemaTerrainRenderer } from './schema-terrain.renderer';
+import { EspaceTerrain, Terrain, espace, estTerrain } from './schema-espaces';
+import { SchemaEspaceDialogComponent } from '../schema-espace-dialog/schema-espace-dialog.component';
 import { AuthService } from '@core/services/auth.service';
-import { PreferencesService, PREF_STYLE_RENDU_SCHEMA } from '@core/services/preferences.service';
+import { PreferencesService, PREF_ANGLE_SCHEMA, PREF_STYLE_RENDU_SCHEMA } from '@core/services/preferences.service';
 import { StyleRendu, centreVisuel, dessinerCorpsElement, ordonnerParProfondeur } from '../schema-render/schema-render';
+import {
+  Camera, CAMERA_DESSUS, INCLINAISON_MAX, ParamsCamera, PRESETS_CAMERA, estInclinee,
+} from '../schema-render/schema-camera';
 import {
   RegleTactiqueDetail, RegleTactiqueResume, ReglesTactiquesService,
 } from '@core/services/regles-tactiques.service';
@@ -37,7 +42,6 @@ export interface SchemaEditorData {
   enregistrer: (schemaJson: string, apercu: string) => Observable<unknown>;
 }
 
-type Terrain = 'complet' | 'demi';
 type Outil = 'select' | 'deplacement' | 'conduite' | 'passe' | 'tir' | 'surveiller' | 'forme' | 'supprimer';
 type TraceType = 'deplacement' | 'conduite' | 'passe' | 'tir';
 type FormeType = 'rect' | 'ellipse' | 'losange' | 'triangle';
@@ -62,8 +66,6 @@ const VITESSE_DEFAUT_KMH = 24;   // course modérée
 const BALLE_KMH = 60;            // une passe va plus vite qu'une course
 // Rayon (px) pour lier une flèche au jeton/ballon le plus proche de son point de départ.
 const RAYON_LIEN = 60;
-// Longueur réelle (m) représentée par la largeur du terrain, pour convertir km/h → px/s.
-const LONGUEUR_TERRAIN_M = { complet: 105, demi: 52.5 };
 // TENSION_TRACE est importé de ./schema-geometrie (partagé rendu + échantillonnage).
 
 @Component({
@@ -215,8 +217,8 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
   private selLassoPts: number[] = [];
   private dragBase = new Map<string, { x: number; y: number }>();
 
-  private get W() { return this.terrain() === 'complet' ? 1040 : 600; }
-  private get H() { return 680; }
+  private get W() { return espace(this.terrain()).W; }
+  private get H() { return espace(this.terrain()).H; }
 
   dialogRef = inject<MatDialogRef<SchemaEditorComponent>>(MatDialogRef);
   private service = inject(TechniqueService);
@@ -240,22 +242,147 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
   basculerStyleRendu(): void {
     const nouveau: StyleRendu = this.styleRendu() === 'realiste' ? 'tableau' : 'realiste';
     this.prefs.definir(PREF_STYLE_RENDU_SCHEMA, nouveau);
-    this.redessinerElements();
+    this.majCamera();
   }
 
-  /** Re-rend tous les jetons avec le style courant (positions et données inchangées). */
-  private redessinerElements(): void {
+  // ══════════ Caméra : angle de vue du rendu incliné (préférence utilisateur) ══════════
+
+  readonly presetsCamera = PRESETS_CAMERA;
+  readonly inclinaisonMax = INCLINAISON_MAX;
+  angle = signal<ParamsCamera>({ ...CAMERA_DESSUS });
+  /** Sliders d'angle repliés par défaut : leur ligne coûte de la hauteur au terrain. */
+  reglageFin = signal(false);
+
+  /** Caméra courante, ou `null` en vue de dessus — auquel cas rien n'est projeté. */
+  private camera: Camera | null = null;
+
+  /** L'inclinaison n'a de sens qu'avec les sprites : en mode tableau on reste à plat. */
+  private angleActif(): ParamsCamera {
+    return this.styleRendu() === 'realiste' ? this.angle() : CAMERA_DESSUS;
+  }
+
+  vueInclinee(): boolean { return !!this.camera; }
+
+  presetActif(): string {
+    const a = this.angle();
+    return this.presetsCamera.find(p => p.params.inclinaison === a.inclinaison && p.params.rotation === a.rotation)?.cle ?? '';
+  }
+
+  appliquerPreset(cle: string): void {
+    const p = this.presetsCamera.find(x => x.cle === cle);
+    if (p) this.definirAngle({ ...p.params });
+  }
+
+  reglerInclinaison(v: number): void { this.definirAngle({ ...this.angle(), inclinaison: v }); }
+  reglerRotation(v: number): void { this.definirAngle({ ...this.angle(), rotation: v }); }
+
+  private majAngle?: ReturnType<typeof setTimeout>;
+
+  private definirAngle(a: ParamsCamera): void {
+    this.angle.set(a);
+    this.majCamera();
+    // Persistance différée : un glisser de slider émet des dizaines d'événements, et
+    // chacun déclencherait sinon un PUT.
+    clearTimeout(this.majAngle);
+    this.majAngle = setTimeout(() => {
+      this.prefsAppliquees = `${this.prefs.valeur(PREF_STYLE_RENDU_SCHEMA) ?? ''}|${a.inclinaison}:${a.rotation}`;
+      this.prefs.definir(PREF_ANGLE_SCHEMA, `${a.inclinaison}:${a.rotation}`);
+    }, 400);
+  }
+
+  private chargerAngle(): void {
+    const brut = this.prefs.valeur(PREF_ANGLE_SCHEMA);
+    const [i, r] = (brut ?? '').split(':').map(Number);
+    if (Number.isFinite(i) && Number.isFinite(r)) {
+      this.angle.set({
+        inclinaison: Math.max(0, Math.min(INCLINAISON_MAX, i)),
+        rotation: Math.max(-180, Math.min(180, r)),
+      });
+    }
+  }
+
+  /** Reconstruit la caméra puis redessine terrain, jetons et tracés au nouvel angle. */
+  private majCamera(): void {
+    const avant = this.camera;
+    const a = this.angleActif();
+    this.camera = estInclinee(a) ? new Camera(this.W, this.H, a) : null;
+    this.dessinerTerrain();
+    this.redessinerElements(avant);
+    this.redessinerTraces();
+    this.redessinerFormes();
+  }
+
+  /** Reprojette les zones d'annotation et rétablit leur déplaçabilité selon l'angle. */
+  private redessinerFormes(): void {
+    this.detacherForme();   // les poignées de redimensionnement n'ont pas de sens en incliné
+    this.formeNodes.forEach((g, id) => {
+      const f = this.formes.find(x => x.id === id);
+      if (!f) return;
+      g.draggable(!this.camera);
+      this.dessinerContenuForme(g, f);
+    });
+    this.layer.draw();
+  }
+
+  /** Position ÉCRAN d'un point du terrain (identité en vue de dessus). */
+  private versEcran(x: number, y: number): { x: number; y: number; echelle: number } {
+    return this.camera ? this.camera.projeter(x, y) : { x, y, echelle: 1 };
+  }
+
+  /** Position TERRAIN d'un point d'écran — inverse exacte de {@link versEcran}. */
+  private versTerrain(x: number, y: number): { x: number; y: number } {
+    return this.camera ? this.camera.deprojeter(x, y) : { x, y };
+  }
+
+  /** Pointeur courant, ramené au plan du terrain. */
+  private pointeurSol(): { x: number; y: number } | null {
+    const p = this.stage.getRelativePointerPosition();
+    return p ? this.versTerrain(p.x, p.y) : null;
+  }
+
+
+  /**
+   * Re-rend tous les jetons avec le style et l'angle courants. La position VISUELLE peut
+   * différer du modèle (animation en cours) : on la reconvertit depuis `camAvant`, la
+   * caméra qui l'avait produite, pour qu'aucun jeton ne saute au changement d'angle.
+   */
+  private redessinerElements(camAvant: Camera | null = this.camera): void {
     this.elements.forEach(el => {
       const n = this.nodesById.get(el.id);
-      const pos = n ? { x: n.x(), y: n.y() } : { x: el.x, y: el.y };
+      const sol = n
+        ? (camAvant ? camAvant.deprojeter(n.x(), n.y()) : { x: n.x(), y: n.y() })
+        : { x: el.x, y: el.y };
       n?.destroy();
       this.nodesById.delete(el.id);
       this.dessinerElement(el);
-      this.nodesById.get(el.id)?.position(pos);
+      this.placerNoeud(this.nodesById.get(el.id), sol.x, sol.y);
     });
     if (this.styleRendu() === 'realiste') ordonnerParProfondeur(this.nodesById.values());
     this.layer.draw();
   }
+
+  /** Place un nœud d'après des coordonnées TERRAIN (position écran + taille de profondeur). */
+  private placerNoeud(n: Konva.Group | undefined, x: number, y: number): void {
+    if (!n) return;
+    const p = this.versEcran(x, y);
+    n.position({ x: p.x, y: p.y });
+    n.scale({ x: p.echelle, y: p.echelle });
+  }
+
+  /** Points d'un tracé ramenés à l'écran (identité en vue de dessus). */
+  private tracePoints(pts: number[]): number[] {
+    return this.camera ? this.camera.projeterPolyligne(pts) : pts;
+  }
+
+  /** Reconstruit tous les tracés au nouvel angle. */
+  private redessinerTraces(): void {
+    this.layer.find('.trace').forEach(n => n.destroy());
+    this.traces.forEach(t => this.dessinerTrace(t));
+    this.layer.draw();
+  }
+
+  /** Empreinte des préférences déjà appliquées, pour ne pas redessiner pour rien. */
+  private prefsAppliquees = '';
 
   constructor() {
     const data = inject<SchemaEditorData>(MAT_DIALOG_DATA);
@@ -263,6 +390,16 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
     if (this.data.schemaJson) {
       try { const d = JSON.parse(this.data.schemaJson); if (d.terrain) this.terrain.set(d.terrain); } catch { }
     }
+    // Les préférences (style de rendu, angle) arrivent du serveur APRÈS l'ouverture du
+    // dialog : sans ce rattrapage, le premier schéma d'une session s'ouvrirait toujours
+    // à plat, quel que soit le réglage enregistré.
+    effect(() => {
+      const empreinte = `${this.prefs.valeur(PREF_STYLE_RENDU_SCHEMA) ?? ''}|${this.prefs.valeur(PREF_ANGLE_SCHEMA) ?? ''}`;
+      if (!this.stage || empreinte === this.prefsAppliquees) return;
+      this.prefsAppliquees = empreinte;
+      this.chargerAngle();
+      this.majCamera();
+    });
   }
 
   ngAfterViewInit(): void {
@@ -275,8 +412,9 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
     this.trForme = new Konva.Transformer({ rotateEnabled: false, ignoreStroke: true, padding: 4 });
     this.layer.add(this.trForme);
     this.creerTransformerRotation();
-    this.prefs.charger();   // style de rendu (tableau / réaliste) persisté par entraîneur
-    this.dessinerTerrain();
+    this.prefs.charger();   // style de rendu + angle de caméra persistés par entraîneur
+    this.chargerAngle();
+    this.majCamera();
     this.chargerSchema();
     this.brancherDessin();
     this.chargerFormations();
@@ -298,7 +436,7 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
   private ajusterAuConteneur(): void {
     const body = this.containerRef.nativeElement.closest('.editor__pitch-body') as HTMLElement | null;
     if (!body) return;
-    const dispoW = body.clientWidth - 32, dispoH = body.clientHeight - 32;   // padding 16px de chaque côté
+    const dispoW = body.clientWidth - 10, dispoH = body.clientHeight - 10;   // marge de respiration
     if (dispoW <= 0 || dispoH <= 0) return;
     this.appliquerEchelle(Math.max(0.2, Math.min(dispoW / this.W, dispoH / this.H)));
   }
@@ -336,7 +474,7 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
 
   /** px par mètre selon le terrain (pour convertir une vitesse km/h en px/s). */
   private get pxParMetre(): number {
-    return this.W / LONGUEUR_TERRAIN_M[this.terrain()];
+    return this.W / espace(this.terrain()).metres;
   }
   private kmhEnPxS(kmh: number): number { return (kmh / 3.6) * this.pxParMetre; }
   private vitesseBallePxS(): number { return this.kmhEnPxS(BALLE_KMH); }
@@ -436,6 +574,11 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
     this.arreterMoteur();
     this.fermerPanneauZone();   // barrette « matérialiser » : posée sur document.body
     if (this.saveReglesTimer) { clearTimeout(this.saveReglesTimer); this.pousserRegles(); }
+    if (this.majAngle) {   // angle réglé juste avant la fermeture : on le pousse quand même
+      clearTimeout(this.majAngle);
+      const a = this.angle();
+      this.prefs.definir(PREF_ANGLE_SCHEMA, `${a.inclinaison}:${a.rotation}`);
+    }
     if (this.onFs) document.removeEventListener('fullscreenchange', this.onFs);
     window.removeEventListener('resize', this.onResize);
     if (document.fullscreenElement) document.exitFullscreen().catch(() => { });
@@ -445,9 +588,28 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
   // ── Palette ──
   basculer(section: string): void { this.ouvert.update(o => o === section ? null : section); }
 
+  /** Palette de droite : repliable pour rendre ses 320 px de largeur au terrain. */
+  panneauOuvert = signal(true);
+
+  basculerPanneau(): void {
+    this.panneauOuvert.update(o => !o);
+    // La grille se recompose au cycle suivant : on remesure ensuite, pas avant.
+    setTimeout(() => this.ajusterAuConteneur());
+  }
+
+  espaceCourant(): EspaceTerrain { return espace(this.terrain()); }
+
+  /** Sélecteur d'espace de jeu (vignettes). Un changement redimensionne la scène. */
+  choisirEspace(): void {
+    this.dialog.open(SchemaEspaceDialogComponent, { data: { courant: this.terrain() }, width: '620px', maxWidth: '94vw' })
+      .afterClosed().subscribe((t?: Terrain) => { if (t && t !== this.terrain()) this.changerTerrain(t); });
+  }
+
   changerTerrain(t: Terrain): void {
     this.terrain.set(t);
-    this.dessinerTerrain();
+    // Les dimensions changent : la scène, la caméra et son cadrage se refont dessus.
+    this.stage.width(this.W); this.stage.height(this.H);
+    this.majCamera();
     this.ajusterAuConteneur();
   }
 
@@ -606,7 +768,9 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
       keyframes: this.keyframes(),
     };
     // Miniature pour la grille de la bibliothèque (pixelRatio réduit = data URL légère).
-    const apercu = this.stage.toDataURL({ pixelRatio: 0.35 });
+    // Toujours prise à plat : à la taille d'une vignette, une vue inclinée perd la lecture
+    // des placements, qui est justement ce qu'on cherche à reconnaître dans la grille.
+    const apercu = this.captureVueDeDessus(0.35);
     this.data.enregistrer(JSON.stringify(data), apercu).subscribe({
       next: () => { this.snack.open('Schéma enregistré', 'Fermer', { duration: 2000 }); this.dialogRef.close(true); },
       error: () => this.snack.open('Enregistrement impossible', 'Fermer', { duration: 3000 }),
@@ -644,6 +808,25 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
     this.layer.draw();
   }
 
+  /** Rend la scène à plat le temps d'une capture, puis rétablit l'angle courant. */
+  private captureVueDeDessus(pixelRatio: number): string {
+    const cam = this.camera;
+    if (!cam) return this.stage.toDataURL({ pixelRatio });
+    this.camera = null;
+    this.dessinerTerrain();
+    this.redessinerElements(cam);      // les nœuds étaient projetés par `cam` : on déprojette
+    this.redessinerTraces();
+    this.redessinerFormes();
+    const url = this.stage.toDataURL({ pixelRatio });
+    this.camera = cam;
+    this.dessinerTerrain();
+    this.redessinerElements(null);     // les nœuds sont à plat : on reprojette
+    this.redessinerTraces();
+    this.redessinerFormes();
+    return url;
+  }
+
+  /** Export PNG déclenché par l'utilisateur : garde l'angle qu'il a choisi à l'écran. */
   capture(): void {
     const url = this.stage.toDataURL({ pixelRatio: 2 });
     const a = document.createElement('a');
@@ -743,7 +926,8 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
     const ballon = this.elements.find(e => e.type === 'ballon');
     if (!ballon || dt <= 0) return;
     const bNode = this.nodesById.get(ballon.id);
-    if (bNode) { ballon.x = bNode.x(); ballon.y = bNode.y(); }   // suit le drag OU la timeline
+    // Suit le drag OU la timeline — le nœud est en coordonnées écran, le moteur en terrain.
+    if (bNode) { const s = this.versTerrain(bNode.x(), bNode.y()); ballon.x = s.x; ballon.y = s.y; }
     const rel = pxVersRel({ x: ballon.x, y: ballon.y }, this.W, this.H);
     const tNow = performance.now() / 1000;
     if (this.phaseAuto()) this.majPossession(ballon, tNow);
@@ -792,12 +976,12 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
       const pas = this.vitesseJoueurPxS(el) * dt * this.vitesse();
       const r = dist <= pas ? 1 : pas / dist;
       el.x += dx * r; el.y += dy * r;
-      n.position({ x: el.x, y: el.y });
+      this.placerNoeud(n, el.x, el.y);
     }
 
     // Halo du porteur (suit son jeton ; masqué s'il n'y en a pas).
     if (this.porteurRing) {
-      if (porteur) { this.porteurRing.visible(true); this.porteurRing.position({ x: porteur.x, y: porteur.y }); }
+      if (porteur) { const p = this.versEcran(porteur.x, porteur.y); this.porteurRing.visible(true); this.porteurRing.position({ x: p.x, y: p.y }); }
       else this.porteurRing.visible(false);
     }
 
@@ -948,7 +1132,7 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
       this.porteurRing = undefined;   // détruit avec la couche
       try {
         const d = JSON.parse(schema.schemaJson);
-        if (d.terrain === 'complet' || d.terrain === 'demi') { this.terrain.set(d.terrain); this.dessinerTerrain(); }
+        if (estTerrain(d.terrain)) { this.terrain.set(d.terrain); this.majCamera(); }
         this.chargerContenu(d);
       } catch {
         this.resetKeyframes();
@@ -960,12 +1144,14 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
 
   // Rendu du terrain délégué à SchemaTerrainRenderer (./schema-terrain.renderer).
   private dessinerTerrain(): void {
-    this.terrainRenderer.dessiner(this.fieldLayer, this.terrain(), this.W, this.H);
+    if (this.camera) this.terrainRenderer.dessinerPerspective(this.fieldLayer, this.terrain(), this.W, this.H, this.camera);
+    else this.terrainRenderer.dessiner(this.fieldLayer, this.terrain(), this.W, this.H);
   }
 
   private dessinerElement(el: SchemaElement): void {
     const style = this.styleRendu();
-    const g = new Konva.Group({ x: el.x, y: el.y, draggable: true });
+    const p = this.versEcran(el.x, el.y);
+    const g = new Konva.Group({ x: p.x, y: p.y, scaleX: p.echelle, scaleY: p.echelle, draggable: true });
     const centre = centreVisuel(style);
     // Halo lumineux « joueur à surveiller » (dessiné en premier = derrière le jeton).
     if (el.surveille) {
@@ -998,29 +1184,37 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
       g.add(new Konva.Rect({ name: 'sel-hi', ...selRect, cornerRadius: 6, stroke: '#38bdf8', strokeWidth: 2, dash: [4, 3], listening: false }));
     }
 
+    // Le glisser travaille en coordonnées ÉCRAN (Konva suit le curseur) mais le modèle
+    // vit en coordonnées TERRAIN : chaque lecture de position repasse par la caméra.
     g.on('dragstart', () => {
       if (this.selection.has(el.id) && this.selection.size > 1) {
         this.dragBase.clear();
-        this.dragBase.set('_anchor', { x: g.x(), y: g.y() });
-        this.selection.forEach(id => { const n = this.nodesById.get(id); if (n) this.dragBase.set(id, { x: n.x(), y: n.y() }); });
+        this.dragBase.set('_anchor', this.versTerrain(g.x(), g.y()));
+        this.selection.forEach(id => { const n = this.nodesById.get(id); if (n) this.dragBase.set(id, this.versTerrain(n.x(), n.y())); });
       }
     });
     g.on('dragmove', () => {
+      const ici = this.versTerrain(g.x(), g.y());
+      // En vue inclinée, le jeton grossit en s'approchant et rapetisse en s'éloignant.
+      if (this.camera) { const s = this.versEcran(ici.x, ici.y).echelle; g.scale({ x: s, y: s }); }
       const anchor = this.dragBase.get('_anchor');
-      if (!anchor || !this.selection.has(el.id)) return;
-      const dx = g.x() - anchor.x, dy = g.y() - anchor.y;
+      if (!anchor || !this.selection.has(el.id)) { this.layer.batchDraw(); return; }
+      // Le groupe se déplace du même vecteur AU SOL (et non du même vecteur d'écran,
+      // qui ne représente pas la même distance selon la profondeur).
+      const dx = ici.x - anchor.x, dy = ici.y - anchor.y;
       this.selection.forEach(id => {
         if (id === el.id) return;
         const n = this.nodesById.get(id); const base = this.dragBase.get(id);
-        if (n && base) { n.x(base.x + dx); n.y(base.y + dy); }
+        if (n && base) this.placerNoeud(n, base.x + dx, base.y + dy);
       });
       this.layer.batchDraw();
     });
     g.on('dragend', () => {
+      const sol = this.versTerrain(g.x(), g.y());
       if (this.modeMoteur()) {
         // Mode Dynamique : on synchronise le modèle (pas de keyframe) et on traite la
         // correction éventuelle (toggle « enregistrer dans les règles »).
-        el.x = g.x(); el.y = g.y();
+        el.x = sol.x; el.y = sol.y;
         this.corrigerRegleDepuis(el);
         this.dragBase.clear();
         return;
@@ -1028,11 +1222,15 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
       const kf = this.keyframeAt(this.tempsCourant(), true)!;   // crée une keyframe si on est entre deux
       const maj = (id: string) => {
         const n = this.nodesById.get(id); const e = this.elements.find(x => x.id === id);
-        if (n && e) { e.x = n.x(); e.y = n.y(); kf.positions[id] = { x: e.x, y: e.y }; }
+        if (!n || !e) return;
+        const s = this.versTerrain(n.x(), n.y());
+        e.x = s.x; e.y = s.y; kf.positions[id] = { x: e.x, y: e.y };
       };
       if (this.selection.has(el.id) && this.selection.size > 1) { this.selection.forEach(maj); }
       else { maj(el.id); }
       this.dragBase.clear();
+      // La profondeur a changé : on rétablit l'ordre de superposition 2.5D.
+      if (this.styleRendu() === 'realiste') { ordonnerParProfondeur(this.nodesById.values()); this.layer.draw(); }
     });
     g.on('click tap', () => {
       if (this.modeMoteur()) {
@@ -1103,7 +1301,8 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
   private dessinerTrace(t: SchemaTrace): Konva.Group {
     const grp = new Konva.Group();
     const couleur = '#fde047';
-    const base = { points: t.points, stroke: couleur, strokeWidth: 3, tension: TENSION_TRACE, lineCap: 'round' as const, lineJoin: 'round' as const };
+    const pts = this.tracePoints(t.points);
+    const base = { points: pts, stroke: couleur, strokeWidth: 3, tension: TENSION_TRACE, lineCap: 'round' as const, lineJoin: 'round' as const };
     if (t.type === 'deplacement') {
       grp.add(new Konva.Arrow({ ...base, dash: [11, 7], fill: couleur, pointerLength: 11, pointerWidth: 11 }));
     } else if (t.type === 'passe') {
@@ -1112,8 +1311,8 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
       grp.add(new Konva.Line({ ...base }));
     } else { // tir
       grp.add(new Konva.Line({ ...base }));
-      const n = t.points.length;
-      grp.add(new Konva.Circle({ x: t.points[n - 2], y: t.points[n - 1], radius: 6, fill: couleur }));
+      const n = pts.length;
+      grp.add(new Konva.Circle({ x: pts[n - 2], y: pts[n - 1], radius: 6, fill: couleur }));
     }
     grp.on('click tap', () => {
       if (this.outil() === 'supprimer') {
@@ -1232,9 +1431,46 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
     return new Konva.Line({ points: [f.w / 2, 0, f.w, f.h / 2, f.w / 2, f.h, 0, f.h / 2], closed: true, fill, stroke, strokeWidth: 3 });
   }
 
+  /**
+   * Contour d'une zone en coordonnées LOCALES (0..w, 0..h). Une seule géométrie sert aux
+   * deux rendus : formes Konva à plat, polygone projeté en vue inclinée.
+   */
+  private contourForme(f: SchemaForme): number[] {
+    if (f.type === 'rect') return [0, 0, f.w, 0, f.w, f.h, 0, f.h];
+    if (f.type === 'triangle') return [f.w / 2, 0, f.w, f.h, 0, f.h];
+    if (f.type === 'losange') return [f.w / 2, 0, f.w, f.h / 2, f.w / 2, f.h, 0, f.h / 2];
+    const pts: number[] = [];   // ellipse échantillonnée (une ellipse projetée reste une conique)
+    for (let i = 0; i < 48; i++) {
+      const a = (i / 48) * Math.PI * 2;
+      pts.push(f.w / 2 * (1 + Math.cos(a)), f.h / 2 * (1 + Math.sin(a)));
+    }
+    return pts;
+  }
+
   /** (Re)construit le contenu d'une forme : la géométrie + le texte centré éventuel. */
   private dessinerContenuForme(g: Konva.Group, f: SchemaForme): void {
     g.destroyChildren();
+    const fill = f.couleur + '22', stroke = f.couleur;
+    if (this.camera) {
+      // Plan incliné : la zone devient un polygone projeté, décrit en absolu — un groupe
+      // positionné plus une forme locale ne suffirait pas, la projection n'est pas affine.
+      const loc = this.contourForme(f), abs: number[] = [];
+      for (let i = 0; i < loc.length; i += 2) abs.push(f.x + loc[i], f.y + loc[i + 1]);
+      g.position({ x: 0, y: 0 });
+      g.add(new Konva.Line({ points: this.camera.projeterPolyligne(abs), closed: true, fill, stroke, strokeWidth: 3 }));
+      if (f.texte) {
+        const c = this.camera.projeter(f.x + f.w / 2, f.y + f.h / 2);
+        const t = new Konva.Text({
+          text: f.texte, align: 'center', wrap: 'none',
+          fontSize: (f.texteTaille ?? 20) * c.echelle, fontStyle: 'bold',
+          fill: f.texteCouleur || f.couleur, listening: false,
+        });
+        t.position({ x: c.x - t.width() / 2, y: c.y - t.height() / 2 });
+        g.add(t);
+      }
+      return;
+    }
+    g.position({ x: f.x, y: f.y });
     g.add(this.formeShape(f));
     if (f.texte) {
       const t = new Konva.Text({
@@ -1248,7 +1484,9 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
   }
 
   private dessinerForme(f: SchemaForme): Konva.Group {
-    const g = new Konva.Group({ x: f.x, y: f.y, draggable: true, name: 'forme' });
+    // Le déplacement d'une zone reste réservé à la vue de dessus : en plan incliné, un
+    // vecteur d'écran ne correspond pas à un vecteur au sol constant sur toute la zone.
+    const g = new Konva.Group({ draggable: !this.camera, name: 'forme' });
     this.dessinerContenuForme(g, f);
     g.on('dragstart', () => this.fermerPanneauZone());
     g.on('dragend', () => {
@@ -1286,6 +1524,13 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
 
   private selectionnerForme(g: Konva.Group, f: SchemaForme): void {
     this.clearSelection();
+    if (this.camera) {
+      // Le Transformer redimensionne via un rectangle englobant : sur un polygone projeté,
+      // ses poignées ne correspondraient à rien. Le panneau d'édition reste accessible.
+      this.snack.open('Repasse en vue « Dessus » pour redimensionner une zone.', 'Fermer', { duration: 2600 });
+      this.afficherPanneauZone(f, g);
+      return;
+    }
     this.trForme.nodes([g]);
     this.trForme.moveToTop();
     this.layer.draw();
@@ -1309,7 +1554,10 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
   private afficherPanneauZone(f: SchemaForme, g: Konva.Group): void {
     this.fermerPanneauZone();
     const box = this.stage.container().getBoundingClientRect();
-    const pos = g.getAbsolutePosition();
+    // Ancré sur le coin de la ZONE, pas sur l'origine du groupe : en vue inclinée le groupe
+    // est à (0,0) et porte un polygone en coordonnées absolues.
+    const coin = this.versEcran(f.x, f.y), ech = this.stage.scaleX();
+    const pos = { x: coin.x * ech, y: coin.y * ech };
     const d = document.createElement('div');
     Object.assign(d.style, {
       position: 'fixed',
@@ -1472,7 +1720,7 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
 
       // Outil Formes : dessiner une zone (rect/ellipse/losange) par glisser sur le vide.
       if (o === 'forme' && !this.surInteractif(e)) {
-        const p = this.stage.getRelativePointerPosition();
+        const p = this.pointeurSol();
         if (!p) return;
         this.formeStart = { x: p.x, y: p.y };
         const f: SchemaForme = { id: this.uid(), type: this.formeType(), x: p.x, y: p.y, w: 1, h: 1, couleur: this.couleurAnnot() };
@@ -1500,7 +1748,7 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
 
       if (!this.estOutilTrace(o) || this.modeDessin() === 'semi') return; // semi = clics
       if (this.surElement(e)) return;
-      const p = this.stage.getRelativePointerPosition();
+      const p = this.pointeurSol();
       if (!p) return;
       this.pointsEnCours = [p.x, p.y];
       this.dessinEnCours = this.creerApercu(o);
@@ -1511,12 +1759,11 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
     this.stage.on('mousemove touchmove', () => {
       // Forme en cours de tracé
       if (this.formeEnCours && this.formeEnCoursModel && this.formeStart) {
-        const p = this.stage.getRelativePointerPosition();
+        const p = this.pointeurSol();
         if (!p) return;
         const f = this.formeEnCoursModel, x0 = this.formeStart.x, y0 = this.formeStart.y;
         f.x = Math.min(x0, p.x); f.y = Math.min(y0, p.y);
         f.w = Math.max(1, Math.abs(p.x - x0)); f.h = Math.max(1, Math.abs(p.y - y0));
-        this.formeEnCours.position({ x: f.x, y: f.y });
         this.dessinerContenuForme(this.formeEnCours, f);
         this.layer.batchDraw();
         return;
@@ -1538,16 +1785,16 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
       }
 
       if (!this.dessinEnCours) return;
-      const p = this.stage.getRelativePointerPosition();
+      const p = this.pointeurSol();
       if (!p) return;
       if (this.modeDessin() === 'semi') {
         // aperçu élastique : points posés + segment vers le curseur
-        if (this.pointsEnCours.length >= 2) { this.dessinEnCours.points([...this.pointsEnCours, p.x, p.y]); this.layer.batchDraw(); }
+        if (this.pointsEnCours.length >= 2) { this.dessinEnCours.points(this.tracePoints([...this.pointsEnCours, p.x, p.y])); this.layer.batchDraw(); }
         return;
       }
       if (this.modeDessin() === 'assiste') {
         // ligne droite : départ -> position courante
-        this.dessinEnCours.points([this.pointsEnCours[0], this.pointsEnCours[1], p.x, p.y]);
+        this.dessinEnCours.points(this.tracePoints([this.pointsEnCours[0], this.pointsEnCours[1], p.x, p.y]));
         this.layer.batchDraw();
         return;
       }
@@ -1555,7 +1802,7 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
       const n = this.pointsEnCours.length;
       if (Math.hypot(p.x - this.pointsEnCours[n - 2], p.y - this.pointsEnCours[n - 1]) >= 20) {
         this.pointsEnCours.push(p.x, p.y);
-        this.dessinEnCours.points(this.pointsEnCours);
+        this.dessinEnCours.points(this.tracePoints(this.pointsEnCours));
         this.layer.batchDraw();
       }
     });
@@ -1588,7 +1835,7 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
       }
 
       if (this.modeDessin() === 'semi' || !this.dessinEnCours) return;
-      const p = this.stage.getRelativePointerPosition();
+      const p = this.pointeurSol();
       let pts: number[];
       if (this.modeDessin() === 'assiste') {
         pts = p ? [this.pointsEnCours[0], this.pointsEnCours[1], p.x, p.y] : this.pointsEnCours;
@@ -1606,7 +1853,7 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
     this.stage.on('click tap', (e) => {
       const o = this.outil();
       if (this.modeDessin() !== 'semi' || !this.estOutilTrace(o) || this.surElement(e)) return;
-      const p = this.stage.getRelativePointerPosition();
+      const p = this.pointeurSol();
       if (!p) return;
       if (!this.dessinEnCours) {
         this.pointsEnCours = [p.x, p.y];
@@ -1663,8 +1910,10 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
       const legs = traj.get(el.id);
       const p = legs ? this.posTrajectoire(legs, t) : this.posElement(el, t, kfs);
       el.x = p.x; el.y = p.y;
-      this.nodesById.get(el.id)?.position({ x: p.x, y: p.y });
+      this.placerNoeud(this.nodesById.get(el.id), p.x, p.y);
     }
+    // En 2.5D, l'ordre de superposition dépend de la profondeur : il change à chaque frame.
+    if (this.camera) ordonnerParProfondeur(this.nodesById.values());
     this.layer.batchDraw();
   }
 

@@ -1,4 +1,5 @@
 import Konva from 'konva';
+import { Camera, CAMERA_PRESENTATION } from './schema-camera';
 
 /**
  * Rendu PARTAGÉ des éléments de schéma tactique (source unique éditeur + viewer +
@@ -36,12 +37,60 @@ export function ordonnerParProfondeur(nodes: Iterable<Konva.Group>): void {
 
 /** Assombrit une couleur hex (#RRGGBB) d'un facteur 0..1 (shorts, dégradés de sprites). */
 export function assombrir(hex: string | undefined, f: number): string {
+  return melanger(hex, f, 0);
+}
+
+/** Éclaircit une couleur hex (#RRGGBB) d'un facteur 0..1 (faces éclairées des sprites). */
+export function eclaircir(hex: string | undefined, f: number): string {
+  return melanger(hex, f, 255);
+}
+
+function melanger(hex: string | undefined, f: number, vers: number): string {
   const m = /^#?([0-9a-f]{6})$/i.exec(hex ?? '');
   if (!m) return '#334155';
   const n = parseInt(m[1], 16);
-  const c = (v: number) => Math.max(0, Math.round(v * (1 - f)));
+  const c = (v: number) => Math.max(0, Math.min(255, Math.round(v + (vers - v) * f)));
   const r = c((n >> 16) & 255), g = c((n >> 8) & 255), b = c(n & 255);
   return `#${((r << 16) | (g << 8) | b).toString(16).padStart(6, '0')}`;
+}
+
+// ─────────────── Crochet sprites image (remplacement des silhouettes vectorielles) ───────────────
+
+/**
+ * Source d'image pour un type d'élément. Enregistrer une source SUFFIT à remplacer le
+ * dessin vectoriel — aucun appelant à modifier. Prévu pour brancher un jour des sprites
+ * pré-rendus (cf. plan_vue_25d_camera) : ils s'affichent en « billboard », face caméra,
+ * ancrés par les pieds, exactement comme les silhouettes actuelles.
+ *
+ * La teinte du maillot par club est à la charge de la source (elle reçoit la couleur et
+ * rend l'image correspondante, à elle de la mettre en cache).
+ */
+export interface SourceSprite {
+  image: (couleur: string | undefined) => CanvasImageSource | null;
+  /** Hauteur de rendu en px terrain ; la largeur suit le ratio naturel de l'image. */
+  hauteur: number;
+  /** Largeur de rendu en px terrain. */
+  largeur: number;
+}
+
+const sourcesSprite = new Map<string, SourceSprite>();
+
+export function definirSourceSprite(type: string, source: SourceSprite | null): void {
+  if (source) sourcesSprite.set(type, source);
+  else sourcesSprite.delete(type);
+}
+
+/** Pose le sprite image d'un type s'il en existe un. Retourne faux sinon (rendu vectoriel). */
+function spriteImage(g: Konva.Group, type: string, couleur: string | undefined): boolean {
+  const src = sourcesSprite.get(type);
+  const img = src?.image(couleur);
+  if (!src || !img) return false;
+  ombreSol(g, src.largeur * 0.34, src.largeur * 0.12);
+  g.add(new Konva.Image({
+    image: img as CanvasImageSource & { width: number; height: number },
+    x: -src.largeur / 2, y: -src.hauteur, width: src.largeur, height: src.hauteur,
+  }));
+  return true;
 }
 
 /** Chip « joueur » du mode tableau (rectangle ajusté au texte) — réutilisé par la calibration. */
@@ -149,37 +198,70 @@ function etiquette(g: Konva.Group, texte: string | undefined): void {
   g.add(t);
 }
 
-/** Silhouette joueur ~38 px, pieds en (0,0). Maillot = couleur d'équipe, short assombri.
- *  Deux poses (statique / course) pour casser l'uniformité, choisies par l'appelant. */
-function spriteJoueur(g: Konva.Group, couleur: string | undefined, pose: 0 | 1): void {
+/**
+ * Silhouette joueur ~38 px, pieds en (0,0), vue de trois-quarts. Maillot = couleur
+ * d'équipe (dégradé haut clair / bas sombre, comme un éclairage de stade), short et
+ * chaussettes dérivés. Deux poses (statique / course) pour casser l'uniformité.
+ *
+ * Reste du dessin vectoriel : recolorable par code, net à toutes les échelles et à
+ * l'impression. Pour un rendu photo, brancher {@link definirSourceSprite}.
+ */
+function spriteJoueur(g: Konva.Group, couleur: string | undefined, pose: 0 | 1, numero?: number): void {
   const maillot = couleur || '#3B82F6';
-  const short = assombrir(maillot, 0.45);
-  ombreSol(g);
-  if (pose === 0) {
-    // Pose statique : jambes légèrement écartées.
-    g.add(new Konva.Line({ points: [-4, 0, -3, -10], stroke: PEAU, strokeWidth: 3.6, lineCap: 'round' }));
-    g.add(new Konva.Line({ points: [4, 0, 3, -10], stroke: PEAU, strokeWidth: 3.6, lineCap: 'round' }));
-  } else {
-    // Pose course : une jambe en avant, une repliée derrière.
-    g.add(new Konva.Line({ points: [-6, -1, -2, -10], stroke: PEAU, strokeWidth: 3.6, lineCap: 'round' }));
-    g.add(new Konva.Line({ points: [6, -2, 3, -10], stroke: PEAU, strokeWidth: 3.6, lineCap: 'round' }));
-  }
-  // Short puis torse (maillot) — trapèze léger pour donner du volume.
-  g.add(new Konva.Rect({ x: -5.5, y: -16, width: 11, height: 7, cornerRadius: 2, fill: short }));
+  const clair = eclaircir(maillot, 0.3), sombre = assombrir(maillot, 0.32);
+  const short = assombrir(maillot, 0.55), chaussette = assombrir(maillot, 0.2);
+  ombreSol(g, 11, 3.8);
+
+  // ── Jambes : cuisse (peau) puis chaussette, pour donner l'articulation du genou ──
+  const jambe = (xPied: number, xGenou: number, xHanche: number) => {
+    g.add(new Konva.Line({ points: [xGenou, -9.5, xHanche, -16], stroke: PEAU, strokeWidth: 3.8, lineCap: 'round' }));
+    g.add(new Konva.Line({ points: [xPied, -0.5, xGenou, -9.5], stroke: chaussette, strokeWidth: 3.4, lineCap: 'round' }));
+    g.add(new Konva.Ellipse({ x: xPied, y: 0, radiusX: 2.6, radiusY: 1.4, fill: '#F1F5F9' }));
+  };
+  if (pose === 0) { jambe(-3.6, -3.2, -2.4); jambe(3.6, 3.2, 2.4); }
+  else { jambe(-6.2, -4, -2.4); jambe(5.6, 3.4, 2.4); }
+
+  // ── Short ──
   g.add(new Konva.Line({
-    points: [-6, -16, -5, -29, 5, -29, 6, -16], closed: true,
-    fill: maillot, stroke: assombrir(maillot, 0.25), strokeWidth: 1,
+    points: [-6, -17, 6, -17, 5.2, -9, 0.6, -10, 0, -13, -0.6, -10, -5.2, -9], closed: true, fill: short,
   }));
-  // Bras (manches couleur maillot).
-  if (pose === 0) {
-    g.add(new Konva.Line({ points: [-6, -27, -8, -19], stroke: maillot, strokeWidth: 3, lineCap: 'round' }));
-    g.add(new Konva.Line({ points: [6, -27, 8, -19], stroke: maillot, strokeWidth: 3, lineCap: 'round' }));
-  } else {
-    g.add(new Konva.Line({ points: [-6, -27, -9, -21], stroke: maillot, strokeWidth: 3, lineCap: 'round' }));
-    g.add(new Konva.Line({ points: [6, -27, 9, -26], stroke: maillot, strokeWidth: 3, lineCap: 'round' }));
+
+  // ── Torse : trapèze épaules > taille, dégradé vertical ──
+  g.add(new Konva.Line({
+    points: [-5.8, -16.5, -6.6, -29, 6.6, -29, 5.8, -16.5], closed: true,
+    fillLinearGradientStartPoint: { x: 0, y: -29 },
+    fillLinearGradientEndPoint: { x: 0, y: -16.5 },
+    fillLinearGradientColorStops: [0, clair, 1, maillot],
+    stroke: sombre, strokeWidth: 0.9,
+  }));
+  // Ombre portée du bras droit sur le flanc : c'est elle qui donne le volume.
+  g.add(new Konva.Line({ points: [4.4, -28.4, 3.8, -17], stroke: sombre, strokeWidth: 1.6, opacity: 0.45, lineCap: 'round' }));
+
+  // ── Bras : manche courte (maillot) puis avant-bras (peau) ──
+  const bras = (xEp: number, xCo: number, yCo: number, xMa: number, yMa: number) => {
+    g.add(new Konva.Line({ points: [xEp, -28, xCo, yCo], stroke: maillot, strokeWidth: 3.2, lineCap: 'round' }));
+    g.add(new Konva.Line({ points: [xCo, yCo, xMa, yMa], stroke: PEAU, strokeWidth: 2.6, lineCap: 'round' }));
+  };
+  if (pose === 0) { bras(-6, -7.6, -23, -8.4, -18); bras(6, 7.6, -23, 8.4, -18); }
+  else { bras(-6, -8.6, -24, -9.6, -19.5); bras(6, 8.6, -25.5, 9.4, -29); }
+
+  // ── Numéro de maillot (lisible seulement à un chiffre ou deux) ──
+  if (numero != null) {
+    const t = new Konva.Text({
+      text: String(numero), fontSize: 7.5, fontStyle: 'bold', wrap: 'none',
+      fill: eclaircir(maillot, 0.85), listening: false,
+    });
+    t.offsetX(t.width() / 2);
+    t.y(-26.5);
+    g.add(t);
   }
-  // Tête.
-  g.add(new Konva.Circle({ x: 0, y: -33.5, radius: 4.6, fill: PEAU, stroke: assombrir(PEAU, 0.3), strokeWidth: 0.8 }));
+
+  // ── Cou, tête et cheveux ──
+  g.add(new Konva.Line({ points: [0, -29.5, 0, -32], stroke: assombrir(PEAU, 0.22), strokeWidth: 3 }));
+  g.add(new Konva.Circle({ x: 0, y: -34.6, radius: 4.7, fill: PEAU, stroke: assombrir(PEAU, 0.34), strokeWidth: 0.8 }));
+  g.add(new Konva.Arc({
+    x: 0, y: -34.6, innerRadius: 0, outerRadius: 4.7, angle: 190, rotation: 175, fill: '#3A2A20',
+  }));
 }
 
 /** Cône d'entraînement (plot) : base + cône avec bande, recolorable. */
@@ -191,12 +273,13 @@ function spritePlot(g: Konva.Group, couleur: string | undefined): void {
   g.add(new Konva.Line({ points: [-4.4, -7, 4.4, -7], stroke: '#fff', strokeWidth: 2.2, opacity: 0.9 }));
 }
 
-/** Ballon : sphère blanche + motif, petite ombre. */
+/** Ballon : sphère blanche + motif, petite ombre. Volontairement généreux : c'est le
+ *  repère que l'œil cherche en premier sur un schéma projeté en salle. */
 function spriteBallon(g: Konva.Group): void {
-  ombreSol(g, 7, 2.6);
-  g.add(new Konva.Circle({ x: 0, y: -6, radius: 6.5, fill: '#fff', stroke: '#111', strokeWidth: 1.4 }));
-  g.add(new Konva.RegularPolygon({ x: 0, y: -6.5, sides: 5, radius: 2.6, fill: '#111' }));
-  g.add(new Konva.Arc({ x: 0, y: -6, innerRadius: 5.2, outerRadius: 6.4, angle: 90, rotation: 300, fill: '#11111133' }));
+  ombreSol(g, 11, 3.8);
+  g.add(new Konva.Circle({ x: 0, y: -9.5, radius: 10.4, fill: '#fff', stroke: '#111', strokeWidth: 1.6 }));
+  g.add(new Konva.RegularPolygon({ x: 0, y: -10.3, sides: 5, radius: 4.2, fill: '#111' }));
+  g.add(new Konva.Arc({ x: 0, y: -9.5, innerRadius: 8.3, outerRadius: 10.2, angle: 90, rotation: 300, fill: '#11111133' }));
 }
 
 /** Mini-but : cadre blanc vu de trois-quarts avec retour de filet. */
@@ -277,10 +360,15 @@ function spriteCoupelle(g: Konva.Group, couleur: string | undefined): void {
 
 /** `hors` reçoit ce qui ne doit jamais tourner avec l'élément (étiquette du joueur). */
 function corpsRealiste(g: Konva.Group, el: ElementRendu, hors: Konva.Group): void {
+  // Un sprite image enregistré pour ce type prend le pas sur le dessin vectoriel.
+  if (spriteImage(g, el.type, el.couleur)) {
+    if (el.type === 'joueur') etiquette(hors, el.label ?? (el.numero != null ? String(el.numero) : undefined));
+    return;
+  }
   if (el.type === 'joueur') {
     // Pose stable par élément (hash simple de l'id) : variété sans aléa au re-rendu.
     const pose = ((el.id.charCodeAt(el.id.length - 1) ?? 0) % 2) as 0 | 1;
-    spriteJoueur(g, el.couleur, pose);
+    spriteJoueur(g, el.couleur, pose, el.numero);
     etiquette(hors, el.label ?? (el.numero != null ? String(el.numero) : undefined));
   } else if (el.type === 'ballon') {
     spriteBallon(g);
@@ -306,35 +394,27 @@ function corpsRealiste(g: Konva.Group, el: ElementRendu, hors: Konva.Group): voi
 // ═══════════════════ Perspective (mode présentation / diaporama) ═══════════════════
 
 /**
- * Projection « caméra tribune » d'un point vue-de-dessus (x, y) ∈ [0..W]×[0..H] vers le
- * trapèze perspective : la ligne du haut est rétrécie (RATIO_HAUT) et l'axe vertical est
- * compressé au loin (projective). `echelle` sert à dimensionner les sprites selon la
- * profondeur. L'édition reste en vue de dessus : cette projection n'est appliquée qu'au
- * RENDU (viewer/diaporama), jamais aux données.
+ * Façade historique sur la caméra perspective (cf. schema-camera.ts), conservée pour les
+ * appelants qui n'ont pas d'angle à piloter : ils obtiennent l'angle de présentation par
+ * défaut. Les appelants qui règlent l'angle (éditeur) instancient une {@link Camera}.
+ *
+ * Les caméras sont mémorisées par dimensions : la construction fait un cadrage
+ * automatique, inutile de le refaire à chaque point projeté.
  */
-export const PERSPECTIVE = {
-  RATIO_HAUT: 0.72,   // largeur relative de la ligne de fond (haut de l'écran)
-  HORIZON: 0.06,      // marge haute (part de H)
-  PROFONDEUR: 1.0,    // coefficient projectif de compression verticale
-};
+const camerasParDefaut = new Map<string, Camera>();
+
+function cameraDefaut(W: number, H: number): Camera {
+  const cle = `${W}x${H}`;
+  let c = camerasParDefaut.get(cle);
+  if (!c) { c = new Camera(W, H, CAMERA_PRESENTATION); camerasParDefaut.set(cle, c); }
+  return c;
+}
 
 export function projeter(x: number, y: number, W: number, H: number): { x: number; y: number; echelle: number } {
-  const { RATIO_HAUT, HORIZON, PROFONDEUR } = PERSPECTIVE;
-  const t = Math.max(0, Math.min(1, y / H));
-  // Compression projective : le fond (t=0) est tassé, le premier plan (t=1) est étiré.
-  const tp = t * (1 + PROFONDEUR) / (1 + PROFONDEUR * t);
-  const yP = H * (HORIZON + (1 - HORIZON) * tp);
-  const s = RATIO_HAUT + (1 - RATIO_HAUT) * tp;
-  const xP = W / 2 + (x - W / 2) * s;
-  return { x: xP, y: yP, echelle: s };
+  return cameraDefaut(W, H).projeter(x, y);
 }
 
 /** Projette une polyligne [x0,y0,x1,y1,…] (tracés passe/déplacement…). */
 export function projeterPoints(pts: number[], W: number, H: number): number[] {
-  const out: number[] = [];
-  for (let i = 0; i < pts.length - 1; i += 2) {
-    const p = projeter(pts[i], pts[i + 1], W, H);
-    out.push(p.x, p.y);
-  }
-  return out;
+  return cameraDefaut(W, H).projeterPolyligne(pts);
 }

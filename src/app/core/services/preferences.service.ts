@@ -6,6 +6,8 @@ import { HttpClient } from '@angular/common/http';
 // `seance_avancee`, sans interrupteur à armer. Les lignes déjà en base restent inertes — elles
 // ne valent pas une migration de suppression.
 export const PREF_STYLE_RENDU_SCHEMA = 'style_rendu_schema';
+/** Angle de la caméra du rendu incliné, sérialisé « inclinaison:rotation » (degrés). */
+export const PREF_ANGLE_SCHEMA = 'angle_camera_schema';
 
 /**
  * Préférences d'interface de l'utilisateur courant, persistées côté serveur

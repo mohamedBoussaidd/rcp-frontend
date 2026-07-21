@@ -1,11 +1,15 @@
 import { AfterViewInit, Component, ElementRef, Input, OnChanges, OnDestroy, ViewChild, inject } from '@angular/core';
 import Konva from 'konva';
 import { JoueurService } from '@core/services/joueur.service';
-import { PreferencesService, PREF_STYLE_RENDU_SCHEMA } from '@core/services/preferences.service';
+import { PreferencesService, PREF_ANGLE_SCHEMA, PREF_STYLE_RENDU_SCHEMA } from '@core/services/preferences.service';
 import { SchemaTerrainRenderer } from '../schema-editor/schema-terrain.renderer';
+import { Terrain, espace } from '../schema-editor/schema-espaces';
 import {
-  StyleRendu, dessinerCorpsElement, ordonnerParProfondeur, projeter, projeterPoints,
+  StyleRendu, dessinerCorpsElement, ordonnerParProfondeur,
 } from '../schema-render/schema-render';
+import {
+  Camera, CAMERA_PRESENTATION, INCLINAISON_MAX, ParamsCamera, PRESETS_CAMERA,
+} from '../schema-render/schema-camera';
 
 interface SchemaElement { id: string; type: string; couleur?: string; numero?: number; label?: string; joueurId?: string; rotation?: number; x: number; y: number; }
 interface SchemaTrace { id: string; type: string; points: number[]; elementId?: string; ballId?: string; }
@@ -15,7 +19,6 @@ interface Keyframe { t: number; positions: Record<string, { x: number; y: number
 const VITESSE_DEFAUT_KMH = 24;
 const BALLE_KMH = 60;
 const RAYON_LIEN = 60;
-const LONGUEUR_TERRAIN_M: Record<string, number> = { complet: 105, demi: 52.5 };
 // Tension de la spline Konva : identique à l'éditeur (rendu + échantillonnage cheminRendu),
 // pour que la courbe affichée et la trajectoire du jeton soient les mêmes des deux côtés.
 const TENSION_TRACE = 0.8;
@@ -40,7 +43,33 @@ const TENSION_TRACE = 0.8;
           <button type="button" [class.on]="styleRendu() === 'realiste'" (click)="choisirStyle('realiste')" title="Vue réaliste">⚽</button>
           @if (presentation) {
             <button type="button" [class.on]="perspective" (click)="basculerPerspective()" title="Terrain en perspective">⛰</button>
+            @if (perspective && styleRendu() === 'realiste') {
+              <button type="button" [class.on]="reglageAngle" (click)="reglageAngle = !reglageAngle"
+                      title="Régler l'angle de la caméra">⟳</button>
+            }
           }
+        </div>
+      }
+      <!-- Réglage d'angle : même angle persisté que l'éditeur. -->
+      @if (reglageAngle && perspective && styleRendu() === 'realiste') {
+        <div class="sv-angle">
+          <div class="sv-presets">
+            @for (p of presetsCamera; track p.cle) {
+              <button type="button" [class.on]="presetActif() === p.cle" (click)="appliquerPreset(p.cle)">{{ p.libelle }}</button>
+            }
+          </div>
+          <label>
+            <span>Inclinaison</span>
+            <input type="range" min="0" [max]="inclinaisonMax" step="1"
+                   [value]="angle.inclinaison" (input)="reglerInclinaison(+$any($event.target).value)">
+            <b>{{ angle.inclinaison }}°</b>
+          </label>
+          <label>
+            <span>Rotation</span>
+            <input type="range" min="-180" max="180" step="1"
+                   [value]="angle.rotation" (input)="reglerRotation(+$any($event.target).value)">
+            <b>{{ angle.rotation }}°</b>
+          </label>
         </div>
       }
     </div>
@@ -65,6 +94,23 @@ const TENSION_TRACE = 0.8;
       font-size:.85rem; cursor:pointer; display:flex; align-items:center; justify-content:center;
     }
     .sv-styles button.on { background:#1A9C4D; border-color:#1A9C4D; }
+    .sv-angle {
+      position:absolute; right:8px; bottom:44px; width:216px;
+      display:flex; flex-direction:column; gap:7px;
+      padding:9px 10px; border-radius:9px;
+      border:1px solid #ffffff33; background:rgba(20,24,40,.9); color:#fff;
+      font-size:.7rem;
+    }
+    .sv-presets { display:flex; flex-wrap:wrap; gap:4px; }
+    .sv-presets button {
+      flex:1 1 auto; padding:3px 6px; border-radius:6px; cursor:pointer;
+      border:1px solid #ffffff44; background:transparent; color:#fff; font-size:.68rem;
+    }
+    .sv-presets button.on { background:#1A9C4D; border-color:#1A9C4D; }
+    .sv-angle label { display:flex; align-items:center; gap:6px; }
+    .sv-angle label span { flex:0 0 60px; opacity:.75; }
+    .sv-angle label input { flex:1; min-width:0; accent-color:#1A9C4D; cursor:pointer; }
+    .sv-angle label b { flex:0 0 34px; text-align:right; font-variant-numeric:tabular-nums; font-weight:600; }
   `],
 })
 export class SchemaViewerComponent implements AfterViewInit, OnChanges, OnDestroy {
@@ -76,12 +122,23 @@ export class SchemaViewerComponent implements AfterViewInit, OnChanges, OnDestro
   /** Mode présentation (diaporama) : propose en plus le terrain en perspective. */
   @Input() presentation = false;
 
-  /** Terrain en perspective (réservé au mode présentation, l'édition reste vue de dessus). */
+  /** Terrain en perspective (réservé au mode présentation). */
   perspective = false;
+  /** Panneau de réglage de l'angle ouvert (mode présentation). */
+  reglageAngle = false;
+
+  readonly presetsCamera = PRESETS_CAMERA;
+  readonly inclinaisonMax = INCLINAISON_MAX;
+  /** Angle courant — MÊME préférence que l'éditeur : un angle réglé une fois vaut partout. */
+  angle: ParamsCamera = { ...CAMERA_PRESENTATION };
+  private camera?: Camera;
 
   @ViewChild('c', { static: true }) containerRef!: ElementRef<HTMLDivElement>;
 
   private stage?: Konva.Stage;
+  private fond?: Konva.Layer;
+  private couche?: Konva.Layer;
+  private majAngle?: ReturnType<typeof setTimeout>;
   private pret = false;
 
   private nodesById = new Map<string, Konva.Group>();
@@ -91,7 +148,7 @@ export class SchemaViewerComponent implements AfterViewInit, OnChanges, OnDestro
   private dureeSecondes = 10;
   private modeAnim: 'temps' | 'vitesse' = 'temps';
   private metriqueVitesse: 'max' | 'moyenne' = 'moyenne';
-  private terrain = 'complet';
+  private terrain: Terrain = 'complet';
   private W = 1040;
   private vitesses = new Map<string, { vmax: number | null; vmoy: number | null }>();
   private anim?: Konva.Animation;
@@ -117,7 +174,63 @@ export class SchemaViewerComponent implements AfterViewInit, OnChanges, OnDestro
 
   basculerPerspective(): void {
     this.perspective = !this.perspective;
+    if (!this.perspective) this.reglageAngle = false;
     this.rendre();
+  }
+
+  presetActif(): string {
+    return this.presetsCamera.find(p => p.params.inclinaison === this.angle.inclinaison
+      && p.params.rotation === this.angle.rotation)?.cle ?? '';
+  }
+
+  appliquerPreset(cle: string): void {
+    const p = this.presetsCamera.find(x => x.cle === cle);
+    if (p) this.definirAngle({ ...p.params });
+  }
+
+  reglerInclinaison(v: number): void { this.definirAngle({ ...this.angle, inclinaison: v }); }
+  reglerRotation(v: number): void { this.definirAngle({ ...this.angle, rotation: v }); }
+
+  private definirAngle(a: ParamsCamera): void {
+    this.angle = a;
+    this.reprojeter();
+    // Persistance différée : un glisser de slider émet des dizaines d'événements, et
+    // chacun déclencherait sinon un PUT.
+    clearTimeout(this.majAngle);
+    this.majAngle = setTimeout(() => this.prefs.definir(PREF_ANGLE_SCHEMA, `${a.inclinaison}:${a.rotation}`), 400);
+  }
+
+  /**
+   * Reprojette la scène au nouvel angle SANS la reconstruire : reconstruire couperait
+   * l'animation en cours, or c'est précisément pendant une présentation qu'on ajuste la vue.
+   */
+  private reprojeter(): void {
+    if (!this.stage || !this.fond || !this.couche) return;
+    const avant = this.camera;
+    this.camera = this.enPerspective() ? new Camera(this.W, this.Hauteur, this.angle) : undefined;
+    if (this.camera) this.terrainRenderer.dessinerPerspective(this.fond, this.terrain, this.W, this.Hauteur, this.camera);
+    else this.terrainRenderer.dessiner(this.fond, this.terrain, this.W, this.Hauteur);
+    // Les jetons sont replacés depuis leur position ÉCRAN courante — la seule qui reflète
+    // une animation en cours — déprojetée par l'ANCIENNE caméra, celle qui l'avait produite.
+    this.elements.forEach(el => {
+      const n = this.nodesById.get(el.id);
+      if (n) this.placerNode(el.id, avant ? avant.deprojeter(n.x(), n.y()) : { x: n.x(), y: n.y() });
+    });
+    this.couche.find('.trace').forEach(n => n.destroy());
+    this.traces.forEach(t => this.dessinerTrace(this.couche!, t));
+    if (this.styleRendu() === 'realiste') ordonnerParProfondeur(this.nodesById.values());
+    this.fond.draw(); this.couche.draw();
+  }
+
+  /** Reprend l'angle enregistré (par l'éditeur ou par une session précédente). */
+  private chargerAngle(): void {
+    const [i, r] = (this.prefs.valeur(PREF_ANGLE_SCHEMA) ?? '').split(':').map(Number);
+    if (Number.isFinite(i) && Number.isFinite(r)) {
+      this.angle = {
+        inclinaison: Math.max(0, Math.min(INCLINAISON_MAX, i)),
+        rotation: Math.max(-180, Math.min(180, r)),
+      };
+    }
   }
 
   /** Perspective effective : demandée ET en mode présentation ET style réaliste. */
@@ -128,6 +241,7 @@ export class SchemaViewerComponent implements AfterViewInit, OnChanges, OnDestro
   ngAfterViewInit(): void {
     this.pret = true;
     this.prefs.charger();
+    this.chargerAngle();
     this.joueurService.getVitesses().subscribe({
       next: vs => { this.vitesses.clear(); vs.forEach(v => this.vitesses.set(v.joueurId, { vmax: v.vmaxKmh, vmoy: v.vmoyKmh })); },
       error: () => { },
@@ -135,7 +249,7 @@ export class SchemaViewerComponent implements AfterViewInit, OnChanges, OnDestro
     this.rendre();
   }
   ngOnChanges(): void { if (this.pret) this.rendre(); }
-  ngOnDestroy(): void { this.anim?.stop(); this.stage?.destroy(); }
+  ngOnDestroy(): void { clearTimeout(this.majAngle); this.anim?.stop(); this.stage?.destroy(); }
 
   /** PNG du schéma (pour l'impression). */
   toDataURL(): string | null {
@@ -151,22 +265,26 @@ export class SchemaViewerComponent implements AfterViewInit, OnChanges, OnDestro
     let data: { terrain: string; elements: SchemaElement[]; traces: SchemaTrace[]; keyframes?: Keyframe[]; dureeSecondes?: number; modeAnim?: 'temps' | 'vitesse'; metriqueVitesse?: 'max' | 'moyenne' };
     try { data = JSON.parse(this.schemaJson); } catch { return; }
 
-    this.terrain = data.terrain === 'demi' ? 'demi' : 'complet';
-    const W = data.terrain === 'demi' ? 600 : 1040;
+    // Espace inconnu (schéma plus récent que ce front) : repli sur le terrain complet.
+    const esp = espace(data.terrain);
+    this.terrain = esp.cle;
+    const W = esp.W;
     this.W = W;
-    const H = 680;
+    const H = esp.H;
     const s = this.largeur / W;
 
     this.stage = new Konva.Stage({ container: this.containerRef.nativeElement, width: W * s, height: H * s, scaleX: s, scaleY: s });
     const fond = new Konva.Layer();
     const couche = new Konva.Layer();
+    this.fond = fond; this.couche = couche;
     this.stage.add(fond); this.stage.add(couche);
     // Terrain partagé avec l'éditeur (une seule source de rendu) ; en mode présentation,
     // variante perspective « tribune ».
-    if (this.enPerspective()) {
-      this.terrainRenderer.dessinerPerspective(fond, this.terrain as 'complet' | 'demi', W, H);
+    this.camera = this.enPerspective() ? new Camera(W, H, this.angle) : undefined;
+    if (this.camera) {
+      this.terrainRenderer.dessinerPerspective(fond, this.terrain, W, H, this.camera);
     } else {
-      this.terrainRenderer.dessiner(fond, this.terrain as 'complet' | 'demi', W, H);
+      this.terrainRenderer.dessiner(fond, this.terrain, W, H);
     }
     this.elements = data.elements ?? [];
     this.traces = data.traces ?? [];
@@ -223,8 +341,8 @@ export class SchemaViewerComponent implements AfterViewInit, OnChanges, OnDestro
   private placerNode(id: string, p: { x: number; y: number }): void {
     const n = this.nodesById.get(id);
     if (!n) return;
-    if (this.enPerspective()) {
-      const pr = projeter(p.x, p.y, this.W, 680);
+    if (this.camera) {
+      const pr = this.camera.projeter(p.x, p.y);
       n.position({ x: pr.x, y: pr.y });
       n.scale({ x: pr.echelle, y: pr.echelle });
     } else {
@@ -342,7 +460,10 @@ export class SchemaViewerComponent implements AfterViewInit, OnChanges, OnDestro
     return res;
   }
 
-  private get pxParMetre(): number { return this.W / (LONGUEUR_TERRAIN_M[this.terrain] ?? 105); }
+  private get pxParMetre(): number { return this.W / espace(this.terrain).metres; }
+
+  /** Hauteur de la scène : dépend de l'espace (la zone libre est carrée, pas 680 px). */
+  private get Hauteur(): number { return espace(this.terrain).H; }
   private kmhEnPxS(kmh: number): number { return (kmh / 3.6) * this.pxParMetre; }
   private vitesseBallePxS(): number { return this.kmhEnPxS(BALLE_KMH); }
   private vitesseJoueurPxS(joueur?: SchemaElement): number {
@@ -462,8 +583,8 @@ export class SchemaViewerComponent implements AfterViewInit, OnChanges, OnDestro
     const couleur = '#fde047';
     // Les tracés gardent leur rendu dans les deux styles ; en perspective, seuls les
     // points sont projetés (le style de flèche reste identique).
-    const pts = this.enPerspective() ? projeterPoints(t.points, this.W, 680) : t.points;
-    const base = { points: pts, stroke: couleur, strokeWidth: 3, tension: TENSION_TRACE, lineCap: 'round' as const, lineJoin: 'round' as const };
+    const pts = this.camera ? this.camera.projeterPolyligne(t.points) : t.points;
+    const base = { points: pts, name: 'trace', stroke: couleur, strokeWidth: 3, tension: TENSION_TRACE, lineCap: 'round' as const, lineJoin: 'round' as const };
     if (t.type === 'deplacement') {
       layer.add(new Konva.Arrow({ ...base, dash: [11, 7], fill: couleur, pointerLength: 11, pointerWidth: 11 }));
     } else if (t.type === 'passe') {
@@ -473,7 +594,7 @@ export class SchemaViewerComponent implements AfterViewInit, OnChanges, OnDestro
     } else {
       layer.add(new Konva.Line({ ...base }));
       const n = pts.length;
-      layer.add(new Konva.Circle({ x: pts[n - 2], y: pts[n - 1], radius: 6, fill: couleur }));
+      layer.add(new Konva.Circle({ x: pts[n - 2], y: pts[n - 1], radius: 6, fill: couleur, name: 'trace' }));
     }
   }
 

@@ -20,7 +20,7 @@
     </div>
   </div>
 
-  <div class="editor">
+  <div class="editor" [class.sans-panneau]="!panneauOuvert()">
 
     <!-- ── Barre d'outils verticale ── -->
     <div class="editor__toolbar">
@@ -56,6 +56,10 @@
 
       <button class="editor__tool" (click)="zoom(0.1)" title="Zoom +"><mat-icon>zoom_in</mat-icon></button>
       <button class="editor__tool" (click)="zoom(-0.1)" title="Zoom −"><mat-icon>zoom_out</mat-icon></button>
+      <button class="editor__tool" [class.is-active]="!panneauOuvert()" (click)="basculerPanneau()"
+              [title]="panneauOuvert() ? 'Replier la palette (terrain plus grand)' : 'Afficher la palette'">
+        <mat-icon>{{ panneauOuvert() ? 'right_panel_close' : 'right_panel_open' }}</mat-icon>
+      </button>
       <button class="editor__tool" [class.is-active]="!tracesVisibles()" (click)="visibiliteTraces()"
               [title]="tracesVisibles() ? 'Masquer les tracés' : 'Afficher les tracés'">
         <mat-icon>{{ tracesVisibles() ? 'visibility' : 'visibility_off' }}</mat-icon>
@@ -68,10 +72,13 @@
         <div class="row" style="gap:12px;flex-wrap:wrap">
           <div class="row" style="gap:6px">
             <span class="head-label">Terrain</span>
-            <div class="segmented">
-              <button [class.is-active]="terrain() === 'complet'" (click)="changerTerrain('complet')">Complet</button>
-              <button [class.is-active]="terrain() === 'demi'" (click)="changerTerrain('demi')">Demi</button>
-            </div>
+            <button class="choix-espace" (click)="choisirEspace()"
+              title="Choisir l'espace de jeu (terrain complet, demi, tiers, quart, zone libre…)">
+              <mat-icon>grid_view</mat-icon>
+              <span>{{ espaceCourant().libelle }}</span>
+              <small>{{ espaceCourant().detail }}</small>
+              <mat-icon class="chev">expand_more</mat-icon>
+            </button>
           </div>
           <div class="row" style="gap:6px">
             <span class="head-label">Vue</span>
@@ -82,6 +89,40 @@
                 title="Vue réaliste : silhouettes 2.5D aux couleurs des équipes.">Réaliste</button>
             </div>
           </div>
+
+          <!-- Angle de caméra : uniquement en rendu réaliste (l'inclinaison n'a pas de sens
+               sur les jetons du mode tableau). -->
+          @if (styleRendu() === 'realiste') {
+            <div class="row" style="gap:6px">
+              <span class="head-label">Angle</span>
+              <div class="segmented">
+                @for (p of presetsCamera; track p.cle) {
+                  <button [class.is-active]="presetActif() === p.cle" (click)="appliquerPreset(p.cle)"
+                    [title]="'Inclinaison ' + p.params.inclinaison + '° · rotation ' + p.params.rotation + '°'">{{ p.libelle }}</button>
+                }
+              </div>
+              <button class="mini-toggle" [class.is-active]="reglageFin()" (click)="reglageFin.set(!reglageFin())"
+                title="Réglage fin de l'angle (inclinaison, rotation)"><mat-icon>tune</mat-icon></button>
+            </div>
+            @if (reglageFin()) {
+            <div class="row angle-reglages" style="gap:10px">
+              <label class="angle-slider" title="Inclinaison de la caméra (0° = vue de dessus)">
+                <mat-icon>landscape</mat-icon>
+                <input type="range" min="0" [max]="inclinaisonMax" step="1"
+                  [value]="angle().inclinaison" (input)="reglerInclinaison(+$any($event.target).value)">
+                <span class="angle-val mono">{{ angle().inclinaison }}°</span>
+              </label>
+              <!-- La rotation couvre 360° : sans une course nettement plus longue que
+                   l'inclinaison, le moindre pixel de souris ferait pivoter le terrain. -->
+              <label class="angle-slider angle-slider--long" title="Rotation autour du terrain">
+                <mat-icon>360</mat-icon>
+                <input type="range" min="-180" max="180" step="1"
+                  [value]="angle().rotation" (input)="reglerRotation(+$any($event.target).value)">
+                <span class="angle-val mono">{{ angle().rotation }}°</span>
+              </label>
+            </div>
+            }
+          }
           <div class="vdiv"></div>
           <div class="row" style="gap:6px">
             <span class="head-label">Tracé</span>
@@ -222,7 +263,8 @@
       </div>
     </div>
 
-    <!-- ── Palette (panneau droit) ── -->
+    <!-- ── Palette (panneau droit), repliable pour rendre sa largeur au terrain ── -->
+    @if (panneauOuvert()) {
     <div class="editor__right">
       <div class="pal-section">
         <button class="pal-head" (click)="basculer('formations')">Formations <mat-icon>{{ ouvert() === 'formations' ? 'expand_more' : 'chevron_right' }}</mat-icon></button>
@@ -381,6 +423,7 @@
         }
       </div>
     </div>
+    }
   </div>
 
   <!-- ── Timeline (animation) ── -->

@@ -19,12 +19,14 @@
 .editor-root {
   display: flex;
   flex-direction: column;
-  height: 90vh;          /* borne la hauteur : le terrain se met à l'échelle pour tenir, timeline visible */
+  /* Le terrain se met à l'échelle pour tenir : chaque pixel rendu ici est un pixel de
+     terrain en plus, d'où une hauteur poussée au maximum et un padding serré. */
+  height: 96vh;
   box-sizing: border-box;
   overflow: hidden;      /* pas de scrollbar : tout (en-tête + terrain + timeline) tient dans la hauteur */
   background: var(--bg);
   color: var(--text);
-  padding: 15px;
+  padding: 10px;
   &:fullscreen {
     height: 100vh;
     width: 100vw;
@@ -49,6 +51,91 @@
   color: var(--text-3);
   font-weight: 600;
   text-transform: uppercase;
+}
+
+// ── Sélecteur d'espace de jeu ──
+.choix-espace {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 5px 8px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  cursor: pointer;
+  color: inherit;
+  font-size: 12px;
+  font-weight: 600;
+
+  &:hover { border-color: var(--copper); }
+
+  mat-icon {
+    font-size: 16px;
+    width: 16px;
+    height: 16px;
+    color: var(--text-3);
+  }
+
+  small {
+    color: var(--text-3);
+    font-weight: 500;
+  }
+
+  .chev { margin-left: 2px; }
+}
+
+// Petit bouton carré aligné sur les groupes segmentés de la barre.
+.mini-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--surface-2);
+  color: var(--text-3);
+  cursor: pointer;
+
+  mat-icon { font-size: 15px; width: 15px; height: 15px; }
+  &:hover { border-color: var(--copper); }
+  &.is-active { border-color: var(--copper); color: var(--copper); }
+}
+
+// ── Réglage fin de l'angle de caméra (rendu réaliste) ──
+.angle-reglages {
+  flex-wrap: wrap;
+}
+
+.angle-slider {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+
+  mat-icon {
+    font-size: 16px;
+    width: 16px;
+    height: 16px;
+    color: var(--text-3);
+  }
+
+  input[type='range'] {
+    width: 104px;
+    accent-color: var(--copper);
+    cursor: pointer;
+  }
+
+  // Course allongée : 360° étalés sur 104 px donnaient ~3,5°/px, bien trop nerveux.
+  &--long input[type='range'] {
+    width: 220px;
+  }
+}
+
+.angle-val {
+  min-width: 34px;
+  font-size: 11px;
+  color: var(--text-3);
 }
 
 .vdiv {
@@ -205,9 +292,12 @@
 .editor {
   display: grid;
   grid-template-columns: 60px 1fr 320px;
-  gap: 16px;
+  gap: 12px;
   flex: 1;
   min-height: 0;
+
+  /* Panneau replié : toute la largeur revient au terrain. */
+  &.sans-panneau { grid-template-columns: 60px 1fr; }
 }
 
 /* Toolbar verticale */
@@ -362,7 +452,7 @@
 
 .editor__pitch-body {
   flex: 1;
-  padding: 16px;
+  padding: 5px;   /* chaque pixel rendu ici est un pixel de terrain en plus */
   background: var(--surface-2);
   position: relative;
   min-height: 0;
