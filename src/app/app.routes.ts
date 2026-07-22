@@ -46,6 +46,10 @@ export const routes: Routes = [
     loadComponent: () => import('./features/admin/parametres-ia/parametres-ia.component').then(m => m.ParametresIaComponent)
   },
   {
+    path: 'admin/maintenance', canActivate: [authGuard, roleGuard], data: { roles: ['SUPER_ADMIN'] },
+    loadComponent: () => import('./features/admin/maintenance/maintenance.component').then(m => m.MaintenanceComponent)
+  },
+  {
     path: 'mon-club', canActivate: [authGuard, roleGuard, contexteGuard], data: { roles: ['PRESIDENT', 'ENTRAINEUR', 'SUPER_ADMIN'], perms: ['club:manage', 'membres:manage'] },
     loadComponent: () => import('./features/admin/mon-club/mon-club.component').then(m => m.MonClubComponent)
   },
@@ -118,6 +122,11 @@ export const routes: Routes = [
     loadComponent: () => import('./features/dashboard/dashboard-preparateur/dashboard-preparateur.component').then(m => m.DashboardPreparateurComponent)
   },
   // Vue d'ensemble « Administration » (accueil de l'Administratif) — club-wide, sans gate saison.
+  {
+    path: 'administration/categories-age', canActivate: [authGuard, roleGuard, contexteGuard],
+    data: { roles: ['SUPER_ADMIN', 'PRESIDENT', 'ADMINISTRATIF'], perms: ['docadmin:read'] },
+    loadComponent: () => import('./features/admin/categories-age/categories-age.component').then(m => m.CategoriesAgeComponent)
+  },
   {
     path: 'administration', canActivate: [authGuard, roleGuard, contexteGuard],
     data: { roles: ['SUPER_ADMIN', 'PRESIDENT', 'ADMINISTRATIF'], perms: ['docadmin:read'] },

@@ -9,9 +9,10 @@ export interface NotifConfig {
   seuilWellnessSommeil: number; seuilWellnessHumeur: number;
   seuilPoidsCourt: number; seuilPoidsMoyen: number; seuilCompletionMin: number;
   digestActif: boolean; digestMatinHeure: string; digestSoirHeure: string;
-  rappelWellnessActif: boolean; rappelWellnessHeure: string;
+  digestJours: string; digestPoidsJours: string;
+  rappelWellnessActif: boolean; rappelWellnessHeure: string; rappelWellnessJours: string;
   rappelRpeActif: boolean; rappelRpeDelaiHeures: number;
-  rappelPoidsActif: boolean; rappelSeanceActif: boolean;
+  rappelSeanceActif: boolean;
 }
 
 export interface Routage { type: string; roles: string; actif: boolean; }

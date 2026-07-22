@@ -1,0 +1,120 @@
+<div class="mnt">
+  <header class="mnt__head">
+    <div>
+      <h1 class="mnt__title">Maintenance &amp; exploitation</h1>
+      <p class="mnt__sub">Tâches planifiées, rétention des notifications et annonces — réservé au super-admin.</p>
+    </div>
+    <a class="mnt__back" routerLink="/admin/clubs">‹ Retour</a>
+  </header>
+
+  <nav class="mnt__tabs">
+    <button type="button" [class.actif]="onglet() === 'taches'" (click)="onglet.set('taches')">Tâches</button>
+    <button type="button" [class.actif]="onglet() === 'retention'" (click)="onglet.set('retention')">Rétention</button>
+    <button type="button" [class.actif]="onglet() === 'annonce'" (click)="onglet.set('annonce')">Annonce</button>
+  </nav>
+
+  <!-- ── Tâches ── -->
+  @if (onglet() === 'taches') {
+    <div class="mnt__list">
+      @for (t of taches(); track t.code) {
+        <div class="tache">
+          <div class="tache__info">
+            <div class="tache__head">
+              <span class="tache__nom">{{ t.libelle }}</span>
+              @if (t.nettoyage) { <span class="tache__tag">nettoyage</span> }
+            </div>
+            <p class="tache__desc">{{ t.description }}</p>
+            <div class="tache__meta">
+              @if (t.apercu !== null) { <span class="tache__apercu">{{ t.apercu }} en attente</span> }
+              @if (t.derniereExecution) {
+                <span class="tache__statut" [class.ko]="t.dernierStatut === 'ECHEC'">
+                  {{ t.dernierStatut === 'ECHEC' ? '✗' : '✓' }}
+                  {{ t.derniereExecution | date:'dd/MM HH:mm' }}
+                  @if (t.dernierMessage) { — {{ t.dernierMessage }} }
+                </span>
+              } @else {
+                <span class="tache__statut tache__statut--jamais">jamais exécutée</span>
+              }
+            </div>
+          </div>
+          <button type="button" class="btn" (click)="executer(t)" [disabled]="enCours() === t.code">
+            {{ enCours() === t.code ? '…' : 'Exécuter' }}
+          </button>
+        </div>
+      }
+    </div>
+  }
+
+  <!-- ── Rétention ── -->
+  @if (onglet() === 'retention') {
+    <div class="mnt__card">
+      <p class="mnt__hint">Au-delà de ces délais, les notifications sont purgées automatiquement chaque nuit (04:00).
+        La purge est aussi déclenchable à la main depuis l'onglet Tâches.</p>
+      <label class="champ">
+        <span>Notifications lues — supprimées après (jours)</span>
+        <input type="number" min="1" max="365" [(ngModel)]="retention.lues" name="lues">
+      </label>
+      <label class="champ">
+        <span>Notifications non lues — supprimées après (jours)</span>
+        <input type="number" min="1" max="365" [(ngModel)]="retention.nonLues" name="nonLues">
+      </label>
+      <button type="button" class="btn btn--primary" (click)="enregistrerRetention()" [disabled]="retentionSaving()">
+        Enregistrer
+      </button>
+    </div>
+  }
+
+  <!-- ── Annonce (broadcast) ── -->
+  @if (onglet() === 'annonce') {
+    <div class="mnt__card">
+      <p class="mnt__hint">Diffuse une notification à tous les utilisateurs, à un club, ou à un rôle.</p>
+
+      <div class="seg">
+        <button type="button" [class.actif]="broadcast.cible === 'TOUS'" (click)="changerCible('TOUS')">Tous</button>
+        <button type="button" [class.actif]="broadcast.cible === 'CLUB'" (click)="changerCible('CLUB')">Un club</button>
+        <button type="button" [class.actif]="broadcast.cible === 'ROLE'" (click)="changerCible('ROLE')">Un rôle</button>
+      </div>
+
+      @if (broadcast.cible === 'CLUB') {
+        <label class="champ">
+          <span>Club</span>
+          <select [(ngModel)]="broadcast.clubId" name="clubId">
+            <option [ngValue]="null">— choisir —</option>
+            @for (c of clubs(); track c.id) { <option [ngValue]="c.id">{{ c.nom }}</option> }
+          </select>
+        </label>
+      }
+      @if (broadcast.cible === 'ROLE') {
+        <label class="champ">
+          <span>Rôle</span>
+          <select [(ngModel)]="broadcast.role" name="role">
+            <option [ngValue]="null">— choisir —</option>
+            @for (r of roles; track r) { <option [ngValue]="r">{{ r }}</option> }
+          </select>
+        </label>
+      }
+
+      <label class="champ">
+        <span>Titre</span>
+        <input type="text" maxlength="140" [(ngModel)]="broadcast.titre" name="titre" placeholder="Ex. Maintenance ce soir">
+      </label>
+      <label class="champ">
+        <span>Message</span>
+        <textarea rows="3" [(ngModel)]="broadcast.corps" name="corps" placeholder="Détail de l'annonce…"></textarea>
+      </label>
+      <label class="champ">
+        <span>Lien (optionnel)</span>
+        <input type="text" [(ngModel)]="broadcast.lien" name="lien" placeholder="/dashboard">
+      </label>
+      <label class="champ champ--inline">
+        <input type="checkbox" [checked]="broadcast.priorite === 'URGENTE'"
+               (change)="broadcast.priorite = broadcast.priorite === 'URGENTE' ? 'NORMALE' : 'URGENTE'">
+        <span>Marquer comme urgente</span>
+      </label>
+
+      <button type="button" class="btn btn--primary" (click)="envoyerBroadcast()" [disabled]="broadcastSaving()">
+        Envoyer l'annonce
+      </button>
+    </div>
+  }
+</div>

@@ -61,8 +61,9 @@ export class NotificationService {
       .subscribe({ next: r => this.nonLus.set(r.nonLus), error: () => {} });
   }
 
-  lister(page = 0, size = 20): Observable<NotificationPage> {
-    const params = new HttpParams().set('page', page).set('size', size);
+  lister(page = 0, size = 20, categorie?: CategorieNotif | null): Observable<NotificationPage> {
+    let params = new HttpParams().set('page', page).set('size', size);
+    if (categorie) params = params.set('categorie', categorie);
     return this.http.get<NotificationPage>(this.base, { params })
       .pipe(tap(p => this.nonLus.set(p.nonLus)));
   }
@@ -75,5 +76,16 @@ export class NotificationService {
   marquerToutLu(): Observable<void> {
     return this.http.post<void>(`${this.base}/lire-tout`, {})
       .pipe(tap(() => this.nonLus.set(0)));
+  }
+
+  /** Supprime une notification. Décrémente le compteur si elle était non lue. */
+  supprimer(id: string, etaitNonLue = false): Observable<void> {
+    return this.http.delete<void>(`${this.base}/${id}`)
+      .pipe(tap(() => { if (etaitNonLue) this.nonLus.update(n => Math.max(0, n - 1)); }));
+  }
+
+  /** Supprime toutes les notifications déjà lues du destinataire courant. */
+  viderLues(): Observable<void> {
+    return this.http.delete<void>(`${this.base}/lues`);
   }
 }

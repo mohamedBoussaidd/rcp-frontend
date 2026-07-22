@@ -12,6 +12,10 @@ const routes: Routes = [
         loadComponent: () => import('./home/staff-home.component').then(m => m.StaffHomeComponent)
       },
       {
+        path: 'surveillance', data: { title: 'À surveiller' },
+        loadComponent: () => import('./surveillance/staff-surveillance.component').then(m => m.StaffSurveillanceComponent)
+      },
+      {
         path: 'agenda', data: { title: 'Agenda' },
         loadComponent: () => import('./agenda/staff-agenda.component').then(m => m.StaffAgendaComponent)
       },

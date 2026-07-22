@@ -205,14 +205,34 @@ export class DashboardPreparateurComponent implements OnInit {
     return p;
   }
 
-  get aSurveiller(): ResumeJoueur[] {
+  /** Tous les joueurs à surveiller, triés par priorité décroissante. */
+  get aSurveillerTous(): ResumeJoueur[] {
     return this.joueurs
       .map(j => ({ j, p: this.priorite(j) }))
       .filter(x => x.p > 0)
       .sort((a, b) => b.p - a.p)
-      .slice(0, 5)
       .map(x => x.j);
   }
+
+  /* ── Pagination du bloc « à surveiller » (4 joueurs par page pour ne pas encombrer) ── */
+  pageSurv = 0;
+  readonly tailleSurv = 4;
+
+  get nbPagesSurv(): number {
+    return Math.max(1, Math.ceil(this.aSurveillerTous.length / this.tailleSurv));
+  }
+
+  /** Page courante de « à surveiller » (bornée si le total a diminué). */
+  get aSurveiller(): ResumeJoueur[] {
+    const tous = this.aSurveillerTous;
+    const maxPage = Math.max(0, Math.ceil(tous.length / this.tailleSurv) - 1);
+    if (this.pageSurv > maxPage) this.pageSurv = maxPage;
+    const debut = this.pageSurv * this.tailleSurv;
+    return tous.slice(debut, debut + this.tailleSurv);
+  }
+
+  pageSurvPrec(): void { if (this.pageSurv > 0) this.pageSurv--; }
+  pageSurvSuiv(): void { if (this.pageSurv < this.nbPagesSurv - 1) this.pageSurv++; }
 
   acwrClasse(acwr: number | null | undefined): string {
     if (acwr == null) return 'neutral';

@@ -139,6 +139,7 @@ const ALL_MODULES: NavModule[] = [
     perms: ['docadmin:read', 'joueurs:write', 'contrats:manage'],
     subnav: [
       { label: 'Vue d\'ensemble',       link: '/administration', roles: ['SUPER_ADMIN', 'PRESIDENT', 'ADMINISTRATIF'] },
+      { label: 'Catégories d\'âge',      link: '/administration/categories-age', roles: ['SUPER_ADMIN', 'PRESIDENT', 'ADMINISTRATIF'], perms: ['docadmin:read'] },
       { label: 'Annuaire',              link: '/annuaire', roles: ['SUPER_ADMIN', 'PRESIDENT', 'ADMINISTRATIF', 'ENTRAINEUR'], perms: ['joueurs:write'] },
       { label: 'Licences & documents',  link: '/documents-admin', roles: ['SUPER_ADMIN', 'PRESIDENT', 'ADMINISTRATIF', 'ENTRAINEUR', 'PREPARATEUR', 'MEDICAL'], perms: ['docadmin:read'], module: 'documents_admin' },
       // Confidentiel : Président/Administratif uniquement (contrats:manage), module contrats (V59).
@@ -157,6 +158,7 @@ const ALL_MODULES: NavModule[] = [
       { label: 'Packs & modules', link: '/admin/abonnements', roles: ['SUPER_ADMIN'] },
       { label: 'Rôles globaux',  link: '/admin/roles-globaux', roles: ['SUPER_ADMIN'] },
       { label: 'Paramètres IA',  link: '/admin/parametres-ia', roles: ['SUPER_ADMIN'] },
+      { label: 'Maintenance',    link: '/admin/maintenance', roles: ['SUPER_ADMIN'] },
       { label: 'Mon club',       link: '/mon-club',    roles: ['PRESIDENT', 'ENTRAINEUR', 'ADMINISTRATIF'], perms: ['club:manage', 'membres:manage'] },
     ],
   },

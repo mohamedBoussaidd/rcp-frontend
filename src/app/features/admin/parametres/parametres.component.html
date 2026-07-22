@@ -20,58 +20,6 @@
       À configurer une fois en début de saison selon votre niveau de championnat et votre style de jeu.
     </div>
 
-    <!-- ── Catégories d'âge (référentiel configurable, âge atteint dans la saison) ── -->
-    <mat-card class="groupe-card" [class.collapsed]="!categoriesOuvert">
-      <mat-card-header class="groupe-header" (click)="categoriesOuvert = !categoriesOuvert">
-        <mat-card-title>Catégories d'âge</mat-card-title>
-        <span class="groupe-toggle">{{ categoriesOuvert ? '▲' : '▼' }}</span>
-      </mat-card-header>
-
-      @if (categoriesOuvert) {
-        <mat-card-content>
-          <p class="groupe-desc">
-            Les bornes sont exprimées en ÂGE ATTEINT DANS LA SAISON (pas en année de naissance) : elles
-            restent justes d'une saison à l'autre, sans retouche. Utilisées pour filtrer les documents
-            requis selon la date de naissance réelle du joueur (indépendamment de son équipe).
-          </p>
-
-          <div class="cibles-table">
-            <div class="cibles-head">
-              <span>Libellé</span>
-              <span>Âge min</span>
-              <span>Âge max</span>
-              <span>Actif</span>
-              <span></span>
-            </div>
-            @for (cat of categoriesAge; track cat.id) {
-              <div class="cible-row">
-                <span class="cible-type">{{ cat.code }} — <input type="text" class="param-input" style="width:auto" [(ngModel)]="cat.libelle" /></span>
-                <input type="number" class="param-input" min="0" [(ngModel)]="cat.ageMin" />
-                <input type="number" class="param-input" min="0" [(ngModel)]="cat.ageMax" />
-                <input type="checkbox" [(ngModel)]="cat.actif" />
-                <button class="btn-save btn-save--sm" (click)="sauvegarderCategorie(cat)" [disabled]="categorieSaving === cat.id">
-                  {{ categorieSaving === cat.id ? '…' : 'Enregistrer' }}
-                </button>
-              </div>
-            }
-          </div>
-
-          @if (!nouvelleCategorieOuverte) {
-            <button class="btn btn--secondary" style="margin-top:12px" (click)="ouvrirNouvelleCategorie()">+ Ajouter une catégorie</button>
-          } @else {
-            <div class="cible-row" style="margin-top:12px">
-              <input type="text" class="param-input" style="width:auto" placeholder="Code (ex. U15)" [(ngModel)]="nvCatCode" />
-              <input type="text" class="param-input" style="width:auto" placeholder="Libellé" [(ngModel)]="nvCatLibelle" />
-              <input type="number" class="param-input" placeholder="Âge min" [(ngModel)]="nvCatAgeMin" />
-              <input type="number" class="param-input" placeholder="Âge max" [(ngModel)]="nvCatAgeMax" />
-              <button class="btn-save btn-save--sm" (click)="creerCategorie()">Créer</button>
-              <button class="btn btn--secondary" (click)="annulerNouvelleCategorie()">Annuler</button>
-            </div>
-          }
-        </mat-card-content>
-      }
-    </mat-card>
-
     <!-- ── Cibles d'équipe par type de séance (pré-remplissent le formulaire) ── -->
     <mat-card class="groupe-card" [class.collapsed]="!ciblesOuvert">
       <mat-card-header class="groupe-header" (click)="ciblesOuvert = !ciblesOuvert">

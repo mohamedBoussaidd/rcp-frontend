@@ -149,3 +149,42 @@
 .item__texte { font-size: 12.5px; color: var(--text-2, #555); white-space: pre-line; }
 .item__meta { font-size: 11px; color: var(--text-3, #999); }
 .item__point { width: 8px; height: 8px; border-radius: 50%; background: var(--accent, #3066be); margin-top: 6px; }
+
+/* Barre de filtres par catégorie */
+.panneau__filtres {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 8px 14px;
+  border-bottom: 1px solid var(--surface-3, #eee);
+}
+.chip {
+  border: 1px solid var(--surface-3, #e2e6ee);
+  background: var(--surface-2, #f4f6fb);
+  color: var(--text-2, #555);
+  border-radius: 999px;
+  padding: 3px 10px;
+  font-size: 12px;
+  cursor: pointer;
+}
+.chip--actif { background: var(--accent, #3066be); border-color: var(--accent, #3066be); color: #fff; }
+
+/* Bouton de suppression (× discret, visible au survol de la ligne) */
+.item { position: relative; }
+.item__suppr {
+  position: absolute;
+  top: 6px;
+  right: 8px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  color: var(--text-3, #999);
+  font-size: 16px;
+  line-height: 1;
+  opacity: 0;
+  transition: opacity .12s ease, background .12s ease;
+}
+.item:hover .item__suppr { opacity: 1; }
+.item__suppr:hover { background: var(--surface-3, #e9edf5); color: #e53935; }

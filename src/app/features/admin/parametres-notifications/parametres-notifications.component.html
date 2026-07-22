@@ -80,6 +80,27 @@
             texte="Heure d'envoi du résumé du soir — bilan de la journée (charge, séances, ressentis)."></app-info-hint>
         </span><input type="time" [(ngModel)]="c.digestSoirHeure"></label>
       </div>
+      <div class="cadence">
+        <span class="cadence__lbl">Jours d'envoi du digest</span>
+        <div class="cadence__jours">
+          @for (j of JOURS; track j.v) {
+            <button type="button" class="jour" [class.jour--actif]="jourActif(c.digestJours, j.v)"
+                    (click)="basculerJour('digestJours', j.v)">{{ j.l }}</button>
+          }
+        </div>
+      </div>
+      <div class="cadence">
+        <span class="cadence__lbl">Jours de pesée
+          <app-info-hint align="left" titre="Bloc poids du digest"
+            texte="Le bloc « écart de poids » n'apparaît dans le digest que ces jours-là — cale-le sur les jours de pesée du club pour éviter un rappel poids quotidien inutile."></app-info-hint>
+        </span>
+        <div class="cadence__jours">
+          @for (j of JOURS; track j.v) {
+            <button type="button" class="jour" [class.jour--actif]="jourActif(c.digestPoidsJours, j.v)"
+                    (click)="basculerJour('digestPoidsJours', j.v)">{{ j.l }}</button>
+          }
+        </div>
+      </div>
 
       <h2>Rappels joueur
         <app-info-hint align="left" titre="Rappels"
@@ -97,7 +118,15 @@
             texte="Nombre d'heures après la fin de séance avant de rappeler aux joueurs de saisir leur effort ressenti."></app-info-hint>
         </span><input type="number" min="0" max="24" [(ngModel)]="c.rappelRpeDelaiHeures"></label>
         <label class="switch"><input type="checkbox" [(ngModel)]="c.rappelSeanceActif"> Rappel séance</label>
-        <label class="switch"><input type="checkbox" [(ngModel)]="c.rappelPoidsActif"> Rappel pesée</label>
+      </div>
+      <div class="cadence">
+        <span class="cadence__lbl">Jours du rappel wellness</span>
+        <div class="cadence__jours">
+          @for (j of JOURS; track j.v) {
+            <button type="button" class="jour" [class.jour--actif]="jourActif(c.rappelWellnessJours, j.v)"
+                    (click)="basculerJour('rappelWellnessJours', j.v)">{{ j.l }}</button>
+          }
+        </div>
       </div>
 
       <button class="primaire" (click)="enregistrerConfig()">Enregistrer</button>

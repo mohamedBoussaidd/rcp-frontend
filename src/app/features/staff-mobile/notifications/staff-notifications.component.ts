@@ -1,7 +1,7 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { Router } from '@angular/router';
-import { NotificationItem, NotificationService } from '@core/services/notification.service';
+import { NotificationItem, NotificationService, CategorieNotif } from '@core/services/notification.service';
 import { NotificationPushService } from '@core/services/notification-push.service';
 
 /**
@@ -24,14 +24,30 @@ export class StaffNotificationsComponent implements OnInit {
   readonly items = signal<NotificationItem[]>([]);
   readonly chargement = signal(true);
   readonly nonLus = this.service.nonLus;
+  readonly filtre = signal<CategorieNotif | null>(null);
+
+  readonly categories: { code: CategorieNotif | null; label: string }[] = [
+    { code: null, label: 'Toutes' },
+    { code: 'ALERTE', label: 'Alertes' },
+    { code: 'RAPPEL', label: 'Rappels' },
+    { code: 'MESSAGE', label: 'Messages' },
+    { code: 'INFO', label: 'Infos' },
+  ];
 
   ngOnInit(): void { this.charger(); }
 
   private charger(): void {
-    this.service.lister(0, 50).subscribe({
+    this.chargement.set(true);
+    this.service.lister(0, 50, this.filtre()).subscribe({
       next: p => { this.items.set(p.items); this.chargement.set(false); },
       error: () => this.chargement.set(false),
     });
+  }
+
+  filtrer(cat: CategorieNotif | null): void {
+    if (this.filtre() === cat) return;
+    this.filtre.set(cat);
+    this.charger();
   }
 
   ouvrir(n: NotificationItem): void {
@@ -49,6 +65,17 @@ export class StaffNotificationsComponent implements OnInit {
       next: () => this.items.update(l => l.map(x => ({ ...x, lu: true }))),
       error: () => {},
     });
+  }
+
+  supprimer(n: NotificationItem, e: Event): void {
+    e.stopPropagation();
+    this.service.supprimer(n.id, !n.lu).subscribe();
+    this.items.update(l => l.filter(x => x.id !== n.id));
+  }
+
+  viderLues(): void {
+    this.service.viderLues().subscribe();
+    this.items.update(l => l.filter(x => !x.lu));
   }
 
   icone(n: NotificationItem): string {

@@ -60,12 +60,16 @@
   }
 </section>
 
-<!-- Feuille de route personnelle : ce que TOI tu fais, pas ce que fait l'équipe -->
+<!-- Feuille de route personnelle : ce que TOI tu fais, pas ce que fait l'équipe (repliée par défaut) -->
 @if (feuilleRoute().length > 0) {
   <section class="pwa-card home-route">
-    <div class="home-today__head">
+    <button type="button" class="home-route__toggle" (click)="basculerRoute()"
+            [attr.aria-expanded]="routeOuverte()">
       <span class="home-today__label">Ta feuille de route</span>
-    </div>
+      <span class="home-route__count">{{ feuilleRoute().length }}</span>
+      <span class="home-route__chevron" [class.home-route__chevron--ouvert]="routeOuverte()">⌄</span>
+    </button>
+    @if (routeOuverte()) {
     @for (e of feuilleRoute(); track e.bloc + e.seance) {
       <div class="route-item">
         <div class="route-item__head">
@@ -86,12 +90,18 @@
         }
       </div>
     }
+    }
   </section>
 }
 
 <!-- Tuiles -->
 <h2 class="pwa-section-title">Raccourcis</h2>
 <div class="home-tiles">
+  <a class="home-tile pwa-rise" routerLink="/staff/surveillance">
+    <span class="home-tile__ic">🩺</span>
+    <span class="home-tile__t">À surveiller</span>
+    <span class="home-tile__s">Joueurs à risque du jour</span>
+  </a>
   <a class="home-tile pwa-rise" routerLink="/staff/agenda">
     <span class="home-tile__ic">🗓️</span>
     <span class="home-tile__t">Agenda</span>

@@ -50,6 +50,26 @@ export class ParametresNotificationsComponent implements OnInit {
     this.api.getMatrice().subscribe(m => this.matrice.set(m));
   }
 
+  /** Jours de la semaine (ISO 1..7) pour les cadences configurables. */
+  readonly JOURS: { v: number; l: string }[] = [
+    { v: 1, l: 'L' }, { v: 2, l: 'M' }, { v: 3, l: 'M' }, { v: 4, l: 'J' },
+    { v: 5, l: 'V' }, { v: 6, l: 'S' }, { v: 7, l: 'D' },
+  ];
+
+  jourActif(csv: string | undefined, v: number): boolean {
+    return (csv ?? '').split(',').map(s => s.trim()).includes(String(v));
+  }
+
+  /** Active/retire un jour dans une cadence CSV d'un champ de la config. */
+  basculerJour(champ: 'digestJours' | 'digestPoidsJours' | 'rappelWellnessJours', v: number): void {
+    const c = this.config();
+    if (!c) return;
+    const set = new Set((c[champ] ?? '').split(',').map(s => s.trim()).filter(Boolean));
+    set.has(String(v)) ? set.delete(String(v)) : set.add(String(v));
+    const csv = Array.from(set).map(Number).sort((a, b) => a - b).join(',');
+    this.config.set({ ...c, [champ]: csv });
+  }
+
   libelle(type: string): string { return LIBELLES[type] ?? type; }
 
   enregistrerConfig(): void {

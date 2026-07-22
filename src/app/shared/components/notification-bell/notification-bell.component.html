@@ -15,6 +15,13 @@
         </button>
       </div>
 
+      <div class="panneau__filtres">
+        @for (c of categories; track c.label) {
+          <button type="button" class="chip" [class.chip--actif]="filtre() === c.code"
+                  (click)="filtrer(c.code)">{{ c.label }}</button>
+        }
+      </div>
+
       @if (etatPush() === 'a-activer') {
         <div class="push-relance">
           <span>Activer les notifications de cet appareil&nbsp;?</span>
@@ -40,13 +47,16 @@
                 </span>
               </span>
               @if (!n.lu) { <span class="item__point"></span> }
+              <span class="item__suppr" role="button" aria-label="Supprimer"
+                    (click)="supprimer(n, $event)">×</span>
             </button>
           }
         }
       </div>
 
       <div class="panneau__pied">
-        <button type="button" class="lien" (click)="allerParametres()">Paramètres des notifications</button>
+        <button type="button" class="lien" (click)="viderLues()">Vider les lues</button>
+        <button type="button" class="lien" (click)="allerParametres()">Paramètres</button>
       </div>
     </div>
   }

@@ -1,7 +1,7 @@
 import { Component, inject, signal, OnInit, HostListener, HostBinding, Input, ElementRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
-import { NotificationService, NotificationItem } from '@core/services/notification.service';
+import { NotificationService, NotificationItem, CategorieNotif } from '@core/services/notification.service';
 import { NotificationPushService } from '@core/services/notification-push.service';
 import { AuthService } from '@core/services/auth.service';
 
@@ -33,6 +33,15 @@ export class NotificationBellComponent implements OnInit {
   readonly ouvert = signal(false);
   readonly items = signal<NotificationItem[]>([]);
   readonly chargement = signal(false);
+  readonly filtre = signal<CategorieNotif | null>(null);
+
+  readonly categories: { code: CategorieNotif | null; label: string }[] = [
+    { code: null, label: 'Toutes' },
+    { code: 'ALERTE', label: 'Alertes' },
+    { code: 'RAPPEL', label: 'Rappels' },
+    { code: 'MESSAGE', label: 'Messages' },
+    { code: 'INFO', label: 'Infos' },
+  ];
 
   ngOnInit(): void {
     this.notifs.demarrerPolling();
@@ -47,10 +56,27 @@ export class NotificationBellComponent implements OnInit {
 
   private charger(): void {
     this.chargement.set(true);
-    this.notifs.lister(0, 20).subscribe({
+    this.notifs.lister(0, 20, this.filtre()).subscribe({
       next: p => { this.items.set(p.items); this.chargement.set(false); },
       error: () => this.chargement.set(false),
     });
+  }
+
+  filtrer(cat: CategorieNotif | null): void {
+    if (this.filtre() === cat) return;
+    this.filtre.set(cat);
+    this.charger();
+  }
+
+  supprimer(n: NotificationItem, e: Event): void {
+    e.stopPropagation();
+    this.notifs.supprimer(n.id, !n.lu).subscribe();
+    this.items.update(list => list.filter(x => x.id !== n.id));
+  }
+
+  viderLues(): void {
+    this.notifs.viderLues().subscribe();
+    this.items.update(list => list.filter(x => !x.lu));
   }
 
   ouvrir(n: NotificationItem): void {

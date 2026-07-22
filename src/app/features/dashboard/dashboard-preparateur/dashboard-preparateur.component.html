@@ -102,12 +102,12 @@
   <div class="card prep-overview__surv">
     <div class="card__header">
       <h3 class="card__title">À surveiller aujourd'hui</h3>
-      <span class="badge badge--neutral">{{ aSurveiller.length }}</span>
+      <span class="badge badge--neutral">{{ aSurveillerTous.length }}</span>
     </div>
     <div class="card__body">
       @if (loading) {
         <div class="loading">Analyse de l'effectif…</div>
-      } @else if (!aSurveiller.length) {
+      } @else if (!aSurveillerTous.length) {
         <div class="surveiller__vide">
           <mat-icon>verified</mat-icon>
           <span>Aucun signal particulier — effectif globalement frais.</span>
@@ -154,6 +154,15 @@
               <div class="surv-row__msg">{{ msg }}</div>
             }
           </a>
+        }
+        @if (nbPagesSurv > 1) {
+          <div class="surv-pagination">
+            <button type="button" class="surv-pagination__btn" (click)="pageSurvPrec()" [disabled]="pageSurv === 0"
+                    aria-label="Page précédente"><mat-icon>chevron_left</mat-icon></button>
+            <span class="surv-pagination__info">{{ pageSurv + 1 }} / {{ nbPagesSurv }}</span>
+            <button type="button" class="surv-pagination__btn" (click)="pageSurvSuiv()" [disabled]="pageSurv >= nbPagesSurv - 1"
+                    aria-label="Page suivante"><mat-icon>chevron_right</mat-icon></button>
+          </div>
         }
       }
     </div>

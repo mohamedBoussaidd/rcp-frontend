@@ -9,6 +9,21 @@
   <p class="sn-push-off pwa-rise">Notifications bloquées par le navigateur — autorise-les dans les réglages du site.</p>
 }
 
+<div class="sn-filtres pwa-rise">
+  @for (c of categories; track c.label) {
+    <button type="button" class="sn-chip" [class.sn-chip--actif]="filtre() === c.code"
+            (click)="filtrer(c.code)">{{ c.label }}</button>
+  }
+</div>
+
+<div class="sn-toolbar pwa-rise">
+  <span>{{ nonLus() }} non lue(s)</span>
+  <span class="sn-toolbar__actions">
+    <button type="button" (click)="toutLire()" [disabled]="nonLus() === 0">Tout marquer lu</button>
+    <button type="button" (click)="viderLues()">Vider les lues</button>
+  </span>
+</div>
+
 @if (chargement()) {
   <div class="pwa-empty">Chargement…</div>
 } @else if (items().length === 0) {
@@ -18,12 +33,6 @@
     <div class="pwa-empty__s">Tes notifications apparaîtront ici.</div>
   </div>
 } @else {
-  @if (nonLus() > 0) {
-    <div class="sn-toolbar pwa-rise">
-      <span>{{ nonLus() }} non lue(s)</span>
-      <button type="button" (click)="toutLire()">Tout marquer lu</button>
-    </div>
-  }
   @for (n of items(); track n.id) {
     <button type="button" class="sn-item pwa-rise" [class.sn-item--nonlu]="!n.lu" (click)="ouvrir(n)">
       <span class="sn-item__ic">{{ icone(n) }}</span>
@@ -36,6 +45,8 @@
         </span>
       </span>
       @if (!n.lu) { <span class="sn-item__dot"></span> }
+      <span class="sn-item__suppr" role="button" aria-label="Supprimer"
+            (click)="supprimer(n, $event)">×</span>
     </button>
   }
 }

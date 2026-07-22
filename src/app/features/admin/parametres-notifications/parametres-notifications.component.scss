@@ -51,6 +51,20 @@
 }
 .primaire:hover { background: #278a4d; }
 
+/* Cadence : jours de la semaine (chips L·M·M·J·V·S·D) */
+.cadence { margin-top: 12px; }
+.cadence__lbl {
+  display: block; font-size: 12.5px; font-weight: 600; color: var(--text-2, #555); margin-bottom: 6px;
+  small { font-weight: 400; color: var(--text-3, #999); }
+}
+.cadence__jours { display: flex; gap: 6px; flex-wrap: wrap; }
+.jour {
+  width: 34px; height: 34px; border-radius: 8px;
+  border: 1px solid var(--border, #d8dee9); background: var(--surface-2, #fafbfd);
+  color: var(--text-2, #555); font-weight: 700; font-size: 13px; cursor: pointer;
+}
+.jour--actif { background: #2ea05a; border-color: #2ea05a; color: #fff; }
+
 .tbl { width: 100%; border-collapse: collapse; font-size: 13px; }
 .tbl th, .tbl td { padding: 8px 6px; border-bottom: 1px solid var(--surface-3, #eee); text-align: left; }
 .tbl td.c, .tbl th:not(:first-child) { text-align: center; }

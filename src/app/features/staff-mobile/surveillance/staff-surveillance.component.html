@@ -1,0 +1,45 @@
+@if (chargement()) {
+  <div class="pwa-empty">Analyse de l'effectif…</div>
+} @else if (liste().length === 0) {
+  <div class="pwa-empty">
+    <div class="pwa-empty__ic">✅</div>
+    <div class="pwa-empty__t">Rien à surveiller</div>
+    <div class="pwa-empty__s">Effectif globalement frais aujourd'hui.</div>
+  </div>
+} @else {
+  <p class="surv-count pwa-rise">{{ liste().length }} joueur(s) à surveiller</p>
+  @for (s of liste(); track s.joueur.joueur_id) {
+    <div class="surv-card pwa-rise">
+      <div class="surv-card__head">
+        <span class="surv-card__nom">{{ s.joueur.prenom }} {{ s.joueur.nom }}</span>
+        <span class="surv-card__poste">{{ s.joueur.poste || '—' }}</span>
+      </div>
+      <div class="surv-card__chips">
+        @if (s.joueur.acwr != null) {
+          <span class="schip" [class]="'schip--' + acwrClasse(s.joueur.acwr)">ACWR {{ s.joueur.acwr | number:'1.2-2' }}</span>
+        }
+        @if (s.joueur.niveau_risque && s.joueur.niveau_risque !== 'FAIBLE') {
+          <span class="schip" [class.schip--bad]="s.joueur.niveau_risque === 'ELEVE'" [class.schip--warn]="s.joueur.niveau_risque === 'MODERE'">
+            Risque {{ s.joueur.niveau_risque === 'ELEVE' ? 'élevé' : 'modéré' }}
+          </span>
+        }
+        @if (s.joueur.niveau_fatigue && s.joueur.niveau_fatigue !== 'NOMINAL') {
+          <span class="schip" [class.schip--bad]="s.joueur.niveau_fatigue === 'ALERTE'" [class.schip--warn]="s.joueur.niveau_fatigue === 'VIGILANCE'">
+            Fatigue {{ s.joueur.niveau_fatigue === 'ALERTE' ? 'alerte' : 'vigilance' }}
+          </span>
+        }
+        @if (s.joueur.sprint_niveau) {
+          <span class="schip" [class.schip--bad]="s.joueur.sprint_niveau === 'PROBABLE'" [class.schip--warn]="s.joueur.sprint_niveau === 'POSSIBLE'">
+            Fatigue neuromusc.
+          </span>
+        }
+        @if (s.gene) { <span class="schip schip--bad">Gêne {{ s.gene.zone }}</span> }
+        @for (d of s.chipsDegrade; track d) { <span class="schip schip--warn">{{ d }}</span> }
+        @if (s.joueur.readiness != null && s.joueur.readiness < 55) {
+          <span class="schip" [class]="'schip--' + readinessClasse(s.joueur.readiness)">Readiness {{ s.joueur.readiness }}</span>
+        }
+      </div>
+      @if (s.message) { <div class="surv-card__msg">{{ s.message }}</div> }
+    </div>
+  }
+}

@@ -78,6 +78,9 @@ export class StaffHomeComponent implements OnInit {
    * coach lit pour tout le monde à « Bloc 2 · 15 min · zone 3 — tu arbitres » sur son téléphone.
    */
   readonly feuilleRoute = signal<EtapeFeuilleRoute[]>([]);
+  /** Feuille de route repliée par défaut (pour ne pas encombrer l'accueil). */
+  readonly routeOuverte = signal(false);
+  basculerRoute(): void { this.routeOuverte.update(o => !o); }
 
   private static readonly ICONES: Record<string, string> = {
     MENEUR: '▶ Tu mènes ce bloc', ARBITRE: '⚖ Tu arbitres', BALLONS: '⚽ Tu donnes les ballons',
