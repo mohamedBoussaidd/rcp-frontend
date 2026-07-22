@@ -1,0 +1,277 @@
+<div class="page-head" style="padding:24px 24px 0;margin-bottom:0">
+  <div>
+    <h1 class="page-head__title">Import RPE / ressenti</h1>
+    <p class="page-head__sub">Chargement du RPE post-séance des joueurs (fichier questionnaire CSV/Excel ou copier-coller)</p>
+  </div>
+</div>
+
+<!-- ══════════════ ÉTAPE 1 : Sélection séance + source ══════════════ -->
+@if (etape === 'selection') {
+  <div class="import-layout">
+
+    <div class="panel">
+      <h2 class="panel-title">Séances</h2>
+      <p class="panel-hint">Sélectionne la séance à laquelle rattacher le RPE (12 derniers mois et 30 prochains jours). Les jours passés sont proposés pour un rattrapage.</p>
+
+      @if (chargement) {
+        <div class="vide">Chargement…</div>
+      } @else if (seances.length === 0) {
+        <div class="vide">Aucune séance sur les 12 derniers mois.</div>
+      } @else {
+        <div class="seances-liste">
+          @for (s of seances; track s.id) {
+            <div class="seance-card" [class.selected]="seanceSelectionnee?.id === s.id" (click)="selectionner(s)">
+              <span class="seance-dot" [style.background]="couleur(s.typeSeance.code)"></span>
+              <div class="seance-info">
+                <span class="seance-titre">{{ s.titre || s.typeSeance.libelle }}</span>
+                <span class="seance-meta">
+                  {{ s.date | date:'EEEE d MMM' }}
+                  @if (s.heureDebut) { · {{ s.heureDebut }} }
+                  @if (s.statut === 'REALISEE') { · <span class="tag-realisee">réalisée</span> }
+                </span>
+              </div>
+              @if (seanceSelectionnee?.id === s.id) { <span class="check">✓</span> }
+            </div>
+          }
+        </div>
+      }
+    </div>
+
+    <div class="panel">
+      <h2 class="panel-title">Fichier RPE</h2>
+
+      @if (seanceSelectionnee) {
+        <div class="seance-choisie">
+          <span class="seance-dot" [style.background]="couleur(seanceSelectionnee.typeSeance.code)"></span>
+          <div>
+            <strong>{{ seanceSelectionnee.titre || seanceSelectionnee.typeSeance.libelle }}</strong>
+            <span class="seance-meta"> — {{ seanceSelectionnee.date | date:'d MMMM yyyy' }}</span>
+          </div>
+        </div>
+      } @else {
+        <div class="attente">← Sélectionne d'abord une séance</div>
+      }
+
+      <div class="source-tabs">
+        <button class="source-tab" [class.active]="ongletSource === 'fichier'" (click)="ongletSource = 'fichier'">📂 Fichier</button>
+        <button class="source-tab" [class.active]="ongletSource === 'coller'" (click)="ongletSource = 'coller'">📋 Coller</button>
+      </div>
+
+      @if (ongletSource === 'fichier') {
+        <label class="file-zone" [class.disabled]="!seanceSelectionnee">
+          <input type="file" accept=".xlsx,.csv,.txt" hidden (change)="onFileChange($event)" [disabled]="!seanceSelectionnee">
+          <span class="file-icon">📂</span>
+          @if (fichierSelectionne) {
+            <span class="file-name">{{ fichierSelectionne.name }}</span>
+          } @else {
+            <span class="file-hint">Cliquer pour choisir le fichier RPE (.csv ou .xlsx)</span>
+          }
+        </label>
+      } @else {
+        <textarea class="coller-zone" rows="8" [(ngModel)]="texteColle" [disabled]="!seanceSelectionnee"
+                  placeholder="Colle ici les lignes copiées depuis le tableur (en-têtes inclus)"></textarea>
+      }
+
+      <button class="btn btn--primary btn-import" [disabled]="!peutAnalyser" (click)="analyser()">
+        Analyser le fichier
+      </button>
+    </div>
+
+  </div>
+}
+
+<!-- ══════════════ ÉTAPE analyse en cours ══════════════ -->
+@if (etape === 'analyse') {
+  <div class="etape-centre">
+    <div class="spinner"></div>
+    <p>Analyse du fichier en cours…</p>
+  </div>
+}
+
+<!-- ══════════════ ÉTAPE vérification ══════════════ -->
+@if (etape === 'verification' && analyse) {
+  <div class="verif-layout">
+    <div class="resolution-header">
+      <h2>Vérification avant import</h2>
+      <p>
+        {{ analyse.nbRepondants }} réponse(s) à importer
+        @if (analyse.nbSansReponse > 0) { — <strong>{{ analyse.nbSansReponse }} sans réponse</strong> (non importés) }
+        @if (analyse.dureeSeance) { — durée séance {{ analyse.dureeSeance }} min → sRPE = RPE × {{ analyse.dureeSeance }} }
+      </p>
+    </div>
+
+    @for (a of avertissementsGlobaux; track $index) {
+      <div class="warn-banner" [class.warn-fichier]="a.niveau === 'FICHIER'">⚠ {{ a.message }}</div>
+    }
+
+    <div class="table-scroll">
+      <table class="verif-table">
+        <thead>
+          <tr>
+            <th title="Exclure la ligne"></th>
+            <th>Joueur</th>
+            <th>RPE</th>
+            <th>sRPE</th>
+            <th>Plaisir</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (l of analyse.lignes; track l.numeroLigne) {
+            <tr [class.exclue]="estExclue(l)" [class.alerte]="warnsDe(l).length > 0" [class.sans-reponse]="!l.repondu">
+              <td>
+                @if (l.repondu) {
+                  <input type="checkbox" [checked]="estExclue(l)" (change)="toggleExclusion(l)" title="Exclure">
+                }
+              </td>
+              <td class="col-joueur">
+                <span class="verif-identite">{{ l.identiteFichier }}</span>
+                @if (!l.repondu) {
+                  <span class="badge-inconnu">n'a pas répondu</span>
+                } @else if (l.joueurNomAffiche) {
+                  <span class="badge-connu" title="Fiche reconnue">{{ l.joueurNomAffiche }}</span>
+                } @else {
+                  <span class="badge-inconnu">à résoudre</span>
+                }
+              </td>
+              <td class="cell-rpe">{{ l.rpe ?? '—' }}</td>
+              <td>{{ l.charge ?? '—' }}</td>
+              <td>{{ l.plaisir ?? '—' }}</td>
+            </tr>
+            @if (warnsDe(l).length > 0) {
+              <tr class="ligne-warns">
+                <td></td>
+                <td colspan="4">
+                  @for (w of warnsDe(l); track $index) { <span class="warn-inline">⚠ {{ w }}</span> }
+                </td>
+              </tr>
+            }
+          }
+        </tbody>
+      </table>
+    </div>
+
+    <div class="resolution-footer">
+      <button class="btn btn--primary btn-import" (click)="continuerVerification()">
+        Continuer ({{ lignesRetenues.length }} à importer)
+      </button>
+      <button class="btn btn--secondary" (click)="etape = 'selection'">← Retour</button>
+    </div>
+  </div>
+}
+
+<!-- ══════════════ ÉTAPE résolution des joueurs inconnus ══════════════ -->
+@if (etape === 'resolution') {
+  <div class="resolution-layout">
+    <div class="resolution-header">
+      <h2>Joueurs non reconnus</h2>
+      <p>{{ resolutions.length }} joueur(s) du fichier ne correspondent à aucune fiche. Choisis une action pour chacun — elle sera mémorisée pour les prochains imports.</p>
+    </div>
+
+    <div class="resolution-liste">
+      @for (res of resolutions; track res.identiteFichier) {
+        <div class="resolution-card" [class.resolu]="res.action !== null">
+
+          <div class="res-header">
+            <span class="res-prenom">{{ res.identiteFichier }}</span>
+            <span class="res-badge" [class]="'badge-' + (res.action ?? 'none')">
+              {{ res.action === 'CREATE' ? 'Créer' : res.action === 'MERGE' ? 'Fusionner' : res.action === 'IGNORE' ? 'Ignorer' : 'En attente' }}
+            </span>
+          </div>
+
+          <div class="res-actions">
+            <button class="res-btn" [class.active-create]="res.action === 'CREATE'" (click)="setAction(res, 'CREATE')">＋ Créer</button>
+            <button class="res-btn" [class.active-merge]="res.action === 'MERGE'" (click)="setAction(res, 'MERGE')">⇄ Fusionner</button>
+            <button class="res-btn" [class.active-ignore]="res.action === 'IGNORE'" (click)="setAction(res, 'IGNORE')">✕ Ignorer</button>
+          </div>
+
+          @if (res.action === 'CREATE') {
+            <div class="res-form">
+              <div class="res-field">
+                <label>Prénom</label>
+                <input [(ngModel)]="res.prenom" placeholder="{{ res.identiteFichier }}">
+              </div>
+              <div class="res-field">
+                <label>Nom *</label>
+                <input [(ngModel)]="res.nom" placeholder="Nom de famille">
+              </div>
+              <div class="res-field">
+                <label>Poste</label>
+                <select [(ngModel)]="res.poste">
+                  <option value="">— Non défini</option>
+                  @for (p of postes; track p.value) {
+                    <option [value]="p.value">{{ p.label }}</option>
+                  }
+                </select>
+              </div>
+            </div>
+          }
+
+          @if (res.action === 'MERGE') {
+            <div class="res-form">
+              <div class="res-field">
+                <label>Correspond à quel joueur ?</label>
+                <select [(ngModel)]="res.joueurExistantId">
+                  <option value="">— Sélectionner</option>
+                  @for (j of joueurs; track j.id) {
+                    <option [value]="j.id">{{ j.prenom }} {{ j.nom }}</option>
+                  }
+                </select>
+              </div>
+            </div>
+          }
+
+          @if (res.action === 'IGNORE') {
+            <p class="res-ignore-msg">Le RPE de ce joueur ne sera pas importé.</p>
+          }
+
+        </div>
+      }
+    </div>
+
+    @if (confirmationNonLies) {
+      <div class="warn-banner warn-fichier">
+        ⚠ {{ nbNonLies }} joueur(s) « à ignorer » ne seront PAS importés (aucune liaison faite).
+        Vérifie la liste, ou clique à nouveau sur « Importer quand même » pour confirmer.
+      </div>
+    }
+
+    <div class="resolution-footer">
+      <button class="btn btn--primary btn-import" [disabled]="!toutResolu" (click)="soumettreResolutions()">
+        @if (confirmationNonLies) { Importer quand même ({{ nbJoueursImportes }}) }
+        @else { Confirmer et importer ({{ nbJoueursImportes }}) }
+      </button>
+      <button class="btn btn--secondary" (click)="etape = 'verification'">← Retour</button>
+    </div>
+  </div>
+}
+
+<!-- ══════════════ ÉTAPE import en cours ══════════════ -->
+@if (etape === 'import') {
+  <div class="etape-centre">
+    <div class="spinner"></div>
+    <p>Import en cours…</p>
+  </div>
+}
+
+<!-- ══════════════ ÉTAPE résultat ══════════════ -->
+@if (etape === 'resultat' && resultat) {
+  <div class="etape-centre">
+    <div class="resultat-card">
+      <div class="resultat-icon">✓</div>
+      <h2>Import réussi</h2>
+      <div class="result-grid">
+        <div class="result-item">
+          <span class="result-label">RPE importés</span>
+          <span class="result-value ok">{{ resultat.inseres }}</span>
+        </div>
+        @if (resultat.ignores > 0) {
+          <div class="result-item">
+            <span class="result-label">Ignorés</span>
+            <span class="result-value warn">{{ resultat.ignores }}</span>
+          </div>
+        }
+      </div>
+      <button class="btn btn--primary" (click)="nouvelImport()">Nouvel import</button>
+    </div>
+  </div>
+}

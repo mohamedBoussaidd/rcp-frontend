@@ -139,6 +139,14 @@ export const routes: Routes = [
     loadComponent: () => import('./features/performance/import/import.component').then(m => m.ImportComponent)
   },
   {
+    path: 'import-rpe', canActivate: [authGuard, roleGuard, contexteGuard, saisonGuard, moduleGuard], data: { roles: ['SUPER_ADMIN', 'PREPARATEUR'], perms: ['rpe:import'], module: 'wellness' },
+    loadComponent: () => import('./features/performance/import-rpe/import-rpe.component').then(m => m.ImportRpeComponent)
+  },
+  {
+    path: 'import-hooper', canActivate: [authGuard, roleGuard, contexteGuard, saisonGuard, moduleGuard], data: { roles: ['SUPER_ADMIN', 'PREPARATEUR'], perms: ['hooper:import'], module: 'wellness' },
+    loadComponent: () => import('./features/performance/import-hooper/import-hooper.component').then(m => m.ImportHooperComponent)
+  },
+  {
     path: 'vue-seance', canActivate: [authGuard, roleGuard, contexteGuard, saisonGuard, moduleGuard], data: { roles: STAFF_PHYSIQUE, perms: PERMS_GPS, module: 'gps' },
     loadComponent: () => import('./features/performance/vue-seance/vue-seance.component').then(m => m.VueSeanceComponent)
   },

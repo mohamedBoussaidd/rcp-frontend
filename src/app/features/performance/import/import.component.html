@@ -371,11 +371,19 @@
       }
     </div>
 
+    @if (confirmationNonLies) {
+      <div class="warn-banner warn-fichier">
+        ⚠ {{ nbNonLies }} joueur(s) « à ignorer » ne seront PAS importés (aucune liaison faite).
+        Vérifie la liste, ou clique à nouveau sur « Importer quand même » pour confirmer.
+      </div>
+    }
+
     <div class="resolution-footer">
       <button class="btn btn--primary btn-import"
               [disabled]="!toutResolu"
               (click)="soumettreResolutions()">
-        Confirmer et importer ({{ nbJoueursImportes }} joueurs)
+        @if (confirmationNonLies) { Importer quand même ({{ nbJoueursImportes }} joueurs) }
+        @else { Confirmer et importer ({{ nbJoueursImportes }} joueurs) }
       </button>
       <button class="btn btn--secondary" (click)="etape = 'verification'">← Retour</button>
     </div>

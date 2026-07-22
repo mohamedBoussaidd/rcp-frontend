@@ -82,7 +82,7 @@ const ALL_MODULES: NavModule[] = [
   // ── 03 · Performance : préparation physique (+ overview préparateur) ──
   {
     key: 'performance', label: 'Performance', icon: 'fitness_center',
-    link: '/performance', matches: ['/performance', '/vue-seance', '/etat-effectif', '/charge-equipe', '/suivi-subjectif', '/pesees', '/import', '/methodologie', '/parametres'],
+    link: '/performance', matches: ['/performance', '/vue-seance', '/etat-effectif', '/charge-equipe', '/suivi-subjectif', '/pesees', '/import', '/import-rpe', '/import-hooper', '/methodologie', '/parametres'],
     roles: ['SUPER_ADMIN', 'PRESIDENT', 'PREPARATEUR', 'MEDICAL'],
     perms: ['pesees:write', 'gps:import'],
     modulesAny: ['gps', 'prepa_physique', 'wellness', 'pesees'],
@@ -95,6 +95,8 @@ const ALL_MODULES: NavModule[] = [
       { label: 'Pesées',            link: '/pesees',       roles: ['SUPER_ADMIN', 'PRESIDENT', 'PREPARATEUR', 'MEDICAL'], perms: ['pesees:write'], module: 'pesees' },
       { label: 'Paramètres',        link: '/parametres',   roles: ['SUPER_ADMIN', 'PRESIDENT', 'PREPARATEUR'], perms: ['configuration:write'] },
       { label: 'Import GPS',        link: '/import',       roles: ['SUPER_ADMIN', 'PREPARATEUR'], perms: ['gps:import'], module: 'gps' },
+      { label: 'Import RPE',        link: '/import-rpe',   roles: ['SUPER_ADMIN', 'PREPARATEUR'], perms: ['rpe:import'], module: 'wellness' },
+      { label: 'Import ressenti',   link: '/import-hooper', roles: ['SUPER_ADMIN', 'PREPARATEUR'], perms: ['hooper:import'], module: 'wellness' },
       { label: 'Méthodologie',      link: '/methodologie', roles: ['SUPER_ADMIN', 'PRESIDENT', 'PREPARATEUR', 'MEDICAL'], module: 'prepa_physique' },
     ],
   },

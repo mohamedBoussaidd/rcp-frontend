@@ -109,6 +109,8 @@ export class ImportComponent implements OnInit {
   resolutions: ResolutionUI[] = [];
   joueurs: Joueur[] = [];
   readonly postes = POSTES;
+  /** Passe à true au 1er clic « Confirmer » s'il reste des joueurs non liés → demande une confirmation. */
+  confirmationNonLies = false;
 
   // Résultat
   resultat: any = null;
@@ -340,13 +342,24 @@ export class ImportComponent implements OnInit {
     return this.lignesRetenues.filter(l => l.joueurId || !ignores.has(l.identiteFichier)).length;
   }
 
+  /** Joueurs du fichier volontairement écartés (action « Ignorer ») → non importés. */
+  get nbNonLies(): number {
+    return this.resolutions.filter(r => r.action === 'IGNORE').length;
+  }
+
   setAction(res: ResolutionUI, action: 'CREATE' | 'MERGE' | 'IGNORE'): void {
     res.action = action;
     if (action !== 'MERGE') { res.joueurExistantId = ''; }
+    this.confirmationNonLies = false; // toute modif d'action ré-arme la confirmation
   }
 
   soumettreResolutions(): void {
     if (!this.toutResolu) return;
+    // Garde-fou : s'il reste des joueurs non liés (ignorés), on avertit et on exige un 2ᵉ clic.
+    if (this.nbNonLies > 0 && !this.confirmationNonLies) {
+      this.confirmationNonLies = true;
+      return;
+    }
     const resList: ResolutionImport[] = this.resolutions.map(r => ({
       identiteFichier: r.identiteFichier,
       action: r.action!,
@@ -387,6 +400,7 @@ export class ImportComponent implements OnInit {
     this.analyse = null;
     this.mappingLignes = [];
     this.resolutions = [];
+    this.confirmationNonLies = false;
     this.resultat = null;
     this.fichierSelectionne = null;
     this.texteColle = '';

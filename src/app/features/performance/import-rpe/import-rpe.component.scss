@@ -1,0 +1,19 @@
+// Compléments propres à l'import RPE (le reste du style est réutilisé depuis import.component.scss).
+
+.tag-realisee {
+  color: #16a34a;
+  font-weight: 600;
+}
+
+.cell-rpe {
+  font-weight: 700;
+}
+
+// Ligne d'un joueur qui n'a pas répondu : grisée, non importée.
+tr.sans-reponse {
+  opacity: 0.5;
+
+  .cell-rpe {
+    font-weight: 400;
+  }
+}
