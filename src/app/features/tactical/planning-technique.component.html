@@ -54,12 +54,11 @@
             <div class="row" style="gap:6px;flex-wrap:wrap">
               @if (e.forme) { <span class="badge badge--neutral">{{ libelleForme(e.forme) }}</span> }
               @if (e.dureeMinutes) { <span class="badge badge--neutral">{{ e.dureeMinutes }} min</span> }
+              @if (e.schemaJson) { <span class="badge badge--schema"><mat-icon>schema</mat-icon>Schéma</span> }
             </div>
             @if (e.objectif) { <p class="exo-card__obj">{{ e.objectif }}</p> }
             <div class="exo-card__foot">
-              <span class="exo-card__auteur">
-                {{ e.creeParNom || '—' }}@if (e.equipeOrigineNom) { · {{ e.equipeOrigineNom }} }@if (e.schemaJson) { · <span style="color:var(--green-600);font-weight:600">schéma</span> }
-              </span>
+              <app-auteur-chip [nom]="e.creeParNom" [equipe]="e.equipeOrigineNom" />
               @if (e.modifiable) {
                 <div class="row" style="gap:4px">
                   <button class="btn btn--secondary btn--sm btn--icon" (click)="ouvrirSchema(e)" title="Schéma tactique">⬡</button>

@@ -1,0 +1,66 @@
+<div class="gen">
+  <header class="gen__head">
+    <h1 class="gen__title">✨ Générer une séance</h1>
+    <p class="gen__sub">Décris ta séance en quelques mots (ou dicte-la) — l'IA compose un brouillon avec tes exercices, que tu ajustes ensuite.</p>
+  </header>
+
+  <div class="gen__card">
+    <label class="gen__label">Ta demande</label>
+    <div class="gen__zone">
+      <textarea rows="4" [(ngModel)]="demande" name="demande"
+                placeholder="Ex. Séance de 75 min, transition défensive, intensité modérée, 3 blocs, U17…"></textarea>
+      @if (vocalDispo) {
+        <button type="button" class="gen__mic" [class.gen__mic--on]="ecoute()" (click)="basculerMicro()"
+                [attr.aria-label]="ecoute() ? 'Arrêter la dictée' : 'Dicter'">
+          {{ ecoute() ? '● Écoute…' : '🎤 Dicter' }}
+        </button>
+      }
+    </div>
+    <button type="button" class="btn btn--primary" (click)="generer()" [disabled]="!demande.trim() || generation()">
+      {{ generation() ? 'Génération…' : 'Générer le brouillon' }}
+    </button>
+  </div>
+
+  @if (brouillon(); as b) {
+    <div class="gen__card gen__brouillon">
+      <div class="gen__brhead">
+        <h2>{{ b.titre || 'Séance générée' }}</h2>
+        <span class="gen__pill">{{ b.typeLibelle || '—' }} · {{ b.dureeMinutes || '?' }} min</span>
+      </div>
+      @if (b.objectif) { <p class="gen__obj">🎯 {{ b.objectif }}</p> }
+
+      @for (bl of b.blocs; track $index) {
+        <div class="gen__bloc">
+          <div class="gen__bloctitre">
+            <b>{{ bl.libelle }}</b>
+            <span>{{ bl.sequencage || (bl.dureeMinutes ? bl.dureeMinutes + ' min' : '') }}</span>
+          </div>
+          <div class="gen__exos">
+            {{ bl.exerciceIds.length }} exercice(s) de ta bibliothèque
+          </div>
+        </div>
+      }
+
+      @if (b.exercicesManquants.length) {
+        <div class="gen__manquants">
+          <div class="gen__manqtitre">À créer (non trouvés en bibliothèque) :</div>
+          @for (m of b.exercicesManquants; track $index) {
+            <div class="gen__manq">• <b>{{ m.nom }}</b>@if (m.description) { — {{ m.description }} }</div>
+          }
+        </div>
+      }
+
+      @if (b.note) { <p class="gen__note">💡 {{ b.note }}</p> }
+
+      <div class="gen__actions">
+        <label class="gen__date">Date <input type="date" [(ngModel)]="date" name="date"></label>
+        <span class="gen__spacer"></span>
+        <button type="button" class="btn btn--secondary" (click)="reinitialiser()">Recommencer</button>
+        <button type="button" class="btn btn--primary" (click)="creer()" [disabled]="creation()">
+          {{ creation() ? 'Création…' : 'Créer la séance' }}
+        </button>
+      </div>
+      <p class="gen__hint">La séance est créée en PLANIFIÉE, puis tu ajustes tout dans sa fiche.</p>
+    </div>
+  }
+</div>

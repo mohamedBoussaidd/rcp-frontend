@@ -10,6 +10,7 @@ import {
 } from '@core/services/seance.service';
 import { TechniqueService, Exercice } from '@core/services/technique.service';
 import { TerrainZonesComponent } from '@shared/components/terrain-zones/terrain-zones.component';
+import { AuteurChipComponent } from '@shared/components/auteur-chip/auteur-chip.component';
 import { AuthService } from '@core/services/auth.service';
 import {
   DosageDominantes, JaugeDominantesComponent, dosagesVides,
@@ -34,7 +35,7 @@ interface BlocForm {
 @Component({
   selector: 'app-seances-modeles',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink, TerrainZonesComponent, JaugeDominantesComponent],
+  imports: [CommonModule, FormsModule, RouterLink, TerrainZonesComponent, JaugeDominantesComponent, AuteurChipComponent],
   templateUrl: './seances-modeles.component.html',
   styleUrl: './seances-modeles.component.scss',
 })

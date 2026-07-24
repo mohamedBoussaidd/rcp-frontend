@@ -568,18 +568,42 @@ mat-progress-bar {
 
 /* ════════════════════════════════════════
    COMPOSANTS DESIGN SYSTEM — BADGE
+   ────────────────────────────────────────
+   CONVENTION (à réutiliser partout) : une pilule douce = fond teinté + bordure et texte de la
+   MÊME couleur, arrondie, avec une icône optionnelle. On combine `.badge` + une variante
+   sémantique (`--schema`, `--global`, `--ok`, `--warn`, `--bad`, `--info`, `--neutral`, `--dark`).
+   Ex. : <span class="badge badge--schema"><mat-icon>schema</mat-icon>Schéma</span>.
+   Toutes les variantes sont theme-aware (light/dark) via les variables de couleur.
+   Pour présenter un créateur/auteur, utiliser plutôt le composant <app-auteur-chip>.
    ════════════════════════════════════════ */
 .badge {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  padding: 2px 8px;
+  padding: 3px 9px;
   border-radius: var(--r-pill);
-  font-size: 11.5px;
+  font-size: 11.75px;
   font-weight: 600;
   letter-spacing: 0.01em;
   border: 1px solid;
-  line-height: 1.5;
+  line-height: 1.4;
+  white-space: nowrap;
+
+  /* Icône Material calibrée sur le texte du badge (les emojis, eux, suivent la font-size). */
+  mat-icon,
+  .mat-icon {
+    font-size: 13px;
+    width: 13px;
+    height: 13px;
+    line-height: 13px;
+  }
+}
+
+/* Légère mise en avant quand le badge doit vraiment se voir (statut d'entité, drapeau global). */
+.badge--fort {
+  padding: 4px 11px;
+  font-size: 12px;
+  font-weight: 700;
 }
 
 .badge--ok {
@@ -617,6 +641,26 @@ mat-progress-bar {
   color: white;
   border-color: var(--slate-900);
 }
+
+/* Un contenu porte un schéma tactique (exercice, séance…). Vert doux + icône diagramme. */
+.badge--schema {
+  background: var(--ok-bg);
+  color: var(--ok);
+  border-color: var(--ok-bd);
+}
+
+/* Contenu GLOBAL, commun à tous les clubs (posé par le super-admin). Bleu doux + icône globe. */
+.badge--global {
+  background: var(--info-bg);
+  color: var(--info);
+  border-color: var(--info-bd);
+}
+
+/* Badge d'intensité 1–5 (avec `.badge`) : la couleur suit le niveau (info → warn → bad). */
+.int-badge { font-weight: 700; }
+.int-1, .int-2 { background: var(--info-bg); color: var(--info); border-color: var(--info-bd); }
+.int-3 { background: var(--warn-bg); color: var(--warn); border-color: var(--warn-bd); }
+.int-4, .int-5 { background: var(--bad-bg); color: var(--bad); border-color: var(--bad-bd); }
 
 .badge--dot::before {
   content: "";

@@ -16,6 +16,10 @@ const routes: Routes = [
         loadComponent: () => import('./surveillance/staff-surveillance.component').then(m => m.StaffSurveillanceComponent)
       },
       {
+        path: 'generer', data: { title: 'Générer une séance' },
+        loadComponent: () => import('../seances/generateur/generateur-seance.component').then(m => m.GenerateurSeanceComponent)
+      },
+      {
         path: 'agenda', data: { title: 'Agenda' },
         loadComponent: () => import('./agenda/staff-agenda.component').then(m => m.StaffAgendaComponent)
       },

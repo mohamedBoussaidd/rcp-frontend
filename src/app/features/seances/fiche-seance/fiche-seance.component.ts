@@ -1,6 +1,7 @@
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { DatePipe } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { GroupeSeanceDto, ResumeSeance, SeanceService } from '@core/services/seance.service';
 import { AuthService } from '@core/services/auth.service';
@@ -19,7 +20,7 @@ import { OccupationZone, TerrainZonesComponent } from '@shared/components/terrai
   standalone: true,
   templateUrl: './fiche-seance.component.html',
   styleUrl: './fiche-seance.component.scss',
-  imports: [DatePipe, SchemaViewerComponent, TerrainZonesComponent],
+  imports: [DatePipe, FormsModule, SchemaViewerComponent, TerrainZonesComponent],
 })
 export class FicheSeanceComponent implements OnInit {
 
@@ -150,6 +151,54 @@ export class FicheSeanceComponent implements OnInit {
     const r = this.resume();
     if (!r) return;
     this.router.navigate(['/calendrier'], { queryParams: { editer: r.seanceId } });
+  }
+
+  // ── C1 : Reprogrammer (Séance → nouvelle séance) ──
+  readonly reprogOuvert = signal(false);
+  reprogDate = '';
+  reprogHeure = '';
+  readonly reprogEnCours = signal(false);
+
+  ouvrirReprog(): void { this.reprogHeure = this.resume()?.heureDebut ?? ''; this.reprogOuvert.set(true); }
+  fermerReprog(): void { this.reprogOuvert.set(false); }
+
+  confirmerReprog(): void {
+    const r = this.resume();
+    if (!r || !this.reprogDate || this.reprogEnCours()) return;
+    this.reprogEnCours.set(true);
+    this.seanceService.dupliquer(r.seanceId, this.reprogDate, this.reprogHeure || null).subscribe({
+      next: s => {
+        this.reprogEnCours.set(false);
+        this.reprogOuvert.set(false);
+        this.snack.open('Séance reprogrammée', 'OK', { duration: 2500 });
+        this.router.navigate(['/calendrier'], { queryParams: { editer: s.id } });
+      },
+      error: () => { this.reprogEnCours.set(false); this.snack.open('Reprogrammation impossible', 'Fermer', { duration: 3500 }); },
+    });
+  }
+
+  // ── C2 : Enregistrer comme modèle (Séance → modèle de bibliothèque) ──
+  readonly modeleOuvert = signal(false);
+  modeleNom = '';
+  readonly modeleEnCours = signal(false);
+
+  peutModele(): boolean { return this.auth.has('seances_modeles:access'); }
+  ouvrirModele(): void { this.modeleNom = this.resume()?.titre ?? ''; this.modeleOuvert.set(true); }
+  fermerModele(): void { this.modeleOuvert.set(false); }
+
+  confirmerModele(): void {
+    const r = this.resume();
+    if (!r || this.modeleEnCours()) return;
+    this.modeleEnCours.set(true);
+    this.seanceService.enregistrerCommeModele(r.seanceId, this.modeleNom).subscribe({
+      next: () => {
+        this.modeleEnCours.set(false);
+        this.modeleOuvert.set(false);
+        this.snack.open('Modèle créé dans la bibliothèque', 'Voir', { duration: 5000 })
+          .onAction().subscribe(() => this.router.navigate(['/seances-modeles']));
+      },
+      error: () => { this.modeleEnCours.set(false); this.snack.open('Création du modèle impossible', 'Fermer', { duration: 3500 }); },
+    });
   }
 
   /** Nb de joueurs répartis + auto (bandeau « effectif prévu »). */

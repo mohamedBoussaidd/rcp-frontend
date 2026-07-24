@@ -50,6 +50,30 @@ export const routes: Routes = [
     loadComponent: () => import('./features/admin/maintenance/maintenance.component').then(m => m.MaintenanceComponent)
   },
   {
+    path: 'admin/ia', canActivate: [authGuard, roleGuard], data: { roles: ['SUPER_ADMIN'] },
+    loadComponent: () => import('./features/admin/ia-config/ia-config.component').then(m => m.IaConfigComponent)
+  },
+  {
+    path: 'admin/exercices-globaux', canActivate: [authGuard, roleGuard], data: { roles: ['SUPER_ADMIN'] },
+    loadComponent: () => import('./features/admin/exercices-globaux/exercices-globaux.component').then(m => m.ExercicesGlobauxComponent)
+  },
+  {
+    path: 'admin/schemas-globaux', canActivate: [authGuard, roleGuard], data: { roles: ['SUPER_ADMIN'] },
+    loadComponent: () => import('./features/admin/schemas-globaux/schemas-globaux.component').then(m => m.SchemasGlobauxComponent)
+  },
+  // Fiche d'exercice GLOBAL (super-admin) : même formulaire que les clubs, en mode `global`
+  // (création via /api/exercices/globaux, retour vers l'écran des exercices globaux).
+  {
+    path: 'admin/exercices-globaux/nouveau', canActivate: [authGuard, roleGuard],
+    data: { roles: ['SUPER_ADMIN'], global: true },
+    loadComponent: () => import('./features/tactical/exercice-form/exercice-form.component').then(m => m.ExerciceFormComponent)
+  },
+  {
+    path: 'admin/exercices-globaux/:id/editer', canActivate: [authGuard, roleGuard],
+    data: { roles: ['SUPER_ADMIN'], global: true },
+    loadComponent: () => import('./features/tactical/exercice-form/exercice-form.component').then(m => m.ExerciceFormComponent)
+  },
+  {
     path: 'mon-club', canActivate: [authGuard, roleGuard, contexteGuard], data: { roles: ['PRESIDENT', 'ENTRAINEUR', 'SUPER_ADMIN'], perms: ['club:manage', 'membres:manage'] },
     loadComponent: () => import('./features/admin/mon-club/mon-club.component').then(m => m.MonClubComponent)
   },
@@ -206,6 +230,11 @@ export const routes: Routes = [
   {
     path: 'seances/:id/fiche', canActivate: [authGuard, roleGuard, contexteGuard, saisonGuard], data: { roles: STAFF },
     loadComponent: () => import('./features/seances/fiche-seance/fiche-seance.component').then(m => m.FicheSeanceComponent)
+  },
+  {
+    path: 'generer-seance', canActivate: [authGuard, roleGuard, contexteGuard, saisonGuard],
+    data: { roles: ['SUPER_ADMIN', 'ENTRAINEUR', 'PREPARATEUR'], perms: ['seances:write'] },
+    loadComponent: () => import('./features/seances/generateur/generateur-seance.component').then(m => m.GenerateurSeanceComponent)
   },
   {
     path: 'pesees', canActivate: [authGuard, roleGuard, contexteGuard, saisonGuard, moduleGuard], data: { roles: STAFF_PHYSIQUE, perms: PERMS_GPS, module: 'pesees' },

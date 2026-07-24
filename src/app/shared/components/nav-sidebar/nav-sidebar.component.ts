@@ -53,6 +53,7 @@ const ALL_MODULES: NavModule[] = [
     perms: ['seances:read'],
     subnav: [
       { label: 'Calendrier',         link: '/calendrier', roles: ['SUPER_ADMIN', 'PRESIDENT', 'ENTRAINEUR', 'PREPARATEUR', 'MEDICAL', 'ADMINISTRATIF', 'JOUEUR'] },
+      { label: 'Générer une séance (IA)', link: '/generer-seance', roles: ['SUPER_ADMIN', 'ENTRAINEUR', 'PREPARATEUR'], perms: ['seances:write'] },
       { label: 'Modèles de semaine', link: '/modeles-semaine', roles: ['SUPER_ADMIN', 'PRESIDENT', 'ENTRAINEUR', 'PREPARATEUR'], perms: ['seances:write'] },
       { label: 'Saisons',            link: '/saisons', roles: ['SUPER_ADMIN', 'PRESIDENT', 'ENTRAINEUR', 'PREPARATEUR'], perms: ['saison:manage'] },
     ],
@@ -159,6 +160,9 @@ const ALL_MODULES: NavModule[] = [
       { label: 'Rôles globaux',  link: '/admin/roles-globaux', roles: ['SUPER_ADMIN'] },
       { label: 'Paramètres IA',  link: '/admin/parametres-ia', roles: ['SUPER_ADMIN'] },
       { label: 'Maintenance',    link: '/admin/maintenance', roles: ['SUPER_ADMIN'] },
+      { label: 'IA (clés & modèles)', link: '/admin/ia', roles: ['SUPER_ADMIN'] },
+      { label: 'Exercices globaux', link: '/admin/exercices-globaux', roles: ['SUPER_ADMIN'] },
+      { label: 'Schémas globaux', link: '/admin/schemas-globaux', roles: ['SUPER_ADMIN'] },
       { label: 'Mon club',       link: '/mon-club',    roles: ['PRESIDENT', 'ENTRAINEUR', 'ADMINISTRATIF'], perms: ['club:manage', 'membres:manage'] },
     ],
   },

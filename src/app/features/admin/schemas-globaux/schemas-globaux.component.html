@@ -1,0 +1,126 @@
+<div class="screen">
+
+  <!-- En-tête -->
+  <div class="page-head">
+    <div>
+      <h1 class="page-head__title">Schémas globaux</h1>
+      <p class="page-head__sub">
+        Schémas tactiques proposés à TOUS les clubs (lecture seule côté club, copiables) ·
+        {{ cartes().length }} schéma(s)
+      </p>
+    </div>
+    <div class="page-head__actions">
+      <a class="btn btn--secondary" routerLink="/admin/clubs">‹ Retour</a>
+      <button class="btn btn--primary" (click)="nouveau()"><mat-icon>add</mat-icon>Nouveau schéma global</button>
+    </div>
+  </div>
+
+  @if (loading()) {
+    <div class="lib-empty">Chargement…</div>
+  } @else if (cartes().length === 0) {
+    <div class="lib-empty">
+      <mat-icon>public</mat-icon>
+      <p>Aucun schéma global pour l'instant.</p>
+      <p class="lib-empty__hint">Créez-en un, ou promouvez un schéma de club depuis la recherche ci-dessous.</p>
+      <button class="btn btn--primary btn--sm" (click)="nouveau()"><mat-icon>add</mat-icon>Créer le premier</button>
+    </div>
+  } @else {
+    <div class="lib-grid">
+      @for (s of cartes(); track s.id) {
+        <div class="lib-card" (click)="ouvrir(s)">
+          <div class="lib-card__thumb">
+            @if (s.apercu) { <img [src]="s.apercu" [alt]="s.nom" /> }
+            @else { <div class="lib-card__noimg"><mat-icon>sports_soccer</mat-icon></div> }
+            @if (s.animee) { <span class="lib-card__play" title="Schéma animé"><mat-icon>play_arrow</mat-icon></span> }
+            <span class="lib-card__fourni" title="Schéma global, commun à tous les clubs">Global</span>
+          </div>
+          <div class="lib-card__body">
+            <div class="lib-card__top">
+              <span class="lib-card__name">{{ s.nom }}</span>
+              @if (s.categorie) { <span class="badge badge--neutral">{{ label(s.categorie) }}</span> }
+            </div>
+            <div class="lib-card__meta">
+              @if (s.animee) {
+                <span class="lib-card__anim"><mat-icon>movie</mat-icon>animé · {{ s.frames }} frames</span>
+              } @else {
+                <span class="lib-card__anim lib-card__anim--static"><mat-icon>image</mat-icon>statique</span>
+              }
+              <span>· {{ s.updatedAt | date:'dd/MM/yyyy' }}</span>
+            </div>
+          </div>
+          <div class="lib-card__actions">
+            <button class="btn btn--ghost btn--icon btn--sm lib-card__attach" title="Attacher à un exercice global"
+                    (click)="ajouterAExercice(s, $event)">
+              <mat-icon>add_task</mat-icon>
+            </button>
+            <button class="btn btn--ghost btn--icon btn--sm" title="Ouvrir l'éditeur" (click)="ouvrir(s)">
+              <mat-icon>edit</mat-icon>
+            </button>
+            <button class="btn btn--ghost btn--icon btn--sm" title="Renommer / catégorie" (click)="renommer(s, $event)">
+              <mat-icon>drive_file_rename_outline</mat-icon>
+            </button>
+            <button class="btn btn--ghost btn--icon btn--sm lib-card__del" title="Supprimer" (click)="supprimer(s, $event)">
+              <mat-icon>delete_outline</mat-icon>
+            </button>
+          </div>
+        </div>
+      }
+    </div>
+  }
+
+  <!-- ── Recherche cross-club + promotion ── -->
+  <div class="lib-section">
+    <h2 class="lib-section__title"><mat-icon>travel_explore</mat-icon>Parcourir les schémas des clubs</h2>
+    <p class="lib-section__sub">
+      Cherchez un schéma dans un ou plusieurs clubs, puis <strong>promouvez-le en global</strong> pour le
+      proposer à tous. La promotion crée une copie : le schéma d'origine du club n'est jamais modifié.
+    </p>
+  </div>
+
+  <div class="filtre">
+    <div class="filtre__clubs">
+      <button class="chip" [class.chip--on]="clubsSelectionnes().size === 0" (click)="tousLesClubs()">Tous les clubs</button>
+      @for (c of clubs(); track c.id) {
+        <button class="chip" [class.chip--on]="clubsSelectionnes().has(c.id)" (click)="toggleClub(c.id)">{{ c.nom }}</button>
+      }
+    </div>
+    <div class="filtre__row">
+      <input class="inp" type="text" [(ngModel)]="filtreNom" placeholder="Nom du schéma…" (keyup.enter)="rechercher()" />
+      <input class="inp" type="text" [(ngModel)]="filtreCategorie" list="cats-schema" placeholder="Catégorie…" (keyup.enter)="rechercher()" />
+      <datalist id="cats-schema">
+        @for (cat of categories; track cat) { <option [value]="cat">{{ label(cat) }}</option> }
+      </datalist>
+      <button class="btn btn--primary" (click)="rechercher()" [disabled]="recherching()">
+        <mat-icon>search</mat-icon>{{ recherching() ? '…' : 'Rechercher' }}
+      </button>
+    </div>
+  </div>
+
+  @if (resultats() !== null) {
+    @if (resultats()!.length === 0) {
+      <p class="filtre__vide">Aucun schéma de club ne correspond.</p>
+    } @else {
+      <div class="reslist">
+        @for (r of resultats()!; track r.id) {
+          <div class="resrow">
+            <div class="resrow__thumb">
+              @if (r.apercu) { <img [src]="r.apercu" [alt]="r.nom" /> }
+              @else { <mat-icon>sports_soccer</mat-icon> }
+            </div>
+            <div class="resrow__info">
+              <span class="resrow__nom">{{ r.nom }}</span>
+              <span class="resrow__meta">
+                <span class="badge badge--neutral"><mat-icon>shield</mat-icon>{{ r.clubNom ?? '—' }}</span>
+                @if (r.categorie) { <span class="badge badge--neutral">{{ label(r.categorie) }}</span> }
+                @if (r.creeParNom) { <app-auteur-chip [nom]="r.creeParNom" /> }
+              </span>
+            </div>
+            <button class="btn btn--secondary btn--sm" title="Dupliquer en schéma global" (click)="promouvoir(r)">
+              <mat-icon>public</mat-icon>Promouvoir
+            </button>
+          </div>
+        }
+      </div>
+    }
+  }
+</div>

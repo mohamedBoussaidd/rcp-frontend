@@ -18,12 +18,51 @@
         <button class="btn btn--secondary" (click)="imprimer()">🖨 Imprimer / PDF</button>
         @if (peutEcrire()) {
           <button class="btn btn--secondary" (click)="modifier()">✏️ Modifier</button>
+          <button class="btn btn--secondary" (click)="ouvrirReprog()">🔁 Reprogrammer</button>
+          @if (peutModele()) {
+            <button class="btn btn--secondary" (click)="ouvrirModele()">⭐ Enregistrer comme modèle</button>
+          }
           <button class="btn btn--primary" (click)="partager()" [disabled]="partageEnCours()">
             {{ partageEnCours() ? 'Partage…' : '📤 Partager au staff' }}
           </button>
         }
       </div>
     </div>
+
+    <!-- C1 : Reprogrammer -->
+    @if (reprogOuvert()) {
+      <div class="mini-form no-print">
+        <div class="mini-form__titre">Reprogrammer cette séance</div>
+        <p class="mini-form__hint">Une nouvelle séance planifiée est créée avec le même contenu (sans présence ni résultats). Tu pourras l'ajuster ensuite.</p>
+        <div class="mini-form__row">
+          <label>Date <input type="date" [(ngModel)]="reprogDate"></label>
+          <label>Heure <input type="time" [(ngModel)]="reprogHeure"></label>
+        </div>
+        <div class="mini-form__actions">
+          <button class="btn btn--secondary" (click)="fermerReprog()">Annuler</button>
+          <button class="btn btn--primary" (click)="confirmerReprog()" [disabled]="!reprogDate || reprogEnCours()">
+            {{ reprogEnCours() ? '…' : 'Reprogrammer' }}
+          </button>
+        </div>
+      </div>
+    }
+
+    <!-- C2 : Enregistrer comme modèle -->
+    @if (modeleOuvert()) {
+      <div class="mini-form no-print">
+        <div class="mini-form__titre">Enregistrer comme modèle</div>
+        <p class="mini-form__hint">Ajoute cette séance à la bibliothèque de modèles du club (le staff des blocs est retiré, le modèle est générique).</p>
+        <div class="mini-form__row">
+          <label class="mini-form__grow">Nom du modèle <input type="text" [(ngModel)]="modeleNom" placeholder="Ex. Circuit intermittent"></label>
+        </div>
+        <div class="mini-form__actions">
+          <button class="btn btn--secondary" (click)="fermerModele()">Annuler</button>
+          <button class="btn btn--primary" (click)="confirmerModele()" [disabled]="modeleEnCours()">
+            {{ modeleEnCours() ? '…' : 'Créer le modèle' }}
+          </button>
+        </div>
+      </div>
+    }
 
     <div class="sheet">
 

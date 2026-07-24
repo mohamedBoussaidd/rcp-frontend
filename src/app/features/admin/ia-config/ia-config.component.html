@@ -1,0 +1,59 @@
+<div class="iac">
+  <header class="iac__head">
+    <div>
+      <h1 class="iac__title">Configuration IA par club</h1>
+      <p class="iac__sub">Provider, clé API (chiffrée, jamais affichée en clair) et modèle par club. Sans clé propre, le club utilise la clé globale, plafonnée par les quotas ci-dessous.</p>
+    </div>
+    <a class="iac__back" routerLink="/admin/clubs">‹ Retour</a>
+  </header>
+
+  <!-- Quotas globaux -->
+  <div class="iac__card">
+    <h2 class="iac__h2">Quotas de la clé globale (par jour)</h2>
+    <div class="iac__quotas">
+      @for (q of quotas(); track q.feature) {
+        <label class="iac__quota">
+          <span>{{ libelleFeature(q.feature) }}</span>
+          <input type="number" min="0" [(ngModel)]="q.valeur" name="q_{{ q.feature }}">
+        </label>
+      }
+      <button class="btn btn--primary" (click)="enregistrerQuotas()">Enregistrer les quotas</button>
+    </div>
+  </div>
+
+  <!-- Config par club -->
+  <div class="iac__list">
+    @for (l of lignes(); track l.clubId) {
+      <div class="iac__club">
+        <div class="iac__clubhead">
+          <span class="iac__clubnom">{{ l.clubNom }}</span>
+          @if (l.aCle) { <span class="iac__badge iac__badge--ok">clé propre</span> }
+          @else { <span class="iac__badge">clé globale</span> }
+        </div>
+        <div class="iac__grille">
+          <label>Provider
+            <select [(ngModel)]="l.providerEdit" name="prov_{{ l.clubId }}">
+              @for (p of providers; track p) { <option [value]="p">{{ p }}</option> }
+            </select>
+          </label>
+          <label>Modèle
+            <input type="text" [(ngModel)]="l.modeleEdit" name="mod_{{ l.clubId }}" placeholder="claude-opus-4-8 / gpt-4o">
+          </label>
+          <label>Clé API @if (l.aCle) { <small>(actuelle {{ l.cleMasquee }})</small> }
+            <input type="password" [(ngModel)]="l.nouvelleCle" name="cle_{{ l.clubId }}"
+                   placeholder="{{ l.aCle ? 'laisser vide = inchangée' : 'coller la clé…' }}">
+          </label>
+          <label class="iac__switch">
+            <input type="checkbox" [(ngModel)]="l.actif" name="actif_{{ l.clubId }}"> Actif
+          </label>
+        </div>
+        <div class="iac__actions">
+          @if (l.aCle) { <button class="btn btn--danger" (click)="revoquer(l)">Révoquer</button> }
+          <button class="btn btn--primary" (click)="enregistrer(l)" [disabled]="saving() === l.clubId">
+            {{ saving() === l.clubId ? '…' : 'Enregistrer' }}
+          </button>
+        </div>
+      </div>
+    }
+  </div>
+</div>

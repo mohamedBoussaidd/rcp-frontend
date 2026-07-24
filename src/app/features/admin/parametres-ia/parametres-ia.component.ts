@@ -11,10 +11,18 @@ interface QuotaClubDto {
   quotaSurcharge: number | null; quotaEffectif: number; consommeAujourdhui: number;
 }
 
+/** Éditeur d'un prompt IA (une clé) : état serveur + texte en cours + historique replié. */
+class PromptEditor {
+  readonly param = signal<ParametreDto | null>(null);
+  edite = '';
+  readonly histOuvert = signal(false);
+  readonly saving = signal(false);
+  constructor(readonly cle: string, readonly titre: string, readonly hint: string, readonly rows: number) {}
+}
+
 /**
- * Paramètres IA (super-admin) : édition du prompt vision de l'import photo avec
- * historique des versions + restauration, quota par défaut, et surcharges de
- * quota par club (consommation du jour affichée).
+ * Paramètres IA (super-admin) : édition des prompts IA (analyse photo + générateur de séance) avec
+ * historique des versions + restauration, quota par défaut, et surcharges de quota par club.
  */
 @Component({
   selector: 'app-parametres-ia',
@@ -28,24 +36,32 @@ export class ParametresIaComponent implements OnInit {
   private http = inject(HttpClient);
   private snack = inject(MatSnackBar);
 
-  prompt = signal<ParametreDto | null>(null);
-  promptEdite = '';
+  readonly photo = new PromptEditor('prompt_import_photo', "Prompt d'analyse des photos",
+    "Ce texte est envoyé au modèle vision avec chaque photo. Il énumère la palette du schéma, les codes des référentiels et le contrat JSON strict — modifie-le prudemment : chaque enregistrement historise la version précédente (restauration possible).",
+    18);
+  readonly generateur = new PromptEditor('prompt_generateur_seance', 'Prompt du générateur de séance',
+    "Ce texte guide la composition d'une séance à partir de la demande du coach. Le catalogue d'exercices — avec leurs tags (dominantes, thèmes, intensité, durée) — et la liste des types de séance sont ajoutés AUTOMATIQUEMENT après ce texte : n'y remets pas la bibliothèque à la main.",
+    16);
+  readonly prompts = [this.photo, this.generateur];
+
   quotaDefaut = signal<ParametreDto | null>(null);
   quotaDefautEdite = '';
   quotas = signal<QuotaClubDto[]>([]);
-  saving = signal(false);
-  histOuvert = signal(false);
 
   ngOnInit(): void {
-    this.http.get<ParametreDto>('/api/admin/parametres-ia/prompt_import_photo').subscribe({
-      next: p => { this.prompt.set(p); this.promptEdite = p.valeur; },
-      error: () => this.snack.open('Chargement du prompt impossible', 'Fermer', { duration: 3000 }),
-    });
+    this.prompts.forEach(ed => this.charger(ed));
     this.http.get<ParametreDto>('/api/admin/parametres-ia/quota_import_photo_defaut').subscribe({
       next: p => { this.quotaDefaut.set(p); this.quotaDefautEdite = p.valeur; },
       error: () => {},
     });
     this.chargerQuotas();
+  }
+
+  private charger(ed: PromptEditor): void {
+    this.http.get<ParametreDto>(`/api/admin/parametres-ia/${ed.cle}`).subscribe({
+      next: p => { ed.param.set(p); ed.edite = p.valeur; },
+      error: () => this.snack.open('Chargement du prompt impossible', 'Fermer', { duration: 3000 }),
+    });
   }
 
   private chargerQuotas(): void {
@@ -55,36 +71,28 @@ export class ParametresIaComponent implements OnInit {
     });
   }
 
-  enregistrerPrompt(): void {
-    if (!this.promptEdite.trim() || this.saving()) return;
-    this.saving.set(true);
-    this.http.put<ParametreDto>('/api/admin/parametres-ia/prompt_import_photo',
-      { valeur: this.promptEdite }).subscribe({
+  enregistrerPrompt(ed: PromptEditor): void {
+    if (!ed.edite.trim() || ed.saving()) return;
+    ed.saving.set(true);
+    this.http.put<ParametreDto>(`/api/admin/parametres-ia/${ed.cle}`, { valeur: ed.edite }).subscribe({
       next: p => {
-        this.saving.set(false);
-        this.prompt.set(p);
-        this.promptEdite = p.valeur;
+        ed.saving.set(false); ed.param.set(p); ed.edite = p.valeur;
         this.snack.open('Prompt enregistré (version précédente historisée)', 'OK', { duration: 3000 });
       },
-      error: () => { this.saving.set(false); this.snack.open('Enregistrement impossible', 'Fermer', { duration: 3000 }); },
+      error: () => { ed.saving.set(false); this.snack.open('Enregistrement impossible', 'Fermer', { duration: 3000 }); },
     });
   }
 
-  restaurer(v: VersionDto): void {
-    this.http.post<ParametreDto>(
-      `/api/admin/parametres-ia/prompt_import_photo/restaurer/${v.id}`, {}).subscribe({
-      next: p => {
-        this.prompt.set(p);
-        this.promptEdite = p.valeur;
-        this.snack.open('Version restaurée', 'OK', { duration: 2500 });
-      },
+  restaurer(ed: PromptEditor, v: VersionDto): void {
+    this.http.post<ParametreDto>(`/api/admin/parametres-ia/${ed.cle}/restaurer/${v.id}`, {}).subscribe({
+      next: p => { ed.param.set(p); ed.edite = p.valeur; this.snack.open('Version restaurée', 'OK', { duration: 2500 }); },
       error: () => this.snack.open('Restauration impossible', 'Fermer', { duration: 3000 }),
     });
   }
 
-  remettreDefaut(): void {
-    const p = this.prompt();
-    if (p) this.promptEdite = p.defaut;
+  remettreDefaut(ed: PromptEditor): void {
+    const p = ed.param();
+    if (p) ed.edite = p.defaut;
   }
 
   enregistrerQuotaDefaut(): void {
@@ -93,9 +101,7 @@ export class ParametresIaComponent implements OnInit {
     this.http.put<ParametreDto>('/api/admin/parametres-ia/quota_import_photo_defaut',
       { valeur: String(v) }).subscribe({
       next: p => {
-        this.quotaDefaut.set(p);
-        this.quotaDefautEdite = p.valeur;
-        this.chargerQuotas();
+        this.quotaDefaut.set(p); this.quotaDefautEdite = p.valeur; this.chargerQuotas();
         this.snack.open('Quota par défaut enregistré', 'OK', { duration: 2500 });
       },
       error: () => this.snack.open('Enregistrement impossible', 'Fermer', { duration: 3000 }),

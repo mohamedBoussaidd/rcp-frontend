@@ -1,0 +1,103 @@
+<div class="eg">
+  <header class="eg__head">
+    <div>
+      <h1 class="eg__title">Exercices globaux</h1>
+      <p class="eg__sub">Exercices proposés à TOUS les clubs (lecture seule côté club, clonables). Servent aussi de base au générateur IA.</p>
+    </div>
+    <div class="eg__headactions">
+      <a class="btn" routerLink="/admin/clubs">‹ Retour</a>
+      <a class="btn btn--primary" routerLink="/admin/exercices-globaux/nouveau"><mat-icon>add</mat-icon>Nouvel exercice global</a>
+    </div>
+  </header>
+
+  <!-- ── Bibliothèque globale (cards) ── -->
+  @if (loading()) {
+    <div class="eg__card"><p class="eg__vide">Chargement…</p></div>
+  } @else if (exercices().length === 0) {
+    <div class="eg__card">
+      <p class="eg__vide">Aucun exercice global pour l'instant. Créez-en un, ou promouvez un exercice de club depuis la recherche ci-dessous.</p>
+    </div>
+  } @else {
+    <div class="exos-grid">
+      @for (e of exercices(); track e.id) {
+        <div class="exo-card">
+          <div class="exo-card__head">
+            <span class="exo-card__nom">{{ e.nom }}</span>
+            @if (e.intensite) { <span class="badge int-badge int-{{ e.intensite }}">int. {{ e.intensite }}</span> }
+          </div>
+          <div class="exo-card__tags">
+            @if (e.forme) { <span class="badge badge--neutral">{{ libelleForme(e.forme) }}</span> }
+            @if (e.type) { <span class="badge badge--neutral">{{ label(e.type) }}</span> }
+            @if (e.dureeMinutes) { <span class="badge badge--neutral">{{ e.dureeMinutes }} min</span> }
+            @if (e.schemaJson) { <span class="badge badge--schema"><mat-icon>schema</mat-icon>Schéma</span> }
+          </div>
+          @if (e.objectif) { <p class="exo-card__obj">{{ e.objectif }}</p> }
+          <div class="exo-card__foot">
+            <app-auteur-chip [nom]="e.creeParNom" />
+            <div class="exo-card__actions">
+              <button class="btn btn--secondary btn--sm btn--icon" (click)="ouvrirSchema(e)" title="Schéma tactique"><mat-icon>schema</mat-icon></button>
+              <a class="btn btn--secondary btn--sm btn--icon" [routerLink]="['/admin/exercices-globaux', e.id, 'editer']" title="Modifier"><mat-icon>edit</mat-icon></a>
+              <button class="btn btn--secondary btn--sm btn--icon" (click)="dupliquer(e)" title="Dupliquer"><mat-icon>content_copy</mat-icon></button>
+              <button class="btn btn--danger btn--sm btn--icon" (click)="supprimer(e)" title="Supprimer"><mat-icon>delete_outline</mat-icon></button>
+            </div>
+          </div>
+        </div>
+      }
+    </div>
+  }
+
+  <!-- ── Recherche cross-club + promotion ── -->
+  <div class="eg__card">
+    <h2 class="eg__h2"><mat-icon>travel_explore</mat-icon>Parcourir les exercices des clubs</h2>
+    <p class="eg__sub">
+      Cherchez un exercice dans un ou plusieurs clubs, puis <strong>promouvez-le en global</strong> pour
+      le proposer à tous (et au générateur IA). La promotion crée une copie : l'exercice d'origine du club
+      n'est jamais modifié.
+    </p>
+
+    <div class="eg__clubs">
+      <button class="chip" [class.chip--on]="clubsSelectionnes().size === 0" (click)="tousLesClubs()">Tous les clubs</button>
+      @for (c of clubs(); track c.id) {
+        <button class="chip" [class.chip--on]="clubsSelectionnes().has(c.id)" (click)="toggleClub(c.id)">{{ c.nom }}</button>
+      }
+    </div>
+
+    <div class="eg__filtrerow">
+      <input class="eg__inp" type="text" [(ngModel)]="filtreNom" name="fnom" placeholder="Nom de l'exercice…" (keyup.enter)="rechercher()" />
+      <select [(ngModel)]="filtreForme" name="fforme">
+        <option value="">Toutes formes</option>
+        @for (f of formeOptions; track f) { <option [value]="f">{{ label(f) }}</option> }
+      </select>
+      <select [(ngModel)]="filtreType" name="ftype">
+        <option value="">Tous types</option>
+        @for (t of typeOptions; track t) { <option [value]="t">{{ label(t) }}</option> }
+      </select>
+      <button class="btn btn--primary" (click)="rechercher()" [disabled]="recherching()">
+        <mat-icon>search</mat-icon>{{ recherching() ? '…' : 'Rechercher' }}
+      </button>
+    </div>
+
+    @if (resultats() !== null) {
+      @if (resultats()!.length === 0) {
+        <p class="eg__vide">Aucun exercice de club ne correspond.</p>
+      } @else {
+        @for (r of resultats()!; track r.id) {
+          <div class="eg__row eg__row--res">
+            <div class="eg__resinfo">
+              <span class="eg__nom">{{ r.nom }}</span>
+              <span class="eg__resmeta">
+                <span class="badge badge--neutral"><mat-icon>shield</mat-icon>{{ r.clubNom ?? '—' }}</span>
+                @if (r.forme) { <span class="badge badge--neutral">{{ libelleForme(r.forme) }}</span> }
+                @if (r.type) { <span class="badge badge--neutral">{{ label(r.type) }}</span> }
+                @if (r.aSchema) { <span class="badge badge--schema"><mat-icon>schema</mat-icon>Schéma</span> }
+              </span>
+            </div>
+            <button class="btn btn--sm" title="Dupliquer en exercice global" (click)="promouvoir(r)">
+              <mat-icon>public</mat-icon>Promouvoir
+            </button>
+          </div>
+        }
+      }
+    }
+  </div>
+</div>

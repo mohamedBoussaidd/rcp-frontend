@@ -105,6 +105,8 @@ export class ExerciceFormComponent implements OnInit {
   refSousPrincipes: RefSousPrincipe[] = [];
 
   readonly editionId = signal<string | null>(null);
+  /** Fiche d'exercice GLOBAL (super-admin) : création via /globaux, retour vers l'écran admin. */
+  readonly global = signal(false);
   readonly chargement = signal(true);
   readonly enregistrement = signal(false);
   readonly pedagoOuvert = signal(false);
@@ -133,6 +135,8 @@ export class ExerciceFormComponent implements OnInit {
       error: () => {},
     });
 
+    this.global.set(this.route.snapshot.data['global'] === true);
+
     const id = this.route.snapshot.paramMap.get('id');
     // Pré-remplissage venu de l'import photo : la bibliothèque a fait analyser la fiche papier
     // puis nous a passé le résultat en état de navigation (rien à persister entre les deux).
@@ -150,7 +154,8 @@ export class ExerciceFormComponent implements OnInit {
   private charger(id: string): void {
     // Pas d'endpoint unitaire : la liste est déjà filtrée par le scope du club et tient en un
     // appel. En ajouter un pour une fiche à la fois n'apporterait rien ici.
-    this.service.listerExercices().subscribe({
+    const liste$ = this.global() ? this.service.listerExercicesGlobaux() : this.service.listerExercices();
+    liste$.subscribe({
       next: liste => {
         const e = liste.find(x => x.id === id);
         if (!e) {
@@ -381,7 +386,10 @@ export class ExerciceFormComponent implements OnInit {
 
   // ── Enregistrement ─────────────────────────────────────────────────────
 
-  retour(): void { this.router.navigate(['/planning-technique'], { queryParams: { section: 'exercices' } }); }
+  retour(): void {
+    if (this.global()) { this.router.navigate(['/admin/exercices-globaux']); return; }
+    this.router.navigate(['/planning-technique'], { queryParams: { section: 'exercices' } });
+  }
 
   enregistrer(): void {
     if (!this.form.nom || this.enregistrement()) return;
@@ -411,7 +419,9 @@ export class ExerciceFormComponent implements OnInit {
     };
 
     const id = this.editionId();
-    const obs = id ? this.service.modifierExercice(id, req) : this.service.creerExercice(req);
+    const obs = id
+      ? this.service.modifierExercice(id, req)
+      : (this.global() ? this.service.creerExerciceGlobal(req) : this.service.creerExercice(req));
     obs.subscribe({
       next: cree => {
         const schema = this.schemaImporte;

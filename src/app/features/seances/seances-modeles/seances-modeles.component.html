@@ -33,10 +33,10 @@
               @if (m.objectif) { <em class="ms-obj">{{ m.objectif }}</em> }
             </li>
           </ul>
-          <p class="ms-card__desc">
-            @if (m.creeParNom) { <span>par {{ m.creeParNom }}</span> }
-            @if (!m.modifiable) { <span class="ms-muted"> · lecture seule</span> }
-          </p>
+          <div class="ms-card__desc">
+            @if (m.creeParNom) { <app-auteur-chip [nom]="m.creeParNom" prefixe="par" /> }
+            @if (!m.modifiable) { <span class="badge badge--neutral">lecture seule</span> }
+          </div>
           <div class="ms-card__actions">
             <button class="ms-btn ms-btn--primary" (click)="ouvrirPlanifier(m)">Planifier</button>
             @if (m.modifiable) { <button class="ms-btn" (click)="modifier(m)">Éditer</button> }

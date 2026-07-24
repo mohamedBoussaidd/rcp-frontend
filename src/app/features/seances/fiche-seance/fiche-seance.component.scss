@@ -337,3 +337,21 @@
     print-color-adjust: exact;
   }
 }
+
+/* Mini-formulaires Reprogrammer / Enregistrer comme modèle (C1/C2) */
+.mini-form {
+  max-width: 720px;
+  margin: 0 auto 14px;
+  background: var(--surface-1, #fff);
+  border: 1px solid var(--border, #e5e9ef);
+  border-radius: 12px;
+  padding: 14px 16px;
+}
+.mini-form__titre { font-weight: 800; font-size: 15px; margin-bottom: 4px; color: var(--text-1, #1a2233); }
+.mini-form__hint { font-size: 12.5px; color: var(--text-2, #55607a); margin: 0 0 10px; line-height: 1.45; }
+.mini-form__row { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 12px; }
+.mini-form__row label { display: flex; flex-direction: column; gap: 4px; font-size: 12.5px; font-weight: 600; color: var(--text-2, #55607a); }
+.mini-form__row input { font: inherit; font-weight: 400; padding: 7px 9px; border: 1px solid var(--border, #d8dee9); border-radius: 8px; }
+.mini-form__grow { flex: 1; }
+.mini-form__grow input { width: 100%; }
+.mini-form__actions { display: flex; gap: 10px; justify-content: flex-end; }

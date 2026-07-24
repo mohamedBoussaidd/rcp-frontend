@@ -3,47 +3,45 @@
   <div class="page-head">
     <div>
       <h1 class="page-head__title">Paramètres IA</h1>
-      <p class="page-head__sub">Import photo (vision) : prompt, historique des versions, quotas par club</p>
+      <p class="page-head__sub">Prompts IA (analyse photo &amp; générateur de séance), historique des versions, quotas par club</p>
     </div>
   </div>
 
-  <!-- Prompt vision -->
-  <div class="card card--padded" style="margin-bottom:16px">
-    <div class="pia-sec-head">
-      <h2 class="pia-sec-titre">Prompt d'analyse des photos</h2>
-      <div class="row" style="gap:8px">
-        <button class="btn btn--secondary btn--sm" (click)="remettreDefaut()">↺ Texte par défaut</button>
-        <button class="btn btn--secondary btn--sm" (click)="histOuvert.set(!histOuvert())">
-          🕘 Historique ({{ prompt()?.historique?.length || 0 }})
-        </button>
-        <button class="btn btn--primary btn--sm" (click)="enregistrerPrompt()"
-                [disabled]="saving() || !promptEdite.trim()">
-          {{ saving() ? '…' : 'Enregistrer' }}
-        </button>
+  <!-- Prompts IA (analyse photo + générateur de séance) -->
+  @for (ed of prompts; track ed.cle) {
+    <div class="card card--padded" style="margin-bottom:16px">
+      <div class="pia-sec-head">
+        <h2 class="pia-sec-titre">{{ ed.titre }}</h2>
+        <div class="row" style="gap:8px">
+          <button class="btn btn--secondary btn--sm" (click)="remettreDefaut(ed)">↺ Texte par défaut</button>
+          <button class="btn btn--secondary btn--sm" (click)="ed.histOuvert.set(!ed.histOuvert())">
+            🕘 Historique ({{ ed.param()?.historique?.length || 0 }})
+          </button>
+          <button class="btn btn--primary btn--sm" (click)="enregistrerPrompt(ed)"
+                  [disabled]="ed.saving() || !ed.edite.trim()">
+            {{ ed.saving() ? '…' : 'Enregistrer' }}
+          </button>
+        </div>
       </div>
-    </div>
-    <p class="pia-hint">
-      Ce texte est envoyé au modèle vision avec chaque photo. Il énumère la palette du schéma,
-      les codes des référentiels et le contrat JSON strict — modifie-le prudemment :
-      chaque enregistrement historise la version précédente (restauration possible).
-    </p>
-    <textarea class="pia-textarea" [(ngModel)]="promptEdite" rows="18" spellcheck="false"></textarea>
+      <p class="pia-hint">{{ ed.hint }}</p>
+      <textarea class="pia-textarea" [(ngModel)]="ed.edite" [rows]="ed.rows" [name]="ed.cle" spellcheck="false"></textarea>
 
-    @if (histOuvert()) {
-      <div class="pia-hist">
-        @if ((prompt()?.historique || []).length === 0) {
-          <span class="pia-hint">Aucune version antérieure.</span>
-        }
-        @for (v of prompt()?.historique || []; track v.id) {
-          <div class="pia-hist__ligne">
-            <span>{{ v.createdAt | date: 'dd/MM/yyyy HH:mm' }}</span>
-            <span class="pia-hist__extrait">{{ v.valeur.slice(0, 110) }}…</span>
-            <button class="btn btn--secondary btn--sm" (click)="restaurer(v)">Restaurer</button>
-          </div>
-        }
-      </div>
-    }
-  </div>
+      @if (ed.histOuvert()) {
+        <div class="pia-hist">
+          @if ((ed.param()?.historique || []).length === 0) {
+            <span class="pia-hint">Aucune version antérieure.</span>
+          }
+          @for (v of ed.param()?.historique || []; track v.id) {
+            <div class="pia-hist__ligne">
+              <span>{{ v.createdAt | date: 'dd/MM/yyyy HH:mm' }}</span>
+              <span class="pia-hist__extrait">{{ v.valeur.slice(0, 110) }}…</span>
+              <button class="btn btn--secondary btn--sm" (click)="restaurer(ed, v)">Restaurer</button>
+            </div>
+          }
+        </div>
+      }
+    </div>
+  }
 
   <!-- Quotas -->
   <div class="card card--padded">

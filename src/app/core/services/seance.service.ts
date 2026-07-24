@@ -343,6 +343,25 @@ export interface SeanceCreate {
   objectifDistanceHauteIntensiteM?: number;
 }
 
+// ── Générateur de séance par IA (C4) : brouillon renvoyé par le backend ──
+export interface BrouillonBloc { libelle: string; dureeMinutes?: number | null; sequencage?: string | null; exerciceIds: string[]; }
+export interface BrouillonExerciceLibre { nom: string; description?: string | null; }
+export interface BrouillonDosages {
+  tactiqueOrg?: number | null; tactiqueFonc?: number | null; technique?: number | null;
+  mental?: number | null; athletique?: number | null;
+}
+export interface SeanceBrouillon {
+  titre?: string | null;
+  typeSeanceId?: string | null;
+  typeLibelle?: string | null;
+  dureeMinutes?: number | null;
+  objectif?: string | null;
+  dominantes: BrouillonDosages;
+  blocs: BrouillonBloc[];
+  exercicesManquants: BrouillonExerciceLibre[];
+  note?: string | null;
+}
+
 @Injectable({ providedIn: 'root' })
 export class SeanceService {
 
@@ -378,6 +397,21 @@ export class SeanceService {
   /** Retour arrière : repasse une séance réalisée en planifiée (409 si données GPS attachées). */
   annulerRealisation(id: string): Observable<Seance> {
     return this.http.patch<Seance>(`${this.base}/${id}/devalider`, {});
+  }
+
+  /** Reprogramme une séance : nouvelle séance PLANIFIÉE à la date/heure choisies (copie du contenu). */
+  dupliquer(id: string, date: string, heureDebut: string | null): Observable<Seance> {
+    return this.http.post<Seance>(`${this.base}/${id}/dupliquer`, { date, heureDebut });
+  }
+
+  /** Enregistre une séance existante comme modèle de bibliothèque (staff des blocs vidé). */
+  enregistrerCommeModele(seanceId: string, nom: string): Observable<{ id: string }> {
+    return this.http.post<{ id: string }>(`/api/seances-modeles/depuis-seance/${seanceId}`, { nom });
+  }
+
+  /** Génère un brouillon de séance par IA à partir d'une demande en langage naturel (C4). */
+  generer(texte: string): Observable<SeanceBrouillon> {
+    return this.http.post<SeanceBrouillon>(`${this.base}/generer`, { texte });
   }
 
   getTypeSeances(): Observable<TypeSeance[]> {

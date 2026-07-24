@@ -1,5 +1,5 @@
 import { Injectable, inject } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
 
 /** Type de contenu d'un exercice (porte ou non des attentes physiques). */
@@ -131,6 +131,35 @@ export interface SchemaTactiqueRequest {
   /** Crée un schéma fourni (global). Ignoré côté serveur si l'appelant n'est pas super-admin. */
   fourni?: boolean;
 }
+
+/** Résultat de recherche cross-club (super-admin) : schéma d'un club, avec le nom du club. */
+export interface SchemaRecherche {
+  id: string;
+  nom: string;
+  categorie?: string;
+  apercu?: string;
+  clubId: string;
+  clubNom?: string;
+  creeParNom?: string;
+  updatedAt: string;
+}
+
+/** Résultat de recherche cross-club (super-admin) : exercice d'un club, avec le nom du club. */
+export interface ExerciceRecherche {
+  id: string;
+  nom: string;
+  forme?: string;
+  type?: string;
+  dureeMinutes?: number;
+  objectif?: string;
+  aSchema: boolean;
+  clubId: string;
+  clubNom?: string;
+  creeParNom?: string;
+}
+
+/** Club minimal pour le sélecteur de la recherche cross-club. */
+export interface ClubOption { id: string; nom: string; }
 
 /** Section d'un plan de jeu (phase de jeu) : texte + éventuel schéma (copie). */
 export interface SectionPlan {
@@ -312,6 +341,16 @@ export const FORMES_EXERCICE: { code: FormeExercice; libelle: string }[] = [
   { code: 'MATCH_A_THEME', libelle: 'Match à thème' },
 ];
 
+/** HttpParams depuis un objet plat : les tableaux (clubIds) sont répétés, les scalaires vides ignorés. */
+function toParams(obj: Record<string, string | string[] | undefined>): HttpParams {
+  let p = new HttpParams();
+  for (const [k, v] of Object.entries(obj)) {
+    if (Array.isArray(v)) { v.forEach(x => { if (x) p = p.append(k, x); }); }
+    else if (v != null && v !== '') { p = p.set(k, v); }
+  }
+  return p;
+}
+
 @Injectable({ providedIn: 'root' })
 export class TechniqueService {
 
@@ -337,6 +376,26 @@ export class TechniqueService {
 
   sauverSchema(exerciceId: string, schemaJson: string): Observable<Exercice> {
     return this.http.put<Exercice>(`/api/exercices/${exerciceId}/schema`, { schemaJson });
+  }
+
+  // ── Exercices GLOBAUX (super-admin) + recherche/promotion cross-club ──
+  listerExercicesGlobaux(): Observable<Exercice[]> {
+    return this.http.get<Exercice[]>('/api/exercices/globaux');
+  }
+  /** Crée un exercice GLOBAL (super-admin) — bibliothèque commune à tous les clubs. */
+  creerExerciceGlobal(req: ExerciceRequest): Observable<Exercice> {
+    return this.http.post<Exercice>('/api/exercices/globaux', req);
+  }
+  rechercherExercices(params: { clubIds?: string[]; q?: string; forme?: string; type?: string }): Observable<ExerciceRecherche[]> {
+    return this.http.get<ExerciceRecherche[]>('/api/exercices/recherche', { params: toParams(params) });
+  }
+  /** Promeut un exercice de club en exercice global (copie ; l'original n'est jamais touché). */
+  promouvoirExercice(id: string): Observable<Exercice> {
+    return this.http.post<Exercice>(`/api/exercices/${id}/promouvoir`, {});
+  }
+  /** Liste des clubs (super-admin) pour le sélecteur de la recherche cross-club. */
+  listerClubs(): Observable<ClubOption[]> {
+    return this.http.get<ClubOption[]>('/api/clubs');
   }
 
   // ── Formations personnalisées ──
@@ -366,6 +425,22 @@ export class TechniqueService {
   /** Duplique un schéma : nouvelle copie éditable attribuée à l'utilisateur courant. */
   dupliquerSchema(id: string): Observable<SchemaTactique> {
     return this.http.post<SchemaTactique>(`/api/schemas/${id}/dupliquer`, {});
+  }
+
+  // ── Schemas GLOBAUX (super-admin) : ecran /admin/schemas-globaux ──
+  listerSchemasGlobaux(): Observable<SchemaTactique[]> {
+    return this.http.get<SchemaTactique[]>('/api/schemas/globaux');
+  }
+  creerSchemaGlobal(req: SchemaTactiqueRequest): Observable<SchemaTactique> {
+    return this.http.post<SchemaTactique>('/api/schemas/globaux', req);
+  }
+  /** Recherche cross-club (super-admin) : schémas des clubs, filtrés nom/catégorie. */
+  rechercherSchemas(params: { clubIds?: string[]; q?: string; categorie?: string }): Observable<SchemaRecherche[]> {
+    return this.http.get<SchemaRecherche[]>('/api/schemas/recherche', { params: toParams(params) });
+  }
+  /** Promeut un schéma de club en schéma global (copie ; l'original n'est jamais touché). */
+  promouvoirSchema(id: string): Observable<SchemaTactique> {
+    return this.http.post<SchemaTactique>(`/api/schemas/${id}/promouvoir`, {});
   }
 
   // ── Plan de jeu (document d'identite equipe) ──
