@@ -7,6 +7,7 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { Exercice, ExerciceRecherche, FORMES_EXERCICE, TechniqueService } from '@core/services/technique.service';
 import { SchemaEditorComponent } from '../../tactical/schema-editor/schema-editor.component';
 import { AuteurChipComponent } from '@shared/components/auteur-chip/auteur-chip.component';
+import { BadgeComponent } from '@shared/components/badge/badge.component';
 
 /**
  * Bibliothèque d'exercices GLOBALE (SUPER_ADMIN) — exercices proposés en lecture à tous les clubs
@@ -22,7 +23,7 @@ import { AuteurChipComponent } from '@shared/components/auteur-chip/auteur-chip.
   standalone: true,
   templateUrl: './exercices-globaux.component.html',
   styleUrl: './exercices-globaux.component.scss',
-  imports: [FormsModule, RouterLink, MatIcon, AuteurChipComponent],
+  imports: [FormsModule, RouterLink, MatIcon, AuteurChipComponent, BadgeComponent],
 })
 export class ExercicesGlobauxComponent implements OnInit {
 

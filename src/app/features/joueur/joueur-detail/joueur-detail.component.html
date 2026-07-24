@@ -33,7 +33,9 @@
                     <span class="pf-chip pf-chip--status">
                       <span class="pf-dot"></span>{{ STATUTS[joueur.statut] || joueur.statut }}
                     </span>
+                    <app-badge-liste type="JOUEUR" [entiteId]="joueur.id" />
                   </div>
+                  <app-badge-assign type="JOUEUR" [entiteId]="joueur.id" />
                   <div class="pf-id__meta">
                     <span class="strong">{{ POSTES[joueur.postePrincipal!] || joueur.postePrincipal || 'Poste non défini' }}</span>
                     @if (joueur.taille)      { <span class="pf-sep"></span><span>{{ joueur.taille }} cm</span> }

@@ -11,7 +11,7 @@
       </div>
       <div class="page-head__actions">
         @if (peutImportPhoto() && canEcrire()) {
-          <button class="btn btn--secondary" (click)="importerDepuisPhoto()">📷 Importer d'une photo</button>
+          <button class="btn btn--secondary" (click)="importerDepuisPhoto()">📷 Importer d'une photo <app-ia-badge titre="Import d'exercice par photo (IA)" /></button>
         }
         <button class="btn btn--primary" (click)="nouvelExo()">
           <mat-icon>add</mat-icon>Nouvel exercice
@@ -54,7 +54,9 @@
             <div class="row" style="gap:6px;flex-wrap:wrap">
               @if (e.forme) { <span class="badge badge--neutral">{{ libelleForme(e.forme) }}</span> }
               @if (e.dureeMinutes) { <span class="badge badge--neutral">{{ e.dureeMinutes }} min</span> }
-              @if (e.schemaJson) { <span class="badge badge--schema"><mat-icon>schema</mat-icon>Schéma</span> }
+              @if (e.schemaJson) { <app-badge type="schema" /> }
+              @if (e.photoImportId) { <app-ia-badge titre="Importé depuis une photo (IA)" /> }
+              <app-badge-liste type="EXERCICE" [entiteId]="e.id" />
             </div>
             @if (e.objectif) { <p class="exo-card__obj">{{ e.objectif }}</p> }
             <div class="exo-card__foot">

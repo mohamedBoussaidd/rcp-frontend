@@ -25,6 +25,7 @@
     <div class="gen__card gen__brouillon">
       <div class="gen__brhead">
         <h2>{{ b.titre || 'Séance générée' }}</h2>
+        <app-ia-badge label="Proposée par IA" />
         <span class="gen__pill">{{ b.typeLibelle || '—' }} · {{ b.dureeMinutes || '?' }} min</span>
       </div>
       @if (b.objectif) { <p class="gen__obj">🎯 {{ b.objectif }}</p> }

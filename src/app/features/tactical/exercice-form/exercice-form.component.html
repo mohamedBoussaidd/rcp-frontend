@@ -7,7 +7,10 @@
         <span class="exo-head__badge">EX</span>
         <div class="exo-head__titres">
           <div class="exo-head__kicker">BIBLIOTHÈQUE · EXERCICE</div>
-          <div class="exo-head__nom">{{ titreAffiche() }}</div>
+          <div class="exo-head__nom">
+            {{ titreAffiche() }}
+            @if (estImportPhoto) { <app-ia-badge titre="Importé depuis une photo (IA)" /> }
+          </div>
         </div>
       </div>
       <div class="exo-head__spacer"></div>
@@ -24,6 +27,7 @@
   } @else {
 
   <div class="exo-body">
+    @if (editionId()) { <app-badge-assign type="EXERCICE" [entiteId]="editionId()" /> }
 
     <!-- ══════════ Colonne de saisie ══════════ -->
     <main class="exo-col">

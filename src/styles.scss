@@ -104,6 +104,16 @@ body {
   --info-bg: #EFF6FF;
   --info-bd: #BFDBFE;
 
+  /* ── Système de badges : couleur (paire {fond, texte}) par TON. Défauts theme-aware (ils
+     référencent les tokens sémantiques ci-dessus). Surchargeables par le super-admin (plateforme)
+     et par le club — l'injection runtime des overrides arrive avec l'écran de gestion. Cf. <app-badge>. */
+  --badge-neutral-bg: var(--surface-3);   --badge-neutral-fg: var(--text-2);
+  --badge-info-bg:    var(--info-bg);      --badge-info-fg:    var(--info);
+  --badge-success-bg: var(--ok-bg);        --badge-success-fg: var(--ok);
+  --badge-warning-bg: var(--warn-bg);      --badge-warning-fg: var(--warn);
+  --badge-danger-bg:  var(--bad-bg);       --badge-danger-fg:  var(--bad);
+  --badge-brand-bg:   linear-gradient(135deg, #7c3aed 0%, #4f46e5 100%);  --badge-brand-fg: #fff;
+
   /* Tonalités « fiche joueur » (palette redesign — partagée Profil / GPS / Suivi).
      fg = texte, bg = fond clair, bd = bordure, c = couleur pleine (donut/jauge), k = accent lumineux (KPI sur fond sombre) */
   --t-ok-fg: #15803d;
@@ -654,6 +664,67 @@ mat-progress-bar {
   background: var(--info-bg);
   color: var(--info);
   border-color: var(--info-bd);
+}
+
+/* Contenu PROPOSÉ / GÉNÉRÉ par l'IA (séance générée, exercice importé par photo…).
+   Exception assumée à la convention « même teinte » : dégradé violet→indigo + texte/icône
+   BLANCS pour vraiment signer l'IA. Réutilisable partout : combiner `.badge .badge--ia`,
+   l'étoile est un `<mat-icon>auto_awesome</mat-icon>`. Theme-aware (le dégradé tient sur les
+   deux thèmes). Pour le poser en pastille flottante (coin d'un menu/card), ajouter
+   `.badge--ia--flottant` dans un conteneur `position: relative`. */
+.badge--ia {
+  background: linear-gradient(135deg, #7c3aed 0%, #4f46e5 100%);
+  color: #fff;
+  border-color: transparent;
+  box-shadow: 0 1px 4px rgba(79, 70, 229, 0.35);
+
+  mat-icon,
+  .mat-icon {
+    color: #fff;
+  }
+}
+
+/* Variante flottante : petite pastille posée en haut à droite du parent (relative). */
+.badge--ia--flottant {
+  position: absolute;
+  top: 50%;
+  right: 10px;
+  transform: translateY(-50%);
+  padding: 2px 7px;
+  font-size: 10.5px;
+  pointer-events: none;
+}
+
+/* ════════════════════════════════════════
+   SYSTÈME DE BADGES UNIFIÉ — couleur par TON (cf. composant <app-badge>)
+   Chaque ton = paire {fond, texte} pilotée par les variables --badge-<ton>-*, réajustables par
+   le super-admin (plateforme) et le club. Les tags portent, eux, une couleur explicite en inline.
+   ════════════════════════════════════════ */
+.badge--ton-neutral { background: var(--badge-neutral-bg); color: var(--badge-neutral-fg); border-color: transparent; }
+.badge--ton-info    { background: var(--badge-info-bg);    color: var(--badge-info-fg);    border-color: transparent; }
+.badge--ton-success { background: var(--badge-success-bg); color: var(--badge-success-fg); border-color: transparent; }
+.badge--ton-warning { background: var(--badge-warning-bg); color: var(--badge-warning-fg); border-color: transparent; }
+.badge--ton-danger  { background: var(--badge-danger-bg);  color: var(--badge-danger-fg);  border-color: transparent; }
+.badge--ton-brand {
+  background: var(--badge-brand-bg);
+  color: var(--badge-brand-fg);
+  border-color: transparent;
+  box-shadow: 0 1px 4px rgba(79, 70, 229, 0.35);
+}
+.badge--ton-brand mat-icon,
+.badge--ton-brand .mat-icon { color: var(--badge-brand-fg); }
+
+/* Mode CORNER : pastille posée dans le coin haut-droit de l'hôte. L'hôte doit porter .badge-host
+   (ancrage). Posé en retrait de 8px → sûr même si l'hôte a overflow:hidden. */
+.badge-host { position: relative; }
+.badge--corner {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 2;
+  padding: 2px 8px;
+  font-size: 10.5px;
+  pointer-events: none;
 }
 
 /* Badge d'intensité 1–5 (avec `.badge`) : la couleur suit le niveau (info → warn → bad). */

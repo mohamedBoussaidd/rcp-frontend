@@ -109,7 +109,11 @@
             </div>
 
             <div class="lc-centre">
-              <span class="lc-titre">{{ seance.titre || seance.typeSeance.libelle }}</span>
+              <span class="lc-titre">
+                {{ seance.titre || seance.typeSeance.libelle }}
+                @if (seance.origine === 'IA_GENERATION') { <app-ia-badge /> }
+                <app-badge-liste type="SEANCE" [entiteId]="seance.id" />
+              </span>
               <span class="lc-type">
                 <span class="lc-dot" [style.background]="couleur(seance.typeSeance.code)"></span>
                 {{ seance.typeSeance.libelle }}
@@ -288,6 +292,8 @@
       @if (seance.heureDebut) { <span class="seance-duree">{{ seance.heureDebut | slice:0:5 }}</span> }
       @if (seance.dureeMinutes) { <span class="seance-duree">{{ seance.dureeMinutes }} min</span> }
       <span class="seance-statut-badge statut-{{ seance.statut | lowercase }}">{{ libelleStatut(seance.statut) }}</span>
+      @if (seance.origine === 'IA_GENERATION') { <app-ia-badge /> }
+      <app-badge-liste type="SEANCE" [entiteId]="seance.id" />
     </div>
 
     @if (seance.responsable) { <span class="seance-adversaire">⌂ {{ seance.responsable }}</span> }

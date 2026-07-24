@@ -16,6 +16,8 @@ import { MatTabGroup, MatTab, MatTabContent } from '@angular/material/tabs';
 import { ChartComponent, ApexChart, ApexAxisChartSeries, ApexXAxis, ApexPlotOptions, ApexDataLabels, ApexTooltip, ApexYAxis, ApexFill, ApexStroke, ApexMarkers, ApexAnnotations, ApexLegend } from 'ng-apexcharts';
 import { DecimalPipe, DatePipe } from '@angular/common';
 import { ChargeVueComponent } from '@shared/components/charge-vue/charge-vue.component';
+import { BadgeListeComponent } from '@shared/components/badge/badge-liste.component';
+import { BadgeAssignComponent } from '@shared/components/badge/badge-assign.component';
 
 @Component({
   selector: 'app-joueur-detail',
@@ -26,7 +28,8 @@ import { ChargeVueComponent } from '@shared/components/charge-vue/charge-vue.com
     MatIcon,
     MatTabGroup, MatTab, MatTabContent,
     ChartComponent, DecimalPipe, DatePipe,
-    ChargeVueComponent, RouterLink, SuiviIndividuelComponent
+    ChargeVueComponent, RouterLink, SuiviIndividuelComponent,
+    BadgeListeComponent, BadgeAssignComponent
   ]
 })
 export class JoueurDetailComponent implements OnInit {

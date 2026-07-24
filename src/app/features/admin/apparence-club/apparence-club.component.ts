@@ -2,6 +2,7 @@ import { Component, OnDestroy, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { ThemeService } from '@core/services/theme.service';
+import { BadgesCouleursClubComponent } from './badges-couleurs-club.component';
 
 interface Preset { nom: string; couleur: string | null; }
 
@@ -27,7 +28,7 @@ const PRESETS: Preset[] = [
   standalone: true,
   templateUrl: './apparence-club.component.html',
   styleUrl: './apparence-club.component.scss',
-  imports: [FormsModule],
+  imports: [FormsModule, BadgesCouleursClubComponent],
 })
 export class ApparenceClubComponent implements OnDestroy {
 

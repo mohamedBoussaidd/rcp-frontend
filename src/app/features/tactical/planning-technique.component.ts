@@ -17,6 +17,9 @@ import { PlanDeJeuComponent } from './plan-de-jeu/plan-de-jeu.component';
 import { MatchComponent } from './match/match.component';
 import { DiaporamaComponent } from './diaporama/diaporama.component';
 import { AuteurChipComponent } from '@shared/components/auteur-chip/auteur-chip.component';
+import { IaBadgeComponent } from '@shared/components/ia-badge/ia-badge.component';
+import { BadgeListeComponent } from '@shared/components/badge/badge-liste.component';
+import { BadgeComponent } from '@shared/components/badge/badge.component';
 
 /**
  * Bibliothèque d'exercices et écrans tactiques associés.
@@ -32,7 +35,7 @@ import { AuteurChipComponent } from '@shared/components/auteur-chip/auteur-chip.
   templateUrl: './planning-technique.component.html',
   styleUrl: './planning-technique.component.scss',
   imports: [FormsModule, MatIcon, SchemaTactiqueComponent, PlanDeJeuComponent, MatchComponent,
-            DiaporamaComponent, AuteurChipComponent],
+            DiaporamaComponent, AuteurChipComponent, IaBadgeComponent, BadgeListeComponent, BadgeComponent],
   // ImportPhotoDialogComponent est ouvert via MatDialog (pas dans le template).
 })
 export class PlanningTechniqueComponent implements OnInit {

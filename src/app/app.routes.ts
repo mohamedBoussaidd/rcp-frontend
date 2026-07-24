@@ -50,6 +50,10 @@ export const routes: Routes = [
     loadComponent: () => import('./features/admin/maintenance/maintenance.component').then(m => m.MaintenanceComponent)
   },
   {
+    path: 'admin/badges', canActivate: [authGuard, roleGuard], data: { roles: ['SUPER_ADMIN'] },
+    loadComponent: () => import('./features/admin/badges/badges-admin.component').then(m => m.BadgesAdminComponent)
+  },
+  {
     path: 'admin/ia', canActivate: [authGuard, roleGuard], data: { roles: ['SUPER_ADMIN'] },
     loadComponent: () => import('./features/admin/ia-config/ia-config.component').then(m => m.IaConfigComponent)
   },
@@ -233,7 +237,7 @@ export const routes: Routes = [
   },
   {
     path: 'generer-seance', canActivate: [authGuard, roleGuard, contexteGuard, saisonGuard],
-    data: { roles: ['SUPER_ADMIN', 'ENTRAINEUR', 'PREPARATEUR'], perms: ['seances:write'] },
+    data: { roles: ['SUPER_ADMIN', 'ENTRAINEUR', 'PREPARATEUR'], perms: ['seance_ia:generate'] },
     loadComponent: () => import('./features/seances/generateur/generateur-seance.component').then(m => m.GenerateurSeanceComponent)
   },
   {

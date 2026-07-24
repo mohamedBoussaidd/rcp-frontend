@@ -210,6 +210,10 @@
   margin-left: 6px;
 }
 
+/* Badge IA à droite du libellé du sous-menu (l'inline-flex collapse l'espace). */
+.subnav__item app-ia-badge,
+.nav-item--sub app-ia-badge { margin-left: 6px; }
+
 /* ══════════════════════════════════════
    DRAWER MOBILE
    ══════════════════════════════════════ */

@@ -27,6 +27,8 @@ export interface Seance {
   date: string;
   titre?: string;
   statut: 'PLANIFIEE' | 'REALISEE' | 'ANNULEE';
+  /** Traçabilité IA : 'IA_GENERATION' = séance issue du générateur (badge « Proposée par IA »). */
+  origine?: 'MANUEL' | 'IA_GENERATION' | null;
   typeSeance: TypeSeance;
   heureDebut?: string;
   dureeMinutes?: number;

@@ -29,7 +29,7 @@
             @if (e.forme) { <span class="badge badge--neutral">{{ libelleForme(e.forme) }}</span> }
             @if (e.type) { <span class="badge badge--neutral">{{ label(e.type) }}</span> }
             @if (e.dureeMinutes) { <span class="badge badge--neutral">{{ e.dureeMinutes }} min</span> }
-            @if (e.schemaJson) { <span class="badge badge--schema"><mat-icon>schema</mat-icon>Schéma</span> }
+            @if (e.schemaJson) { <app-badge type="schema" /> }
           </div>
           @if (e.objectif) { <p class="exo-card__obj">{{ e.objectif }}</p> }
           <div class="exo-card__foot">
@@ -89,7 +89,7 @@
                 <span class="badge badge--neutral"><mat-icon>shield</mat-icon>{{ r.clubNom ?? '—' }}</span>
                 @if (r.forme) { <span class="badge badge--neutral">{{ libelleForme(r.forme) }}</span> }
                 @if (r.type) { <span class="badge badge--neutral">{{ label(r.type) }}</span> }
-                @if (r.aSchema) { <span class="badge badge--schema"><mat-icon>schema</mat-icon>Schéma</span> }
+                @if (r.aSchema) { <app-badge type="schema" /> }
               </span>
             </div>
             <button class="btn btn--sm" title="Dupliquer en exercice global" (click)="promouvoir(r)">

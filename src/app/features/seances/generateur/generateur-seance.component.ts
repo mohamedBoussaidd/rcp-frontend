@@ -4,6 +4,7 @@ import { Router } from '@angular/router';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { AuthService } from '@core/services/auth.service';
 import { SeanceBrouillon, SeanceService } from '@core/services/seance.service';
+import { IaBadgeComponent } from '@shared/components/ia-badge/ia-badge.component';
 
 /**
  * Générateur de séance par IA (C4) : le coach décrit sa séance (texte ou dictée vocale C5), l'IA
@@ -15,7 +16,7 @@ import { SeanceBrouillon, SeanceService } from '@core/services/seance.service';
   standalone: true,
   templateUrl: './generateur-seance.component.html',
   styleUrl: './generateur-seance.component.scss',
-  imports: [FormsModule],
+  imports: [FormsModule, IaBadgeComponent],
 })
 export class GenerateurSeanceComponent {
 
@@ -62,6 +63,7 @@ export class GenerateurSeanceComponent {
     const payload: any = {
       date: this.date,
       statut: 'PLANIFIEE',
+      origine: 'IA_GENERATION',
       typeSeance: { id: b.typeSeanceId },
       titre: b.titre ?? undefined,
       dureeMinutes: b.dureeMinutes ?? 60,

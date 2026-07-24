@@ -69,6 +69,8 @@ export interface Exercice {
   equipeOrigineNom?: string;
   modifiable: boolean;
   avance?: ExerciceAvance;
+  /** Import photo d'origine (IA vision) : présent = exercice créé depuis une photo → badge IA. */
+  photoImportId?: string;
 }
 
 export interface ExerciceRequest {

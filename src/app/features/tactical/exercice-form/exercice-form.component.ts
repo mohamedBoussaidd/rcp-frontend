@@ -14,6 +14,8 @@ import {
   AXES_DOMINANTES, AxeDominante, DosageDominantes, JaugeDominantesComponent, NotesDominantes,
   dosagesVides, notesVides,
 } from '@shared/components/jauge-dominantes/jauge-dominantes.component';
+import { IaBadgeComponent } from '@shared/components/ia-badge/ia-badge.component';
+import { BadgeAssignComponent } from '@shared/components/badge/badge-assign.component';
 
 /** Une des quatre précisions pédagogiques, repliée tant qu'on ne s'en sert pas. */
 interface CarteTexte {
@@ -65,7 +67,7 @@ const PHASES_PROJET: { code: string; libelle: string; couleur: string }[] = [
   standalone: true,
   templateUrl: './exercice-form.component.html',
   styleUrl: './exercice-form.component.scss',
-  imports: [FormsModule, InfoBulleComponent, JaugeDominantesComponent],
+  imports: [FormsModule, InfoBulleComponent, JaugeDominantesComponent, IaBadgeComponent, BadgeAssignComponent],
 })
 export class ExerciceFormComponent implements OnInit {
 
@@ -119,6 +121,9 @@ export class ExerciceFormComponent implements OnInit {
   /** Schéma et pièce jointe issus d'un import photo, rattachés après création. */
   private schemaImporte: string | null = null;
   private photoImportId: string | null = null;
+
+  /** Cet exercice provient d'un import photo IA → affiche le badge IA dans l'en-tête. */
+  get estImportPhoto(): boolean { return !!this.photoImportId; }
 
   private service = inject(TechniqueService);
   private seanceService = inject(SeanceService);
@@ -198,6 +203,8 @@ export class ExerciceFormComponent implements OnInit {
       athletique: this.avance.dominanteAthletique ?? '',
     };
     this.sousPrincipeIds = new Set(e.sousPrincipeIds ?? []);
+    // Origine IA (import photo) : conservée pour le badge et pour ne pas la perdre à la sauvegarde.
+    this.photoImportId = e.photoImportId ?? null;
     // Un exercice enregistré porte un compte validé par un humain : on ne le recalcule pas.
     this.nbJoueursManuel = e.avance?.nbJoueursTotal != null;
     // Les sections déjà nourries s'ouvrent d'elles-mêmes : on ne cache pas ce qui existe.

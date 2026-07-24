@@ -7,6 +7,7 @@ import { ThemeService } from '@core/services/theme.service';
 import { SidebarService } from '@core/services/sidebar.service';
 import { AuthService, Role } from '@core/services/auth.service';
 import { BarreContexteComponent } from '../barre-contexte/barre-contexte.component';
+import { IaBadgeComponent } from '../ia-badge/ia-badge.component';
 
 const ROLE_LABELS: Record<Role, string> = {
   SUPER_ADMIN:   'Super-admin',
@@ -27,6 +28,7 @@ interface SubNavItem {
   perms?: string[];      // visible AUSSI si l'utilisateur détient une de ces permissions (multi-rôle)
   module?: string;       // masqué si ce MODULE fonctionnel n'est pas actif pour le club (pack)
   disabled?: boolean;
+  iaBadge?: boolean;     // affiche le badge « IA » à droite du libellé (entrée vers une feature IA)
 }
 
 interface NavModule {
@@ -53,7 +55,7 @@ const ALL_MODULES: NavModule[] = [
     perms: ['seances:read'],
     subnav: [
       { label: 'Calendrier',         link: '/calendrier', roles: ['SUPER_ADMIN', 'PRESIDENT', 'ENTRAINEUR', 'PREPARATEUR', 'MEDICAL', 'ADMINISTRATIF', 'JOUEUR'] },
-      { label: 'Générer une séance (IA)', link: '/generer-seance', roles: ['SUPER_ADMIN', 'ENTRAINEUR', 'PREPARATEUR'], perms: ['seances:write'] },
+      { label: 'Générer une séance', link: '/generer-seance', roles: ['SUPER_ADMIN', 'ENTRAINEUR', 'PREPARATEUR'], perms: ['seance_ia:generate'], iaBadge: true },
       { label: 'Modèles de semaine', link: '/modeles-semaine', roles: ['SUPER_ADMIN', 'PRESIDENT', 'ENTRAINEUR', 'PREPARATEUR'], perms: ['seances:write'] },
       { label: 'Saisons',            link: '/saisons', roles: ['SUPER_ADMIN', 'PRESIDENT', 'ENTRAINEUR', 'PREPARATEUR'], perms: ['saison:manage'] },
     ],
@@ -158,11 +160,12 @@ const ALL_MODULES: NavModule[] = [
       { label: 'Clubs',          link: '/admin/clubs', roles: ['SUPER_ADMIN'] },
       { label: 'Packs & modules', link: '/admin/abonnements', roles: ['SUPER_ADMIN'] },
       { label: 'Rôles globaux',  link: '/admin/roles-globaux', roles: ['SUPER_ADMIN'] },
-      { label: 'Paramètres IA',  link: '/admin/parametres-ia', roles: ['SUPER_ADMIN'] },
+      { label: 'Paramètres IA',  link: '/admin/parametres-ia', roles: ['SUPER_ADMIN'], iaBadge: true },
       { label: 'Maintenance',    link: '/admin/maintenance', roles: ['SUPER_ADMIN'] },
-      { label: 'IA (clés & modèles)', link: '/admin/ia', roles: ['SUPER_ADMIN'] },
+      { label: 'IA (clés & modèles)', link: '/admin/ia', roles: ['SUPER_ADMIN'], iaBadge: true },
       { label: 'Exercices globaux', link: '/admin/exercices-globaux', roles: ['SUPER_ADMIN'] },
       { label: 'Schémas globaux', link: '/admin/schemas-globaux', roles: ['SUPER_ADMIN'] },
+      { label: 'Badges', link: '/admin/badges', roles: ['SUPER_ADMIN'] },
       { label: 'Mon club',       link: '/mon-club',    roles: ['PRESIDENT', 'ENTRAINEUR', 'ADMINISTRATIF'], perms: ['club:manage', 'membres:manage'] },
     ],
   },
@@ -173,7 +176,7 @@ const ALL_MODULES: NavModule[] = [
   standalone: true,
   templateUrl: './nav-sidebar.component.html',
   styleUrl: './nav-sidebar.component.scss',
-  imports: [RouterLink, MatIcon, BarreContexteComponent],
+  imports: [RouterLink, MatIcon, BarreContexteComponent, IaBadgeComponent],
 })
 export class NavSidebarComponent {
 

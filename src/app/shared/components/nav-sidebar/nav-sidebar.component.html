@@ -91,6 +91,7 @@
            [routerLink]="s.disabled ? null : s.link"
            [queryParams]="subQuery(s)">
           {{ s.label }}
+          @if (s.iaBadge) { <app-ia-badge /> }
           @if (s.disabled) { <span class="subnav__soon">Bientôt</span> }
         </a>
       }
@@ -130,6 +131,7 @@
              [routerLink]="s.disabled ? null : s.link"
              [queryParams]="subQuery(s)">
             {{ s.label }}
+            @if (s.iaBadge) { <app-ia-badge /> }
           </a>
         }
       }

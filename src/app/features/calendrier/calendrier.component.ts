@@ -13,6 +13,8 @@ import { SeanceContenuDialogComponent } from './seance-contenu-dialog/seance-con
 import { MatTooltip } from '@angular/material/tooltip';
 import { DatePipe, LowerCasePipe, SlicePipe, NgTemplateOutlet } from '@angular/common';
 import { AuthService } from '@core/services/auth.service';
+import { IaBadgeComponent } from '@shared/components/ia-badge/ia-badge.component';
+import { BadgeListeComponent } from '@shared/components/badge/badge-liste.component';
 
 export const COULEURS_TYPE: Record<string, string> = {
   MATCH:        '#ef4444',
@@ -57,7 +59,7 @@ type Couche = 'tout' | 'seances' | 'rdv';
   standalone: true,
   templateUrl: './calendrier.component.html',
   styleUrl: './calendrier.component.scss',
-  imports: [MatTooltip, DatePipe, LowerCasePipe, SlicePipe, NgTemplateOutlet, FormsModule]
+  imports: [MatTooltip, DatePipe, LowerCasePipe, SlicePipe, NgTemplateOutlet, FormsModule, IaBadgeComponent, BadgeListeComponent]
 })
 export class CalendrierComponent implements OnInit {
 
