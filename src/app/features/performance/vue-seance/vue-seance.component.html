@@ -162,8 +162,11 @@
                   <div><span class="k">Durée</span><span class="v">{{ l.duree_minutes ?? '—' }} min</span></div>
                   <div><span class="k">Distance réelle</span><span class="v">{{ l.distance_reelle ? ((l.distance_reelle / 1000) | number:'1.2-2') + ' km' : '—' }}</span></div>
                   <div><span class="k">Ratio réel</span><span class="v">{{ l.ratio_reel ? (l.ratio_reel | number:'1.0-0') + ' m/min' : '—' }}</span></div>
-                  <div><span class="k">Dist. attendue</span><span class="v">{{ l.distance_attendue ? ((l.distance_attendue / 1000) | number:'1.2-2') + ' km' : '—' }}</span></div>
-                  <div><span class="k">Objectif séance</span><span class="v">
+                  <div><span class="k" title="Moyenne des m/min de tes 10 dernières séances réalisées du même type (90 derniers jours) × la durée. Des durées très différentes peuvent la biaiser.">Dist. attendue</span><span class="v">{{ l.distance_attendue ? ((l.distance_attendue / 1000) | number:'1.2-2') + ' km' : '—' }}@if (l.baseline_n) { <small style="opacity:.6;font-size:11px;margin-left:6px">baseline {{ l.baseline_n }} séance{{ l.baseline_n > 1 ? 's' : '' }}</small> }</span></div>
+                  @if (l.baseline_n < 3 && l.distance_attendue_globale) {
+                    <div><span class="k">↳ toutes séances</span><span class="v">{{ (l.distance_attendue_globale / 1000) | number:'1.2-2' }} km <small style="opacity:.6;font-size:11px;margin-left:4px">{{ l.baseline_n_globale }} séances · durées mêlées</small></span></div>
+                  }
+                  <div><span class="k">Objectif séance (km)</span><span class="v">
                     @if (l.objectif_seance_m) {
                       <span [class.delta-pos]="l.atteint_objectif_seance" [class.delta-neg]="l.atteint_objectif_seance === false">
                         {{ l.atteint_objectif_seance ? '✓' : (l.atteint_objectif_seance === false ? '✗' : '') }}

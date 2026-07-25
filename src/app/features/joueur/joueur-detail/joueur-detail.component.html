@@ -276,6 +276,13 @@
                       </div>
                       <div class="pf-gauge__phrase">{{ chargeCible.phrase }}</div>
                     </div>
+                  } @else if (chargeCible) {
+                    <div class="pf-gauge">
+                      <div class="pf-gauge__head">
+                        <span class="pf-gauge__label">Charge cible semaine</span>
+                      </div>
+                      <div class="pf-gauge__phrase">Pas encore assez de données de charge (~4 semaines requises) pour recommander une cible.</div>
+                    </div>
                   }
 
                   @if (fatigue) {

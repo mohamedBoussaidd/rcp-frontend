@@ -3,8 +3,9 @@ import { DecimalPipe, DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatIcon } from '@angular/material/icon';
 import { ChartComponent, ApexChart, ApexAxisChartSeries, ApexXAxis, ApexPlotOptions, ApexDataLabels, ApexTooltip, ApexYAxis, ApexLegend } from 'ng-apexcharts';
-import { PredictionService, ChargeEquipe, ChargeSeance, ChargeJoueur } from '@core/services/prediction.service';
+import { PredictionService, ChargeEquipe, ChargeSeance, ChargeJoueur, ObjectifHebdo, ObjectifHebdoJoueur } from '@core/services/prediction.service';
 import { couleurTheme } from '@core/services/theme.service';
+import { InfoHintComponent } from '@shared/components/info-hint/info-hint.component';
 
 const COULEURS_TYPE: Record<string, string> = {
   MATCH:        '#ef4444',
@@ -24,7 +25,7 @@ type TriCol = 'distance_totale_m' | 'distance_attendue_m' | 'delta_pct' | 'ratio
   standalone: true,
   templateUrl: './charge-equipe.component.html',
   styleUrl: './charge-equipe.component.scss',
-  imports: [MatIcon, ChartComponent, DecimalPipe, DatePipe, FormsModule],
+  imports: [MatIcon, ChartComponent, DecimalPipe, DatePipe, FormsModule, InfoHintComponent],
 })
 export class ChargeEquipeComponent implements OnInit {
 
@@ -33,9 +34,27 @@ export class ChargeEquipeComponent implements OnInit {
   data: ChargeEquipe | null = null;
   loading = true;
 
+  /** Panneau « Objectif de la semaine » — toujours la semaine en cours, indépendant du filtre. */
+  objectif: ObjectifHebdo | null = null;
+  editObjectif = false;
+  objectifInputKm: number | null = null;
+  majObjLoading = false;
+
+  /** Onglet actif : Objectif = semaine en cours (sans filtre) ; Charge / Par séance = analyse filtrée. */
+  onglet: 'objectif' | 'charge' | 'seance' = 'charge';
+
+  /** Pagination + recherche par nom (panneau objectif, détail par séance, classement joueurs). */
+  readonly TAILLE_PAGE = 12;
+  objSearch = '';    objPage = 0;
+  joueurSearch = ''; joueurPage = 0;
+  seancePage = 0;
+
   filtreDebut = '';
   filtreFin   = '';
   filtreTypes: string[] = [];
+  /** Raccourci de période actif (chips 7/14/21/30 j) ; null = fenêtre personnalisée. */
+  raccourciJours: 7 | 14 | 21 | 30 | null = 7;
+  readonly RACCOURCIS: (7 | 14 | 21 | 30)[] = [7, 14, 21, 30];
 
   vue: 'equipe' | 'joueurs' = 'equipe';
 
@@ -55,15 +74,28 @@ export class ChargeEquipeComponent implements OnInit {
   @ViewChild('equipeChart') private equipeChart?: ChartComponent;
 
   ngOnInit(): void {
-    const today = new Date();
-    const debut = new Date(today); debut.setDate(today.getDate() - 30);
-    this.filtreFin   = this.iso(today);
-    this.filtreDebut = this.iso(debut);
+    this.appliquerJours(this.raccourciJours ?? 7);
     this.charger();
+    this.chargerObjectif();
   }
 
   private iso(d: Date): string {
     return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+  }
+
+  /** Cale la fenêtre sur les N derniers jours (N inclus, se terminant aujourd'hui). */
+  private appliquerJours(jours: number): void {
+    const today = new Date();
+    const debut = new Date(today); debut.setDate(today.getDate() - (jours - 1));
+    this.filtreFin   = this.iso(today);
+    this.filtreDebut = this.iso(debut);
+  }
+
+  /** Raccourci de période (chips 7/14/21/30 j). */
+  setRaccourci(jours: 7 | 14 | 21 | 30): void {
+    this.raccourciJours = jours;
+    this.appliquerJours(jours);
+    this.charger();
   }
 
   charger(): void {
@@ -74,7 +106,85 @@ export class ChargeEquipeComponent implements OnInit {
     });
   }
 
-  onFiltreChange(): void { this.charger(); }
+  // ── Objectif de la semaine (semaine en cours, indépendant du filtre) ──
+  chargerObjectif(): void {
+    this.predictionService.getObjectifHebdo().subscribe({
+      next: o => this.objectif = o,
+      error: () => this.objectif = null,
+    });
+  }
+
+  ouvrirEditObjectif(): void {
+    const m = this.objectif?.objectif_distance_m;
+    this.objectifInputKm = m != null ? Math.round(m / 100) / 10 : null;
+    this.editObjectif = true;
+  }
+  annulerEditObjectif(): void { this.editObjectif = false; }
+
+  enregistrerObjectif(): void {
+    const km = this.objectifInputKm;
+    const m = km != null && km > 0 ? Math.round(km * 1000) : null;
+    this.majObjLoading = true;
+    this.predictionService.setObjectifHebdo(m).subscribe({
+      next: () => { this.majObjLoading = false; this.editObjectif = false; this.chargerObjectif(); },
+      error: () => { this.majObjLoading = false; },
+    });
+  }
+
+  effacerObjectif(): void {
+    this.majObjLoading = true;
+    this.predictionService.setObjectifHebdo(null).subscribe({
+      next: () => { this.majObjLoading = false; this.editObjectif = false; this.chargerObjectif(); },
+      error: () => { this.majObjLoading = false; },
+    });
+  }
+
+  /** Joueurs triés : ceux qui ont encore de la marge d'abord (reste décroissant), atteints ensuite. */
+  get objJoueursTries(): ObjectifHebdoJoueur[] {
+    return [...(this.objectif?.joueurs ?? [])].sort((a, b) => (b.reste_m ?? -1) - (a.reste_m ?? -1));
+  }
+
+  // ── Pagination + recherche par nom ──
+  private page<T>(items: T[], p: number): T[] {
+    const max = Math.max(0, Math.ceil(items.length / this.TAILLE_PAGE) - 1);
+    const cur = Math.min(Math.max(0, p), max);
+    return items.slice(cur * this.TAILLE_PAGE, (cur + 1) * this.TAILLE_PAGE);
+  }
+  private nbPages(n: number): number { return Math.max(1, Math.ceil(n / this.TAILLE_PAGE)); }
+  private matchNom(prenom: string, nom: string, q: string): boolean {
+    return `${prenom} ${nom}`.toLowerCase().includes(q.trim().toLowerCase());
+  }
+
+  // Panneau objectif
+  get objJoueursFiltres(): ObjectifHebdoJoueur[] {
+    const q = this.objSearch.trim();
+    return q ? this.objJoueursTries.filter(j => this.matchNom(j.prenom, j.nom, q)) : this.objJoueursTries;
+  }
+  get objNbPages(): number { return this.nbPages(this.objJoueursFiltres.length); }
+  get objJoueursPage(): ObjectifHebdoJoueur[] { return this.page(this.objJoueursFiltres, this.objPage); }
+  objPagePrec(): void { if (this.objPage > 0) this.objPage--; }
+  objPageSuiv(): void { if (this.objPage < this.objNbPages - 1) this.objPage++; }
+  onObjSearch(): void { this.objPage = 0; }
+
+  // Détail par séance (vue équipe)
+  get seanceNbPages(): number { return this.nbPages(this.seances.length); }
+  get seancesPage(): ChargeSeance[] { return this.page(this.seances, this.seancePage); }
+  seancePagePrec(): void { if (this.seancePage > 0) this.seancePage--; }
+  seancePageSuiv(): void { if (this.seancePage < this.seanceNbPages - 1) this.seancePage++; }
+
+  // Classement par joueur
+  get joueursFiltres(): ChargeJoueur[] {
+    const q = this.joueurSearch.trim();
+    return q ? this.joueursTriees.filter(j => this.matchNom(j.prenom, j.nom, q)) : this.joueursTriees;
+  }
+  get joueurNbPages(): number { return this.nbPages(this.joueursFiltres.length); }
+  get joueurPageOffset(): number { return Math.min(Math.max(0, this.joueurPage), this.joueurNbPages - 1) * this.TAILLE_PAGE; }
+  get joueursPage(): ChargeJoueur[] { return this.page(this.joueursFiltres, this.joueurPage); }
+  joueurPagePrec(): void { if (this.joueurPage > 0) this.joueurPage--; }
+  joueurPageSuiv(): void { if (this.joueurPage < this.joueurNbPages - 1) this.joueurPage++; }
+  onJoueurSearch(): void { this.joueurPage = 0; }
+
+  onFiltreChange(): void { this.raccourciJours = null; this.charger(); }
 
   toggleFiltreType(code: string): void {
     const i = this.filtreTypes.indexOf(code);
@@ -84,10 +194,8 @@ export class ChargeEquipeComponent implements OnInit {
   }
 
   resetFiltres(): void {
-    const today = new Date();
-    const debut = new Date(today); debut.setDate(today.getDate() - 30);
-    this.filtreFin   = this.iso(today);
-    this.filtreDebut = this.iso(debut);
+    this.raccourciJours = 7;
+    this.appliquerJours(7);
     this.filtreTypes = [];
     this.charger();
   }

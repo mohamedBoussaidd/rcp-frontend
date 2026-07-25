@@ -219,20 +219,30 @@
       <div class="card__body">
         @if (!derniereSeance) {
           <div class="surveiller__vide"><mat-icon>history</mat-icon><span>Pas encore de séance réalisée.</span></div>
-        } @else if (bilanObjectifM == null) {
+        } @else if (!aBilan) {
           <div class="surveiller__vide"><mat-icon>flag</mat-icon><span>Aucun objectif d'équipe défini pour cette séance.</span></div>
         } @else {
           <div class="bilan">
-            <div class="bilan__kpi">
-              <span class="bilan__val">{{ bilanObjectifM / 1000 | number:'1.1-1' }}<span class="unit"> km</span></span>
-              <span class="bilan__label">Objectif équipe</span>
-            </div>
-            <div class="bilan__kpi">
-              <span class="bilan__val" [class.text-bad]="bilanConcernes > 0 && bilanAtteint / bilanConcernes < 0.5">
-                {{ bilanAtteint }}<span class="unit"> / {{ bilanConcernes }}</span>
-              </span>
-              <span class="bilan__label">Ont atteint l'objectif</span>
-            </div>
+            @if (bilanObjectifM != null) {
+              <div class="bilan__kpi">
+                <span class="bilan__val">{{ bilanObjectifM / 1000 | number:'1.1-1' }}<span class="unit"> km</span></span>
+                <span class="bilan__label">Objectif équipe</span>
+              </div>
+              <div class="bilan__kpi">
+                <span class="bilan__val" [class.text-bad]="bilanConcernes > 0 && bilanAtteint / bilanConcernes < 0.5">
+                  {{ bilanAtteint }}<span class="unit"> / {{ bilanConcernes }}</span>
+                </span>
+                <span class="bilan__label">Ont atteint (km)</span>
+              </div>
+            }
+            @if (estBilanMatch && bilanPosteConcernes > 0) {
+              <div class="bilan__kpi">
+                <span class="bilan__val" [class.text-bad]="bilanPosteAtteint / bilanPosteConcernes < 0.5">
+                  {{ bilanPosteAtteint }}<span class="unit"> / {{ bilanPosteConcernes }}</span>
+                </span>
+                <span class="bilan__label">Objectif de poste (m/min)</span>
+              </div>
+            }
           </div>
           @if (rapport?.objectif) {
             <div class="bilan__obj">« {{ rapport?.objectif }} »</div>

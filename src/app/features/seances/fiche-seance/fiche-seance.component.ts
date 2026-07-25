@@ -8,6 +8,7 @@ import { AuthService } from '@core/services/auth.service';
 import { ContexteService } from '@core/services/contexte.service';
 import { SchemaViewerComponent } from '../../tactical/schema-viewer/schema-viewer.component';
 import { OccupationZone, TerrainZonesComponent } from '@shared/components/terrain-zones/terrain-zones.component';
+import { BadgeAssignComponent } from '@shared/components/badge/badge-assign.component';
 
 /**
  * Fiche séance (résumé) — triple usage : vérification après création (?verif=1),
@@ -20,7 +21,7 @@ import { OccupationZone, TerrainZonesComponent } from '@shared/components/terrai
   standalone: true,
   templateUrl: './fiche-seance.component.html',
   styleUrl: './fiche-seance.component.scss',
-  imports: [DatePipe, FormsModule, SchemaViewerComponent, TerrainZonesComponent],
+  imports: [DatePipe, FormsModule, SchemaViewerComponent, TerrainZonesComponent, BadgeAssignComponent],
 })
 export class FicheSeanceComponent implements OnInit {
 

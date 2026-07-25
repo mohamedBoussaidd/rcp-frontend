@@ -86,6 +86,9 @@ export interface LigneRapport {
   duree_minutes: number | null;
   distance_reelle: number | null;
   distance_attendue: number | null;
+  baseline_n: number;                        // nb de séances de la baseline (même type)
+  distance_attendue_globale: number | null;  // repli « toutes séances confondues »
+  baseline_n_globale: number;
   ratio_reel: number | null;
   delta_m: number | null;
   delta_pct: number | null;
@@ -162,6 +165,32 @@ export interface ChargeEquipe {
   joueurs: ChargeJoueur[];
 }
 
+export interface ObjectifHebdoJoueur {
+  joueur_id: string;
+  nom: string;
+  prenom: string;
+  poste: string;
+  cumul_m: number;
+  cible_ideal_m: number | null;   // suggestion intelligente (A.5)
+  cible_min_m: number | null;
+  cible_haute_m: number | null;
+  plafond_m: number | null;
+  objectif_m: number | null;      // objectif retenu (manuel si défini, sinon la suggestion)
+  source: 'MANUEL' | 'INTELLIGENT' | null;
+  atteint: boolean | null;
+  reste_m: number | null;
+}
+
+export interface ObjectifHebdo {
+  objectif_distance_m: number | null;   // objectif manuel d'équipe (null = non défini)
+  suggestion_moyenne_m: number | null;  // moyenne d'équipe des cibles A.5
+  multi_equipes: boolean;               // contexte multi-équipes → écriture impossible
+  nb_atteint: number;
+  nb_concernes: number;
+  meilleur: { joueur_id: string; nom: string; prenom: string; cumul_m: number } | null;
+  joueurs: ObjectifHebdoJoueur[];
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -202,5 +231,16 @@ export class PredictionService {
     if (fin)   params = params.set('fin', fin);
     if (types && types.length) params = params.set('types', types.join(','));
     return this.http.get<ChargeEquipe>(`${this.base}/equipe/charge`, { params });
+  }
+
+  /** Panneau « Objectif de la semaine » (semaine en cours, indépendant du filtre de dates). */
+  getObjectifHebdo(): Observable<ObjectifHebdo> {
+    return this.http.get<ObjectifHebdo>(`${this.base}/equipe/objectif-hebdo`);
+  }
+
+  /** Définit (ou efface si null) l'objectif hebdo de l'équipe active. Distance en mètres. */
+  setObjectifHebdo(objectifDistanceM: number | null): Observable<{ equipeId: string; objectifDistanceM: number | null }> {
+    return this.http.put<{ equipeId: string; objectifDistanceM: number | null }>(
+      `${this.base}/objectif-hebdo`, { objectifDistanceM });
   }
 }

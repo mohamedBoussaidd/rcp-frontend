@@ -257,6 +257,20 @@ export class DashboardPreparateurComponent implements OnInit {
   get bilanConcernes(): number {
     return (this.rapport?.lignes ?? []).filter(l => l.atteint_objectif_seance != null).length;
   }
+  /** Match / amical : un 2e verdict existe, l'objectif d'intensité par poste (m/min). */
+  get estBilanMatch(): boolean {
+    return this.rapport?.type_code === 'MATCH' || this.rapport?.type_code === 'MATCH_AMICAL';
+  }
+  get bilanPosteAtteint(): number {
+    return (this.rapport?.lignes ?? []).filter(l => l.atteint_objectif === true).length;
+  }
+  get bilanPosteConcernes(): number {
+    return (this.rapport?.lignes ?? []).filter(l => l.atteint_objectif != null).length;
+  }
+  /** Le bloc bilan a-t-il quelque chose à montrer : objectif km d'équipe OU objectif de poste en match. */
+  get aBilan(): boolean {
+    return this.bilanObjectifM != null || (this.estBilanMatch && this.bilanPosteConcernes > 0);
+  }
 
   /* ── Chargements ── */
   loadEquipe(): void {
