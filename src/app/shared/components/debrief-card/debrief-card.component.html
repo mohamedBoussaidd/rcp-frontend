@@ -1,0 +1,30 @@
+@if (visible) {
+  <div class="card card--padded debrief">
+    <div class="debrief__head">
+      <h3 class="debrief__titre">
+        Debrief IA
+        @if (debrief()?.source === 'IA') { <app-ia-badge label="IA" /> }
+      </h3>
+      <button class="btn btn--primary btn--sm" (click)="generer()" [disabled]="chargement()">
+        {{ chargement() ? '…' : (debrief() ? 'Régénérer' : 'Debrief de la séance') }}
+      </button>
+    </div>
+
+    @if (erreur()) {
+      <p class="debrief__erreur">{{ erreur() }}</p>
+    } @else if (debrief()) {
+      <p class="debrief__texte">{{ debrief()!.texte }}</p>
+      <p class="debrief__note">
+        @if (debrief()!.source === 'IA') {
+          Rédigé par IA à partir du rapport de la séance.
+        } @else {
+          Note automatique à partir du rapport (IA non activée ou indisponible).
+        }
+      </p>
+    } @else {
+      <p class="debrief__vide">
+        Une courte synthèse de la séance : objectif de charge tenu ou non, joueurs au-dessus ou en-dessous de leur attendu.
+      </p>
+    }
+  </div>
+}

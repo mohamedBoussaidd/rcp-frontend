@@ -13,6 +13,7 @@ export interface NotifConfig {
   rappelWellnessActif: boolean; rappelWellnessHeure: string; rappelWellnessJours: string;
   rappelRpeActif: boolean; rappelRpeDelaiHeures: number;
   rappelSeanceActif: boolean;
+  derivesAlerteActive: boolean;
 }
 
 export interface Routage { type: string; roles: string; actif: boolean; }

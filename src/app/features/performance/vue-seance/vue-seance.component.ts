@@ -7,6 +7,7 @@ import { catchError } from 'rxjs/operators';
 import { SeanceService, Seance } from '@core/services/seance.service';
 import { PredictionService, RapportSeance, LigneRapport } from '@core/services/prediction.service';
 import { MetriquesClubService } from '@core/services/metriques-club.service';
+import { DebriefCardComponent } from '@shared/components/debrief-card/debrief-card.component';
 
 const COULEURS_TYPE: Record<string, string> = {
   MATCH:        '#ef4444',
@@ -34,7 +35,7 @@ interface LigneVue extends LigneRapport {
   standalone: true,
   templateUrl: './vue-seance.component.html',
   styleUrl: './vue-seance.component.scss',
-  imports: [FormsModule, DecimalPipe, DatePipe],
+  imports: [FormsModule, DecimalPipe, DatePipe, DebriefCardComponent],
 })
 export class VueSeanceComponent implements OnInit {
 

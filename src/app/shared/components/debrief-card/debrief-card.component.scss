@@ -1,0 +1,42 @@
+.debrief {
+  &__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-bottom: 10px;
+  }
+
+  &__titre {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0;
+    font-size: 1.05rem;
+    font-weight: 600;
+  }
+
+  &__texte {
+    margin: 0;
+    line-height: 1.55;
+    white-space: pre-line;
+  }
+
+  &__note {
+    margin: 8px 0 0;
+    font-size: 0.8rem;
+    opacity: 0.65;
+  }
+
+  &__vide {
+    margin: 0;
+    opacity: 0.7;
+    line-height: 1.5;
+  }
+
+  &__erreur {
+    margin: 0;
+    color: var(--danger, #c0392b);
+  }
+}

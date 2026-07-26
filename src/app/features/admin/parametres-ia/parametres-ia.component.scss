@@ -85,3 +85,66 @@
 }
 
 .pia-plein { color: #DC2626; font-weight: 700; }
+
+/* Onglets */
+.pia-tabs {
+  display: flex;
+  gap: 4px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.pia-tab {
+  border: 0;
+  background: transparent;
+  color: var(--text-2);
+  font-size: 14px;
+  font-weight: 600;
+  padding: 10px 14px;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+
+  &.is-active {
+    color: var(--text);
+    border-bottom-color: var(--accent, #6366f1);
+  }
+}
+
+/* Chips de sélection de prompt */
+.pia-chips {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+
+.pia-chip {
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--text-2);
+  font-size: 13px;
+  font-weight: 600;
+  padding: 6px 12px;
+  border-radius: 999px;
+  cursor: pointer;
+
+  &.is-active {
+    color: #fff;
+    background: var(--accent, #6366f1);
+    border-color: var(--accent, #6366f1);
+  }
+}
+
+.pia-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--text);
+
+  .pia-hint { margin: 0; }
+}

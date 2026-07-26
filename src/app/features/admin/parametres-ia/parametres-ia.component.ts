@@ -3,13 +3,11 @@ import { HttpClient } from '@angular/common/http';
 import { FormsModule } from '@angular/forms';
 import { DatePipe } from '@angular/common';
 import { MatSnackBar } from '@angular/material/snack-bar';
+import { IaConfigComponent } from '../ia-config/ia-config.component';
+import { IaAdminService, QuotaFeatureDto } from '@core/services/ia-admin.service';
 
 interface VersionDto { id: string; valeur: string; createdAt: string; }
 interface ParametreDto { cle: string; valeur: string; defaut: string; historique: VersionDto[]; }
-interface QuotaClubDto {
-  clubId: string; clubNom: string;
-  quotaSurcharge: number | null; quotaEffectif: number; consommeAujourdhui: number;
-}
 
 /** Éditeur d'un prompt IA (une clé) : état serveur + texte en cours + historique replié. */
 class PromptEditor {
@@ -20,14 +18,36 @@ class PromptEditor {
   constructor(readonly cle: string, readonly titre: string, readonly hint: string, readonly rows: number) {}
 }
 
+/** Une feature IA côté admin : son prompt éditable (si elle en a un) + son toggle LLM (si c'est une carte). */
+class FeatureAdmin {
+  readonly prompt: PromptEditor | null;
+  readonly toggle = signal<ParametreDto | null>(null);
+  constructor(readonly code: string, readonly libelle: string,
+              readonly clePrompt: string | null, readonly cleToggle: string | null, hint: string) {
+    this.prompt = clePrompt ? new PromptEditor(clePrompt, `Prompt — ${libelle}`, hint, 14) : null;
+  }
+  get llmActif(): boolean { return (this.toggle()?.valeur ?? 'true').trim().toLowerCase() !== 'false'; }
+}
+
+/** Aides contextuelles par feature (fallback générique pour toute future carte). */
+const HINTS: Record<string, string> = {
+  import_photo: "Envoyé au modèle vision avec chaque photo (palette du schéma, référentiels, contrat JSON strict). Modifie prudemment : chaque enregistrement historise la version précédente.",
+  generateur_seance: "Guide la composition d'une séance. Le catalogue d'exercices (avec leurs tags) et les types de séance sont ajoutés AUTOMATIQUEMENT après ce texte : n'y remets pas la bibliothèque.",
+  briefing_prepa: "Guide la « note du prépa ». Les indicateurs déjà calculés (readiness, objectif hebdo, charge) sont ajoutés APRÈS, en message utilisateur : n'y remets pas de chiffres à la main.",
+};
+const HINT_DEFAUT = "Prompt système de cette feature. Les données spécifiques (indicateurs, catalogue…) sont ajoutées automatiquement à l'exécution : n'y remets pas de données à la main.";
+
 /**
- * Paramètres IA (super-admin) : édition des prompts IA (analyse photo + générateur de séance) avec
- * historique des versions + restauration, quota par défaut, et surcharges de quota par club.
+ * Paramètres IA (super-admin) — UNE page, 3 onglets :
+ *  · Prompts : sélecteur de feature (chips) + éditeur du prompt + toggle LLM (cartes) ;
+ *  · Quotas : par feature, défaut global + surcharge par club (source unique) ;
+ *  · Clés & modèles : la config par club (composant réembarqué).
+ * Data-driven par le catalogue {@link IaAdminService.features} : une nouvelle carte apparaît seule.
  */
 @Component({
   selector: 'app-parametres-ia',
   standalone: true,
-  imports: [FormsModule, DatePipe],
+  imports: [FormsModule, DatePipe, IaConfigComponent],
   templateUrl: './parametres-ia.component.html',
   styleUrl: './parametres-ia.component.scss',
 })
@@ -35,42 +55,48 @@ export class ParametresIaComponent implements OnInit {
 
   private http = inject(HttpClient);
   private snack = inject(MatSnackBar);
+  private iaAdmin = inject(IaAdminService);
 
-  readonly photo = new PromptEditor('prompt_import_photo', "Prompt d'analyse des photos",
-    "Ce texte est envoyé au modèle vision avec chaque photo. Il énumère la palette du schéma, les codes des référentiels et le contrat JSON strict — modifie-le prudemment : chaque enregistrement historise la version précédente (restauration possible).",
-    18);
-  readonly generateur = new PromptEditor('prompt_generateur_seance', 'Prompt du générateur de séance',
-    "Ce texte guide la composition d'une séance à partir de la demande du coach. Le catalogue d'exercices — avec leurs tags (dominantes, thèmes, intensité, durée) — et la liste des types de séance sont ajoutés AUTOMATIQUEMENT après ce texte : n'y remets pas la bibliothèque à la main.",
-    16);
-  readonly prompts = [this.photo, this.generateur];
+  readonly onglet = signal<'prompts' | 'quotas' | 'cles'>('prompts');
 
-  quotaDefaut = signal<ParametreDto | null>(null);
-  quotaDefautEdite = '';
-  quotas = signal<QuotaClubDto[]>([]);
+  // ── Onglet Prompts ──
+  readonly features = signal<FeatureAdmin[]>([]);
+  readonly promptSel = signal<string | null>(null);
+
+  // ── Onglet Quotas ──
+  readonly quotas = signal<QuotaFeatureDto[]>([]);
+  readonly quotaDefautEdit: Record<string, number> = {};
+  readonly clubOuvert = signal<string | null>(null);   // feature dont le détail par club est déplié
 
   ngOnInit(): void {
-    this.prompts.forEach(ed => this.charger(ed));
-    this.http.get<ParametreDto>('/api/admin/parametres-ia/quota_import_photo_defaut').subscribe({
-      next: p => { this.quotaDefaut.set(p); this.quotaDefautEdite = p.valeur; },
-      error: () => {},
+    this.iaAdmin.features().subscribe(fs => {
+      const list = fs.map(f => new FeatureAdmin(f.code, f.libelle, f.clePrompt, f.cleToggle, HINTS[f.code] ?? HINT_DEFAUT));
+      this.features.set(list);
+      const premier = list.find(f => f.prompt);
+      if (premier) this.promptSel.set(premier.code);
+      list.forEach(f => this.chargerFeature(f));
     });
     this.chargerQuotas();
   }
 
-  private charger(ed: PromptEditor): void {
-    this.http.get<ParametreDto>(`/api/admin/parametres-ia/${ed.cle}`).subscribe({
-      next: p => { ed.param.set(p); ed.edite = p.valeur; },
-      error: () => this.snack.open('Chargement du prompt impossible', 'Fermer', { duration: 3000 }),
-    });
+  featureSel(): FeatureAdmin | undefined {
+    return this.features().find(f => f.code === this.promptSel());
   }
 
-  private chargerQuotas(): void {
-    this.http.get<QuotaClubDto[]>('/api/admin/parametres-ia/import-photo/quotas').subscribe({
-      next: q => this.quotas.set(q),
-      error: () => {},
-    });
+  private chargerFeature(f: FeatureAdmin): void {
+    if (f.prompt) {
+      this.http.get<ParametreDto>(`/api/admin/parametres-ia/${f.prompt.cle}`).subscribe({
+        next: p => { f.prompt!.param.set(p); f.prompt!.edite = p.valeur; }, error: () => {},
+      });
+    }
+    if (f.cleToggle) {
+      this.http.get<ParametreDto>(`/api/admin/parametres-ia/${f.cleToggle}`).subscribe({
+        next: p => f.toggle.set(p), error: () => {},
+      });
+    }
   }
 
+  // ── Prompts : actions ──
   enregistrerPrompt(ed: PromptEditor): void {
     if (!ed.edite.trim() || ed.saving()) return;
     ed.saving.set(true);
@@ -95,24 +121,38 @@ export class ParametresIaComponent implements OnInit {
     if (p) ed.edite = p.defaut;
   }
 
-  enregistrerQuotaDefaut(): void {
-    const v = parseInt(this.quotaDefautEdite, 10);
-    if (isNaN(v) || v < 0) return;
-    this.http.put<ParametreDto>('/api/admin/parametres-ia/quota_import_photo_defaut',
-      { valeur: String(v) }).subscribe({
-      next: p => {
-        this.quotaDefaut.set(p); this.quotaDefautEdite = p.valeur; this.chargerQuotas();
-        this.snack.open('Quota par défaut enregistré', 'OK', { duration: 2500 });
-      },
+  basculerLlm(f: FeatureAdmin, actif: boolean): void {
+    if (!f.cleToggle) return;
+    this.http.put<ParametreDto>(`/api/admin/parametres-ia/${f.cleToggle}`, { valeur: actif ? 'true' : 'false' }).subscribe({
+      next: p => { f.toggle.set(p); this.snack.open(actif ? 'LLM activé pour cette carte' : 'Carte en mode gabarit seul', 'OK', { duration: 2500 }); },
+      error: () => this.snack.open('Modification impossible', 'Fermer', { duration: 3000 }),
+    });
+  }
+
+  // ── Quotas : chargement + actions ──
+  private chargerQuotas(): void {
+    this.iaAdmin.quotas().subscribe({ next: q => this.appliquerQuotas(q), error: () => {} });
+  }
+
+  private appliquerQuotas(q: QuotaFeatureDto[], msg?: string): void {
+    this.quotas.set(q);
+    q.forEach(x => this.quotaDefautEdit[x.feature] = x.defautGlobal);
+    if (msg) this.snack.open(msg, 'OK', { duration: 2000 });
+  }
+
+  enregistrerDefaut(feature: string): void {
+    const v = this.quotaDefautEdit[feature];
+    if (v == null || v < 0) return;
+    this.iaAdmin.majQuotaDefaut(feature, v).subscribe({
+      next: q => this.appliquerQuotas(q, 'Quota par défaut enregistré'),
       error: () => this.snack.open('Enregistrement impossible', 'Fermer', { duration: 3000 }),
     });
   }
 
-  fixerQuota(club: QuotaClubDto, valeur: string): void {
+  fixerClub(feature: string, clubId: string, valeur: string): void {
     const v = valeur.trim() === '' ? null : Math.max(0, parseInt(valeur, 10) || 0);
-    this.http.put<QuotaClubDto[]>(
-      `/api/admin/parametres-ia/import-photo/quotas/${club.clubId}`, { valeur: v }).subscribe({
-      next: q => { this.quotas.set(q); this.snack.open('Quota mis à jour', 'OK', { duration: 2000 }); },
+    this.iaAdmin.majQuotaClub(clubId, feature, v).subscribe({
+      next: q => this.appliquerQuotas(q, 'Quota mis à jour'),
       error: () => this.snack.open('Mise à jour impossible', 'Fermer', { duration: 3000 }),
     });
   }

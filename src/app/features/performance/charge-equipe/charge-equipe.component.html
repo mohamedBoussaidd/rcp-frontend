@@ -50,6 +50,8 @@
 
   <!-- ═══ Onglet Objectif de la semaine (toujours la semaine en cours, indépendant du filtre) ═══ -->
   @if (onglet === 'objectif') {
+    <!-- Briefing IA (add-on) : s'auto-masque sans la permission prepa_ia:briefing -->
+    <app-briefing-card />
     @if (objectif) {
       <section class="pf-card oh-panel">
         <div class="oh-top">

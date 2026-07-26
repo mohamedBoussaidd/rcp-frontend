@@ -1,0 +1,99 @@
+.derives {
+  &__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-bottom: 4px;
+  }
+
+  &__titre {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0;
+    font-size: 1.05rem;
+    font-weight: 600;
+  }
+
+  &__sub {
+    margin: 0 0 10px;
+    font-size: 0.82rem;
+    opacity: 0.7;
+  }
+
+  &__vide {
+    margin: 0;
+    opacity: 0.75;
+  }
+
+  &__axes {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  &__note-txt {
+    margin: 14px 0 0;
+    line-height: 1.55;
+    white-space: pre-line;
+    border-top: 1px solid var(--border);
+    padding-top: 10px;
+  }
+
+  &__note-src {
+    margin: 6px 0 0;
+    font-size: 0.78rem;
+    opacity: 0.6;
+  }
+
+  &__erreur { margin: 0; color: var(--danger, #c0392b); }
+}
+
+.derax {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 8px 10px;
+
+  &__titre {
+    font-weight: 600;
+    font-size: 0.9rem;
+    margin-bottom: 4px;
+  }
+
+  &__stable {
+    font-size: 0.8rem;
+    opacity: 0.6;
+  }
+
+  &__grp {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    margin-top: 4px;
+  }
+
+  &__tag {
+    font-size: 0.78rem;
+    font-weight: 700;
+    white-space: nowrap;
+
+    &--up { color: #dc2626; }
+    &--down { color: #2563eb; }
+  }
+
+  &__noms {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+
+  &__chip {
+    font-size: 0.76rem;
+    background: var(--surface-2, rgba(127, 127, 127, 0.12));
+    border-radius: 999px;
+    padding: 2px 8px;
+  }
+}

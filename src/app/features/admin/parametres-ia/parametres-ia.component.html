@@ -3,77 +3,124 @@
   <div class="page-head">
     <div>
       <h1 class="page-head__title">Paramètres IA</h1>
-      <p class="page-head__sub">Prompts IA (analyse photo &amp; générateur de séance), historique des versions, quotas par club</p>
+      <p class="page-head__sub">Prompts, quotas et clés — tout au même endroit</p>
     </div>
   </div>
 
-  <!-- Prompts IA (analyse photo + générateur de séance) -->
-  @for (ed of prompts; track ed.cle) {
-    <div class="card card--padded" style="margin-bottom:16px">
-      <div class="pia-sec-head">
-        <h2 class="pia-sec-titre">{{ ed.titre }}</h2>
-        <div class="row" style="gap:8px">
-          <button class="btn btn--secondary btn--sm" (click)="remettreDefaut(ed)">↺ Texte par défaut</button>
-          <button class="btn btn--secondary btn--sm" (click)="ed.histOuvert.set(!ed.histOuvert())">
-            🕘 Historique ({{ ed.param()?.historique?.length || 0 }})
-          </button>
-          <button class="btn btn--primary btn--sm" (click)="enregistrerPrompt(ed)"
-                  [disabled]="ed.saving() || !ed.edite.trim()">
-            {{ ed.saving() ? '…' : 'Enregistrer' }}
-          </button>
-        </div>
-      </div>
-      <p class="pia-hint">{{ ed.hint }}</p>
-      <textarea class="pia-textarea" [(ngModel)]="ed.edite" [rows]="ed.rows" [name]="ed.cle" spellcheck="false"></textarea>
+  <!-- Onglets -->
+  <div class="pia-tabs">
+    <button class="pia-tab" [class.is-active]="onglet() === 'prompts'" (click)="onglet.set('prompts')">Prompts</button>
+    <button class="pia-tab" [class.is-active]="onglet() === 'quotas'" (click)="onglet.set('quotas')">Quotas</button>
+    <button class="pia-tab" [class.is-active]="onglet() === 'cles'" (click)="onglet.set('cles')">Clés &amp; modèles</button>
+  </div>
 
-      @if (ed.histOuvert()) {
-        <div class="pia-hist">
-          @if ((ed.param()?.historique || []).length === 0) {
-            <span class="pia-hint">Aucune version antérieure.</span>
-          }
-          @for (v of ed.param()?.historique || []; track v.id) {
-            <div class="pia-hist__ligne">
-              <span>{{ v.createdAt | date: 'dd/MM/yyyy HH:mm' }}</span>
-              <span class="pia-hist__extrait">{{ v.valeur.slice(0, 110) }}…</span>
-              <button class="btn btn--secondary btn--sm" (click)="restaurer(ed, v)">Restaurer</button>
+  <!-- ═══ Onglet Prompts ═══ -->
+  @if (onglet() === 'prompts') {
+    <div class="pia-chips">
+      @for (f of features(); track f.code) {
+        @if (f.prompt) {
+          <button class="pia-chip" [class.is-active]="promptSel() === f.code" (click)="promptSel.set(f.code)">{{ f.libelle }}</button>
+        }
+      }
+    </div>
+
+    @if (featureSel(); as f) {
+      @if (f.cleToggle) {
+        <label class="pia-toggle">
+          <input type="checkbox" [checked]="f.llmActif" (change)="basculerLlm(f, $any($event.target).checked)">
+          <span>{{ f.llmActif ? 'LLM activé' : 'Gabarit seul (repli local)' }}</span>
+          <span class="pia-hint">— OFF force le repli gabarit même si une clé existe.</span>
+        </label>
+      }
+
+      @if (f.prompt; as ed) {
+        <div class="card card--padded">
+          <div class="pia-sec-head">
+            <h2 class="pia-sec-titre">{{ ed.titre }}</h2>
+            <div class="row" style="gap:8px">
+              <button class="btn btn--secondary btn--sm" (click)="remettreDefaut(ed)">↺ Texte par défaut</button>
+              <button class="btn btn--secondary btn--sm" (click)="ed.histOuvert.set(!ed.histOuvert())">
+                🕘 Historique ({{ ed.param()?.historique?.length || 0 }})
+              </button>
+              <button class="btn btn--primary btn--sm" (click)="enregistrerPrompt(ed)"
+                      [disabled]="ed.saving() || !ed.edite.trim()">
+                {{ ed.saving() ? '…' : 'Enregistrer' }}
+              </button>
+            </div>
+          </div>
+          <p class="pia-hint">{{ ed.hint }}</p>
+          <textarea class="pia-textarea" [(ngModel)]="ed.edite" [rows]="ed.rows" [name]="ed.cle" spellcheck="false"></textarea>
+
+          @if (ed.histOuvert()) {
+            <div class="pia-hist">
+              @if ((ed.param()?.historique || []).length === 0) {
+                <span class="pia-hint">Aucune version antérieure.</span>
+              }
+              @for (v of ed.param()?.historique || []; track v.id) {
+                <div class="pia-hist__ligne">
+                  <span>{{ v.createdAt | date: 'dd/MM/yyyy HH:mm' }}</span>
+                  <span class="pia-hist__extrait">{{ v.valeur.slice(0, 110) }}…</span>
+                  <button class="btn btn--secondary btn--sm" (click)="restaurer(ed, v)">Restaurer</button>
+                </div>
+              }
             </div>
           }
         </div>
       }
-    </div>
+    }
   }
 
-  <!-- Quotas -->
-  <div class="card card--padded">
-    <div class="pia-sec-head">
-      <h2 class="pia-sec-titre">Quotas d'imports photo (appels / club / jour)</h2>
-      <div class="row" style="gap:8px;align-items:center">
-        <label class="pia-hint" for="qdef">Défaut :</label>
-        <input id="qdef" class="input pia-quota-input" type="number" min="0" [(ngModel)]="quotaDefautEdite">
-        <button class="btn btn--primary btn--sm" (click)="enregistrerQuotaDefaut()">OK</button>
-      </div>
-    </div>
-    <p class="pia-hint">Garde-fou de coût. Laisse la surcharge vide pour appliquer le défaut ; fixe une valeur pour autoriser plus (ou moins) à un club précis.</p>
+  <!-- ═══ Onglet Quotas ═══ -->
+  @if (onglet() === 'quotas') {
+    <p class="pia-hint" style="margin-bottom:12px">
+      Garde-fou de coût sur la clé plateforme. Le quota ne s'applique qu'aux clubs <b>sans clé propre</b>
+      (un club qui paie sa clé est illimité). Défaut global par feature, surcharge possible par club.
+    </p>
 
-    <table class="pia-table">
-      <thead>
-        <tr><th>Club</th><th>Quota effectif</th><th>Consommé aujourd'hui</th><th>Surcharge</th></tr>
-      </thead>
-      <tbody>
-        @for (q of quotas(); track q.clubId) {
-          <tr>
-            <td>{{ q.clubNom }}</td>
-            <td><b>{{ q.quotaEffectif }}</b>/jour @if (q.quotaSurcharge === null) { <span class="pia-hint">(défaut)</span> }</td>
-            <td [class.pia-plein]="q.consommeAujourdhui >= q.quotaEffectif">{{ q.consommeAujourdhui }}</td>
-            <td>
-              <input class="input pia-quota-input" type="number" min="0" placeholder="—"
-                     [value]="q.quotaSurcharge ?? ''" #surcharge
-                     (change)="fixerQuota(q, surcharge.value)">
-            </td>
-          </tr>
+    @for (qf of quotas(); track qf.feature) {
+      <div class="card card--padded" style="margin-bottom:12px">
+        <div class="pia-sec-head">
+          <h2 class="pia-sec-titre">{{ qf.libelle }}</h2>
+          <div class="row" style="gap:8px;align-items:center">
+            <label class="pia-hint" [for]="'def_' + qf.feature">Défaut /jour :</label>
+            <input [id]="'def_' + qf.feature" class="input pia-quota-input" type="number" min="0"
+                   [(ngModel)]="quotaDefautEdit[qf.feature]" [name]="'def_' + qf.feature">
+            <button class="btn btn--primary btn--sm" (click)="enregistrerDefaut(qf.feature)">OK</button>
+            <button class="btn btn--secondary btn--sm"
+                    (click)="clubOuvert.set(clubOuvert() === qf.feature ? null : qf.feature)">
+              {{ clubOuvert() === qf.feature ? 'Masquer' : 'Par club' }} ({{ qf.clubs.length }})
+            </button>
+          </div>
+        </div>
+
+        @if (clubOuvert() === qf.feature) {
+          <table class="pia-table">
+            <thead>
+              <tr><th>Club</th><th>Quota effectif</th><th>Consommé aujourd'hui</th><th>Surcharge</th></tr>
+            </thead>
+            <tbody>
+              @for (c of qf.clubs; track c.clubId) {
+                <tr>
+                  <td>{{ c.clubNom }}</td>
+                  <td><b>{{ c.effectif }}</b>/jour @if (c.surcharge === null) { <span class="pia-hint">(défaut)</span> }</td>
+                  <td [class.pia-plein]="c.consomme >= c.effectif">{{ c.consomme }}</td>
+                  <td>
+                    <input class="input pia-quota-input" type="number" min="0" placeholder="—"
+                           [value]="c.surcharge ?? ''" #surcharge
+                           (change)="fixerClub(qf.feature, c.clubId, surcharge.value)">
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
         }
-      </tbody>
-    </table>
-  </div>
+      </div>
+    }
+  }
+
+  <!-- ═══ Onglet Clés & modèles ═══ -->
+  @if (onglet() === 'cles') {
+    <app-ia-config />
+  }
 
 </div>

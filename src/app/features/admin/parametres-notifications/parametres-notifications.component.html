@@ -118,6 +118,10 @@
             texte="Nombre d'heures après la fin de séance avant de rappeler aux joueurs de saisir leur effort ressenti."></app-info-hint>
         </span><input type="number" min="0" max="24" [(ngModel)]="c.rappelRpeDelaiHeures"></label>
         <label class="switch"><input type="checkbox" [(ngModel)]="c.rappelSeanceActif"> Rappel séance</label>
+        <label class="switch"><input type="checkbox" [(ngModel)]="c.derivesAlerteActive"> Alerte dérives (surveillance hebdo, staff)
+          <app-info-hint align="left" titre="Alerte dérives de charge"
+            texte="Envoie chaque semaine au staff prépa (cloche + push) une alerte si des dérives lentes de charge dépassent le seuil sur les 4 dernières semaines. Nécessite le module « Dérives & surveillance »."></app-info-hint>
+        </label>
       </div>
       <div class="cadence">
         <span class="cadence__lbl">Jours du rappel wellness</span>

@@ -1,0 +1,31 @@
+@if (visible) {
+  <div class="card card--padded briefing">
+    <div class="briefing__head">
+      <h3 class="briefing__titre">
+        Briefing du préparateur
+        @if (briefing()?.source === 'IA') { <app-ia-badge label="IA" /> }
+      </h3>
+      <button class="btn btn--primary btn--sm" (click)="generer()" [disabled]="chargement()">
+        {{ chargement() ? '…' : (briefing() ? 'Régénérer' : 'Générer le briefing') }}
+      </button>
+    </div>
+
+    @if (erreur()) {
+      <p class="briefing__erreur">{{ erreur() }}</p>
+    } @else if (briefing()) {
+      <p class="briefing__texte">{{ briefing()!.texte }}</p>
+      <p class="briefing__note">
+        @if (briefing()!.source === 'IA') {
+          Rédigé par IA à partir de vos indicateurs de la semaine.
+        } @else {
+          Note automatique à partir de vos indicateurs (IA non activée ou indisponible).
+        }
+      </p>
+    } @else {
+      <p class="briefing__vide">
+        Une courte note sur l'état de l'équipe cette semaine : atteinte de l'objectif de charge,
+        joueurs en surcharge ou en sous-charge, points de vigilance.
+      </p>
+    }
+  </div>
+}

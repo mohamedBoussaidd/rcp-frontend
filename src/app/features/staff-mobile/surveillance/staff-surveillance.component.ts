@@ -6,6 +6,7 @@ import { SuiviSubjectifService } from '@core/services/suivi-subjectif.service';
 import {
   SurveillanceService, JoueurSurveille, acwrClasse, readinessClasse,
 } from '@core/services/surveillance.service';
+import { DerivesCardComponent } from '@shared/components/derives-card/derives-card.component';
 
 /**
  * Page PWA staff « À surveiller » : la même liste que le bloc du dashboard web (mêmes règles via
@@ -17,7 +18,7 @@ import {
   standalone: true,
   templateUrl: './staff-surveillance.component.html',
   styleUrl: './staff-surveillance.component.scss',
-  imports: [DecimalPipe],
+  imports: [DecimalPipe, DerivesCardComponent],
 })
 export class StaffSurveillanceComponent implements OnInit {
 

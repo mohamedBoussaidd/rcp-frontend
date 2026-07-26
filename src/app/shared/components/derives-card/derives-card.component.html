@@ -1,0 +1,67 @@
+@if (visible) {
+  <div class="card card--padded derives">
+    <div class="derives__head">
+      <h3 class="derives__titre">
+        Dérives &amp; surveillance
+        @if (note()?.source === 'IA') { <app-ia-badge label="IA" /> }
+      </h3>
+      @if (derives()) {
+        <button class="btn btn--primary btn--sm" (click)="genererNote()" [disabled]="chargementNote()">
+          {{ chargementNote() ? '…' : (note() ? 'Régénérer la synthèse' : 'Générer la synthèse') }}
+        </button>
+      }
+    </div>
+
+    @if (erreur() && !derives()) {
+      <p class="derives__erreur">{{ erreur() }}</p>
+    } @else if (derives()) {
+      <p class="derives__sub">Comparaison des 14 derniers jours vs les 14 précédents · {{ derives()!.effectif.nb_joueurs }} joueurs.</p>
+
+      @if (aucuneDerive) {
+        <p class="derives__vide">Aucune dérive marquée sur les 4 dernières semaines : effectif stable.</p>
+      } @else {
+        <div class="derives__axes">
+          @for (a of derives()!.axes; track a.code) {
+            <div class="derax">
+              <div class="derax__titre">{{ a.libelle }}</div>
+              @if (a.nb_hausse === 0 && a.nb_baisse === 0) {
+                <div class="derax__stable">stable</div>
+              } @else {
+                @if (a.nb_hausse > 0) {
+                  <div class="derax__grp">
+                    <span class="derax__tag derax__tag--up">▲ {{ a.nb_hausse }} en hausse</span>
+                    <span class="derax__noms">
+                      @for (j of a.hausse; track j.joueur_id) {
+                        <span class="derax__chip">{{ j.nom }} +{{ j.drift_pct | number:'1.0-0' }}%</span>
+                      }
+                    </span>
+                  </div>
+                }
+                @if (a.nb_baisse > 0) {
+                  <div class="derax__grp">
+                    <span class="derax__tag derax__tag--down">▼ {{ a.nb_baisse }} en baisse</span>
+                    <span class="derax__noms">
+                      @for (j of a.baisse; track j.joueur_id) {
+                        <span class="derax__chip">{{ j.nom }} {{ j.drift_pct | number:'1.0-0' }}%</span>
+                      }
+                    </span>
+                  </div>
+                }
+              }
+            </div>
+          }
+        </div>
+      }
+
+      @if (note(); as n) {
+        <p class="derives__note-txt">{{ n.texte }}</p>
+        <p class="derives__note-src">
+          @if (n.source === 'IA') { Synthèse rédigée par IA à partir des dérives. }
+          @else { Synthèse automatique à partir des dérives (IA non activée ou indisponible). }
+        </p>
+      }
+    } @else {
+      <p class="derives__sub">Chargement des dérives…</p>
+    }
+  </div>
+}

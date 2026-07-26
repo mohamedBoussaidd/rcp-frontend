@@ -191,6 +191,34 @@ export interface ObjectifHebdo {
   joueurs: ObjectifHebdoJoueur[];
 }
 
+/** Carte briefing IA du préparateur : texte rendu + origine (LLM ou gabarit de repli). */
+export interface Briefing {
+  source: 'IA' | 'GABARIT';
+  texte: string;
+}
+
+/** Un joueur en dérive sur un axe (variation % 14j récents vs 14j précédents). */
+export interface DeriveJoueur { joueur_id: string; nom: string; drift_pct: number; }
+
+/** Un axe de dérive (volume, haute intensité, ressenti) avec ses joueurs en hausse / baisse. */
+export interface DeriveAxe {
+  code: string;
+  libelle: string;
+  sens_hausse: string;   // ce que signifie une hausse sur cet axe (ex. « fatigue en hausse »)
+  nb_hausse: number;
+  nb_baisse: number;
+  hausse: DeriveJoueur[];
+  baisse: DeriveJoueur[];
+}
+
+/** Dérives lentes de l'effectif sur 4 semaines, en 3 axes séparés. */
+export interface Derives {
+  fenetre_jours: number;
+  seuil_pct: number;
+  effectif: { nb_joueurs: number };
+  axes: DeriveAxe[];
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -242,5 +270,28 @@ export class PredictionService {
   setObjectifHebdo(objectifDistanceM: number | null): Observable<{ equipeId: string; objectifDistanceM: number | null }> {
     return this.http.put<{ equipeId: string; objectifDistanceM: number | null }>(
       `${this.base}/objectif-hebdo`, { objectifDistanceM });
+  }
+
+  /**
+   * Génère le briefing du préparateur (note de l'équipe sur la semaine). POST : la génération peut
+   * consommer du quota IA → déclenchée à la demande. Renvoie le texte + son origine (IA / gabarit).
+   */
+  genererBriefing(): Observable<Briefing> {
+    return this.http.post<Briefing>('/api/assistant-ia/briefing', {});
+  }
+
+  /** Génère le debrief IA d'une séance réalisée (prévu vs réalisé, écarts). POST : consomme du quota. */
+  genererDebrief(seanceId: string): Observable<Briefing> {
+    return this.http.post<Briefing>(`/api/assistant-ia/debrief/${seanceId}`, {});
+  }
+
+  /** Dérives structurées de l'effectif (3 axes). GET : aucun coût IA, affiché tel quel. */
+  getDerives(): Observable<Derives> {
+    return this.http.get<Derives>('/api/assistant-ia/derives');
+  }
+
+  /** Synthèse textuelle de surveillance des dérives. POST : consomme du quota IA. */
+  genererDeriveNote(): Observable<Briefing> {
+    return this.http.post<Briefing>('/api/assistant-ia/derives/note', {});
   }
 }

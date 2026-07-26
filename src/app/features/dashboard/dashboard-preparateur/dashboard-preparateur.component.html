@@ -31,6 +31,12 @@
     }
   }
 
+  <!-- ══ Briefing du préparateur (carte IA add-on, s'auto-masque sans la permission) ══ -->
+  <app-briefing-card />
+
+  <!-- ══ Dérives & surveillance (carte IA add-on, s'auto-masque sans la permission) ══ -->
+  <app-derives-card />
+
   <!-- ══ Alerte wellness non rempli ══ -->
   @if (!loading && nbNonRemplis > 0) {
     <a class="wellness-alerte" routerLink="/suivi-subjectif" [queryParams]="{ focus: 'non-remplis' }">
@@ -252,6 +258,11 @@
     </div>
 
   </div>
+
+  <!-- ══ Debrief IA de la dernière séance (add-on, s'auto-masque sans la permission) ══ -->
+  @if (rapport?.seance_id) {
+    <app-debrief-card [seanceId]="rapport!.seance_id" />
+  }
 
   <!-- ══ Séances à venir ══ -->
   <div class="card">

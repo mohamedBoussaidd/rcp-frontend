@@ -162,7 +162,6 @@ const ALL_MODULES: NavModule[] = [
       { label: 'Rôles globaux',  link: '/admin/roles-globaux', roles: ['SUPER_ADMIN'] },
       { label: 'Paramètres IA',  link: '/admin/parametres-ia', roles: ['SUPER_ADMIN'], iaBadge: true },
       { label: 'Maintenance',    link: '/admin/maintenance', roles: ['SUPER_ADMIN'] },
-      { label: 'IA (clés & modèles)', link: '/admin/ia', roles: ['SUPER_ADMIN'], iaBadge: true },
       { label: 'Exercices globaux', link: '/admin/exercices-globaux', roles: ['SUPER_ADMIN'] },
       { label: 'Schémas globaux', link: '/admin/schemas-globaux', roles: ['SUPER_ADMIN'] },
       { label: 'Badges', link: '/admin/badges', roles: ['SUPER_ADMIN'] },

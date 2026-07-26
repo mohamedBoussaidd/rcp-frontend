@@ -1,25 +1,5 @@
 <div class="iac">
-  <header class="iac__head">
-    <div>
-      <h1 class="iac__title">Configuration IA par club</h1>
-      <p class="iac__sub">Provider, clé API (chiffrée, jamais affichée en clair) et modèle par club. Sans clé propre, le club utilise la clé globale, plafonnée par les quotas ci-dessous.</p>
-    </div>
-    <a class="iac__back" routerLink="/admin/clubs">‹ Retour</a>
-  </header>
-
-  <!-- Quotas globaux -->
-  <div class="iac__card">
-    <h2 class="iac__h2">Quotas de la clé globale (par jour)</h2>
-    <div class="iac__quotas">
-      @for (q of quotas(); track q.feature) {
-        <label class="iac__quota">
-          <span>{{ libelleFeature(q.feature) }}</span>
-          <input type="number" min="0" [(ngModel)]="q.valeur" name="q_{{ q.feature }}">
-        </label>
-      }
-      <button class="btn btn--primary" (click)="enregistrerQuotas()">Enregistrer les quotas</button>
-    </div>
-  </div>
+  <p class="iac__sub">Provider, clé API (chiffrée, jamais affichée en clair) et modèle par club. Sans clé propre, le club utilise la clé plateforme (Anthropic), plafonnée par les quotas de l'onglet Quotas. Pour OpenAI : provider OPENAI + un modèle OpenAI valide (ex. gpt-4o).</p>
 
   <!-- Config par club -->
   <div class="iac__list">

@@ -17,6 +17,9 @@ import { SuiviSubjectifService, Wellness } from '@core/services/suivi-subjectif.
 import { SaisonService, Saison, PeriodeType } from '@core/services/saison.service';
 import { PresenceDialogComponent } from '../../performance/presence-dialog/presence-dialog.component';
 import { InfoHintComponent } from '@shared/components/info-hint/info-hint.component';
+import { BriefingCardComponent } from '@shared/components/briefing-card/briefing-card.component';
+import { DebriefCardComponent } from '@shared/components/debrief-card/debrief-card.component';
+import { DerivesCardComponent } from '@shared/components/derives-card/derives-card.component';
 
 type Semaines = 4 | 8 | 12;
 
@@ -32,7 +35,7 @@ type Semaines = 4 | 8 | 12;
   standalone: true,
   templateUrl: './dashboard-preparateur.component.html',
   styleUrl: './dashboard-preparateur.component.scss',
-  imports: [DecimalPipe, DatePipe, SlicePipe, LowerCasePipe, RouterLink, MatIcon, ChartComponent, InfoHintComponent],
+  imports: [DecimalPipe, DatePipe, SlicePipe, LowerCasePipe, RouterLink, MatIcon, ChartComponent, InfoHintComponent, BriefingCardComponent, DebriefCardComponent, DerivesCardComponent],
 })
 export class DashboardPreparateurComponent implements OnInit {
 

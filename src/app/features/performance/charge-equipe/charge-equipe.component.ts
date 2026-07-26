@@ -6,6 +6,7 @@ import { ChartComponent, ApexChart, ApexAxisChartSeries, ApexXAxis, ApexPlotOpti
 import { PredictionService, ChargeEquipe, ChargeSeance, ChargeJoueur, ObjectifHebdo, ObjectifHebdoJoueur } from '@core/services/prediction.service';
 import { couleurTheme } from '@core/services/theme.service';
 import { InfoHintComponent } from '@shared/components/info-hint/info-hint.component';
+import { BriefingCardComponent } from '@shared/components/briefing-card/briefing-card.component';
 
 const COULEURS_TYPE: Record<string, string> = {
   MATCH:        '#ef4444',
@@ -25,7 +26,7 @@ type TriCol = 'distance_totale_m' | 'distance_attendue_m' | 'delta_pct' | 'ratio
   standalone: true,
   templateUrl: './charge-equipe.component.html',
   styleUrl: './charge-equipe.component.scss',
-  imports: [MatIcon, ChartComponent, DecimalPipe, DatePipe, FormsModule, InfoHintComponent],
+  imports: [MatIcon, ChartComponent, DecimalPipe, DatePipe, FormsModule, InfoHintComponent, BriefingCardComponent],
 })
 export class ChargeEquipeComponent implements OnInit {
 
