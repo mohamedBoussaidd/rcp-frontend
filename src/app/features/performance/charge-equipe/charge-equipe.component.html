@@ -57,7 +57,7 @@
         <div class="oh-top">
           <div class="oh-title">Objectif de la semaine
             <app-info-hint titre="Objectif de la semaine"
-              texte="La suggestion intelligente est la charge cible personnalisée de chaque joueur (sa charge de fond récente × ~1.05, dans les bornes de sécurité). Ton objectif d'équipe est le seuil que tu fixes pour tous ; laisse-le vide pour t'appuyer sur la suggestion. Ce panneau montre toujours la semaine en cours, quel que soit le filtre de dates."></app-info-hint>
+              texte="La suggestion intelligente est la charge cible personnalisée de chaque joueur : la moyenne de ses dernières semaines complètes (lundi→dimanche) × ~1.05, dans les bornes de sécurité. Elle est figée toute la semaine et se recalcule chaque lundi. Ton objectif d'équipe est le seuil que tu fixes pour tous ; laisse-le vide pour t'appuyer sur la suggestion. Ce panneau montre toujours la semaine en cours, quel que soit le filtre de dates. La suggestion se fiabilise à partir de 4 semaines de données."></app-info-hint>
           </div>
           <div class="oh-objs">
             <div class="oh-obj">
@@ -85,6 +85,10 @@
 
         @if (objectif.multi_equipes) {
           <div class="oh-note">Sélectionne une seule équipe (contexte) pour définir un objectif d'équipe.</div>
+        }
+
+        @if (objectif.suggestion_provisoire) {
+          <div class="oh-note oh-note--warn">⏳ Suggestion provisoire — basée sur {{ objectif.suggestion_semaines }} semaine{{ objectif.suggestion_semaines === 1 ? '' : 's' }} de données. Elle se fiabilise à partir de 4 semaines de GPS.</div>
         }
 
         <div class="oh-cardline">

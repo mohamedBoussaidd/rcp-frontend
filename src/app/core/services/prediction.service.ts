@@ -61,6 +61,9 @@ export interface ChargeCible {
   cible_ideal?: number | null;
   cible_haute?: number | null;
   plafond?: number | null;
+  semaines?: number | null;            // semaines de données réellement disponibles
+  semaines_requises?: number | null;   // seuil de fiabilité (fenêtre chronique)
+  provisoire?: boolean | null;         // true tant que semaines < semaines_requises
   phrase: string;
 }
 
@@ -184,6 +187,8 @@ export interface ObjectifHebdoJoueur {
 export interface ObjectifHebdo {
   objectif_distance_m: number | null;   // objectif manuel d'équipe (null = non défini)
   suggestion_moyenne_m: number | null;  // moyenne d'équipe des cibles A.5
+  suggestion_semaines?: number | null;  // semaines de données disponibles (fiabilité)
+  suggestion_provisoire?: boolean;      // true tant que < 4 semaines de données
   multi_equipes: boolean;               // contexte multi-équipes → écriture impossible
   nb_atteint: number;
   nb_concernes: number;
