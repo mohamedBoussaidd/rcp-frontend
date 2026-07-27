@@ -13,7 +13,8 @@
     @if (erreur()) {
       <p class="debrief__erreur">{{ erreur() }}</p>
     } @else if (debrief()) {
-      <p class="debrief__texte">{{ debrief()!.texte }}</p>
+      <!-- <p class="debrief__texte">{{ debrief()!.texte }}</p> -->
+        <p class="debrief__texte" [innerHTML]="safeHtml()"></p>
       <p class="debrief__note">
         @if (debrief()!.source === 'IA') {
           Rédigé par IA à partir du rapport de la séance.

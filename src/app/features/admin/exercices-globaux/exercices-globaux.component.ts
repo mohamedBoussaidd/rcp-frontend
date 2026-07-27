@@ -1,6 +1,6 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { MatIcon } from '@angular/material/icon';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
@@ -8,6 +8,9 @@ import { Exercice, ExerciceRecherche, FORMES_EXERCICE, TechniqueService } from '
 import { SchemaEditorComponent } from '../../tactical/schema-editor/schema-editor.component';
 import { AuteurChipComponent } from '@shared/components/auteur-chip/auteur-chip.component';
 import { BadgeComponent } from '@shared/components/badge/badge.component';
+import { ImportPhotoDialogComponent } from '../../tactical/import-photo-dialog/import-photo-dialog.component';
+import { ImportPhotoResultat } from '@core/services/import-photo.service';
+import { IaBadgeComponent } from '@shared/components/ia-badge/ia-badge.component';
 
 /**
  * Bibliothèque d'exercices GLOBALE (SUPER_ADMIN) — exercices proposés en lecture à tous les clubs
@@ -23,13 +26,14 @@ import { BadgeComponent } from '@shared/components/badge/badge.component';
   standalone: true,
   templateUrl: './exercices-globaux.component.html',
   styleUrl: './exercices-globaux.component.scss',
-  imports: [FormsModule, RouterLink, MatIcon, AuteurChipComponent, BadgeComponent],
+  imports: [FormsModule, RouterLink, MatIcon, AuteurChipComponent,BadgeComponent,IaBadgeComponent],
 })
 export class ExercicesGlobauxComponent implements OnInit {
 
   private tech = inject(TechniqueService);
   private dialog = inject(MatDialog);
   private snack = inject(MatSnackBar);
+  private router = inject(Router);
 
   readonly exercices = signal<Exercice[]>([]);
   readonly loading = signal(true);
@@ -63,7 +67,20 @@ export class ExercicesGlobauxComponent implements OnInit {
   libelleForme(code?: string | null): string {
     return FORMES_EXERCICE.find(f => f.code === code)?.libelle ?? this.label(code);
   }
-
+  /**
+   * « Importer depuis une photo » : l'IA analyse la fiche papier ici, puis le résultat part
+   * vers la fiche vierge en état de navigation — rien n'est persisté entre les deux écrans,
+   * l'utilisateur vérifie et ajuste avant d'enregistrer.
+   */
+  importerDepuisPhoto(): void {
+    const ref = this.dialog.open(ImportPhotoDialogComponent, {
+      width: '720px', maxWidth: '96vw', panelClass: 'app-dialog', data:{global:true}
+    });
+    ref.afterClosed().subscribe((r: ImportPhotoResultat | null) => {
+      if (!r) return;
+      this.router.navigate(['/admin/exercices-globaux/nouveau'], { state: { prefill: r } });
+    });
+  }
   /** Dessine / édite le schéma tactique de l'exercice global (même éditeur que les clubs). */
   ouvrirSchema(e: Exercice): void {
     this.dialog.open(SchemaEditorComponent, {

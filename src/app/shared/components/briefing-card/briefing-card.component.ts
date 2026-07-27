@@ -1,7 +1,8 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { PredictionService, Briefing } from '@core/services/prediction.service';
 import { AuthService } from '@core/services/auth.service';
 import { IaBadgeComponent } from '@shared/components/ia-badge/ia-badge.component';
+import { DomSanitizer } from '@angular/platform-browser';
 
 /**
  * Carte « Briefing du préparateur » (note automatique de l'état de l'équipe sur la semaine).
@@ -40,4 +41,8 @@ export class BriefingCardComponent {
       error: () => { this.erreur.set('Briefing indisponible pour le moment — réessaie dans un instant.'); this.chargement.set(false); },
     });
   }
+  private sanitizer = inject(DomSanitizer);
+readonly safeHtml = computed(() =>
+  this.sanitizer.bypassSecurityTrustHtml(this.briefing()?.texte || '')
+);
 }

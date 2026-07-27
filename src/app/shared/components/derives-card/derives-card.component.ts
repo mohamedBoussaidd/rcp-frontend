@@ -1,8 +1,10 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { DecimalPipe } from '@angular/common';
 import { PredictionService, Briefing, Derives } from '@core/services/prediction.service';
 import { AuthService } from '@core/services/auth.service';
 import { IaBadgeComponent } from '@shared/components/ia-badge/ia-badge.component';
+import { DomSanitizer } from '@angular/platform-browser';
+
 
 /**
  * Carte « Dérives & surveillance » : sur ~4 semaines, 3 axes SÉPARÉS (volume, haute intensité,
@@ -52,4 +54,8 @@ export class DerivesCardComponent implements OnInit {
       error: () => { this.chargementNote.set(false); this.erreur.set('Synthèse indisponible pour le moment.'); },
     });
   }
+  private sanitizer = inject(DomSanitizer);
+  readonly safeHtml = computed(() =>
+    this.sanitizer.bypassSecurityTrustHtml(this.note()?.texte || '')
+  );
 }

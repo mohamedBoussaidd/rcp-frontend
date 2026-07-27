@@ -54,7 +54,7 @@
       }
 
       @if (note(); as n) {
-        <p class="derives__note-txt">{{ n.texte }}</p>
+        <p class="derives__note-txt" [innerHTML]="safeHtml()"></p>
         <p class="derives__note-src">
           @if (n.source === 'IA') { Synthèse rédigée par IA à partir des dérives. }
           @else { Synthèse automatique à partir des dérives (IA non activée ou indisponible). }

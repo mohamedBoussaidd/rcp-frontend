@@ -53,10 +53,11 @@ export class ImportPhotoService {
 
   private http = inject(HttpClient);
 
-  analyser(photo: File): Observable<ImportPhotoResultat> {
+  analyser(photo: File, global:boolean = false): Observable<ImportPhotoResultat> {
     const form = new FormData();
     form.append('photo', photo);
-    return this.http.post<ImportPhotoResultat>('/api/import-photo', form);
+    const url = global ? '/api/import-photo/global' : '/api/import-photo';
+    return this.http.post<ImportPhotoResultat>(url, form);
   }
 
   urlPhoto(journalId: string): string {

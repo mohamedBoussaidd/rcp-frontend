@@ -1,7 +1,9 @@
-import { Component, inject, input, signal } from '@angular/core';
+import { Component, computed, inject, input, signal } from '@angular/core';
 import { PredictionService, Briefing } from '@core/services/prediction.service';
 import { AuthService } from '@core/services/auth.service';
 import { IaBadgeComponent } from '@shared/components/ia-badge/ia-badge.component';
+import { DomSanitizer } from '@angular/platform-browser';
+
 
 /**
  * Carte « Debrief IA » d'une séance : petit paragraphe (prévu vs réalisé, écarts) généré à la demande.
@@ -41,4 +43,8 @@ export class DebriefCardComponent {
       error: () => { this.erreur.set('Debrief indisponible pour le moment — réessaie dans un instant.'); this.chargement.set(false); },
     });
   }
+  private sanitizer = inject(DomSanitizer);
+  readonly safeHtml = computed(() =>
+    this.sanitizer.bypassSecurityTrustHtml(this.debrief()?.texte || '')
+  );
 }

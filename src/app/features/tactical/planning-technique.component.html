@@ -11,7 +11,7 @@
       </div>
       <div class="page-head__actions">
         @if (peutImportPhoto() && canEcrire()) {
-          <button class="btn btn--secondary" (click)="importerDepuisPhoto()">📷 Importer d'une photo <app-ia-badge titre="Import d'exercice par photo (IA)" /></button>
+          <button class="btn btn--secondary" (click)="importerDepuisPhoto()">📷 Importer une photo <app-ia-badge titre="Import d'exercice par photo (IA)" /></button>
         }
         <button class="btn btn--primary" (click)="nouvelExo()">
           <mat-icon>add</mat-icon>Nouvel exercice

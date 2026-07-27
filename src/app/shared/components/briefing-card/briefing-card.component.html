@@ -13,7 +13,8 @@
     @if (erreur()) {
       <p class="briefing__erreur">{{ erreur() }}</p>
     } @else if (briefing()) {
-      <p class="briefing__texte">{{ briefing()!.texte }}</p>
+      <!-- <p class="briefing__texte">{{ briefing()!.texte }}</p> -->
+       <p class="briefing__texte" [innerHTML]="safeHtml()"></p>
       <p class="briefing__note">
         @if (briefing()!.source === 'IA') {
           Rédigé par IA à partir de vos indicateurs de la semaine.

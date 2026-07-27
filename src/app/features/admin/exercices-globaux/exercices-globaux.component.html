@@ -5,7 +5,8 @@
       <p class="eg__sub">Exercices proposés à TOUS les clubs (lecture seule côté club, clonables). Servent aussi de base au générateur IA.</p>
     </div>
     <div class="eg__headactions">
-      <a class="btn" routerLink="/admin/clubs">‹ Retour</a>
+      <!-- <a class="btn" routerLink="/admin/clubs">‹ Retour</a> -->
+          <button class="btn btn--secondary" (click)="importerDepuisPhoto()">📷 Importer une photo <app-ia-badge titre="Import d'exercice par photo (IA)" /></button>
       <a class="btn btn--primary" routerLink="/admin/exercices-globaux/nouveau"><mat-icon>add</mat-icon>Nouvel exercice global</a>
     </div>
   </header>

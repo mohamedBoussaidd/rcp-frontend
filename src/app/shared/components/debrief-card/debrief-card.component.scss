@@ -18,9 +18,20 @@
   }
 
   &__texte {
-    margin: 0;
-    line-height: 1.55;
+margin: 12px 0 0;
+    padding: 12px;
+    line-height: 1.65;
     white-space: pre-line;
+    
+    // ✅ Ajouts pour la lisibilité
+    background: var(--surface-1, rgba(0,0,0,0.03));
+    border-radius: 8px;
+    border-left: 3px solid var(--primary, #3f51b5);
+    max-width: 600px;  // Évite le texte trop large
+    font-size: 0.95rem;
+    
+    // Sépare les paragraphes (si le texte contient des \n\n)
+    p + p { margin-top: 12px; }
   }
 
   &__note {

@@ -15,7 +15,7 @@ class PromptEditor {
   edite = '';
   readonly histOuvert = signal(false);
   readonly saving = signal(false);
-  constructor(readonly cle: string, readonly titre: string, readonly hint: string, readonly rows: number) {}
+  constructor(readonly cle: string, readonly titre: string, readonly hint: string, readonly rows: number) { }
 }
 
 /** Une feature IA côté admin : son prompt éditable (si elle en a un) + son toggle LLM (si c'est une carte). */
@@ -23,7 +23,7 @@ class FeatureAdmin {
   readonly prompt: PromptEditor | null;
   readonly toggle = signal<ParametreDto | null>(null);
   constructor(readonly code: string, readonly libelle: string,
-              readonly clePrompt: string | null, readonly cleToggle: string | null, hint: string) {
+    readonly clePrompt: string | null, readonly cleToggle: string | null, hint: string) {
     this.prompt = clePrompt ? new PromptEditor(clePrompt, `Prompt — ${libelle}`, hint, 14) : null;
   }
   get llmActif(): boolean { return (this.toggle()?.valeur ?? 'true').trim().toLowerCase() !== 'false'; }
@@ -58,6 +58,9 @@ export class ParametresIaComponent implements OnInit {
   private iaAdmin = inject(IaAdminService);
 
   readonly onglet = signal<'prompts' | 'quotas' | 'cles'>('prompts');
+  readonly fournisseurGlobal = signal<string>('ANTHROPIC');
+  readonly apiKeyGlobal = signal<string>('');
+  readonly modeleGlobal = signal<string>('claude-opus-4-8');
 
   // ── Onglet Prompts ──
   readonly features = signal<FeatureAdmin[]>([]);
@@ -77,8 +80,37 @@ export class ParametresIaComponent implements OnInit {
       list.forEach(f => this.chargerFeature(f));
     });
     this.chargerQuotas();
+    // ✅ NOUVEL APPel : charge la config globale
+    this.chargerConfigGlobale();
   }
 
+  private chargerConfigGlobale(): void {
+    // Charge chaque paramètre global depuis le backend
+    this.http.get<ParametreDto>('/api/admin/parametres-ia/ia_fournisseur_global').subscribe(p =>
+      this.fournisseurGlobal.set(p.valeur)
+    );
+    this.http.get<ParametreDto>('/api/admin/parametres-ia/ia_api_key_global').subscribe(p =>
+      this.apiKeyGlobal.set(p.valeur)
+    );
+    this.http.get<ParametreDto>('/api/admin/parametres-ia/ia_modele_global').subscribe(p =>
+      this.modeleGlobal.set(p.valeur)
+    );
+  }
+  // Enregistrement
+  enregistrerGlobal(): void {
+    this.http.put('/api/admin/parametres-ia/ia_fournisseur_global', {
+      valeur: this.fournisseurGlobal()
+    }).subscribe({
+      error: () => this.snack.open('Erreur fournisseur', 'Fermer', { duration: 3000 })
+    });
+
+    this.http.put('/api/admin/parametres-ia/ia_modele_global', {
+      valeur: this.modeleGlobal()
+    }).subscribe({
+      next: () => this.snack.open('Configuration enregistrée', 'OK', { duration: 3000 }),
+      error: () => this.snack.open('Erreur modèle', 'Fermer', { duration: 3000 })
+    });
+  }
   featureSel(): FeatureAdmin | undefined {
     return this.features().find(f => f.code === this.promptSel());
   }
@@ -86,12 +118,12 @@ export class ParametresIaComponent implements OnInit {
   private chargerFeature(f: FeatureAdmin): void {
     if (f.prompt) {
       this.http.get<ParametreDto>(`/api/admin/parametres-ia/${f.prompt.cle}`).subscribe({
-        next: p => { f.prompt!.param.set(p); f.prompt!.edite = p.valeur; }, error: () => {},
+        next: p => { f.prompt!.param.set(p); f.prompt!.edite = p.valeur; }, error: () => { },
       });
     }
     if (f.cleToggle) {
       this.http.get<ParametreDto>(`/api/admin/parametres-ia/${f.cleToggle}`).subscribe({
-        next: p => f.toggle.set(p), error: () => {},
+        next: p => f.toggle.set(p), error: () => { },
       });
     }
   }
@@ -131,7 +163,7 @@ export class ParametresIaComponent implements OnInit {
 
   // ── Quotas : chargement + actions ──
   private chargerQuotas(): void {
-    this.iaAdmin.quotas().subscribe({ next: q => this.appliquerQuotas(q), error: () => {} });
+    this.iaAdmin.quotas().subscribe({ next: q => this.appliquerQuotas(q), error: () => { } });
   }
 
   private appliquerQuotas(q: QuotaFeatureDto[], msg?: string): void {

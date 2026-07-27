@@ -1,5 +1,5 @@
 import { Component, inject, signal } from '@angular/core';
-import { MatDialogRef } from '@angular/material/dialog';
+import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { ImportPhotoResultat, ImportPhotoService } from '@core/services/import-photo.service';
 import { SchemaViewerComponent } from '../schema-viewer/schema-viewer.component';
 
@@ -16,9 +16,9 @@ import { SchemaViewerComponent } from '../schema-viewer/schema-viewer.component'
   styleUrl: './import-photo-dialog.component.scss',
 })
 export class ImportPhotoDialogComponent {
-
   dialogRef = inject<MatDialogRef<ImportPhotoDialogComponent, ImportPhotoResultat | null>>(MatDialogRef);
   private service = inject(ImportPhotoService);
+  data = inject<{ global?: boolean }>(MAT_DIALOG_DATA);
 
   apercuUrl = signal<string | null>(null);
   fichier = signal<File | null>(null);
@@ -43,7 +43,7 @@ export class ImportPhotoDialogComponent {
     if (!f || this.analyseEnCours()) return;
     this.analyseEnCours.set(true);
     this.erreur.set(null);
-    this.service.analyser(f).subscribe({
+    this.service.analyser(f, this.data.global).subscribe({
       next: r => {
         this.analyseEnCours.set(false);
         this.resultat.set(r);
