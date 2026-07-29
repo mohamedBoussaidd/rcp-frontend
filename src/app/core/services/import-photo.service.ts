@@ -41,6 +41,7 @@ export interface ImportPhotoResultat {
   schemaJson?: string | null;
   nbElements: number;
   nbTraces: number;
+  dureeAnalyseMs?: number | null;   // temps de l'appel vision côté serveur
 }
 
 /**

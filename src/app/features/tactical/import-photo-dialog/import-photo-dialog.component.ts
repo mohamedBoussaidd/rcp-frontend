@@ -79,6 +79,7 @@ export class ImportPhotoDialogComponent {
     if (t.dominantes.length) lignes.push(`Dominantes : ${t.dominantes.join(', ')}`);
     if (t.materiel) lignes.push(`Matériel : ${t.materiel}`);
     if (r.nbElements || r.nbTraces) lignes.push(`Schéma : ${r.nbElements} éléments, ${r.nbTraces} tracés`);
+    if (r.dureeAnalyseMs) lignes.push(`Analyse IA : ${(r.dureeAnalyseMs / 1000).toFixed(1)} s`);
     return lignes;
   }
 }
