@@ -4,6 +4,7 @@ import { Router } from '@angular/router';
 import { NotificationService, NotificationItem, CategorieNotif } from '@core/services/notification.service';
 import { NotificationPushService } from '@core/services/notification-push.service';
 import { AuthService } from '@core/services/auth.service';
+import { BulleFlottanteDirective } from '@shared/directives/bulle-flottante.directive';
 
 /**
  * Cloche de notifications (fixe, en haut à droite) commune au staff et à la PWA joueur.
@@ -24,6 +25,8 @@ export class NotificationBellComponent implements OnInit {
   private auth = inject(AuthService);
   private router = inject(Router);
   private host = inject(ElementRef);
+  /** Présente en mode flottant (desktop) : sert à ignorer le clic qui termine un déplacement. */
+  private bulle = inject(BulleFlottanteDirective, { optional: true, self: true });
 
   /** Mode intégré au flux (ex. header PWA, à côté de l'avatar) au lieu du flottant fixe. */
   @Input() @HostBinding('class.inline') inline = false;
@@ -49,6 +52,7 @@ export class NotificationBellComponent implements OnInit {
   }
 
   basculer(): void {
+    if (this.bulle?.aGlisse) return;   // fin de déplacement : ne pas ouvrir le panneau
     const o = !this.ouvert();
     this.ouvert.set(o);
     if (o) this.charger();

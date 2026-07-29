@@ -27,6 +27,15 @@
 
 .iac__actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 12px; }
 
+/* Nom de l'assistant pour ce club — séparé des clés : ce n'est pas de la config d'appel. */
+.iac__nom {
+  display: flex; align-items: flex-end; gap: 10px; flex-wrap: wrap;
+  margin-top: 12px; padding-top: 12px; border-top: 1px dashed var(--border, #d8dee9);
+
+  label { display: flex; flex-direction: column; gap: 5px; font-size: 12.5px; font-weight: 600; color: var(--text-2, #55607a); }
+  input { font: inherit; font-weight: 400; padding: 8px 9px; min-width: 220px; border: 1px solid var(--border, #d8dee9); border-radius: 8px; background: var(--surface-2, #fafbfd); }
+}
+
 .btn {
   border: 1px solid var(--border, #d8dee9); background: var(--surface-2, #fafbfd);
   color: var(--text-1, #1a2233); border-radius: 8px; padding: 8px 16px; cursor: pointer; font-size: 13.5px; font-weight: 700;

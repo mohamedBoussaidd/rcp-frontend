@@ -6,6 +6,8 @@ import { ThemeService } from '@core/services/theme.service';
 import { NavSidebarComponent } from '@shared/components/nav-sidebar/nav-sidebar.component';
 import { NotificationBellComponent } from '@shared/components/notification-bell/notification-bell.component';
 import { ChatWidgetComponent } from '@shared/components/chat-widget/chat-widget.component';
+import { AssistantWidgetComponent } from '@shared/components/assistant-widget/assistant-widget.component';
+import { BulleFlottanteDirective } from '@shared/directives/bulle-flottante.directive';
 import { SidebarService } from '@core/services/sidebar.service';
 import { AuthService } from '@core/services/auth.service';
 import { DateSimuleeService } from '@core/services/date-simulee.service';
@@ -16,7 +18,8 @@ import { PwaInstallService } from '@core/services/pwa-install.service';
     standalone: true,
     templateUrl: './app.component.html',
     styleUrl: './app.component.scss',
-    imports: [RouterOutlet, NavSidebarComponent, NotificationBellComponent, ChatWidgetComponent, DatePipe]
+    imports: [RouterOutlet, NavSidebarComponent, NotificationBellComponent, ChatWidgetComponent,
+              AssistantWidgetComponent, BulleFlottanteDirective, DatePipe]
 })
 export class AppComponent {
   title = 'RCP - Préparateur physique';

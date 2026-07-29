@@ -4,7 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { DatePipe } from '@angular/common';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { IaConfigComponent } from '../ia-config/ia-config.component';
-import { IaAdminService, QuotaFeatureDto } from '@core/services/ia-admin.service';
+import { FournisseurIa, IaAdminService, QuotaFeatureDto } from '@core/services/ia-admin.service';
 
 interface VersionDto { id: string; valeur: string; createdAt: string; }
 interface ParametreDto { cle: string; valeur: string; defaut: string; historique: VersionDto[]; }
@@ -59,8 +59,18 @@ export class ParametresIaComponent implements OnInit {
 
   readonly onglet = signal<'prompts' | 'quotas' | 'cles'>('prompts');
   readonly fournisseurGlobal = signal<string>('ANTHROPIC');
-  readonly apiKeyGlobal = signal<string>('');
   readonly modeleGlobal = signal<string>('claude-opus-4-8');
+
+  // ── Catalogue des fournisseurs (onglet Clés & modèles) ──
+  readonly fournisseurs = signal<FournisseurIa[]>([]);
+  readonly dialectes = ['OPENAI', 'ANTHROPIC'];
+  /** Saisies en cours, par code : une clé n'est jamais réaffichée, on ne fait que la remplacer. */
+  readonly cleSaisie: Record<string, string> = {};
+  readonly nouveau = { code: '', libelle: '', dialecte: 'OPENAI', baseUrl: '', modeleDefaut: '', cleApi: '' };
+  readonly ajoutOuvert = signal(false);
+
+  // ── Nom global de l'assistant (onglet Prompts) ──
+  readonly nomAssistant = signal<string>('');
 
   // ── Onglet Prompts ──
   readonly features = signal<FeatureAdmin[]>([]);
@@ -85,16 +95,94 @@ export class ParametresIaComponent implements OnInit {
   }
 
   private chargerConfigGlobale(): void {
-    // Charge chaque paramètre global depuis le backend
+    // Fournisseur + modèle utilisés par défaut par tous les clubs sans clé propre.
     this.http.get<ParametreDto>('/api/admin/parametres-ia/ia_fournisseur_global').subscribe(p =>
       this.fournisseurGlobal.set(p.valeur)
-    );
-    this.http.get<ParametreDto>('/api/admin/parametres-ia/ia_api_key_global').subscribe(p =>
-      this.apiKeyGlobal.set(p.valeur)
     );
     this.http.get<ParametreDto>('/api/admin/parametres-ia/ia_modele_global').subscribe(p =>
       this.modeleGlobal.set(p.valeur)
     );
+    this.http.get<ParametreDto>('/api/admin/parametres-ia/nom_assistant').subscribe(p =>
+      this.nomAssistant.set(p.valeur || p.defaut)
+    );
+    this.chargerFournisseurs();
+  }
+
+  // ── Fournisseurs IA : catalogue, clés, ajout ──
+
+  private chargerFournisseurs(fs?: FournisseurIa[]): void {
+    if (fs) { this.appliquerFournisseurs(fs); return; }
+    this.iaAdmin.fournisseurs().subscribe({ next: f => this.appliquerFournisseurs(f), error: () => { } });
+  }
+
+  private appliquerFournisseurs(fs: FournisseurIa[]): void {
+    this.fournisseurs.set(fs);
+    fs.forEach(f => this.cleSaisie[f.code] = '');
+  }
+
+  /** Le fournisseur choisi globalement a-t-il une clé exploitable ? (témoin en tête d'onglet) */
+  fournisseurCourant(): FournisseurIa | undefined {
+    return this.fournisseurs().find(f => f.code === this.fournisseurGlobal());
+  }
+
+  etatCle(f: FournisseurIa): string {
+    if (f.origineCle === 'BASE') return `clé saisie ici (${f.cleMasquee})`;
+    if (f.origineCle === 'ENVIRONNEMENT') return `clé du serveur (${f.cleMasquee})`;
+    return 'aucune clé';
+  }
+
+  enregistrerFournisseur(f: FournisseurIa): void {
+    this.iaAdmin.majFournisseur(f.code, {
+      libelle: f.libelle, dialecte: f.dialecte, baseUrl: f.baseUrl, modeleDefaut: f.modeleDefaut,
+      actif: f.actif, cleApi: (this.cleSaisie[f.code] || '').trim() || null,
+    }).subscribe({
+      next: fs => { this.chargerFournisseurs(fs); this.snack.open('Fournisseur enregistré', 'OK', { duration: 2500 }); },
+      error: e => this.snack.open(e?.error?.message || 'Enregistrement impossible', 'Fermer', { duration: 4000 }),
+    });
+  }
+
+  revoquerCle(f: FournisseurIa): void {
+    if (!confirm(`Effacer la clé de ${f.libelle} ? Il retombera sur la variable d'environnement du serveur, s'il y en a une.`)) return;
+    this.iaAdmin.revoquerCleFournisseur(f.code).subscribe({
+      next: fs => { this.chargerFournisseurs(fs); this.snack.open('Clé effacée', 'OK', { duration: 2500 }); },
+      error: () => this.snack.open('Révocation impossible', 'Fermer', { duration: 3500 }),
+    });
+  }
+
+  supprimerFournisseur(f: FournisseurIa): void {
+    if (!confirm(`Supprimer le fournisseur ${f.libelle} ?`)) return;
+    this.iaAdmin.supprimerFournisseur(f.code).subscribe({
+      next: fs => { this.chargerFournisseurs(fs); this.snack.open('Fournisseur supprimé', 'OK', { duration: 2500 }); },
+      error: e => this.snack.open(e?.error?.message || 'Suppression impossible', 'Fermer', { duration: 4000 }),
+    });
+  }
+
+  ajouterFournisseur(): void {
+    const n = this.nouveau;
+    if (!n.code.trim()) return;
+    this.iaAdmin.majFournisseur(n.code.trim(), {
+      libelle: n.libelle.trim() || n.code.trim(), dialecte: n.dialecte,
+      baseUrl: n.baseUrl.trim() || null, modeleDefaut: n.modeleDefaut.trim() || null,
+      actif: true, cleApi: n.cleApi.trim() || null,
+    }).subscribe({
+      next: fs => {
+        this.chargerFournisseurs(fs);
+        Object.assign(n, { code: '', libelle: '', dialecte: 'OPENAI', baseUrl: '', modeleDefaut: '', cleApi: '' });
+        this.ajoutOuvert.set(false);
+        this.snack.open('Fournisseur ajouté', 'OK', { duration: 2500 });
+      },
+      error: e => this.snack.open(e?.error?.message || 'Ajout impossible', 'Fermer', { duration: 4000 }),
+    });
+  }
+
+  /** Nom global de l'assistant — un club peut le surcharger dans l'onglet Clés & modèles. */
+  enregistrerNomAssistant(): void {
+    const v = this.nomAssistant().trim();
+    if (!v) return;
+    this.http.put<ParametreDto>('/api/admin/parametres-ia/nom_assistant', { valeur: v }).subscribe({
+      next: p => { this.nomAssistant.set(p.valeur); this.snack.open('Nom de l\'assistant enregistré', 'OK', { duration: 2500 }); },
+      error: () => this.snack.open('Enregistrement impossible', 'Fermer', { duration: 3000 }),
+    });
   }
   // Enregistrement
   enregistrerGlobal(): void {
@@ -104,8 +192,17 @@ export class ParametresIaComponent implements OnInit {
       error: () => this.snack.open('Erreur fournisseur', 'Fermer', { duration: 3000 })
     });
 
+    // Champ vide → on retombe sur le modèle par défaut du fournisseur choisi. Sans ce repli, un
+    // changement de fournisseur laisserait en place le modèle de l'ancien (ex. un modèle OpenAI
+    // envoyé à Anthropic) et l'appel échouerait sans que la cause saute aux yeux.
+    const modele = this.modeleGlobal().trim() || this.fournisseurCourant()?.modeleDefaut || '';
+    if (!modele) {
+      this.snack.open('Renseigne un modèle : ce fournisseur n\'en déclare pas par défaut.', 'Fermer', { duration: 4000 });
+      return;
+    }
+    this.modeleGlobal.set(modele);
     this.http.put('/api/admin/parametres-ia/ia_modele_global', {
-      valeur: this.modeleGlobal()
+      valeur: modele
     }).subscribe({
       next: () => this.snack.open('Configuration enregistrée', 'OK', { duration: 3000 }),
       error: () => this.snack.open('Erreur modèle', 'Fermer', { duration: 3000 })

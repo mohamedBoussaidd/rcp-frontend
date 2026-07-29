@@ -17,9 +17,15 @@
 }
 
 @if (auth.currentUser()) {
+  <!-- Bulles flottantes, empilées verticalement dans le coin bas-droit par défaut et DÉPLAÇABLES
+       (position mémorisée par bulle dans le navigateur, via `appBulleFlottante`). -->
   <!-- En PWA, la cloche est intégrée dans l'en-tête joueur (mode inline) ; ici uniquement en desktop. -->
   @if (!modeMobile()) {
-    <app-notification-bell></app-notification-bell>
+    <app-notification-bell appBulleFlottante="notifications"
+                           [positionDefaut]="{ droite: 18, bas: 142 }"></app-notification-bell>
   }
-  <app-chat-widget></app-chat-widget>
+  <app-chat-widget appBulleFlottante="messagerie"
+                   [positionDefaut]="{ droite: 18, bas: 18 }"></app-chat-widget>
+  <app-assistant-widget appBulleFlottante="assistant"
+                        [positionDefaut]="{ droite: 18, bas: 80 }"></app-assistant-widget>
 }

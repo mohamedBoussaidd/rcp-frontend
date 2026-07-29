@@ -200,3 +200,76 @@
 @media (max-width: 560px) {
   .gps-kpis2 { grid-template-columns:repeat(2,1fr); }
 }
+
+/* ── Onglet Simulation « et si… » (add-on assistant_simulation) ────────────── */
+.sim-panel { display:flex; flex-direction:column; gap:16px; }
+.sim-top { display:flex; align-items:center; justify-content:space-between; gap:12px; }
+.sim-title { display:flex; align-items:center; gap:6px; font-size:15px; font-weight:800; color:#0f172a; }
+
+/* Sélecteur de scénario : une seule carte aujourd'hui, la grille en accueillera d'autres. */
+.sim-scenarios { display:grid; grid-template-columns:repeat(auto-fill, minmax(260px, 1fr)); gap:10px; }
+.sim-scenario {
+  display:flex; flex-direction:column; gap:4px; text-align:left; padding:12px 14px; cursor:pointer;
+  border:1px solid #e2e8f0; border-radius:12px; background:#fff; font:inherit; transition:border-color .15s, box-shadow .15s;
+  strong { font-size:13px; font-weight:800; color:#0f172a; }
+  span { font-size:12px; line-height:1.45; color:#64748b; }
+  &:hover { border-color:#cbd5e1; }
+  &.is-active { border-color:var(--couleur-club, #6366f1); box-shadow:0 0 0 3px rgba(99,102,241,.12); }
+}
+
+.sim-form { display:flex; flex-wrap:wrap; align-items:flex-end; gap:12px; }
+.sim-field {
+  display:flex; flex-direction:column; gap:5px; flex:1 1 220px;
+  span { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.04em; color:#64748b; }
+  select, input { padding:9px 11px; border:1px solid #e2e8f0; border-radius:9px; font:inherit; font-size:13px; color:#0f172a; background:#fff; }
+  select:focus, input:focus { outline:none; border-color:var(--couleur-club, #6366f1); }
+}
+.sim-field--court { flex:0 0 130px; }
+.sim-go {
+  padding:10px 20px; border:none; border-radius:9px; cursor:pointer; font:inherit; font-size:13px; font-weight:700;
+  background:var(--couleur-club, #6366f1); color:#fff;
+  &:disabled { opacity:.6; cursor:default; }
+}
+.sim-erreur { margin:0; font-size:13px; color:var(--t-alert-fg); }
+
+.sim-verdict {
+  display:flex; flex-direction:column; gap:4px; padding:14px 16px; border-radius:12px;
+  background:var(--t-ok-bg); border:1px solid var(--t-ok-bd);
+  strong { font-size:14px; font-weight:800; color:var(--t-ok-fg); }
+  span { font-size:12px; color:#475569; }
+  &.sim-verdict--alerte {
+    background:var(--t-alert-bg); border-color:var(--t-alert-bd);
+    strong { color:var(--t-alert-fg); }
+  }
+}
+.sim-note-warn { font-size:11.5px !important; font-style:italic; color:#92400e !important; }
+
+.sim-ia { display:flex; flex-direction:column; gap:6px; }
+.sim-ia__texte { margin:0; font-size:13.5px; line-height:1.6; color:#1e293b; }
+.sim-ia__repli { font-size:11px; font-style:italic; color:#94a3b8; }
+.sim-ia__btn {
+  align-self:flex-start; padding:8px 16px; border:1px solid #e2e8f0; border-radius:9px; background:#fff;
+  font:inherit; font-size:12.5px; font-weight:700; color:#334155; cursor:pointer;
+  &:hover:not(:disabled) { border-color:#cbd5e1; }
+  &:disabled { opacity:.6; cursor:default; }
+}
+
+.sim-table { overflow-x:auto; }
+.sim-table table { width:100%; border-collapse:collapse; font-size:13px; }
+.sim-table th {
+  padding:9px 10px; text-align:left; font-size:11px; font-weight:700; text-transform:uppercase;
+  letter-spacing:.04em; color:#64748b; border-bottom:1px solid #e2e8f0; white-space:nowrap;
+}
+.sim-table td { padding:10px; border-bottom:1px solid #f1f5f9; color:#334155; }
+.sim-table tr.is-bascule td { background:rgba(239,68,68,.05); }
+.sim-flag {
+  display:inline-block; margin-left:6px; padding:1px 7px; border-radius:999px;
+  background:#f1f5f9; font-size:10.5px; font-weight:700; color:#64748b;
+}
+.sim-zone {
+  display:inline-block; padding:2px 10px; border-radius:999px; border:1px solid transparent;
+  font-size:11.5px; font-weight:700;
+  &.tone-ok { background:var(--t-ok-bg); color:var(--t-ok-fg); border-color:var(--t-ok-bd); }
+  &.tone-warn { background:var(--t-warn-bg); color:var(--t-warn-fg); border-color:var(--t-warn-bd); }
+  &.tone-alert { background:var(--t-alert-bg); color:var(--t-alert-fg); border-color:var(--t-alert-bd); }
+}

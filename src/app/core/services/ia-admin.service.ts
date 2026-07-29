@@ -10,6 +10,39 @@ export interface ClubIaConfig {
   actif: boolean;
   aCle: boolean;
   cleMasquee: string | null;
+  /** Nom EFFECTIF de l'assistant pour ce club (surcharge du club, sinon nom global). */
+  nomAssistant: string;
+}
+
+/** D'où vient la clé effective d'un fournisseur — le témoin affiché dans l'écran. */
+export type OrigineCle = 'BASE' | 'ENVIRONNEMENT' | 'AUCUNE';
+
+/**
+ * Fournisseur IA du catalogue. `dialecte` = protocole parlé (OPENAI | ANTHROPIC) : c'est lui qui
+ * choisit le client d'appel côté serveur, d'où la possibilité d'ajouter tout fournisseur compatible
+ * OpenAI (Mistral, Groq, DeepSeek, OpenRouter, Ollama…) en renseignant seulement son URL de base.
+ */
+export interface FournisseurIa {
+  code: string;
+  libelle: string;
+  dialecte: string;
+  baseUrl: string | null;
+  modeleDefaut: string | null;
+  actif: boolean;
+  /** Fournisseur du socle : sa clé est révocable, mais il n'est pas supprimable. */
+  socle: boolean;
+  origineCle: OrigineCle;
+  cleMasquee: string | null;
+}
+
+export interface FournisseurIaRequest {
+  libelle?: string;
+  dialecte?: string;
+  baseUrl?: string | null;
+  modeleDefaut?: string | null;
+  actif?: boolean;
+  /** Vide = clé inchangée (une clé n'est jamais réaffichée, donc jamais re-soumise). */
+  cleApi?: string | null;
 }
 
 export interface IaConfigRequest {
@@ -61,6 +94,30 @@ export class IaAdminService {
 
   revoquer(clubId: string): Observable<void> {
     return this.http.delete<void>(`${this.base}/clubs/${clubId}`);
+  }
+
+  /** Nomme l'assistant pour un club (vide = le club retombe sur le nom global). */
+  nommerAssistant(clubId: string, nom: string): Observable<ClubIaConfig[]> {
+    return this.http.put<ClubIaConfig[]>(`${this.base}/clubs/${clubId}/nom-assistant`, { nom });
+  }
+
+  // ── Catalogue des fournisseurs ──
+
+  fournisseurs(): Observable<FournisseurIa[]> {
+    return this.http.get<FournisseurIa[]>(`${this.base}/fournisseurs`);
+  }
+
+  majFournisseur(code: string, req: FournisseurIaRequest): Observable<FournisseurIa[]> {
+    return this.http.put<FournisseurIa[]>(`${this.base}/fournisseurs/${code}`, req);
+  }
+
+  /** Efface la clé saisie : retour au repli par variable d'environnement, si le serveur en a une. */
+  revoquerCleFournisseur(code: string): Observable<FournisseurIa[]> {
+    return this.http.delete<FournisseurIa[]>(`${this.base}/fournisseurs/${code}/cle`);
+  }
+
+  supprimerFournisseur(code: string): Observable<FournisseurIa[]> {
+    return this.http.delete<FournisseurIa[]>(`${this.base}/fournisseurs/${code}`);
   }
 
   /** Catalogue des features IA. */

@@ -1,9 +1,12 @@
-:host {
-  position: fixed;
-  bottom: 18px;
-  right: 84px; /* à gauche de la bulle de messagerie (54px @ right:18px), même hauteur */
-  z-index: 1200;
-}
+/* Mode flottant : le positionnement (et le déplacement) vient de la directive `appBulleFlottante`
+   posée sur l'hôte — plus d'offsets en dur ici, ils écraseraient la position mémorisée. */
+:host { display: block; }
+
+/* Ancrage du panneau selon la position de la bulle (attributs posés par la directive). */
+:host([data-ouv-v='haut']) .panneau { bottom: 58px; top: auto; }
+:host([data-ouv-v='bas'])  .panneau { top: 58px; bottom: auto; }
+:host([data-ouv-h='droite']) .panneau { right: 0; left: auto; }
+:host([data-ouv-h='gauche']) .panneau { left: 0; right: auto; }
 
 /* Mode intégré (header PWA, à côté de l'avatar) : dans le flux, panneau vers le bas.
    position:relative + z-index élevé pour que le panneau passe AU-DESSUS des cartes
@@ -23,6 +26,8 @@
   font-size: 20px;
 }
 :host(.inline) .bell__btn:hover { transform: none; box-shadow: none; }
+/* En PWA la cloche est dans le flux : pas de déplacement possible, donc pas de curseur « grab ». */
+:host(.inline) .bell__btn { cursor: pointer; }
 /* Panneau : en PWA il ne doit pas déborder à gauche de l'écran. On l'ancre via position:fixed
    sur le header (qui porte un transform pwa-rise → c'est le bloc conteneur) : largeur quasi
    pleine avec marges 12px, ouvert sous l'en-tête. Fallback viewport si le transform disparaît. */
@@ -40,14 +45,14 @@
 
 .bell__btn {
   position: relative;
-  width: 54px;
-  height: 54px;
+  width: 46px;
+  height: 46px;
   border-radius: 50%;
   border: none;
   background: var(--surface-1, #fff);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, .22);
-  cursor: pointer;
-  font-size: 22px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, .2);
+  cursor: grab;
+  font-size: 19px;
   display: grid;
   place-items: center;
   transition: transform .12s ease, box-shadow .12s ease;

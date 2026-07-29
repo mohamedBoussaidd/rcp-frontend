@@ -16,6 +16,24 @@
 
   <!-- ═══ Onglet Prompts ═══ -->
   @if (onglet() === 'prompts') {
+    <!-- Nom de l'assistant : s'applique à toute l'application ; surchargeable club par club
+         dans l'onglet Clés & modèles. Injecté dans le prompt du chat via le marqueur {nom}. -->
+    <div class="card card--padded" style="margin-bottom:12px">
+      <div class="pia-sec-head">
+        <h2 class="pia-sec-titre">Nom de l'assistant</h2>
+        <div class="row" style="gap:8px;align-items:center">
+          <input class="input" style="max-width:220px" [ngModel]="nomAssistant()"
+                 (ngModelChange)="nomAssistant.set($event)" name="nomAssistant" maxlength="30"
+                 placeholder="Tempo">
+          <button class="btn btn--primary btn--sm" (click)="enregistrerNomAssistant()">Enregistrer</button>
+        </div>
+      </div>
+      <p class="pia-hint">
+        Nom affiché dans le widget de chat et utilisé par l'assistant pour se présenter. Un club peut
+        porter un autre nom : voir « Nom de l'assistant » sur sa ligne, onglet Clés &amp; modèles.
+      </p>
+    </div>
+
     <div class="pia-chips">
       @for (f of features(); track f.code) {
         @if (f.prompt) {
@@ -120,39 +138,125 @@
 
   <!-- ═══ Onglet Clés & modèles ═══ -->
   @if (onglet() === 'cles') {
-<!-- NOUVELLE SECTION : Config globale -->
+  <!-- Config globale : le fournisseur retenu quand un club n'a pas de clé propre -->
   <div class="card card--padded" style="margin-bottom:12px">
-    <h2 class="pia-sec-titre">Configuration globale (fallback pour tous les clubs)</h2>
+    <h2 class="pia-sec-titre">Configuration globale (repli pour tous les clubs)</h2>
+
+    @if (fournisseurCourant(); as fc) {
+      <p class="pia-etat" [class.pia-etat--ko]="fc.origineCle === 'AUCUNE'">
+        @if (fc.origineCle === 'AUCUNE') {
+          ⚠ <b>{{ fc.libelle }}</b> n'a aucune clé : les cartes IA retombent sur leur gabarit local et le
+          chat reste indisponible. Saisis une clé ci-dessous.
+        } @else {
+          ✓ <b>{{ fc.libelle }}</b> — {{ etatCle(fc) }}.
+        }
+      </p>
+    }
 
     <div class="pia-form-row">
-      <label>Fournisseur IA par défaut</label>
-      <select class="input" [(ngModel)]="fournisseurGlobal">
-        <option value="ANTHROPIC">Anthropic (Claude)</option>
-        <option value="OPENAI">OpenAI (GPT-4)</option>
+      <label>Fournisseur par défaut</label>
+      <select class="input" [ngModel]="fournisseurGlobal()" (ngModelChange)="fournisseurGlobal.set($event)"
+              name="fournisseurGlobal">
+        @for (f of fournisseurs(); track f.code) {
+          <option [value]="f.code">{{ f.libelle }}</option>
+        }
       </select>
     </div>
 
-    <!-- ✅ CHAMP TEXTE AVEC SUGGESTIONS -->
     <div class="pia-form-row">
       <label>Modèle par défaut</label>
-      <input class="input" [(ngModel)]="modeleGlobal" list="iaModeles" placeholder="ex: claude-opus-4-8">
-      <datalist id="iaModeles">
-        <!-- Anthropic -->
-        <option value="claude-opus-4-8">
-        <option value="claude-3-5-sonnet-20241022">
-        <option value="claude-3-haiku-20240307">
-        <option value="claude-3-opus-20240229">
-        <!-- OpenAI -->
-        <option value="gpt-4o">
-        <option value="gpt-4">
-        <option value="gpt-3.5-turbo">
-      </datalist>
+      <input class="input" [ngModel]="modeleGlobal()" (ngModelChange)="modeleGlobal.set($event)"
+             name="modeleGlobal" placeholder="ex : claude-opus-4-8">
+      <span class="pia-hint">Vide = on reprend le modèle par défaut du fournisseur choisi.</span>
     </div>
 
-    <button class="btn btn--primary btn--sm" (click)="enregistrerGlobal()">
-      Enregistrer
-    </button>
+    <button class="btn btn--primary btn--sm" (click)="enregistrerGlobal()">Enregistrer</button>
   </div>
+
+  <!-- Catalogue des fournisseurs : ajouter un fournisseur ne demande aucun déploiement -->
+  <div class="card card--padded" style="margin-bottom:12px">
+    <div class="pia-sec-head">
+      <h2 class="pia-sec-titre">Fournisseurs IA</h2>
+      <button class="btn btn--secondary btn--sm" (click)="ajoutOuvert.set(!ajoutOuvert())">
+        {{ ajoutOuvert() ? 'Annuler' : '+ Ajouter un fournisseur' }}
+      </button>
+    </div>
+    <p class="pia-hint">
+      Le <b>dialecte</b> est le protocole parlé, pas la marque : « OpenAI » couvre tous les fournisseurs
+      compatibles (Mistral, Groq, DeepSeek, OpenRouter, Ollama…) — il suffit de renseigner leur URL de base.
+      Une clé saisie ici est chiffrée et n'est jamais réaffichée ; sans clé, le fournisseur retombe sur la
+      variable d'environnement du serveur quand il en a une.
+    </p>
+
+    @if (ajoutOuvert()) {
+      <div class="pia-fourn pia-fourn--neuf">
+        <div class="pia-grille">
+          <label>Code
+            <input class="input" [(ngModel)]="nouveau.code" name="nCode" placeholder="MISTRAL">
+          </label>
+          <label>Nom affiché
+            <input class="input" [(ngModel)]="nouveau.libelle" name="nLibelle" placeholder="Mistral AI">
+          </label>
+          <label>Dialecte
+            <select class="input" [(ngModel)]="nouveau.dialecte" name="nDialecte">
+              @for (d of dialectes; track d) { <option [value]="d">{{ d }}</option> }
+            </select>
+          </label>
+          <label>URL de base
+            <input class="input" [(ngModel)]="nouveau.baseUrl" name="nUrl" placeholder="https://api.mistral.ai/v1">
+          </label>
+          <label>Modèle par défaut
+            <input class="input" [(ngModel)]="nouveau.modeleDefaut" name="nModele" placeholder="mistral-large-latest">
+          </label>
+          <label>Clé API
+            <input class="input" type="password" [(ngModel)]="nouveau.cleApi" name="nCle" placeholder="coller la clé…">
+          </label>
+        </div>
+        <div class="pia-fourn__actions">
+          <button class="btn btn--primary btn--sm" (click)="ajouterFournisseur()" [disabled]="!nouveau.code.trim()">
+            Ajouter
+          </button>
+        </div>
+      </div>
+    }
+
+    @for (f of fournisseurs(); track f.code) {
+      <div class="pia-fourn">
+        <div class="pia-fourn__head">
+          <span class="pia-fourn__nom">{{ f.libelle }}</span>
+          <span class="pia-fourn__code">{{ f.code }}</span>
+          <span class="pia-fourn__cle" [class.pia-fourn__cle--ko]="f.origineCle === 'AUCUNE'">{{ etatCle(f) }}</span>
+        </div>
+        <div class="pia-grille">
+          <label>Dialecte
+            <select class="input" [(ngModel)]="f.dialecte" [name]="'d_' + f.code">
+              @for (d of dialectes; track d) { <option [value]="d">{{ d }}</option> }
+            </select>
+          </label>
+          <label>URL de base
+            <input class="input" [(ngModel)]="f.baseUrl" [name]="'u_' + f.code" placeholder="API officielle">
+          </label>
+          <label>Modèle par défaut
+            <input class="input" [(ngModel)]="f.modeleDefaut" [name]="'m_' + f.code" placeholder="—">
+          </label>
+          <label>Nouvelle clé
+            <input class="input" type="password" [(ngModel)]="cleSaisie[f.code]" [name]="'c_' + f.code"
+                   placeholder="laisser vide = inchangée">
+          </label>
+        </div>
+        <div class="pia-fourn__actions">
+          @if (f.origineCle === 'BASE') {
+            <button class="btn btn--danger btn--sm" (click)="revoquerCle(f)">Effacer la clé</button>
+          }
+          @if (!f.socle) {
+            <button class="btn btn--danger btn--sm" (click)="supprimerFournisseur(f)">Supprimer</button>
+          }
+          <button class="btn btn--primary btn--sm" (click)="enregistrerFournisseur(f)">Enregistrer</button>
+        </div>
+      </div>
+    }
+  </div>
+
     <app-ia-config />
   }
 

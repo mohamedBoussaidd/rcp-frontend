@@ -1,31 +1,35 @@
-:host {
-  position: fixed;
-  right: 18px;
-  bottom: 18px;
-  z-index: 1200;
-}
+/* Le positionnement (et le déplacement) est porté par la directive `appBulleFlottante` posée sur
+   l'hôte : plus d'offsets en dur ici, sinon ils entreraient en conflit avec la position mémorisée. */
+:host { display: block; }
 
 .chat__bulle {
-  width: 54px;
-  height: 54px;
+  width: 46px;
+  height: 46px;
   border-radius: 50%;
   border: none;
   background: var(--accent, #3066be);
   color: #fff;
-  font-size: 24px;
-  cursor: pointer;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, .28);
+  font-size: 20px;
+  cursor: grab;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, .24);
   display: grid;
   place-items: center;
   margin-left: auto;
   transition: transform .12s ease;
 }
-.chat__bulle:hover { transform: translateY(-2px) scale(1.04); }
+.chat__bulle:hover { transform: translateY(-1px) scale(1.03); }
+.chat__bulle:active { cursor: grabbing; transform: none; }
+
+/* Ancrage du panneau selon la position de la bulle (attributs posés par la directive). */
+:host([data-ouv-v='haut']) .chat__panneau { bottom: 58px; top: auto; }
+:host([data-ouv-v='bas'])  .chat__panneau { top: 58px; bottom: auto; }
+:host([data-ouv-h='droite']) .chat__panneau { right: 0; left: auto; }
+:host([data-ouv-h='gauche']) .chat__panneau { left: 0; right: auto; }
 
 .chat__panneau {
   position: absolute;
   right: 0;
-  bottom: 66px;
+  bottom: 58px;
   width: 340px;
   max-width: calc(100vw - 24px);
   background: var(--surface-1, #fff);

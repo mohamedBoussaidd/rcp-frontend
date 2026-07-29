@@ -1,0 +1,116 @@
+/* L'hôte porte le positionnement : c'est lui que la directive `appBulleFlottante` déplace. */
+:host { display: block; }
+
+.asst { position: relative; }
+
+/* ── Bulle ── */
+.asst__bouton {
+  width: 46px; height: 46px; border-radius: 50%; border: none; cursor: grab;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 19px; line-height: 1; color: #fff;
+  background: var(--couleur-club, #6366f1);
+  box-shadow: 0 6px 18px rgba(15, 23, 42, .22);
+  transition: transform .15s ease, box-shadow .15s ease;
+}
+.asst__bouton:hover { transform: translateY(-1px); box-shadow: 0 8px 22px rgba(15, 23, 42, .28); }
+.asst__bouton:active { cursor: grabbing; transform: none; }
+
+/* ── Panneau ── */
+.asst__panneau {
+  position: absolute;
+  width: 340px; max-width: calc(100vw - 24px);
+  display: flex; flex-direction: column;
+  background: #fff; border: 1px solid var(--surface-3, #e6e9ef); border-radius: 16px;
+  box-shadow: 0 18px 44px rgba(15, 23, 42, .18);
+  overflow: hidden;
+}
+
+/* Ancrage piloté par la directive : le panneau s'ouvre du côté où il reste de la place. */
+:host([data-ouv-v='haut']) .asst__panneau { bottom: 58px; }
+:host([data-ouv-v='bas'])  .asst__panneau { top: 58px; }
+:host([data-ouv-h='droite']) .asst__panneau { right: 0; }
+:host([data-ouv-h='gauche']) .asst__panneau { left: 0; }
+
+.asst__entete {
+  display: flex; align-items: center; gap: 8px; padding: 11px 12px;
+  border-bottom: 1px solid var(--surface-3, #eef1f5);
+  strong { font-size: 13.5px; font-weight: 800; color: #0f172a; }
+}
+.asst__avatar {
+  width: 24px; height: 24px; border-radius: 50%; flex: 0 0 24px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px; color: #fff; background: var(--couleur-club, #6366f1);
+}
+.asst__entete-actions { margin-left: auto; display: flex; align-items: center; gap: 6px; }
+.asst__entete-actions .lien {
+  border: none; background: none; cursor: pointer; font: inherit; font-size: 11.5px;
+  font-weight: 600; color: #94a3b8;
+  &:hover { color: #64748b; }
+}
+.asst__entete-actions .x {
+  border: none; background: none; cursor: pointer; font-size: 14px; line-height: 1; color: #94a3b8;
+  &:hover { color: #475569; }
+}
+
+.asst__fil {
+  display: flex; flex-direction: column; gap: 8px;
+  padding: 12px; overflow-y: auto;
+  max-height: min(52vh, 380px);
+}
+
+.asst__accueil {
+  p { margin: 0 0 6px; font-size: 12.5px; line-height: 1.55; color: #64748b; }
+}
+.asst__accueil-note { font-size: 11.5px !important; font-style: italic; color: #94a3b8 !important; }
+
+.asst__msg { display: flex; }
+.asst__msg--moi { justify-content: flex-end; }
+.asst__bulle {
+  max-width: 85%; padding: 8px 11px; border-radius: 12px;
+  font-size: 13px; line-height: 1.55; white-space: pre-wrap; word-break: break-word;
+  background: #f1f5f9; color: #1e293b;
+}
+.asst__msg--moi .asst__bulle { background: var(--couleur-club, #6366f1); color: #fff; }
+
+/* Indicateur de frappe */
+.asst__bulle--attente {
+  display: flex; gap: 4px; align-items: center; padding: 11px;
+  span {
+    width: 6px; height: 6px; border-radius: 50%; background: #cbd5e1;
+    animation: asst-pulse 1.2s infinite ease-in-out;
+  }
+  span:nth-child(2) { animation-delay: .15s; }
+  span:nth-child(3) { animation-delay: .3s; }
+}
+@keyframes asst-pulse { 0%, 60%, 100% { opacity: .35; } 30% { opacity: 1; } }
+
+.asst__erreur { margin: 4px 0 0; font-size: 12px; color: #b91c1c; }
+
+.asst__actions {
+  display: flex; flex-wrap: wrap; gap: 6px; padding: 0 12px 10px;
+}
+.asst__action {
+  padding: 5px 11px; border: 1px solid var(--surface-3, #e2e8f0); border-radius: 999px;
+  background: #fff; cursor: pointer; font: inherit; font-size: 11.5px; font-weight: 600; color: #475569;
+  &:hover { border-color: #cbd5e1; background: #f8fafc; }
+}
+
+.asst__saisie {
+  display: flex; gap: 6px; padding: 10px 12px; border-top: 1px solid var(--surface-3, #eef1f5);
+  input {
+    flex: 1; padding: 8px 11px; border: 1px solid var(--surface-3, #e2e8f0); border-radius: 999px;
+    font: inherit; font-size: 13px; color: #0f172a;
+    &:focus { outline: none; border-color: var(--couleur-club, #6366f1); }
+    &:disabled { background: #f8fafc; }
+  }
+  button {
+    width: 34px; height: 34px; flex: 0 0 34px; border: none; border-radius: 50%; cursor: pointer;
+    font-size: 13px; color: #fff; background: var(--couleur-club, #6366f1);
+    &:disabled { opacity: .45; cursor: default; }
+  }
+}
+
+.asst__indispo {
+  padding: 11px 12px; border-top: 1px solid var(--surface-3, #eef1f5);
+  font-size: 12px; line-height: 1.55; color: #92400e; background: #fffbeb;
+}

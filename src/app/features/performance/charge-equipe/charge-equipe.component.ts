@@ -3,10 +3,21 @@ import { DecimalPipe, DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatIcon } from '@angular/material/icon';
 import { ChartComponent, ApexChart, ApexAxisChartSeries, ApexXAxis, ApexPlotOptions, ApexDataLabels, ApexTooltip, ApexYAxis, ApexLegend } from 'ng-apexcharts';
-import { PredictionService, ChargeEquipe, ChargeSeance, ChargeJoueur, ObjectifHebdo, ObjectifHebdoJoueur } from '@core/services/prediction.service';
+import { PredictionService, ChargeEquipe, ChargeSeance, ChargeJoueur, ObjectifHebdo, ObjectifHebdoJoueur,
+  Simulation, SimulationJoueur, ZoneAcwr } from '@core/services/prediction.service';
+import { SeanceService, TypeSeance } from '@core/services/seance.service';
+import { AuthService } from '@core/services/auth.service';
 import { couleurTheme } from '@core/services/theme.service';
 import { InfoHintComponent } from '@shared/components/info-hint/info-hint.component';
 import { BriefingCardComponent } from '@shared/components/briefing-card/briefing-card.component';
+
+/**
+ * Scénarios de simulation. Un seul aujourd'hui ; la liste est le point d'extension prévu
+ * (semaine complète, retour de blessure, ajout d'un match…) — tous sous le même add-on
+ * `assistant_simulation`, chacun avec sa propre route back.
+ */
+type CodeScenario = 'seance';
+interface Scenario { code: CodeScenario; libelle: string; description: string; }
 
 const COULEURS_TYPE: Record<string, string> = {
   MATCH:        '#ef4444',
@@ -31,6 +42,8 @@ type TriCol = 'distance_totale_m' | 'distance_attendue_m' | 'delta_pct' | 'ratio
 export class ChargeEquipeComponent implements OnInit {
 
   private predictionService = inject(PredictionService);
+  private seanceService = inject(SeanceService);
+  private auth = inject(AuthService);
 
   data: ChargeEquipe | null = null;
   loading = true;
@@ -41,8 +54,28 @@ export class ChargeEquipeComponent implements OnInit {
   objectifInputKm: number | null = null;
   majObjLoading = false;
 
-  /** Onglet actif : Objectif = semaine en cours (sans filtre) ; Charge / Par séance = analyse filtrée. */
-  onglet: 'objectif' | 'charge' | 'seance' = 'charge';
+  /**
+   * Onglet actif : Objectif = semaine en cours (sans filtre) ; Charge / Par séance = analyse filtrée ;
+   * Simulation = projection d'une séance à venir (add-on, masqué sans la permission).
+   */
+  onglet: 'objectif' | 'charge' | 'seance' | 'simulation' = 'charge';
+
+  // ── Onglet Simulation (add-on `assistant_simulation`) ──
+  readonly SCENARIOS: Scenario[] = [
+    { code: 'seance', libelle: 'Une séance',
+      description: "Projette une séance à venir sur l'effectif : distance attendue par joueur (d'après son historique sur ce type de séance) et impact sur son ACWR." },
+  ];
+  scenario: CodeScenario = 'seance';
+
+  typesSeance: TypeSeance[] = [];
+  simTypeId: string | null = null;
+  simDuree = 90;
+  simulation: Simulation | null = null;
+  simLoading = false;
+  simErreur: string | null = null;
+  simNote: string | null = null;
+  simNoteSource: 'IA' | 'GABARIT' | null = null;
+  simNoteLoading = false;
 
   /** Pagination + recherche par nom (panneau objectif, détail par séance, classement joueurs). */
   readonly TAILLE_PAGE = 12;
@@ -78,6 +111,78 @@ export class ChargeEquipeComponent implements OnInit {
     this.appliquerJours(this.raccourciJours ?? 7);
     this.charger();
     this.chargerObjectif();
+    if (this.peutSimuler) {
+      this.seanceService.getTypeSeances().subscribe({
+        next: t => this.typesSeance = t ?? [],
+        error: () => this.typesSeance = [],
+      });
+    }
+  }
+
+  // ── Simulation ──
+
+  /** L'onglet n'existe que si l'add-on est actif ET la permission accordée. */
+  get peutSimuler(): boolean { return this.auth.has('prepa_ia:simulation'); }
+
+  choisirScenario(code: CodeScenario): void {
+    this.scenario = code;
+    this.reinitSimulation();
+  }
+
+  private reinitSimulation(): void {
+    this.simulation = null;
+    this.simErreur = null;
+    this.simNote = null;
+    this.simNoteSource = null;
+  }
+
+  /** Sélectionne un type de séance et pré-remplit la durée avec sa durée théorique si connue. */
+  onTypeSimulationChange(): void {
+    const t = this.typesSeance.find(x => x.id === this.simTypeId);
+    const theorique = t?.dureeTheoriqueMin;
+    if (theorique && theorique > 0) this.simDuree = theorique;
+    this.reinitSimulation();
+  }
+
+  lancerSimulation(): void {
+    if (this.simDuree <= 0) { this.simErreur = 'Indique une durée supérieure à 0.'; return; }
+    this.simLoading = true;
+    this.reinitSimulation();
+    this.predictionService.simulerSeance({ typeSeanceId: this.simTypeId, dureeMinutes: this.simDuree }).subscribe({
+      next: s => { this.simulation = s; this.simLoading = false; },
+      error: () => {
+        this.simLoading = false;
+        this.simErreur = "Simulation impossible pour l'instant. Réessaie dans un moment.";
+      },
+    });
+  }
+
+  genererNoteSimulation(): void {
+    this.simNoteLoading = true;
+    this.predictionService.genererSimulationNote({ typeSeanceId: this.simTypeId, dureeMinutes: this.simDuree })
+      .subscribe({
+        next: b => { this.simNote = b.texte; this.simNoteSource = b.source; this.simNoteLoading = false; },
+        error: () => { this.simNoteLoading = false; this.simNote = null; },
+      });
+  }
+
+  /** Joueurs de la simulation : ceux qui basculent d'abord, puis par ACWR projeté décroissant. */
+  get simJoueurs(): SimulationJoueur[] {
+    return [...(this.simulation?.joueurs ?? [])].sort((a, b) => {
+      if (a.bascule !== b.bascule) return a.bascule ? -1 : 1;
+      return (b.acwr_apres ?? -1) - (a.acwr_apres ?? -1);
+    });
+  }
+
+  zoneLibelle(z: ZoneAcwr | null): string {
+    return ({ SOUS_CHARGE: 'Sous-charge', OPTIMALE: 'Optimale', SURCHARGE: 'Surcharge' } as Record<string, string>)[z ?? ''] ?? '—';
+  }
+
+  zoneTone(z: ZoneAcwr | null): string {
+    if (z === 'SURCHARGE') return 'tone-alert';
+    if (z === 'SOUS_CHARGE') return 'tone-warn';
+    if (z === 'OPTIMALE') return 'tone-ok';
+    return '';
   }
 
   private iso(d: Date): string {

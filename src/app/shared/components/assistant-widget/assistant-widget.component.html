@@ -1,0 +1,68 @@
+@if (visible) {
+  <div class="asst">
+
+    @if (ouvert()) {
+      <div class="asst__panneau">
+        <div class="asst__entete">
+          <span class="asst__avatar" aria-hidden="true">✦</span>
+          <strong>{{ nom }}</strong>
+          <div class="asst__entete-actions">
+            @if (messages().length) {
+              <button type="button" class="lien" (click)="effacer()">Effacer</button>
+            }
+            <button type="button" class="x" (click)="fermer()" aria-label="Fermer">✕</button>
+          </div>
+        </div>
+
+        <div class="asst__fil">
+          @if (!messages().length) {
+            <div class="asst__accueil">
+              <p>Pose une question sur l'état de ton effectif — charge, objectif de la semaine, joueurs à surveiller.</p>
+              <p class="asst__accueil-note">{{ nom }} ne voit que les données auxquelles tu as accès, et ne modifie rien.</p>
+            </div>
+          }
+
+          @for (m of messages(); track $index) {
+            <div class="asst__msg" [class.asst__msg--moi]="m.role === 'user'">
+              <div class="asst__bulle">{{ m.contenu }}</div>
+            </div>
+          }
+
+          @if (envoiEnCours()) {
+            <div class="asst__msg">
+              <div class="asst__bulle asst__bulle--attente">
+                <span></span><span></span><span></span>
+              </div>
+            </div>
+          }
+
+          @if (erreur()) { <p class="asst__erreur">{{ erreur() }}</p> }
+        </div>
+
+        @if (actions.length) {
+          <div class="asst__actions">
+            @for (a of actions; track a.code) {
+              <button type="button" class="asst__action" (click)="lancerAction(a)">{{ a.libelle }}</button>
+            }
+          </div>
+        }
+
+        @if (disponible) {
+          <form class="asst__saisie" (ngSubmit)="envoyer()">
+            <input type="text" [ngModel]="saisie()" (ngModelChange)="saisie.set($event)"
+                   name="saisie" maxlength="500" autocomplete="off"
+                   [placeholder]="'Écrire à ' + nom + '…'" [disabled]="envoiEnCours()">
+            <button type="submit" [disabled]="envoiEnCours() || !saisie().trim()" aria-label="Envoyer">➤</button>
+          </form>
+        } @else {
+          <div class="asst__indispo">{{ etat()?.message || (nom + ' n\'est pas disponible pour le moment.') }}</div>
+        }
+      </div>
+    }
+
+    <button type="button" class="asst__bouton" (click)="basculer()"
+            [attr.aria-label]="ouvert() ? 'Fermer ' + nom : 'Ouvrir ' + nom" [title]="nom">
+      <span aria-hidden="true">✦</span>
+    </button>
+  </div>
+}

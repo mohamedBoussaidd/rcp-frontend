@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import {
   NotificationChatService, CapaciteEnvoi, DestinataireChat, MessageEnvoye,
 } from '@core/services/notification-chat.service';
+import { BulleFlottanteDirective } from '@shared/directives/bulle-flottante.directive';
 
 /**
  * Widget de chat 1-sens, bouton flottant en bas à droite. Visible uniquement pour les
@@ -22,6 +23,8 @@ export class ChatWidgetComponent implements OnInit {
 
   private chat = inject(NotificationChatService);
   private host = inject(ElementRef);
+  /** Présente quand la bulle est déplaçable : sert à ignorer le clic qui termine un déplacement. */
+  private bulle = inject(BulleFlottanteDirective, { optional: true, self: true });
 
   readonly capacite = signal<CapaciteEnvoi | null>(null);
   readonly ouvert = signal(false);
@@ -46,6 +49,7 @@ export class ChatWidgetComponent implements OnInit {
   }
 
   basculer(): void {
+    if (this.bulle?.aGlisse) return;   // fin de déplacement : ne pas ouvrir le panneau
     const o = !this.ouvert();
     this.ouvert.set(o);
     if (o && this.capacite()?.peutCibler && this.destinatairesDispo().length === 0) {

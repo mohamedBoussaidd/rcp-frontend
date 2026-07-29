@@ -5,10 +5,127 @@
     <button class="ce-tab" [class.is-active]="onglet === 'objectif'" (click)="onglet = 'objectif'">Objectif</button>
     <button class="ce-tab" [class.is-active]="onglet === 'charge'"   (click)="onglet = 'charge'">Charge</button>
     <button class="ce-tab" [class.is-active]="onglet === 'seance'"   (click)="onglet = 'seance'">Par séance</button>
+    @if (peutSimuler) {
+      <button class="ce-tab" [class.is-active]="onglet === 'simulation'" (click)="onglet = 'simulation'">Simulation</button>
+    }
   </div>
 
-  <!-- En-tête + filtres (masqués sur l'onglet Objectif = toujours la semaine en cours) -->
-  @if (onglet !== 'objectif') {
+  <!-- ═══ Onglet Simulation « et si… » (add-on assistant_simulation) ═══ -->
+  @if (onglet === 'simulation') {
+    <section class="pf-card sim-panel">
+      <div class="sim-top">
+        <div class="sim-title">Simulation
+          <app-info-hint texte="Projection d'une séance qui n'a pas encore eu lieu. Pour chaque joueur, on estime la distance qu'il parcourrait d'après son historique sur ce type de séance, puis on recalcule son ACWR en ajoutant cette distance à sa charge aiguë. Rien n'est enregistré."></app-info-hint>
+        </div>
+      </div>
+
+      <!-- Sélecteur de scénario : un seul aujourd'hui, la liste s'étoffera -->
+      <div class="sim-scenarios">
+        @for (s of SCENARIOS; track s.code) {
+          <button type="button" class="sim-scenario" [class.is-active]="scenario === s.code"
+                  (click)="choisirScenario(s.code)">
+            <strong>{{ s.libelle }}</strong>
+            <span>{{ s.description }}</span>
+          </button>
+        }
+      </div>
+
+      @if (scenario === 'seance') {
+        <div class="sim-form">
+          <label class="sim-field">
+            <span>Type de séance</span>
+            <select [(ngModel)]="simTypeId" (ngModelChange)="onTypeSimulationChange()">
+              <option [ngValue]="null">Tous types confondus</option>
+              @for (t of typesSeance; track t.id) {
+                <option [ngValue]="t.id">{{ t.libelle }}</option>
+              }
+            </select>
+          </label>
+          <label class="sim-field sim-field--court">
+            <span>Durée (min)</span>
+            <input type="number" min="10" max="240" step="5" [(ngModel)]="simDuree" (ngModelChange)="simulation = null">
+          </label>
+          <button type="button" class="sim-go" (click)="lancerSimulation()" [disabled]="simLoading">
+            {{ simLoading ? 'Calcul…' : 'Simuler' }}
+          </button>
+        </div>
+
+        @if (simErreur) { <p class="sim-erreur">{{ simErreur }}</p> }
+
+        @if (simulation; as sim) {
+          @if (sim.synthese.nb_evalues === 0) {
+            <p class="gps-empty">Aucun joueur n'a assez d'historique GPS pour projeter cette séance.<br>
+              Importe des séances réalisées, puis relance la simulation.</p>
+          } @else {
+            <!-- Verdict -->
+            <div class="sim-verdict" [class.sim-verdict--alerte]="sim.synthese.nb_bascule > 0">
+              @if (sim.synthese.nb_bascule > 0) {
+                <strong>{{ sim.synthese.nb_bascule }} joueur(s) passeraient au-dessus du plafond</strong>
+              } @else {
+                <strong>Aucun joueur ne basculerait au-dessus du plafond</strong>
+              }
+              <span>
+                {{ sim.synthese.nb_evalues }} joueurs projetés
+                @if (sim.synthese.km_attendu_moyen != null) {
+                  · {{ sim.synthese.km_attendu_moyen | number:'1.1-1' }} km attendus en moyenne
+                }
+                · surcharge {{ sim.synthese.nb_surcharge_avant }} → {{ sim.synthese.nb_surcharge_apres }}
+              </span>
+              @if (sim.synthese.nb_peu_fiable > 0) {
+                <span class="sim-note-warn">{{ sim.synthese.nb_peu_fiable }} joueur(s) avec moins de 3 séances de référence : projection à prendre avec prudence.</span>
+              }
+              @if (sim.synthese.nb_sans_baseline > 0) {
+                <span class="sim-note-warn">{{ sim.synthese.nb_sans_baseline }} joueur(s) sans historique exploitable, non évalués.</span>
+              }
+            </div>
+
+            <!-- Synthèse rédigée (IA ou gabarit) -->
+            <div class="sim-ia">
+              @if (simNote) {
+                <p class="sim-ia__texte">{{ simNote }}</p>
+                @if (simNoteSource === 'GABARIT') {
+                  <span class="sim-ia__repli">Rédigé sans IA (clé indisponible ou quota atteint).</span>
+                }
+              } @else {
+                <button type="button" class="sim-ia__btn" (click)="genererNoteSimulation()" [disabled]="simNoteLoading">
+                  {{ simNoteLoading ? 'Rédaction…' : 'Générer la synthèse' }}
+                </button>
+              }
+            </div>
+
+            <!-- Détail par joueur -->
+            <div class="sim-table">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Joueur</th><th>Distance attendue</th><th>ACWR avant</th><th>ACWR après</th><th>Zone après</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (j of simJoueurs; track j.joueur_id) {
+                    <tr [class.is-bascule]="j.bascule">
+                      <td>
+                        {{ j.prenom }} {{ j.nom }}
+                        @if (j.statut === 'PEU_FIABLE') { <span class="sim-flag" title="Moins de 3 séances de référence">peu fiable</span> }
+                        @if (j.baseline_origine === 'GLOBALE') { <span class="sim-flag" title="Pas assez de séances de ce type : baseline calculée sur toutes séances confondues">toutes séances</span> }
+                      </td>
+                      <td>{{ j.km_attendu != null ? (j.km_attendu | number:'1.1-1') + ' km' : '—' }}</td>
+                      <td>{{ j.acwr_avant ?? '—' }}</td>
+                      <td><strong>{{ j.acwr_apres ?? '—' }}</strong></td>
+                      <td><span class="sim-zone" [class]="zoneTone(j.zone_apres)">{{ zoneLibelle(j.zone_apres) }}</span></td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          }
+        }
+      }
+    </section>
+  }
+
+  <!-- En-tête + filtres (masqués sur les onglets Objectif et Simulation = pas de fenêtre d'analyse) -->
+  @if (onglet !== 'objectif' && onglet !== 'simulation') {
     <section class="pf-card gps-bar">
       <div class="gps-bar__top">
         <div class="gps-ctx">
@@ -141,7 +258,7 @@
   }
 
   <!-- ═══ Onglets Charge / Par séance (données filtrées) ═══ -->
-  @if (onglet !== 'objectif') {
+  @if (onglet !== 'objectif' && onglet !== 'simulation') {
     @if (loading) {
       <p class="gps-empty">Chargement…</p>
     } @else if (nbSeances === 0) {

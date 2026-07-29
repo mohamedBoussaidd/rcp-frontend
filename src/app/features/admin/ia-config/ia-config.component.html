@@ -13,7 +13,7 @@
         <div class="iac__grille">
           <label>Provider
             <select [(ngModel)]="l.providerEdit" name="prov_{{ l.clubId }}">
-              @for (p of providers; track p) { <option [value]="p">{{ p }}</option> }
+              @for (p of providers(); track p.code) { <option [value]="p.code">{{ p.libelle }}</option> }
             </select>
           </label>
           <label>Modèle
@@ -32,6 +32,15 @@
           <button class="btn btn--primary" (click)="enregistrer(l)" [disabled]="saving() === l.clubId">
             {{ saving() === l.clubId ? '…' : 'Enregistrer' }}
           </button>
+        </div>
+
+        <!-- Nom de l'assistant pour ce club (« nommez votre assistant »). Vide = nom global. -->
+        <div class="iac__nom">
+          <label>Nom de l'assistant
+            <input type="text" [(ngModel)]="l.nomEdit" name="nom_{{ l.clubId }}" maxlength="30"
+                   placeholder="vide = nom global">
+          </label>
+          <button class="btn btn--secondary" (click)="nommer(l)">Nommer</button>
         </div>
       </div>
     }

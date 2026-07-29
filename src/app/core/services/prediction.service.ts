@@ -184,6 +184,73 @@ export interface ObjectifHebdoJoueur {
   reste_m: number | null;
 }
 
+/** Corps d'une simulation « une séance ». D'autres scénarios auront leur propre requête. */
+export interface SimulationRequete {
+  typeSeanceId: string | null;   // null = baseline « toutes séances confondues »
+  dureeMinutes: number;
+}
+
+export interface SimulationJoueur {
+  joueur_id: string;
+  nom: string;
+  prenom: string;
+  poste: string;
+  km_attendu: number | null;
+  baseline_n: number;
+  baseline_origine: 'TYPE' | 'GLOBALE' | null;
+  acwr_avant: number | null;
+  acwr_apres: number | null;
+  aigue_avant_km?: number | null;
+  aigue_apres_km?: number | null;
+  chronique_km?: number | null;
+  zone_avant: ZoneAcwr | null;
+  zone_apres: ZoneAcwr | null;
+  bascule: boolean;
+  statut: 'OK' | 'PEU_FIABLE' | 'SANS_BASELINE';
+}
+
+export type ZoneAcwr = 'SOUS_CHARGE' | 'OPTIMALE' | 'SURCHARGE';
+
+export interface Simulation {
+  seance: { type_seance_id: string | null; type_libelle: string | null; duree_minutes: number };
+  synthese: {
+    nb_evalues: number;
+    nb_sans_baseline: number;
+    nb_surcharge_avant: number;
+    nb_surcharge_apres: number;
+    nb_bascule: number;
+    km_attendu_moyen: number | null;
+    nb_peu_fiable: number;
+  };
+  joueurs: SimulationJoueur[];
+}
+
+/** Un message du fil de discussion avec l'assistant. */
+export interface MessageChat {
+  role: 'user' | 'assistant';
+  contenu: string;
+}
+
+/** Raccourci proposé dans le widget : déclenche une carte IA déjà existante. */
+export interface ActionRapide {
+  code: string;
+  libelle: string;
+  endpoint: string;
+  methode: string;
+}
+
+/**
+ * État du chat. `disponible=false` → le widget s'affiche mais la saisie est bloquée avec `message`
+ * (le chat est LLM-obligatoire : sans clé ni quota, il n'a aucun repli à proposer).
+ */
+export interface EtatChat {
+  disponible: boolean;
+  raison: 'PAS_DE_CLE' | 'QUOTA_EPUISE' | null;
+  message: string | null;
+  nom: string;
+  actions: ActionRapide[];
+}
+
 export interface ObjectifHebdo {
   objectif_distance_m: number | null;   // objectif manuel d'équipe (null = non défini)
   suggestion_moyenne_m: number | null;  // moyenne d'équipe des cibles A.5
@@ -298,5 +365,30 @@ export class PredictionService {
   /** Synthèse textuelle de surveillance des dérives. POST : consomme du quota IA. */
   genererDeriveNote(): Observable<Briefing> {
     return this.http.post<Briefing>('/api/assistant-ia/derives/note', {});
+  }
+
+  /**
+   * Simulation « et si… » — scénario « une séance ». POST parce qu'il y a un corps, mais c'est une
+   * projection en LECTURE SEULE : aucune séance n'est créée. Aucun coût IA sur cet appel.
+   */
+  simulerSeance(req: SimulationRequete): Observable<Simulation> {
+    return this.http.post<Simulation>('/api/assistant-ia/simulation', req);
+  }
+
+  /** Mise en mots de la simulation (IA ou gabarit). POST : consomme du quota IA. */
+  genererSimulationNote(req: SimulationRequete): Observable<Briefing> {
+    return this.http.post<Briefing>('/api/assistant-ia/simulation/note', req);
+  }
+
+  // ── Chat de l'assistant ──
+
+  /** État du chat : disponibilité (clé + quota), nom de l'assistant, actions rapides. Aucun coût IA. */
+  getEtatChat(): Observable<EtatChat> {
+    return this.http.get<EtatChat>('/api/assistant-ia/chat/etat');
+  }
+
+  /** Envoie le fil et récupère la réponse. POST : consomme du quota IA (LLM obligatoire). */
+  envoyerChat(messages: MessageChat[]): Observable<MessageChat> {
+    return this.http.post<MessageChat>('/api/assistant-ia/chat', { messages });
   }
 }
