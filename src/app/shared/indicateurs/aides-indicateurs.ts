@@ -44,7 +44,7 @@ export const AIDES_INDICATEURS: Record<string, AideIndicateur> = {
       + "GPS, monotonie de l'entraînement, espacement des séances intenses, ressenti déclaré, "
       + "charge ressentie, blessure récente et enchaînement de matchs. Nominal sous 30, vigilance "
       + "de 30 à 59, alerte à partir de 60.",
-    ancre: 'risque',
+    ancre: 'fatigue',
   },
 
   statut: {

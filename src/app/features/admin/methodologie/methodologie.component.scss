@@ -34,6 +34,7 @@
 .signal-3        { border-color: #8b5cf6; }
 .signal-4        { border-color: #10b981; }
 .signal-blessure { border-color: #ef4444; }
+.signal-fatigue  { border-color: #6366f1; }
 .signal-risque   { border-color: #ec4899; }
 .signal-gps      { border-color: #0ea5e9; }
 
@@ -55,6 +56,7 @@
 .s3 { background: #8b5cf6; }
 .s4 { background: #10b981; }
 .sb { background: #ef4444; }
+.sf { background: #6366f1; }
 .sr { background: #ec4899; }
 .sg { background: #0ea5e9; }
 
@@ -139,10 +141,11 @@
 .risk-scale { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
 
 .risk-level { padding: 8px 14px; border-radius: 8px; font-size: 0.82rem; font-weight: 600; }
-.risk-faible   { background: var(--success-bg); color: var(--success); }
-.risk-modere   { background: var(--amber-bg);   color: var(--amber); }
-.risk-eleve    { background: var(--warning-bg); color: var(--warning); }
-.risk-critique { background: var(--danger-bg);  color: var(--danger); }
+/* Les 3 niveaux du moteur (risque ET fatigue partagent les mêmes seuils 30/60). Les anciennes
+   classes risk-faible/modere/eleve/critique nommaient un 4e niveau qui n'existe pas. */
+.niv-nominal   { background: var(--success-bg); color: var(--success); }
+.niv-vigilance { background: var(--amber-bg);   color: var(--amber); }
+.niv-alerte    { background: var(--danger-bg);  color: var(--danger); }
 
 .param-link {
   margin-top: 18px;

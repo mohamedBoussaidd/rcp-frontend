@@ -251,6 +251,70 @@
     </mat-card-content>
   </mat-card>
 
+  <!-- ─── Fatigue estimée ─── -->
+  <!-- Le score de fatigue était affiché partout dans l'app (fiche joueur, état de l'effectif,
+       dashboards) sans être documenté nulle part : sa bulle d'aide renvoyait faute de mieux sur la
+       carte Risque, qui dit explicitement ne PAS être la fatigue. -->
+  <mat-card id="fatigue" class="methodo-card signal-fatigue">
+    <mat-card-header>
+      <div class="signal-badge sf">F</div>
+      <mat-card-title>Fatigue estimée — Agrégation des signaux</mat-card-title>
+    </mat-card-header>
+    <mat-card-content>
+      <div class="methodo-grid">
+        <div>
+          <h4>Ce que ça mesure</h4>
+          <p>
+            La fatigue estimée décrit l'<strong>état actuel</strong> du joueur, là où le score de
+            risque ci-dessous estime ce qui peut arriver dans les jours suivants. C'est la
+            <strong>somme des signaux décrits plus haut</strong>, plafonnée à 100 : chaque signal
+            n'apporte des points que s'il dépasse son seuil de vigilance.
+          </p>
+          <h4>Signaux agrégés et poids maximum</h4>
+          <div class="sub-signals">
+            <div class="sub-signal"><span class="sub-badge">45</span><span>Charge hebdomadaire pondérée vs semaine normale (S1)</span></div>
+            <div class="sub-signal"><span class="sub-badge">55</span><span>Dégradation de performance GPS, marqueur le plus touché (S2)</span></div>
+            <div class="sub-signal"><span class="sub-badge">25</span><span>Monotonie de Foster sur 8 semaines (S3)</span></div>
+            <div class="sub-signal"><span class="sub-badge">40</span><span>Espacement insuffisant des séances intenses (S4)</span></div>
+            <div class="sub-signal"><span class="sub-badge">25</span><span>Ressenti déclaré par le joueur (indice de Hooper)</span></div>
+            <div class="sub-signal"><span class="sub-badge">25</span><span>Charge ressentie (sRPE) élevée vs habituel</span></div>
+            <div class="sub-signal"><span class="sub-badge">20</span><span>Blessure récente non soldée</span></div>
+            <div class="sub-signal"><span class="sub-badge">20</span><span>Congestion du calendrier de matchs</span></div>
+          </div>
+        </div>
+        <div>
+          <h4>Échelle de fatigue</h4>
+          <div class="risk-scale">
+            <div class="risk-level niv-nominal">Nominal — 0 à 29 pts</div>
+            <div class="risk-level niv-vigilance">Vigilance — 30 à 59 pts</div>
+            <div class="risk-level niv-alerte">Alerte — 60 pts et plus</div>
+          </div>
+          <h4>Comment le lire</h4>
+          <p>
+            Le total est plafonné à 100 : au-delà de deux signaux en alerte, le score sature et
+            c'est le <strong>détail des signaux</strong> qui reste informatif, pas le chiffre.
+          </p>
+          <p>
+            Un signal <strong>sans données ne compte pas</strong> (0 point) : un joueur peu suivi
+            apparaît donc nominal par défaut. Le score se lit toujours avec la fraîcheur des
+            données qui l'alimentent — d'où la date du dernier relevé affichée à côté.
+          </p>
+          <div class="reference">
+            Halson S.L. (2014) — <em>Monitoring training load to understand fatigue in athletes.</em>
+            Sports Medicine, 44(S2), S139–S147.<br>
+            Saw A.E., Main L.C. &amp; Gastin P.B. (2016) — <em>Monitoring the athlete training
+            response: subjective self-reported measures trump commonly used objective measures.</em>
+            British Journal of Sports Medicine, 50(5), 281–291.
+          </div>
+        </div>
+      </div>
+      <div class="param-link">
+        Paramètres associés : <em>Seuils de surcharge</em> · <em>Seuils de bien-être</em> ·
+        <em>Seuils sRPE</em> · <em>Monotonie</em> · <em>Congestion de matchs</em>
+      </div>
+    </mat-card-content>
+  </mat-card>
+
   <!-- ─── Risque blessure ─── -->
   <mat-card id="risque" class="methodo-card signal-risque">
     <mat-card-header>
@@ -278,11 +342,14 @@
         </div>
         <div>
           <h4>Échelle de risque</h4>
+          <!-- 3 niveaux, seuils 30 et 60 : c'est exactement `_niveau_risque()` du moteur
+               (predictions.py). Cette page est la référence vers laquelle pointent les bulles
+               d'aide : toute évolution des seuils côté moteur doit être répercutée ici, sinon
+               la documentation contredit les écrans. -->
           <div class="risk-scale">
-            <div class="risk-level risk-faible">Faible — 0 à 30 pts</div>
-            <div class="risk-level risk-modere">Modéré — 31 à 55 pts</div>
-            <div class="risk-level risk-eleve">Élevé — 56 à 75 pts</div>
-            <div class="risk-level risk-critique">Critique — &gt; 75 pts</div>
+            <div class="risk-level niv-nominal">Nominal — 0 à 29 pts</div>
+            <div class="risk-level niv-vigilance">Vigilance — 30 à 59 pts</div>
+            <div class="risk-level niv-alerte">Alerte — 60 pts et plus</div>
           </div>
           <div class="reference" style="margin-top:16px">
             Meeuwisse W.H. (1994) — <em>Assessing causation in sport injury.</em>
