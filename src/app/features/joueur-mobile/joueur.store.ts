@@ -27,12 +27,18 @@ export interface SeanceANoter {
   duree?: number;
 }
 
-/** Point de la série 7 jours : barre Hooper (/50) + point RPE (/10). */
+/**
+ * Point de la série 7 jours : barre Hooper (/50) + charge sRPE du jour.
+ * `charge` est la SOMME des séances de la journée (deux séances le même jour s'additionnent) et
+ * `rpe` l'intensité moyenne pondérée par la durée — une intensité ne s'additionne pas.
+ */
 export interface JourSerie {
   date: string;
   jour: string;
   hooper: number | null;
   rpe: number | null;
+  charge: number | null;
+  nbSeances: number;
   aujourdhui: boolean;
 }
 
@@ -123,19 +129,31 @@ export class JoueurStore {
     const jours = ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam'];
     const auj = this.dateISO(new Date());
     const wByDate = new Map(this.wellness().map(w => [w.date, w]));
-    const rpeByDate = new Map<string, number>();
-    for (const r of this.rpe()) rpeByDate.set(r.date, Math.max(rpeByDate.get(r.date) ?? 0, r.rpe));
+    // Agrégat PAR JOUR : la charge se somme, l'intensité se moyenne (pondérée par la durée).
+    // Avant, seul `Math.max(rpe)` était conservé et la charge de la 2e séance du jour était perdue.
+    const parJour = new Map<string, { charge: number; duree: number; produit: number; n: number }>();
+    for (const r of this.rpe()) {
+      const cur = parJour.get(r.date) ?? { charge: 0, duree: 0, produit: 0, n: 0 };
+      cur.charge += r.charge ?? 0;
+      cur.duree += r.dureeMinutes ?? 0;
+      cur.produit += r.rpe * (r.dureeMinutes ?? 0);
+      cur.n += 1;
+      parJour.set(r.date, cur);
+    }
     const out: JourSerie[] = [];
     for (let i = 6; i >= 0; i--) {
       const d = new Date();
       d.setDate(d.getDate() - i);
       const iso = this.dateISO(d);
       const w = wByDate.get(iso);
+      const agg = parJour.get(iso);
       out.push({
         date: iso,
         jour: jours[d.getDay()],
         hooper: w ? this.hooperTotal(w) : null,
-        rpe: rpeByDate.get(iso) ?? null,
+        rpe: agg ? (agg.duree > 0 ? agg.produit / agg.duree : null) : null,
+        charge: agg ? agg.charge : null,
+        nbSeances: agg?.n ?? 0,
         aujourdhui: iso === auj,
       });
     }

@@ -27,10 +27,50 @@
   &.is-active { background: var(--surface, #fff); color: var(--green-700); box-shadow: var(--shadow-sm); }
 }
 
-/* Plage libre « du… au… » */
+/* Barre de filtres UNIQUE : fenêtres + critère + plage repliable, sur une seule ligne.
+   Avant : pilules de fenêtre dans l'en-tête, plage libre en 2e rangée et 6 pilules de critère en
+   3e (4 en écran étroit à cause du wrap). */
+.ss-filtres {
+  display: flex; align-items: center; flex-wrap: wrap; gap: 8px;
+  margin: 4px 0 10px;
+
+  &__crit {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 12px; color: var(--text-3);
+
+    select {
+      border: 1px solid var(--border); border-radius: 999px;
+      background: var(--surface); color: var(--text-1);
+      padding: 4px 10px; font-size: 12px; font-weight: 600; cursor: pointer;
+    }
+  }
+
+  &__plagebtn {
+    display: inline-flex; align-items: center; gap: 5px;
+    border: 1px solid var(--border); border-radius: 999px;
+    background: var(--surface); color: var(--text-3);
+    padding: 4px 11px; font-size: 12px; font-weight: 600; cursor: pointer;
+
+    mat-icon { font-size: 15px; width: 15px; height: 15px; }
+    &:hover { color: var(--text-1); }
+    &.is-active { border-color: var(--green-600); color: var(--green-700); background: var(--ok-bg, #f0fdf4); }
+  }
+
+  &__reset {
+    display: inline-grid; place-items: center;
+    width: 24px; height: 24px; padding: 0;
+    border: 1px solid var(--border); border-radius: 50%;
+    background: var(--surface); color: var(--text-3); cursor: pointer;
+
+    mat-icon { font-size: 14px; width: 14px; height: 14px; }
+    &:hover { color: var(--bad); border-color: var(--bad); }
+  }
+}
+
+/* Plage libre « du… au… » (repliée par défaut) */
 .ss-plage {
   display: flex; align-items: center; gap: 8px;
-  margin: 10px 0 4px;
+  margin: 0 0 10px;
 
   input[type="date"] {
     border: 1px solid var(--border-strong); border-radius: 8px;
@@ -47,20 +87,25 @@
   font-size: 12px; color: var(--text-3);
 }
 
-/* Pills de critère (Total / Sommeil / Fatigue…) */
-.ss-criteres {
-  display: flex; flex-wrap: wrap; gap: 2px;
-  padding: 2px; margin: 6px 0 10px;
-  background: var(--bg-2); border: 1px solid var(--border); border-radius: 999px;
-  width: fit-content;
+/* Bornes inversées : c'était ignoré en silence, on croyait le filtre cassé. */
+.ss-plage__err {
+  display: flex; align-items: center; gap: 6px;
+  margin-bottom: 10px; font-size: 12px; color: var(--bad);
+  mat-icon { font-size: 15px; width: 15px; height: 15px; }
 }
 
-.ss {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 20px 24px 48px;
-  color: var(--text);
+/* Lien vers la fiche joueur complète (onglet Suivi subjectif) */
+.ss-lienfiche {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-size: 12px; font-weight: 600; color: var(--green-700); text-decoration: none;
+  white-space: nowrap;
+  mat-icon { font-size: 15px; width: 15px; height: 15px; }
+  &:hover { text-decoration: underline; }
 }
+
+/* Cadrage de page délégué à `.screen` (styles.scss), que porte la racine du template. L'ancien
+   bloc `.ss` dupliquait `.screen` avec un max-width de 1280px ; il est mort depuis la bascule et
+   a donc été retiré, pour qu'il n'existe qu'UNE source de vérité sur le cadrage des pages. */
 
 /* Onglets */
 .ss-tabs {
@@ -787,6 +832,70 @@
   align-items: end;
   justify-content: center;
   height: 100%;
+  cursor: default;
+
+  /* Zone de survol sur toute la hauteur, y compris les jours non remplis : sinon il faudrait
+     viser la barre au pixel, et les jours vides n'auraient aucune infobulle. */
+  &:hover { background: color-mix(in srgb, var(--green-500) 7%, transparent); border-radius: 4px; }
+}
+
+/* Jour sans saisie : cible de survol invisible mais présente. */
+.ss-chart__vide { width: 60%; max-width: 26px; height: 100%; }
+
+/* Infobulle du graphe : données du jour + explication. Indispensable au-delà de 21 jours, où les
+   bulles de valeur au sommet des barres sont masquées (`montrerPoints`). */
+.ss-tip {
+  position: absolute; top: 0; left: 50%; transform: translateX(-50%);
+  z-index: 5; width: 250px; max-width: 90%;
+  background: var(--surface, #fff);
+  border: 1px solid var(--border, #e5e9ef); border-radius: 10px;
+  box-shadow: 0 8px 28px rgba(15, 23, 42, .16);
+  padding: 9px 11px; font-size: 12px; line-height: 1.45; color: var(--text-2);
+  pointer-events: none;
+
+  &__date {
+    font-weight: 700; font-size: 12.5px; color: var(--text-1);
+    margin-bottom: 5px; text-transform: capitalize;
+  }
+  &__row {
+    display: flex; align-items: baseline; justify-content: space-between; gap: 10px;
+    b { color: var(--text-1); font-variant-numeric: tabular-nums; }
+  }
+  &__items {
+    display: flex; flex-wrap: wrap; gap: 3px 10px;
+    margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--border);
+    font-size: 11.5px;
+    span { display: inline-flex; gap: 4px; }
+    em { font-style: normal; color: var(--text-3); }
+  }
+  &__expl {
+    margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--border);
+    font-size: 11.5px; color: var(--text-3);
+  }
+}
+
+/* Ancienneté d'un Hooper dans la table d'équipe. */
+.ss-age {
+  display: block; margin-top: 2px; font-size: 10.5px; font-weight: 600; color: var(--text-3);
+  &.is-vieux { color: var(--warn); }
+}
+/* Repère « plusieurs séances additionnées » sur la charge du jour. */
+.ss-cumul {
+  display: block; margin-top: 2px; font-size: 10.5px; font-weight: 600; color: var(--green-700);
+}
+
+/* Détail des séances d'une journée (carte sRPE en lecture staff). */
+.ss-srpe__detail {
+  margin-top: 10px; padding-top: 9px; border-top: 1px solid var(--border);
+}
+.ss-srpe__detailtitre {
+  font-size: 10.5px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase;
+  color: var(--text-3); margin-bottom: 5px;
+}
+.ss-srpe__ligne {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 10px;
+  font-size: 12px; color: var(--text-2); padding: 2px 0;
+  b { color: var(--text-1); font-variant-numeric: tabular-nums; }
 }
 
 .ss-chart__bar {

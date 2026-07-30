@@ -61,44 +61,63 @@
             <!-- KPI row — vitals joueur, affichés sur l'onglet Profil uniquement -->
             @if (activeTab === 0) {
             <div class="pf-kpis">
-              <div class="pf-kpi" [class]="'tone-' + (blessureActive ? 'alert' : 'ok')"
-                   title="Statut d'aptitude médicale à l'entraînement collectif et à la compétition.">
-                <div class="pf-kpi__head"><span class="pf-kpi__label">Disponibilité</span><span class="pf-kpi__i">i</span></div>
+              <div class="pf-kpi" [class]="'tone-' + (blessureActive ? 'alert' : 'ok')">
+                <div class="pf-kpi__head">
+                  <span class="pf-kpi__label">Disponibilité</span>
+                  <app-info-hint [titre]="AIDES['statut'].titre" [texte]="AIDES['statut'].texte" align="left"></app-info-hint>
+                </div>
                 <div class="pf-kpi__val">{{ blessureActive ? 'Indispo.' : 'Apte' }}</div>
                 <div class="pf-kpi__sub"><span class="pf-kpi__pip"></span>{{ blessureActive ? 'En reprise' : 'Entraînement collectif' }}</div>
               </div>
 
               @if (risque) {
-                <div class="pf-kpi" [class]="'tone-' + riskTone(risque.score_risque)"
-                     title="Score composite (0–100) : charge, historique de blessures, asymétries et fatigue.">
-                  <div class="pf-kpi__head"><span class="pf-kpi__label">Risque blessure</span><span class="pf-kpi__i">i</span></div>
+                <div class="pf-kpi" [class]="'tone-' + riskTone(risque.niveau)">
+                  <div class="pf-kpi__head">
+                    <span class="pf-kpi__label">Risque blessure</span>
+                    <app-info-hint [titre]="AIDES['risque'].titre" [texte]="AIDES['risque'].texte"
+                                   [composition]="compositionRisque"
+                                   compositionVide="Aucun facteur de risque détecté."
+                                   [lien]="lienMethodologie()" [ancre]="AIDES['risque'].ancre" align="left"></app-info-hint>
+                  </div>
                   <div class="pf-kpi__val">{{ risque.score_risque }}<span class="pf-kpi__unit">/100</span></div>
-                  <div class="pf-kpi__sub"><span class="pf-kpi__pip"></span>{{ risque.niveau }}</div>
+                  <div class="pf-kpi__sub"><span class="pf-kpi__pip"></span>{{ niveauRisqueLibelle(risque.niveau) }}</div>
                 </div>
               }
 
               @if (acwr != null) {
-                <div class="pf-kpi" [class]="'tone-' + acwrTone(acwr)"
-                     title="Ratio charge aiguë / charge chronique. Zone optimale entre 0,80 et 1,30.">
-                  <div class="pf-kpi__head"><span class="pf-kpi__label">ACWR</span><span class="pf-kpi__i">i</span></div>
+                <div class="pf-kpi" [class]="'tone-' + acwrTone(acwr)">
+                  <div class="pf-kpi__head">
+                    <span class="pf-kpi__label">ACWR</span>
+                    <app-info-hint [titre]="AIDES['acwr'].titre" [texte]="AIDES['acwr'].texte"
+                                   [lien]="lienMethodologie()" [ancre]="AIDES['acwr'].ancre" align="left"></app-info-hint>
+                  </div>
                   <div class="pf-kpi__val">{{ acwr | number:'1.2-2' }}</div>
                   <div class="pf-kpi__sub"><span class="pf-kpi__pip"></span>{{ acwrZone(acwr) }}</div>
                 </div>
               } @else if (ecartPoids != null) {
-                <div class="pf-kpi" [class]="'tone-' + ecartTone(ecartPoids)"
-                     title="Écart entre le poids actuel et le poids de forme cible (ACWR indisponible : aucune donnée GPS récente).">
-                  <div class="pf-kpi__head"><span class="pf-kpi__label">Écart poids</span><span class="pf-kpi__i">i</span></div>
+                <div class="pf-kpi" [class]="'tone-' + ecartTone(ecartPoids)">
+                  <div class="pf-kpi__head">
+                    <span class="pf-kpi__label">Écart poids</span>
+                    <app-info-hint [titre]="AIDES['poids'].titre"
+                                   texte="Écart entre la dernière pesée et le poids de forme cible. Affiché ici parce qu'aucune donnée de charge récente ne permet de calculer l'ACWR."
+                                   align="left"></app-info-hint>
+                  </div>
                   <div class="pf-kpi__val">{{ ecartPoids > 0 ? '+' : '' }}{{ ecartPoids | number:'1.1-1' }}<span class="pf-kpi__unit">kg</span></div>
                   <div class="pf-kpi__sub"><span class="pf-kpi__pip"></span>{{ ecartLabel }}</div>
                 </div>
               }
 
               @if (fatigue) {
-                <div class="pf-kpi" [class]="'tone-' + fatigueTone(fatigue.score_fatigue)"
-                     title="Indice composite d'intensité subjective (RPE) et de fatigue neuromusculaire récente.">
-                  <div class="pf-kpi__head"><span class="pf-kpi__label">Fatigue</span><span class="pf-kpi__i">i</span></div>
-                  <div class="pf-kpi__val">{{ fatigue.score_fatigue | number:'1.0-0' }}<span class="pf-kpi__unit">%</span></div>
-                  <div class="pf-kpi__sub"><span class="pf-kpi__pip"></span>Intensité {{ fatigue.niveau }}</div>
+                <div class="pf-kpi" [class]="'tone-' + fatigueTone(fatigue.niveau)">
+                  <div class="pf-kpi__head">
+                    <span class="pf-kpi__label">Fatigue estimée</span>
+                    <app-info-hint [titre]="AIDES['fatigue'].titre" [texte]="AIDES['fatigue'].texte"
+                                   [composition]="compositionFatigue"
+                                   compositionVide="Aucun signal de fatigue détecté."
+                                   [lien]="lienMethodologie()" [ancre]="AIDES['fatigue'].ancre" align="left"></app-info-hint>
+                  </div>
+                  <div class="pf-kpi__val">{{ fatigue.score_fatigue | number:'1.0-0' }}<span class="pf-kpi__unit">/100</span></div>
+                  <div class="pf-kpi__sub"><span class="pf-kpi__pip"></span>{{ niveauFatigueLibelle(fatigue.niveau) }}</div>
                 </div>
               }
             </div>
@@ -246,7 +265,7 @@
 
                   @if (risque) {
                     <div class="pf-risk">
-                      <div class="pf-donut" [class]="'tone-' + riskTone(risque.score_risque)">
+                      <div class="pf-donut" [class]="'tone-' + riskTone(risque.niveau)">
                         <svg width="84" height="84" viewBox="0 0 84 84">
                           <circle cx="42" cy="42" r="36" fill="none" stroke="#f1f5f9" stroke-width="9"></circle>
                           <circle cx="42" cy="42" r="36" fill="none" stroke="currentColor" stroke-width="9"
@@ -255,24 +274,75 @@
                         <div class="pf-donut__txt"><span class="pf-donut__score">{{ risque.score_risque }}</span><span class="pf-donut__max">/100</span></div>
                       </div>
                       <div class="pf-risk__txt">
-                        <div class="pf-risk__label">Risque blessure</div>
-                        <span class="pf-badge pf-badge--dot" [class]="'tone-' + riskTone(risque.score_risque)"><span class="pf-dot"></span>{{ risque.niveau }}</span>
+                        <div class="pf-risk__label">
+                          Risque blessure
+                          <app-info-hint [titre]="AIDES['risque'].titre" [texte]="AIDES['risque'].texte"
+                                         [composition]="compositionRisque"
+                                         compositionVide="Aucun facteur de risque détecté."
+                                         [lien]="lienMethodologie()" [ancre]="AIDES['risque'].ancre"></app-info-hint>
+                        </div>
+                        <span class="pf-badge pf-badge--dot" [class]="'tone-' + riskTone(risque.niveau)"><span class="pf-dot"></span>{{ niveauRisqueLibelle(risque.niveau) }}</span>
+                        <!-- La probabilité est une CONVERSION du score, pas une mesure : le back la
+                             coupe quand il n'y a pas de charge, pour ne pas faire passer un joueur
+                             sans données pour un joueur sain. -->
                         @if (risque.probabilite != null) {
-                          <span class="pf-badge">~{{ risque.probabilite }} % à 7 j</span>
+                          <span class="pf-badge">probabilité estimée ~{{ risque.probabilite }} % à 7 j</span>
                         }
-                        @if (risque.source) {
-                          <span class="pf-badge">source {{ risque.source }}</span>
+                        @if (risque.provisoire) {
+                          <span class="pf-badge tone-warn">estimation provisoire — historique court</span>
                         }
                         <div class="pf-risk__phrase">{{ riskPhrase }}</div>
+
+                        <!-- Les 2 causes principales ; le détail complet est dans la bulle ci-dessus. -->
+                        @if (compositionRisque.length) {
+                          <ul class="pf-facteurs">
+                            @for (c of compositionRisque.slice(0, 2); track $index) {
+                              <li><span class="pf-facteurs__pts">+{{ c.points | number:'1.0-0' }}</span>{{ c.libelle }}</li>
+                            }
+                          </ul>
+                        }
                       </div>
                     </div>
+
+                    <!-- Les 3 lectures de la charge, ensemble : c'est leur ÉCART qui informe.
+                         Un sélecteur de source donnerait trois vérités concurrentes. -->
+                    @if (lecturesAcwr.length) {
+                      <div class="pf-acwr">
+                        <div class="pf-acwr__head">
+                          <span class="pf-gauge__label">Montée de charge (ACWR)</span>
+                          <app-info-hint [titre]="AIDES['acwr'].titre" [texte]="AIDES['acwr'].texte"
+                                         [lien]="lienMethodologie()" [ancre]="AIDES['acwr'].ancre"></app-info-hint>
+                        </div>
+                        <div class="pf-acwr__grid">
+                          @for (l of lecturesAcwr; track l.code) {
+                            <div class="pf-acwr__cell" [class.is-retenu]="l.code === 'RETENU'">
+                              <div class="pf-acwr__lbl">
+                                {{ l.libelle }}
+                                <app-info-hint [titre]="l.libelle" [texte]="l.aide" align="left"></app-info-hint>
+                              </div>
+                              <div class="pf-acwr__val" [class]="'c-' + acwrTone(l.valeur)">{{ l.valeur | number:'1.2-2' }}</div>
+                              <div class="pf-acwr__sub">
+                                {{ acwrZone(l.valeur) }}@if (l.semaines) { · réf. {{ l.semaines }} sem. }
+                              </div>
+                            </div>
+                          }
+                        </div>
+                        @if (risque.ecart_sources && risque.ecart_sources.sens !== 'COHERENT') {
+                          <div class="pf-acwr__ecart">
+                            <mat-icon>compare_arrows</mat-icon>
+                            <span>{{ risque.ecart_sources.libelle }}</span>
+                          </div>
+                        }
+                      </div>
+                    }
                   }
 
                   @if (chargeCible?.disponible) {
                     <div class="pf-gauge">
                       <div class="pf-gauge__head">
                         <span class="pf-gauge__label">Charge cible semaine</span>
-                        @if (chargeCible.source) { <span class="pf-badge">source {{ chargeCible.source }}</span> }
+                        <app-info-hint [titre]="AIDES['chargeCible'].titre" [texte]="AIDES['chargeCible'].texte"></app-info-hint>
+                        @if (chargeCible.source) { <span class="pf-badge">charge : {{ sourceLibelle(chargeCible.source) }}</span> }
                       </div>
                       <div class="pf-gauge__phrase">{{ chargeCible.phrase }}</div>
                     </div>
@@ -280,22 +350,65 @@
                     <div class="pf-gauge">
                       <div class="pf-gauge__head">
                         <span class="pf-gauge__label">Charge cible semaine</span>
+                        <app-info-hint [titre]="AIDES['chargeCible'].titre" [texte]="AIDES['chargeCible'].texte"></app-info-hint>
                       </div>
                       <div class="pf-gauge__phrase">Pas encore assez de données de charge (~4 semaines requises) pour recommander une cible.</div>
                     </div>
                   }
 
+                  <!-- « Fatigue estimée » et non « Intensité / fatigue » : ce n'est pas une intensité
+                       de séance mais un indice composite sur 100. Le chiffre est désormais affiché,
+                       et sa composition est accessible d'un clic. -->
                   @if (fatigue) {
                     <div class="pf-gauge">
                       <div class="pf-gauge__head">
-                        <span class="pf-gauge__label">Intensité / fatigue</span>
-                        <span class="pf-badge" [class]="'tone-' + fatigueTone(fatigue.score_fatigue)">{{ fatigue.niveau }}</span>
+                        <span class="pf-gauge__label">Fatigue estimée</span>
+                        <app-info-hint [titre]="AIDES['fatigue'].titre" [texte]="AIDES['fatigue'].texte"
+                                       [composition]="compositionFatigue"
+                                       compositionVide="Aucun signal de fatigue détecté."
+                                       [lien]="lienMethodologie()" [ancre]="AIDES['fatigue'].ancre"></app-info-hint>
+                        <span class="pf-gauge__score">{{ fatigue.score_fatigue | number:'1.0-0' }}<em>/100</em></span>
+                        <span class="pf-badge" [class]="'tone-' + fatigueTone(fatigue.niveau)">{{ niveauFatigueLibelle(fatigue.niveau) }}</span>
                       </div>
                       <div class="pf-gauge__bar">
                         <span class="pf-gauge__marker" [style.left.%]="fatigue.score_fatigue"></span>
                       </div>
-                      <div class="pf-gauge__scale"><span>Faible</span><span>Modérée</span><span>Élevée</span></div>
-                      <div class="pf-gauge__phrase">{{ fatigue.raison }}</div>
+                      <!-- Repères = les seuils réels du moteur (30 / 60), plus « Faible/Modérée/Élevée »
+                           qui laissait croire à une échelle d'intensité. -->
+                      <div class="pf-gauge__scale">
+                        <span>Nominal &lt;30</span><span>Vigilance 30-59</span><span>Alerte ≥60</span>
+                      </div>
+
+                      @if (fatigueCausesPrincipales.length) {
+                        <div class="pf-gauge__bloc">
+                          <div class="pf-gauge__bloctitre">Facteurs principaux</div>
+                          <ul class="pf-facteurs">
+                            @for (s of fatigueCausesPrincipales; track $index) {
+                              <li>
+                                <span class="pf-facteurs__pts">+{{ s.points | number:'1.0-0' }}</span>
+                                {{ s.libelle }}
+                                @if (s.type) { <em class="pf-facteurs__type">{{ s.type }}</em> }
+                              </li>
+                            }
+                          </ul>
+                          @if (fatigueAutresCauses > 0) {
+                            <div class="pf-gauge__reste">+ {{ fatigueAutresCauses }} autre(s) facteur(s) — voir la composition</div>
+                          }
+                        </div>
+                      }
+
+                      @if (fatigue.indicatifs?.length) {
+                        <div class="pf-gauge__bloc">
+                          <div class="pf-gauge__bloctitre">Contexte (indicatif, sans points)</div>
+                          <ul class="pf-facteurs pf-facteurs--soft">
+                            @for (i of fatigue.indicatifs; track $index) { <li>{{ i }}</li> }
+                          </ul>
+                        </div>
+                      }
+
+                      @if (!fatigueCausesPrincipales.length) {
+                        <div class="pf-gauge__phrase">{{ fatigue.raison }}</div>
+                      }
                     </div>
                   }
                 </section>
@@ -352,9 +465,15 @@
                 </div>
               </div>
               <div class="su-legend">
-                <span><strong>Hooper</strong> : 5 (très frais) → 50 (vigilance) · <em>plus bas = mieux</em></span>
+                <span>
+                  <strong>Hooper</strong> : 5 = très frais → 50 = très dégradé · <em>plus bas = mieux</em>
+                  <app-info-hint [titre]="AIDES['hooper'].titre" [texte]="AIDES['hooper'].texte"></app-info-hint>
+                </span>
                 <span class="su-legend__sep"></span>
-                <span><strong>sRPE</strong> : charge ressentie de la séance (RPE × durée), en UA</span>
+                <span>
+                  <strong>sRPE</strong> : charge ressentie (RPE × durée), en UA · <em>cumulée par jour</em>
+                  <app-info-hint [titre]="AIDES['srpe'].titre" [texte]="AIDES['srpe'].texte"></app-info-hint>
+                </span>
               </div>
             </section>
 
@@ -372,7 +491,10 @@
                     }
                   </div>
                   <div class="su-kpi__val" [class]="'c-' + hooperTone(hooperDernier)">{{ hooperDernier ?? '—' }}<span class="su-kpi__unit">/50</span></div>
-                  <div class="su-kpi__sub">dernier relevé</div>
+                  <div class="su-kpi__sub">
+                    @if (hooperDernierDate) { relevé du {{ hooperDernierDate | date:'EEE d MMM':'':'fr' }} }
+                    @else { aucun relevé sur la fenêtre }
+                  </div>
                 </div>
                 <div class="su-kpi">
                   <div class="su-kpi__head">
@@ -411,8 +533,9 @@
                     <div class="su-gene__int">
                       <div class="su-gene__intlabel">Intensité ressentie</div>
                       <div class="su-gene__introw">
+                        <!-- 10 puces : 5 puces pour une valeur /10 saturaient dès 5. -->
                         <div class="su-gene__dots">
-                          @for (n of [1,2,3,4,5]; track n) {
+                          @for (n of CRANS_ITEM; track n) {
                             <span [style.background]="n <= geneAlerte.intensite ? '#dc2626' : '#fecaca'"></span>
                           }
                         </div>
@@ -454,7 +577,7 @@
                     @if (wellnessDernierRempli) { <span class="su-bd-date">{{ wellnessDernierRempli.date | date:'d MMM':'':'fr' }}</span> }
                   </div>
                   @if (hooperDernier != null) {
-                    <div class="su-bd-sub">D'où vient le score de {{ hooperDernier }}/50 ?</div>
+                    <div class="su-bd-sub">D'où vient le score de {{ hooperDernier }}/50 ? <em>1 = bon → 10 = mauvais</em></div>
                   }
                   <div class="su-jauges">
                     @for (it of itemsDernierReleve; track it.label) {
@@ -471,10 +594,12 @@
                       </div>
                     }
                   </div>
+                  <!-- Légende alignée sur l'échelle 1-10 (V46) et sur `itemColor` : elle annonçait
+                       encore les paliers de l'ancienne échelle 1-5. -->
                   <div class="su-jauge-legend">
-                    <span><span style="background:#22c55e"></span>1–2 ok</span>
-                    <span><span style="background:#f59e0b"></span>3 vigilance</span>
-                    <span><span style="background:#ef4444"></span>4–5 alerte</span>
+                    <span><span style="background:#22c55e"></span>1–4 bon</span>
+                    <span><span style="background:#f59e0b"></span>5–7 vigilance</span>
+                    <span><span style="background:#ef4444"></span>8–10 alerte</span>
                   </div>
                 </section>
               </div>

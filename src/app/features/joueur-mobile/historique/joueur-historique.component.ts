@@ -1,4 +1,5 @@
 import { Component, computed, inject, signal } from '@angular/core';
+import { DecimalPipe } from '@angular/common';
 import { JoueurStore } from '../joueur.store';
 
 /**
@@ -11,6 +12,7 @@ import { JoueurStore } from '../joueur.store';
   standalone: true,
   templateUrl: './joueur-historique.component.html',
   styleUrl: './joueur-historique.component.scss',
+  imports: [DecimalPipe],
 })
 export class JoueurHistoriqueComponent {
 

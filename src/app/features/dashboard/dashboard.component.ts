@@ -131,6 +131,14 @@ export class DashboardComponent implements OnInit {
     return sum / this.joueurs.length;
   }
 
+  /** Vocabulaire unique des niveaux (celui du moteur), au lieu des enums brutes en majuscules. */
+  niveauRisqueLibelle(n?: string | null): string {
+    return ({ FAIBLE: 'Faible', MODERE: 'Modéré', ELEVE: 'Élevé' } as Record<string, string>)[n ?? ''] ?? '—';
+  }
+  niveauFatigueLibelle(n?: string | null): string {
+    return ({ NOMINAL: 'Nominal', VIGILANCE: 'Vigilance', ALERTE: 'Alerte' } as Record<string, string>)[n ?? ''] ?? '—';
+  }
+
   /* ── Séances groupées par jour (Aujourd'hui / Demain / date) ── */
   get totalSeances(): number {
     return this.seancesAujourdhui.length + this.seancesAVenir.length;

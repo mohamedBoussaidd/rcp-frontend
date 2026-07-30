@@ -784,8 +784,17 @@
     font-size: 14px;
     font-weight: 700;
     color: var(--text-1, var(--text));
-    min-width: 40px;
+    min-width: 56px;
     text-align: right;
+    font-variant-numeric: tabular-nums;
+
+    /* « /100 » discret : ces scores ne sont pas des pourcentages. */
+    em {
+      font-style: normal;
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--text-3);
+    }
   }
 }
 

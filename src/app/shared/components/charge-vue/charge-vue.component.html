@@ -42,55 +42,125 @@
           </button>
         }
       </div>
+
+      <!-- Lecture des tuiles : cumul de période, ou HABITUDE par séance. Combiné aux filtres de
+           type ci-dessus, le mode « moyenne » répond à « qu'est-ce qu'il fait d'habitude en match ? ».
+           Un total, lui, dépend du nombre de séances jouées : il n'est pas comparable. -->
+      <div class="gps-mode">
+        <span class="gps-chips__label">Lecture</span>
+        <div class="gps-mode__seg">
+          <button [class.is-active]="mode === 'total'" (click)="setMode('total')">Total période</button>
+          <button [class.is-active]="mode === 'moyenne'" (click)="setMode('moyenne')">Moyenne / séance</button>
+        </div>
+        @if (mode === 'moyenne') {
+          <span class="gps-mode__hint">plage min-max affichée sous chaque valeur</span>
+        }
+      </div>
     </section>
 
     <!-- KPI band — principaux -->
     <div class="gps-kpis">
       <div class="gps-kpi">
-        <div class="gps-kpi__head"><span class="gps-kpi__icon ico-green"><mat-icon>swap_horiz</mat-icon></span><span class="gps-kpi__label">Distance totale</span></div>
-        <div class="gps-kpi__val">{{ totalDistanceKm | number:'1.1-1' }}<span class="gps-kpi__unit">km</span></div>
+        <div class="gps-kpi__head"><span class="gps-kpi__icon ico-green"><mat-icon>swap_horiz</mat-icon></span><span class="gps-kpi__label">Distance{{ mode === 'moyenne' ? ' / séance' : ' totale' }}</span></div>
+        <div class="gps-kpi__val">{{ valeurTuile(selDistance, 1000) | number:'1.1-1' }}<span class="gps-kpi__unit">km</span></div>
         <div class="gps-kpi__foot">
-          @if (pourcentageVsAttendu != null) {
+          @if (mode === 'moyenne' && plageTuile(selDistance, 1000); as p) {
+            <span class="gps-kpi__foottxt">plage {{ p }} km · {{ nTuile(selDistance) }} séances</span>
+          } @else if (pourcentageVsAttendu != null) {
             <span class="pf-badge" [class]="(pourcentageVsAttendu >= -5 && pourcentageVsAttendu <= 5) ? 'tone-ok' : 'tone-warn'">{{ pourcentageVsAttendu >= 0 ? '+' : '' }}{{ pourcentageVsAttendu | number:'1.0-0' }} % vs attendu</span>
           } @else { <span class="gps-kpi__foottxt">pas de baseline</span> }
         </div>
       </div>
       <div class="gps-kpi">
-        <div class="gps-kpi__head"><span class="gps-kpi__icon ico-indigo"><mat-icon>schedule</mat-icon></span><span class="gps-kpi__label">Durée totale</span></div>
-        <div class="gps-kpi__val">{{ dureeFormatee }}</div>
-        <div class="gps-kpi__foot"><span class="gps-kpi__foottxt">{{ gpsDataEnriched.length }} séances cumulées</span></div>
+        <div class="gps-kpi__head"><span class="gps-kpi__icon ico-indigo"><mat-icon>schedule</mat-icon></span><span class="gps-kpi__label">Durée{{ mode === 'moyenne' ? ' / séance' : ' totale' }}</span></div>
+        @if (mode === 'moyenne') {
+          <div class="gps-kpi__val">{{ valeurTuile(selDuree) | number:'1.0-0' }}<span class="gps-kpi__unit">min</span></div>
+          <div class="gps-kpi__foot"><span class="gps-kpi__foottxt">
+            @if (plageTuile(selDuree, 1, 0); as p) { plage {{ p }} min } @else { {{ nTuile(selDuree) }} séance(s) }
+          </span></div>
+        } @else {
+          <div class="gps-kpi__val">{{ dureeFormatee }}</div>
+          <div class="gps-kpi__foot"><span class="gps-kpi__foottxt">{{ gpsDataEnriched.length }} séances cumulées</span></div>
+        }
       </div>
+      <!-- Le ratio est DÉJÀ une intensité par minute : il ne change pas selon le mode. -->
       <div class="gps-kpi">
         <div class="gps-kpi__head"><span class="gps-kpi__icon ico-cyan"><mat-icon>speed</mat-icon></span><span class="gps-kpi__label">Ratio réel moyen</span></div>
         <div class="gps-kpi__val">{{ moyenneRatioReel != null ? (moyenneRatioReel | number:'1.0-0') : '—' }}<span class="gps-kpi__unit">m/min</span></div>
-        <div class="gps-kpi__foot"><span class="gps-kpi__foottxt">distance / durée sur la période</span></div>
+        <div class="gps-kpi__foot"><span class="gps-kpi__foottxt">déjà une moyenne par minute</span></div>
       </div>
       @if (metriquesClub.estActive('VITESSE_MAX')) {
+        <!-- Un pic ne se cumule pas : en mode moyenne on affiche la moyenne DES PICS par séance. -->
         <div class="gps-kpi">
-          <div class="gps-kpi__head"><span class="gps-kpi__icon ico-amber"><mat-icon>bolt</mat-icon></span><span class="gps-kpi__label">Vitesse max</span></div>
-          <div class="gps-kpi__val">{{ maxVitesse != null ? (maxVitesse | number:'1.1-1') : '—' }}<span class="gps-kpi__unit">km/h</span></div>
-          <div class="gps-kpi__foot"><span class="gps-kpi__foottxt">pic sur la période</span></div>
+          <div class="gps-kpi__head"><span class="gps-kpi__icon ico-amber"><mat-icon>bolt</mat-icon></span><span class="gps-kpi__label">Vitesse max{{ mode === 'moyenne' ? ' moyenne' : '' }}</span></div>
+          @if (mode === 'moyenne') {
+            <div class="gps-kpi__val">{{ moyenneVitesseMax != null ? (moyenneVitesseMax | number:'1.1-1') : '—' }}<span class="gps-kpi__unit">km/h</span></div>
+            <div class="gps-kpi__foot"><span class="gps-kpi__foottxt">
+              @if (plageTuile(selVitesseMax); as p) { plage {{ p }} km/h } @else { moyenne des pics par séance }
+            </span></div>
+          } @else {
+            <div class="gps-kpi__val">{{ maxVitesse != null ? (maxVitesse | number:'1.1-1') : '—' }}<span class="gps-kpi__unit">km/h</span></div>
+            <div class="gps-kpi__foot"><span class="gps-kpi__foottxt">pic sur la période</span></div>
+          }
         </div>
       }
     </div>
 
-    <!-- KPI band — secondaires -->
+    <!-- KPI band — secondaires. Chaque tuile suit le mode : en « Moyenne / séance » elle affiche
+         l'habitude du joueur sur la métrique, avec sa plage min-max. -->
     <div class="gps-kpis2">
-      <div class="gps-tile"><div class="gps-tile__label">Distance attendue</div><div class="gps-tile__val">{{ totalDistAttendueKm | number:'1.1-1' }}<span class="gps-tile__unit">km</span></div><div class="gps-tile__sub">séances comparables</div></div>
+      <div class="gps-tile">
+        <div class="gps-tile__label">Distance attendue</div>
+        <div class="gps-tile__val">{{ valeurTuile(selAttendue, 1000) | number:'1.1-1' }}<span class="gps-tile__unit">km</span></div>
+        <div class="gps-tile__sub">
+          @if (mode === 'moyenne' && plageTuile(selAttendue, 1000); as p) { {{ p }} km } @else { séances comparables }
+        </div>
+      </div>
       @if (metriquesClub.estActive('NB_SPRINTS')) {
-        <div class="gps-tile"><div class="gps-tile__label">Sprints</div><div class="gps-tile__val">{{ totalNbSprints }}</div><div class="gps-tile__sub">{{ metriquesClub.labelSeuil('z24') }}</div></div>
+        <div class="gps-tile">
+          <div class="gps-tile__label">Sprints</div>
+          <div class="gps-tile__val">{{ valeurTuile(selSprints) | number:'1.0-1' }}</div>
+          <div class="gps-tile__sub">
+            @if (mode === 'moyenne' && plageTuile(selSprints, 1, 0); as p) { {{ p }} · {{ metriquesClub.labelSeuil('z24') }} }
+            @else { {{ metriquesClub.labelSeuil('z24') }} }
+          </div>
+        </div>
       }
       @if (metriquesClub.estActive('DISTANCE_Z19')) {
-        <div class="gps-tile"><div class="gps-tile__label">Distance {{ metriquesClub.labelSeuil('z19') }}</div><div class="gps-tile__val">{{ totalDist19Km | number:'1.1-1' }}<span class="gps-tile__unit">km</span></div><div class="gps-tile__sub">haute intensité</div></div>
+        <div class="gps-tile">
+          <div class="gps-tile__label">Distance {{ metriquesClub.labelSeuil('z19') }}</div>
+          <div class="gps-tile__val">{{ valeurTuile(selDist19, 1000) | number:'1.2-2' }}<span class="gps-tile__unit">km</span></div>
+          <div class="gps-tile__sub">
+            @if (mode === 'moyenne' && plageTuile(selDist19, 1000, 2); as p) { {{ p }} km } @else { haute intensité }
+          </div>
+        </div>
       }
       @if (metriquesClub.estActive('DISTANCE_Z28')) {
-        <div class="gps-tile"><div class="gps-tile__label">Distance {{ metriquesClub.labelSeuil('z28') }}</div><div class="gps-tile__val">{{ totalDist28Km | number:'1.1-1' }}<span class="gps-tile__unit">km</span></div><div class="gps-tile__sub">très haute int.</div></div>
+        <div class="gps-tile">
+          <div class="gps-tile__label">Distance {{ metriquesClub.labelSeuil('z28') }}</div>
+          <div class="gps-tile__val">{{ valeurTuile(selDist28, 1000) | number:'1.2-2' }}<span class="gps-tile__unit">km</span></div>
+          <div class="gps-tile__sub">
+            @if (mode === 'moyenne' && plageTuile(selDist28, 1000, 2); as p) { {{ p }} km } @else { très haute int. }
+          </div>
+        </div>
       }
       @if (metriquesClub.estActive('NB_ACCELERATIONS')) {
-        <div class="gps-tile"><div class="gps-tile__label">Accélérations</div><div class="gps-tile__val">{{ totalAccelerations }}</div><div class="gps-tile__sub">sur la période</div></div>
+        <div class="gps-tile">
+          <div class="gps-tile__label">Accélérations</div>
+          <div class="gps-tile__val">{{ valeurTuile(selAccel) | number:'1.0-1' }}</div>
+          <div class="gps-tile__sub">
+            @if (mode === 'moyenne' && plageTuile(selAccel, 1, 0); as p) { plage {{ p }} } @else { {{ sousTitreMode }} }
+          </div>
+        </div>
       }
       @if (metriquesClub.estActive('NB_FREINAGES')) {
-        <div class="gps-tile"><div class="gps-tile__label">Freinages</div><div class="gps-tile__val">{{ totalFreinages }}</div><div class="gps-tile__sub">sur la période</div></div>
+        <div class="gps-tile">
+          <div class="gps-tile__label">Freinages</div>
+          <div class="gps-tile__val">{{ valeurTuile(selFreinages) | number:'1.0-1' }}</div>
+          <div class="gps-tile__sub">
+            @if (mode === 'moyenne' && plageTuile(selFreinages, 1, 0); as p) { plage {{ p }} } @else { {{ sousTitreMode }} }
+          </div>
+        </div>
       }
     </div>
 
@@ -218,6 +288,23 @@
               @if (metriquesClub.estActive('VITESSE_MAX')) { <td class="r strong">{{ maxVitesse ? (maxVitesse | number:'1.1-1') : '—' }}</td> }
               @if (metriquesClub.estActive('NB_ACCELERATIONS')) { <td class="r strong">{{ totalAccelerations }}</td> }
               @if (metriquesClub.estActive('NB_FREINAGES')) { <td class="r strong">{{ totalFreinages }}</td> }
+            </tr>
+            <!-- L'habitude, ligne à ligne : le pied ne donnait que des cumuls. Chaque moyenne est
+                 divisée par le nombre de séances où la métrique est renseignée. -->
+            <tr class="gps-moy">
+              <td class="sticky">Moyenne / séance</td>
+              <td class="faint"></td>
+              <td class="r">{{ valeurTuile(selDuree) | number:'1.0-0' }} min</td>
+              <td class="r">{{ valeurTuile(selDistance, 1000) | number:'1.2-2' }} km</td>
+              <td class="r faint">{{ valeurTuile(selAttendue, 1000) | number:'1.2-2' }} km</td>
+              <td class="r">—</td>
+              <td></td>
+              @if (metriquesClub.estActive('DISTANCE_Z19')) { <td class="r">{{ valeurTuile(selDist19, 1000) | number:'1.2-2' }} km</td> }
+              @if (metriquesClub.estActive('DISTANCE_Z28')) { <td class="r">{{ valeurTuile(selDist28, 1000) | number:'1.2-2' }} km</td> }
+              @if (metriquesClub.estActive('DISTANCE_Z24') || metriquesClub.estActive('NB_SPRINTS')) { <td class="r">{{ valeurTuile(selSprints) | number:'1.0-1' }}</td> }
+              @if (metriquesClub.estActive('VITESSE_MAX')) { <td class="r">{{ moyenneVitesseMax ? (moyenneVitesseMax | number:'1.1-1') : '—' }}</td> }
+              @if (metriquesClub.estActive('NB_ACCELERATIONS')) { <td class="r">{{ valeurTuile(selAccel) | number:'1.0-1' }}</td> }
+              @if (metriquesClub.estActive('NB_FREINAGES')) { <td class="r">{{ valeurTuile(selFreinages) | number:'1.0-1' }}</td> }
             </tr>
           </tfoot>
         </table>

@@ -40,7 +40,7 @@
       <span class="kpi__icon kpi__icon--warn"><mat-icon>warning</mat-icon></span>
       <div>
         <div class="kpi__value">{{ nbFatigueHaute }}</div>
-        <div class="kpi__label">Fatigue haute</div>
+        <div class="kpi__label">Fatigue en alerte</div>
       </div>
     </div>
 
@@ -64,20 +64,36 @@
       <div class="view-table">
         <table class="ee-table">
           <thead>
+            <!-- Chaque colonne porte son explication : la bulle n'était posée que sur l'ACWR. -->
             <tr>
               <th>Joueur</th>
-              <th>Statut</th>
+              <th>
+                Statut
+                <app-info-hint [titre]="AIDES['statut'].titre" [texte]="AIDES['statut'].texte"></app-info-hint>
+              </th>
               <th class="is-sort" (click)="toggleTriRisque()">
                 Risque <span class="sort-ic">{{ triRisque === 'asc' ? '↑' : triRisque === 'desc' ? '↓' : '⇅' }}</span>
+                <app-info-hint [titre]="AIDES['risque'].titre" [texte]="AIDES['risque'].texte"
+                               [lien]="lienMethodologie()" [ancre]="AIDES['risque'].ancre"></app-info-hint>
               </th>
-              <th>ACWR <app-info-hint titre="ACWR" [texte]="aideAcwr"></app-info-hint></th>
+              <th>
+                ACWR
+                <app-info-hint [titre]="AIDES['acwr'].titre" [texte]="aideAcwr"
+                               [lien]="lienMethodologie()" [ancre]="AIDES['acwr'].ancre"></app-info-hint>
+              </th>
               <th class="is-sort" (click)="toggleTriFatigue()">
-                Fatigue <span class="sort-ic">{{ triFatigue === 'asc' ? '↑' : triFatigue === 'desc' ? '↓' : '⇅' }}</span>
+                Fatigue estimée <span class="sort-ic">{{ triFatigue === 'asc' ? '↑' : triFatigue === 'desc' ? '↓' : '⇅' }}</span>
+                <app-info-hint [titre]="AIDES['fatigue'].titre" [texte]="AIDES['fatigue'].texte"
+                               [lien]="lienMethodologie()" [ancre]="AIDES['fatigue'].ancre"></app-info-hint>
               </th>
               <th class="is-sort" (click)="toggleTriPresence()">
                 Présence <span class="sort-ic">{{ triPresence === 'asc' ? '↑' : triPresence === 'desc' ? '↓' : '⇅' }}</span>
+                <app-info-hint [titre]="AIDES['presence'].titre" [texte]="AIDES['presence'].texte" align="left"></app-info-hint>
               </th>
-              <th>Poids</th>
+              <th>
+                Poids
+                <app-info-hint [titre]="AIDES['poids'].titre" [texte]="AIDES['poids'].texte" align="left"></app-info-hint>
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -100,19 +116,27 @@
                 </td>
                 <td>
                   <span class="ee-risk ee-risk--{{ risqueClasse(j.niveau_risque) }}">
-                    {{ risqueLibelle(j.niveau_risque) }} <b>{{ j.score_risque }}</b>
+                    {{ risqueLibelle(j.niveau_risque) }} <b>{{ j.score_risque }}<em>/100</em></b>
                   </span>
+                  <app-info-hint titre="D'où vient ce score ?"
+                                 [composition]="compositionRisque(j)"
+                                 compositionVide="Aucun facteur de risque détecté."></app-info-hint>
                 </td>
                 <td>
                   @if (j.acwr != null) {
                     <span class="ee-acwr ee-acwr--{{ acwrClasse(j.acwr) }}">{{ j.acwr | number:'1.2-2' }}</span>
+                    @if (j.provisoire) { <span class="ee-prov" title="Historique plus court que la fenêtre de référence : ratio moins stable.">prov.</span> }
                   } @else { <span class="muted">—</span> }
                 </td>
                 <td>
                   <div class="ee-fatigue">
                     <div class="ee-fatigue__head">
                       <span class="ee-fatigue__lbl ee-fatigue__lbl--{{ fatigueClasse(j.niveau_fatigue) }}">{{ fatigueLibelle(j.niveau_fatigue) }}</span>
-                      <span class="ee-fatigue__pct">{{ j.score_fatigue }}%</span>
+                      <!-- /100 et non « % » : c'est un score composite, pas une proportion. -->
+                      <span class="ee-fatigue__pct">{{ j.score_fatigue }}<em>/100</em></span>
+                      <app-info-hint titre="D'où vient ce score ?"
+                                     [composition]="compositionFatigue(j)"
+                                     compositionVide="Aucun signal de fatigue détecté." align="left"></app-info-hint>
                     </div>
                     <div class="ee-bar"><span class="ee-bar__fill ee-bar__fill--{{ fatigueClasse(j.niveau_fatigue) }}" [style.width.%]="j.score_fatigue"></span></div>
                   </div>
@@ -153,14 +177,14 @@
               <span class="ee-status ee-status--{{ d }}" style="margin-left:auto"><i></i>{{ dispoLibelle(d) }}</span>
             </div>
             <div class="row" style="gap:6px;flex-wrap:wrap">
-              <span class="ee-risk ee-risk--{{ risqueClasse(j.niveau_risque) }}">{{ risqueLibelle(j.niveau_risque) }} <b>{{ j.score_risque }}</b></span>
+              <span class="ee-risk ee-risk--{{ risqueClasse(j.niveau_risque) }}">{{ risqueLibelle(j.niveau_risque) }} <b>{{ j.score_risque }}<em>/100</em></b></span>
               @if (j.acwr != null) { <span class="ee-acwr ee-acwr--{{ acwrClasse(j.acwr) }}">ACWR {{ j.acwr | number:'1.2-2' }}</span> }
               @if (ecart != null) { <span class="badge" [class.badge--warn]="ecart <= 3" [class.badge--bad]="ecart > 3">+{{ ecart | number:'1.1-1' }} kg</span> }
             </div>
             <div class="ee-fatigue">
               <div class="ee-fatigue__head">
                 <span class="ee-fatigue__lbl ee-fatigue__lbl--{{ fatigueClasse(j.niveau_fatigue) }}">{{ fatigueLibelle(j.niveau_fatigue) }}</span>
-                <span class="ee-fatigue__pct">{{ j.score_fatigue }}%</span>
+                <span class="ee-fatigue__pct">{{ j.score_fatigue }}<em>/100</em></span>
               </div>
               <div class="ee-bar"><span class="ee-bar__fill ee-bar__fill--{{ fatigueClasse(j.niveau_fatigue) }}" [style.width.%]="j.score_fatigue"></span></div>
             </div>

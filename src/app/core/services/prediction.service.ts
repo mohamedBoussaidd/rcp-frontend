@@ -2,6 +2,31 @@ import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
 
+/** Un facteur du score de risque, avec son poids : sert à expliquer le chiffre affiché. */
+export interface Contribution {
+  facteur: string;      // charge | blessure | poids
+  points: number;
+  libelle: string;      // fait mesuré, prêt à afficher
+}
+
+/**
+ * Un signal du score de fatigue. `fait` est la mesure, `type_suggere` l'étiquette physiologique —
+ * séparés volontairement : l'interface montre la mesure, l'étiquette reste au second rang.
+ */
+export interface SignalFatigue {
+  facteur: string;
+  points: number;
+  fait: string;
+  type_suggere?: string | null;
+}
+
+/** Divergence entre charge mesurée (GPS) et charge ressentie (sRPE) — annulée par l'ACWR mixte. */
+export interface EcartSources {
+  ecart: number;        // acwr_rpe − acwr_gps (signé)
+  sens: 'COHERENT' | 'RESSENTI_SUP' | 'MESURE_SUP';
+  libelle: string;
+}
+
 export interface ResumeJoueur {
   joueur_id: string;
   nom: string;
@@ -11,6 +36,15 @@ export interface ResumeJoueur {
   score_fatigue: number;
   niveau_risque: 'FAIBLE' | 'MODERE' | 'ELEVE';
   niveau_fatigue: 'NOMINAL' | 'VIGILANCE' | 'ALERTE';
+  // Composition des deux scores (sinon /etat-effectif affiche un chiffre inexplicable)
+  contributions?: Contribution[];
+  signaux?: SignalFatigue[];
+  acwr_gps?: number | null;
+  acwr_rpe?: number | null;
+  semaines_gps?: number | null;
+  semaines_rpe?: number | null;
+  ecart_sources?: EcartSources | null;
+  provisoire?: boolean | null;
   // Indicateurs préparateur (bruts, optionnels)
   acwr?: number | null;
   charge_aigue_km?: number | null;
@@ -48,6 +82,15 @@ export interface RisqueBlessure {
   periode_type?: PeriodeType | null;
   periode_libelle?: string | null;
   jours_inactif?: number | null;
+  // Explicabilité + les 3 lectures de l'ACWR (mixte retenu, mesuré seul, ressenti seul)
+  contributions?: Contribution[];
+  acwr?: number | null;
+  acwr_gps?: number | null;
+  acwr_rpe?: number | null;
+  semaines_gps?: number | null;
+  semaines_rpe?: number | null;
+  ecart_sources?: EcartSources | null;
+  provisoire?: boolean | null;
 }
 
 export interface ChargeCible {
@@ -74,6 +117,11 @@ export interface NiveauFatigue {
   score_fatigue: number;
   niveau: 'NOMINAL' | 'VIGILANCE' | 'ALERTE';
   raison: string;
+  /** Signaux triés par poids décroissant : les 2 premiers sont les causes principales. */
+  signaux?: SignalFatigue[];
+  /** Sous-signaux GPS informatifs (sans points) : Vmax, part >19 km/h, m/min. */
+  indicatifs?: string[];
+  donnees?: boolean | null;
 }
 
 export interface ChargeCollective {

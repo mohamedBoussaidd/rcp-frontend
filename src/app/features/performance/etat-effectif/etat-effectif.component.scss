@@ -96,7 +96,9 @@
 .ee-risk {
   display: inline-flex; align-items: center; gap: 7px;
   font-size: .72rem; font-weight: 800; letter-spacing: .03em; text-transform: uppercase;
-  b { font-variant-numeric: tabular-nums; font-weight: 800; }
+  b { font-variant-numeric: tabular-nums; font-weight: 800;
+      /* « /100 » discret : le score n'est pas un pourcentage. */
+      em { font-style: normal; font-weight: 700; font-size: .82em; opacity: .55; } }
   &--ok   { color: var(--green-600); }
   &--warn { color: var(--warn); }
   &--bad  { color: var(--bad); }
@@ -127,10 +129,17 @@
 /* Fatigue */
 .ee-fatigue {
   min-width: 130px;
-  &__head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-bottom: 5px; }
-  &__lbl { font-size: .8rem; font-weight: 600;
+  &__head { display: flex; align-items: baseline; gap: 6px; margin-bottom: 5px; }
+  &__lbl { font-size: .8rem; font-weight: 600; margin-right: auto;
     &--ok { color: var(--green-700); } &--warn { color: var(--warn); } &--bad { color: var(--bad); } }
-  &__pct { font-size: .72rem; font-weight: 700; color: var(--text-3); font-variant-numeric: tabular-nums; }
+  &__pct { font-size: .72rem; font-weight: 700; color: var(--text-3); font-variant-numeric: tabular-nums;
+    em { font-style: normal; font-weight: 700; opacity: .65; } }
+}
+/* Repère « ratio bâti sur un historique plus court que la fenêtre de référence ». */
+.ee-prov {
+  margin-left: 5px; padding: 1px 5px; border-radius: 999px;
+  font-size: .64rem; font-weight: 800; letter-spacing: .03em; text-transform: uppercase;
+  background: var(--warn-bg); color: var(--warn); border: 1px solid var(--warn-bd);
 }
 .ee-bar {
   height: 6px; border-radius: 999px; background: var(--surface-3); overflow: hidden;

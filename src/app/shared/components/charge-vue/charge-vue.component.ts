@@ -52,6 +52,14 @@ export class ChargeVueComponent implements OnChanges, OnInit {
   filtreDebut = '';
   filtreFin   = '';
 
+  /**
+   * Mode de lecture des tuiles : cumul de la période ou HABITUDE par séance.
+   * Un total n'est pas comparable (10 séances vs 6, un titulaire vs un remplaçant) ; la moyenne
+   * par séance, combinée au filtre par type déjà présent, donne « son habitude en match ».
+   */
+  mode: 'total' | 'moyenne' = 'total';
+  setMode(m: 'total' | 'moyenne'): void { this.mode = m; }
+
   readonly TYPES_GPS = [
     { code: 'MATCH',        libelle: 'Match',        couleur: '#ef4444' },
     { code: 'MATCH_AMICAL', libelle: 'Match amical', couleur: '#f97316' },
@@ -127,6 +135,70 @@ export class ChargeVueComponent implements OnChanges, OnInit {
   get maxVitesse(): number | null {
     const valid = this.gpsDataEnriched.filter(d => d.vitesseMaxKmh !== null);
     return valid.length ? Math.max(...valid.map(d => d.vitesseMaxKmh as number)) : null;
+  }
+
+  /** Moyenne des pics de vitesse par séance — à ne pas confondre avec LE pic de la période. */
+  get moyenneVitesseMax(): number | null {
+    return this.statMetrique(d => d.vitesseMaxKmh).moyenne;
+  }
+
+  // ────────────────────── Habitudes : total ↔ moyenne par séance ──────────────────────
+
+  /**
+   * Statistiques d'une métrique sur la période filtrée : total, moyenne PAR SÉANCE, min et max,
+   * et `n` = nombre de séances où la métrique est RENSEIGNÉE.
+   *
+   * Le diviseur est `n` et non le nombre total de séances : sinon les séances sans sprint (ou sans
+   * la métrique importée) tireraient la moyenne vers le bas et fabriqueraient une fausse habitude.
+   * La plage min-max est ce qui distingue une moyenne d'une vraie norme personnelle : 9 000 m de
+   * moyenne ne veut pas dire la même chose selon qu'on oscille entre 8 500 et 9 500 ou 6 000 et 12 000.
+   */
+  private statMetrique(sel: (d: GpsPoint & { distAttendue?: number | null }) => number | null | undefined)
+    : { total: number; moyenne: number | null; min: number | null; max: number | null; n: number } {
+    const vals: number[] = [];
+    for (const d of this.gpsDataEnriched) {
+      const v = sel(d);
+      if (v != null && !Number.isNaN(Number(v))) vals.push(Number(v));
+    }
+    if (!vals.length) return { total: 0, moyenne: null, min: null, max: null, n: 0 };
+    const total = vals.reduce((s, v) => s + v, 0);
+    return { total, moyenne: total / vals.length, min: Math.min(...vals), max: Math.max(...vals), n: vals.length };
+  }
+
+  /** Valeur affichée d'une tuile selon le mode courant (total de période ou moyenne par séance). */
+  valeurTuile(sel: (d: any) => number | null | undefined, diviseur = 1): number | null {
+    const s = this.statMetrique(sel);
+    if (this.mode === 'moyenne') return s.moyenne == null ? null : s.moyenne / diviseur;
+    return s.total / diviseur;
+  }
+
+  /** Plage min-max « 6,2 – 11,8 » d'une métrique, affichée en mode moyenne. */
+  plageTuile(sel: (d: any) => number | null | undefined, diviseur = 1, decimales = 1): string | null {
+    const s = this.statMetrique(sel);
+    if (s.min == null || s.max == null || s.n < 2) return null;
+    const fmt = (v: number) => (v / diviseur).toLocaleString('fr-FR', {
+      minimumFractionDigits: decimales, maximumFractionDigits: decimales,
+    });
+    return `${fmt(s.min)} – ${fmt(s.max)}`;
+  }
+
+  /** Nombre de séances réellement prises en compte pour une métrique (fiabilité de la moyenne). */
+  nTuile(sel: (d: any) => number | null | undefined): number { return this.statMetrique(sel).n; }
+
+  // Sélecteurs de métriques, réutilisés par le template (tuiles) et les stats ci-dessus.
+  readonly selDistance   = (d: any) => d.distanceTotaleM;
+  readonly selAttendue    = (d: any) => d.distAttendue;
+  readonly selDuree       = (d: any) => d.dureeMinutes;
+  readonly selDist19      = (d: any) => d.distance19kmhM;
+  readonly selDist28      = (d: any) => d.distanceSprint28kmhM;
+  readonly selSprints     = (d: any) => d.nbSprints24kmh;
+  readonly selAccel       = (d: any) => d.nbAccelerations;
+  readonly selFreinages   = (d: any) => d.nbFreinages;
+  readonly selVitesseMax  = (d: any) => d.vitesseMaxKmh;
+
+  /** Suffixe de sous-titre commun aux tuiles, selon le mode. */
+  get sousTitreMode(): string {
+    return this.mode === 'moyenne' ? 'moyenne par séance' : 'total sur la période';
   }
 
   /** Durée totale formatée « X h MM » (ou « N min »). */

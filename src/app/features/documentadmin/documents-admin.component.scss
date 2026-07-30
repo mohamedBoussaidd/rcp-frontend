@@ -1,6 +1,7 @@
+/* Page dense (tableau de documents par joueur) : largeur pleine, alignée sur `.screen`. */
 .da {
   padding: 24px 32px 96px;
-  max-width: 1200px;
+  width: 100%;
   margin: 0 auto;
 
   @media (max-width: 768px) { padding: 16px 16px 96px; }

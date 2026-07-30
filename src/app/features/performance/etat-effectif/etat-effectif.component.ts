@@ -7,7 +7,9 @@ import { MatIcon } from '@angular/material/icon';
 import { PredictionService, ResumeJoueur } from '@core/services/prediction.service';
 import { PeseesService, PoidsFicheJoueur } from '@core/services/pesees.service';
 import { JoueurService, AssiduiteResume } from '@core/services/joueur.service';
-import { InfoHintComponent } from '@shared/components/info-hint/info-hint.component';
+import { AuthService } from '@core/services/auth.service';
+import { InfoHintComponent, LigneComposition } from '@shared/components/info-hint/info-hint.component';
+import { AIDES_INDICATEURS } from '@shared/indicateurs/aides-indicateurs';
 
 type Dispo = 'disponible' | 'incertain' | 'indisponible';
 
@@ -28,6 +30,7 @@ export class EtatEffectifComponent implements OnInit {
   private prediction = inject(PredictionService);
   private peseesService = inject(PeseesService);
   private joueurService = inject(JoueurService);
+  private auth = inject(AuthService);
 
   joueurs: ResumeJoueur[] = [];
   poidsMap = new Map<string, PoidsFicheJoueur>();
@@ -42,8 +45,29 @@ export class EtatEffectifComponent implements OnInit {
   triRisque: 'asc' | 'desc' | null = null;
   triPresence: 'asc' | 'desc' | null = null;
 
-  readonly aideAcwr = "Ratio charge aiguë / chronique (Gabbett) : charge des 7 derniers jours "
-    + "vs moyenne des 4 semaines précédentes. Optimal 0.8–1.3 ; au-dessus de 1.5, risque accru.";
+  /**
+   * Aides des colonnes — mutualisées avec la fiche joueur et les dashboards (un indicateur ne doit
+   * pas être expliqué différemment selon l'écran). L'ancien texte local annonçait « moyenne des
+   * 4 semaines précédentes » alors que le diviseur est ADAPTATIF (semaines réellement présentes).
+   */
+  readonly AIDES = AIDES_INDICATEURS;
+  readonly aideAcwr = AIDES_INDICATEURS['acwr'].texte;
+
+  /** Lien vers /methodologie seulement si l'utilisateur y a droit (route gardée module prépa). */
+  get peutMethodologie(): boolean {
+    return this.auth.has('gps:import') || this.auth.has('pesees:write');
+  }
+  lienMethodologie(): string | null { return this.peutMethodologie ? '/methodologie' : null; }
+
+  /** Composition du score de risque d'un joueur (facteurs déjà triés par le back). */
+  compositionRisque(j: ResumeJoueur): LigneComposition[] {
+    return (j.contributions ?? []).map(c => ({ libelle: c.libelle, points: c.points }));
+  }
+
+  /** Composition du score de fatigue : fait mesuré + étiquette physiologique au second rang. */
+  compositionFatigue(j: ResumeJoueur): LigneComposition[] {
+    return (j.signaux ?? []).map(s => ({ libelle: s.fait, points: s.points, type: s.type_suggere ?? null }));
+  }
 
   ngOnInit(): void {
     this.loadEquipe();
@@ -125,8 +149,13 @@ export class EtatEffectifComponent implements OnInit {
   risqueClasse(n: ResumeJoueur['niveau_risque']): string {
     return ({ FAIBLE: 'ok', MODERE: 'warn', ELEVE: 'bad' })[n];
   }
+  /**
+   * Vocabulaire UNIQUE des niveaux de fatigue : celui du moteur et de la méthodologie.
+   * On traduisait NOMINAL en « Faible » et ALERTE en « Élevée » ici, pendant que la fiche joueur
+   * affichait les enums brutes — deux vocabulaires pour un même niveau.
+   */
   fatigueLibelle(n: ResumeJoueur['niveau_fatigue']): string {
-    return ({ NOMINAL: 'Faible', VIGILANCE: 'Modérée', ALERTE: 'Élevée' })[n];
+    return ({ NOMINAL: 'Nominal', VIGILANCE: 'Vigilance', ALERTE: 'Alerte' })[n];
   }
   fatigueClasse(n: ResumeJoueur['niveau_fatigue']): string {
     return ({ NOMINAL: 'ok', VIGILANCE: 'warn', ALERTE: 'bad' })[n];

@@ -1,4 +1,4 @@
-<div class="ss">
+<div class="screen">
 
   <!-- Onglets (seul Wellness/sRPE actif) -->
   <div class="ss-tabs">
@@ -51,8 +51,8 @@
           <span class="ss-stat__value">{{ m.hooper != null ? (m.hooper | number:'1.1-1') : '—' }}<small>/50</small></span>
         </div>
         <div class="ss-stat">
-          <span class="ss-stat__label">Charge moyenne</span>
-          <span class="ss-stat__value">{{ m.charge != null ? (m.charge | number:'1.0-0') : '—' }}<small>UA</small></span>
+          <span class="ss-stat__label">Charge moyenne / joueur</span>
+          <span class="ss-stat__value">{{ m.charge != null ? (m.charge | number:'1.0-0') : '—' }}<small>UA · dernier jour noté</small></span>
         </div>
         <div class="ss-stat">
           <span class="ss-stat__label">Wellness rempli (auj.)</span>
@@ -78,8 +78,8 @@
           <tr>
             <th>Joueur</th>
             <th class="num">Hooper</th>
-            <th class="num">RPE</th>
-            <th class="num">Charge</th>
+            <th class="num">Intensité</th>
+            <th class="num">Charge du jour</th>
             <th class="num">Wellness</th>
             <th>Dernière saisie</th>
           </tr>
@@ -94,9 +94,21 @@
                   @if (l.gene) { <span class="ss-tag ss-tag--bad">gêne</span> }
                 </span>
               </td>
-              <td class="num"><span class="ss-dot" [class]="hooperBarClasse(l.hooper)">{{ l.hooper ?? '—' }}</span></td>
-              <td class="num">{{ l.rpe ?? '—' }}</td>
-              <td class="num">{{ l.charge != null ? l.charge : '—' }}</td>
+              <td class="num">
+                <span class="ss-dot" [class]="hooperBarClasse(l.hooper)">{{ l.hooper ?? '—' }}</span>
+                <!-- Ancienneté explicite : sans elle, un Hooper de 3 semaines se lisait comme du jour. -->
+                @if (l.hooperJours != null && l.hooperJours > 1) {
+                  <span class="ss-age" [class.is-vieux]="l.hooperJours > 7">il y a {{ l.hooperJours }} j</span>
+                }
+              </td>
+              <td class="num">{{ l.rpe != null ? (l.rpe | number:'1.1-1') : '—' }}</td>
+              <td class="num">
+                @if (l.charge != null) {
+                  {{ l.charge | number:'1.0-0' }} UA
+                  <!-- Toutes les séances du jour additionnées (avant : la dernière seulement). -->
+                  @if (l.nbSeancesJour > 1) { <span class="ss-cumul">{{ l.nbSeancesJour }} séances</span> }
+                } @else { — }
+              </td>
               <td class="num">@if (l.remplitAuj) { <span class="ss-tag ss-tag--ok">à jour</span> } @else { <span class="ss-tag">à remplir</span> }</td>
               <td>{{ l.derniere ? (l.derniere | date:'dd/MM') : '—' }}</td>
             </tr>
@@ -259,12 +271,36 @@
               </button>
             </div>
           } @else {
-            @if (rpeCourant(); as r) {
+            <!-- Lecture staff : la DERNIÈRE JOURNÉE notée, toutes séances confondues. On n'affichait
+                 que la dernière séance : avec deux séances le même jour, la première était invisible. -->
+            @if (journeeSrpeCourante(); as j) {
               <div class="ss-srpe">
-                <div class="ss-srpe__box"><span class="ss-srpe__label">Intensité (RPE)</span><span class="ss-srpe__charge sm">{{ r.rpe }}</span></div>
-                <div class="ss-srpe__box"><span class="ss-srpe__label">Durée</span><span class="ss-srpe__charge sm">{{ r.dureeMinutes ?? '—' }}</span><small>min</small></div>
-                <div class="ss-srpe__box ss-srpe__box--charge"><span class="ss-srpe__label">Charge</span><span class="ss-srpe__charge">{{ r.charge ?? '—' }}</span><small>UA · {{ r.date | date:'dd/MM' }}</small></div>
+                <div class="ss-srpe__box">
+                  <span class="ss-srpe__label">Intensité moyenne</span>
+                  <span class="ss-srpe__charge sm">{{ j.rpeMoyen != null ? (j.rpeMoyen | number:'1.1-1') : '—' }}</span>
+                  <small>pondérée par la durée</small>
+                </div>
+                <div class="ss-srpe__box">
+                  <span class="ss-srpe__label">Durée cumulée</span>
+                  <span class="ss-srpe__charge sm">{{ j.dureeTotale }}</span><small>min</small>
+                </div>
+                <div class="ss-srpe__box ss-srpe__box--charge">
+                  <span class="ss-srpe__label">Charge du jour</span>
+                  <span class="ss-srpe__charge">{{ j.charge | number:'1.0-0' }}</span>
+                  <small>UA · {{ j.date | date:'dd/MM' }}@if (j.seances.length > 1) { · {{ j.seances.length }} séances }</small>
+                </div>
               </div>
+              @if (j.seances.length > 1) {
+                <div class="ss-srpe__detail">
+                  <div class="ss-srpe__detailtitre">Détail des séances de la journée</div>
+                  @for (s of j.seances; track s.id) {
+                    <div class="ss-srpe__ligne">
+                      <span>RPE {{ s.rpe }}/10 × {{ s.dureeMinutes ?? '?' }} min</span>
+                      <b>{{ s.charge != null ? (s.charge | number:'1.0-0') + ' UA' : '—' }}</b>
+                    </div>
+                  }
+                </div>
+              }
             } @else {
               <p class="ss-muted">Aucun RPE renseigné récemment.</p>
             }
@@ -282,59 +318,126 @@
               @if (plageActive()) { Du {{ plageDebut() | date:'dd/MM' }} au {{ plageFin() | date:'dd/MM' }} }
               @else { {{ fenetreJours() }} derniers jours }
             </h2>
+            @if (lienFicheJoueur) {
+              <a class="ss-lienfiche" [routerLink]="lienFicheJoueur" [queryParams]="{ tab: 'subjectif' }">
+                Voir la fiche complète <mat-icon>arrow_forward</mat-icon>
+              </a>
+            }
+          </div>
+
+          <!-- Filtres sur UNE seule ligne : fenêtres + critère + plage libre repliée.
+               Ils occupaient 3 rangées (voire 4 en écran étroit) avant ce regroupement. -->
+          <div class="ss-filtres">
             <div class="ss-fenetre">
               @for (n of FENETRES; track n) {
                 <button class="ss-fenetre__btn" [class.is-active]="!plageActive() && fenetreJours() === n"
                         (click)="setFenetre(n)">{{ n }} j</button>
               }
             </div>
-          </div>
 
-          <!-- Plage libre « du… au… » -->
-          <div class="ss-plage" [class.is-active]="plageActive()">
-            <span class="ss-plage__label">ou du</span>
-            <input type="date" [ngModel]="plageDebut()" (ngModelChange)="setPlage('debut', $event)">
-            <span class="ss-plage__label">au</span>
-            <input type="date" [ngModel]="plageFin()" (ngModelChange)="setPlage('fin', $event)">
-          </div>
+            <label class="ss-filtres__crit">
+              <span>Critère</span>
+              <select [ngModel]="critere()" (ngModelChange)="setCritere($event)">
+                <option value="total">Total Hooper</option>
+                @for (item of HOOPER_ITEMS; track item.key) {
+                  <option [value]="item.key">{{ item.label }}</option>
+                }
+              </select>
+            </label>
 
-          <!-- Critère affiché -->
-          <div class="ss-criteres">
-            <button class="ss-fenetre__btn" [class.is-active]="critere() === 'total'" (click)="setCritere('total')">Total</button>
-            @for (item of HOOPER_ITEMS; track item.key) {
-              <button class="ss-fenetre__btn" [class.is-active]="critere() === item.key"
-                      (click)="setCritere(item.key)">{{ item.label }}</button>
+            <button class="ss-filtres__plagebtn" [class.is-active]="plageActive()"
+                    (click)="plageOuverte.set(!plageOuverte())">
+              <mat-icon>date_range</mat-icon>
+              @if (plageActive()) { {{ plageDebut() | date:'dd/MM' }} → {{ plageFin() | date:'dd/MM' }} }
+              @else { Plage précise }
+            </button>
+
+            @if (plageActive() || plageDebut() || plageFin()) {
+              <button class="ss-filtres__reset" (click)="reinitialiserPlage()" title="Revenir à la fenêtre glissante">
+                <mat-icon>close</mat-icon>
+              </button>
             }
           </div>
 
-          <div class="ss-legend"><span class="ss-legend__bar"></span> {{ critereLabel() }} /{{ maxEchelle() }} <span class="ss-legend__line"></span> tendance · RPE au point</div>
+          @if (plageOuverte()) {
+            <div class="ss-plage" [class.is-active]="plageActive()">
+              <span class="ss-plage__label">du</span>
+              <input type="date" [ngModel]="plageDebut()" (ngModelChange)="setPlage('debut', $event)">
+              <span class="ss-plage__label">au</span>
+              <input type="date" [ngModel]="plageFin()" (ngModelChange)="setPlage('fin', $event)">
+            </div>
+          }
+          @if (plageErreur()) {
+            <div class="ss-plage__err"><mat-icon>error_outline</mat-icon>{{ plageErreur() }}</div>
+          }
+
+          <!-- La courbe pointillée relie les sommets des barres Hooper : c'est une tendance HOOPER,
+               pas une courbe de RPE comme l'annonçait l'ancienne légende. -->
+          <div class="ss-legend">
+            <span class="ss-legend__bar"></span> {{ critereLabel() }} /{{ maxEchelle() }}
+            <span class="ss-legend__line"></span> tendance · <em>survolez une colonne pour le détail</em>
+          </div>
 
           <div class="ss-chart" [class.ss-chart--dense]="!montrerPoints()" [style.--n]="serie().length">
             <div class="ss-chart__plot">
               <!-- Barres (total Hooper ou item selon le critère) -->
               <div class="ss-chart__bars">
                 @for (d of serie(); track d.date) {
-                  <div class="ss-chart__cell">
+                  <div class="ss-chart__cell" (mouseenter)="survol.set(d)" (mouseleave)="survol.set(null)">
                     @if (d.hooper != null) {
                       <div class="ss-chart__bar" [class]="barClasse(d.hooper)" [style.height.%]="barH(d.hooper)"></div>
+                    } @else {
+                      <div class="ss-chart__vide"></div>
                     }
                   </div>
                 }
               </div>
+
+              <!-- Infobulle : données du jour + explication du niveau -->
+              @if (survol(); as s) {
+                <div class="ss-tip">
+                  <div class="ss-tip__date">{{ s.date | date:'EEEE d MMMM':'':'fr' }}@if (s.aujourdhui) { · aujourd'hui }</div>
+                  <div class="ss-tip__row">
+                    <span>{{ critereLabel() }}</span>
+                    <b>@if (s.hooper != null) { {{ s.hooper }}/{{ maxEchelle() }} · {{ niveauJour(s) }} } @else { non rempli }</b>
+                  </div>
+                  @if (s.charge != null) {
+                    <div class="ss-tip__row">
+                      <span>Charge sRPE du jour</span>
+                      <b>{{ s.charge | number:'1.0-0' }} UA@if (s.nbSeances > 1) { · {{ s.nbSeances }} séances cumulées }</b>
+                    </div>
+                  }
+                  @if (s.rpe != null) {
+                    <div class="ss-tip__row">
+                      <span>Intensité moyenne</span>
+                      <b>{{ s.rpe | number:'1.1-1' }}/10</b>
+                    </div>
+                  }
+                  @if (critere() === 'total' && itemsJour(s).length) {
+                    <div class="ss-tip__items">
+                      @for (it of itemsJour(s); track it.label) {
+                        <span><em>{{ it.label }}</em>{{ it.valeur }}/10</span>
+                      }
+                    </div>
+                  }
+                  <div class="ss-tip__expl">{{ explicationJour(s) }}</div>
+                </div>
+              }
               <!-- Courbe reliant les sommets des barres (pointillés) -->
               @if (rpeCourbe()) {
                 <svg class="ss-chart__svg" viewBox="0 0 100 100" preserveAspectRatio="none">
                   <polyline [attr.points]="rpeCourbe()" vector-effect="non-scaling-stroke"></polyline>
                 </svg>
               }
-              <!-- Points au sommet de chaque barre (valeur + RPE) — masqués sur période dense -->
+              <!-- Points au sommet de chaque barre — masqués sur période dense (l'infobulle prend
+                   le relais). La charge du jour est CUMULÉE : plusieurs séances s'additionnent. -->
               @if (montrerPoints()) {
                 @for (d of serie(); track d.date) {
                   @if (d.hooper != null) {
                     <span class="ss-chart__point"
                           [style.left.%]="($index + 0.5) / serie().length * 100"
                           [style.bottom.%]="barH(d.hooper)">
-                      <span class="ss-chart__val">{{ d.hooper }}@if (d.rpe != null) { <em>· RPE {{ d.rpe }}</em> }</span>
+                      <span class="ss-chart__val">{{ d.hooper }}@if (d.charge != null) { <em>· {{ d.charge | number:'1.0-0' }} UA</em> }</span>
                     </span>
                   }
                 }

@@ -3,7 +3,9 @@
   padding: 18px;
 }
 
-.hp-page { max-width: 1180px; margin: 0 auto; }
+/* Page dense (tableau d'assiduité) : largeur pleine comme `.screen`, plus de plafond — au-delà
+   d'une douzaine de colonnes, brider la largeur force un scroll horizontal inutile. */
+.hp-page { width: 100%; margin: 0 auto; }
 
 // ── Barre en-tête + filtres ──
 .hp-bar {

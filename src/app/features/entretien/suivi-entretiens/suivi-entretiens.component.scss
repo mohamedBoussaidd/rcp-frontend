@@ -1,6 +1,7 @@
+/* Page dense (grille des entretiens par joueur) : largeur pleine, alignée sur `.screen`. */
 .se {
   padding: 24px 32px 96px;
-  max-width: 1100px;
+  width: 100%;
   margin: 0 auto;
 
   @media (max-width: 768px) { padding: 16px 16px 96px; }

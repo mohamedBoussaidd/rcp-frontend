@@ -455,6 +455,39 @@
 .pf-gauge__scale { display:flex; justify-content:space-between; font-size:10px; font-weight:600; color:#cbd5e1; margin-bottom:11px; }
 .pf-gauge__phrase { font-size:12.5px; line-height:1.5; color:#64748b; }
 
+/* Score affiché dans l'en-tête de jauge (le chiffre n'était pas montré du tout). */
+.pf-gauge__score { margin-left:auto; font-size:17px; font-weight:800; color:#0f172a;
+  em { font-size:11px; font-weight:700; color:#94a3b8; font-style:normal; margin-left:2px; } }
+.pf-gauge__bloc { margin-top:12px; }
+.pf-gauge__bloctitre { font-size:10.5px; font-weight:700; letter-spacing:.04em; text-transform:uppercase;
+  color:#94a3b8; margin-bottom:6px; }
+.pf-gauge__reste { margin-top:6px; font-size:11.5px; font-weight:600; color:#94a3b8; }
+
+/* Facteurs d'un score : le fait mesuré devant, l'étiquette physiologique en dessous et en gris. */
+.pf-facteurs { list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:6px;
+  li { display:flex; align-items:baseline; gap:8px; font-size:12.5px; line-height:1.45; color:#334155; }
+  &--soft li { color:#94a3b8; }
+}
+.pf-facteurs__pts { flex:0 0 auto; min-width:30px; font-size:11px; font-weight:800; color:#0f172a;
+  background:#f1f5f9; border-radius:6px; padding:1px 5px; text-align:center; font-variant-numeric:tabular-nums; }
+.pf-facteurs__type { display:block; font-style:normal; font-size:11.5px; color:#94a3b8; }
+
+/* Les 3 lectures de la charge, côte à côte. La colonne « retenue » est mise en avant : c'est elle
+   qui alimente le score, les deux autres servent à lire la divergence mesuré / ressenti. */
+.pf-acwr { border-top:1px solid #f1f5f9; padding-top:16px; margin-top:16px; }
+.pf-acwr__head { display:flex; align-items:center; gap:8px; margin-bottom:12px; }
+.pf-acwr__grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); gap:10px; }
+.pf-acwr__cell { border:1px solid #eef2f7; border-radius:12px; padding:10px 12px; background:#fff;
+  &.is-retenu { border-color:#cbd5e1; background:#f8fafc; } }
+.pf-acwr__lbl { display:flex; align-items:center; gap:5px; font-size:11px; font-weight:700; color:#94a3b8; }
+.pf-acwr__val { margin-top:5px; font-size:22px; font-weight:800; color:#0f172a; font-variant-numeric:tabular-nums;
+  &.c-ok { color:var(--t-ok-c); } &.c-warn { color:var(--t-warn-c); } &.c-alert { color:var(--t-alert-c); } }
+.pf-acwr__sub { margin-top:2px; font-size:11px; font-weight:600; color:#94a3b8; }
+.pf-acwr__ecart { margin-top:11px; display:flex; align-items:center; gap:8px;
+  border:1px solid #fde68a; background:#fffbeb; border-radius:10px; padding:8px 11px;
+  font-size:12.5px; line-height:1.45; color:#92400e;
+  mat-icon { font-size:18px; width:18px; height:18px; flex:0 0 auto; } }
+
 /* responsive : 1 colonne en mobile */
 @media (max-width: 900px) {
   .pf-grid { grid-template-columns:1fr; }
@@ -677,7 +710,8 @@
 .su-gene__int { min-width:170px; }
 .su-gene__intlabel { font-size:11px; font-weight:700; letter-spacing:.04em; text-transform:uppercase; color:#b91c1c; margin-bottom:8px; }
 .su-gene__introw { display:flex; align-items:center; gap:9px; }
-.su-gene__dots { display:flex; gap:4px; span { width:20px; height:10px; border-radius:4px; } }
+/* 10 crans depuis V46 : puces plus fines pour tenir sur la même largeur qu'avec 5. */
+.su-gene__dots { display:flex; gap:3px; span { width:11px; height:10px; border-radius:3px; } }
 .su-gene__intval { font-size:18px; font-weight:800; color:#b91c1c; span { font-size:12px; color:#fca5a5; font-weight:700; } }
 
 /* graphe + décomposition */
@@ -690,7 +724,8 @@
 .su-jauge__head { display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:7px; }
 .su-jauge__label { font-size:13px; font-weight:700; color:#334155; }
 .su-jauge__val { font-size:13px; font-weight:800; .su-jauge__max { font-size:11px; color:#cbd5e1; font-weight:700; } }
-.su-jauge__segs { display:flex; gap:5px; span { flex:1; height:9px; border-radius:4px; } }
+/* 10 segments : gap réduit pour rester lisible sur la même largeur. */
+.su-jauge__segs { display:flex; gap:3px; span { flex:1; height:9px; border-radius:3px; } }
 .su-jauge-legend { margin-top:18px; border-top:1px solid #f1f5f9; padding-top:13px; display:flex; align-items:center; gap:14px; font-size:12px; font-weight:600; color:#64748b;
   span { display:inline-flex; align-items:center; gap:6px; span { width:9px; height:9px; border-radius:3px; } }
 }

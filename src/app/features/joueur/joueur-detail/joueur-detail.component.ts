@@ -5,7 +5,9 @@ import { JoueurService, Joueur, GpsPoint, AssiduiteJoueur } from '@core/services
 import { AuthService } from '@core/services/auth.service';
 import { couleurTheme } from '@core/services/theme.service';
 import { SuiviIndividuelComponent } from '../suivi-individuel/suivi-individuel.component';
-import { PredictionService, NiveauFatigue, ResumeJoueur } from '@core/services/prediction.service';
+import { PredictionService, NiveauFatigue, ResumeJoueur, RisqueBlessure } from '@core/services/prediction.service';
+import { InfoHintComponent, LigneComposition } from '@shared/components/info-hint/info-hint.component';
+import { AIDES_INDICATEURS } from '@shared/indicateurs/aides-indicateurs';
 import { PeseesService, Pesee } from '@core/services/pesees.service';
 import { SuiviSubjectifService, Wellness, Rpe } from '@core/services/suivi-subjectif.service';
 import { Blessure, BlessureService } from '@core/services/blessure.service';
@@ -29,13 +31,13 @@ import { BadgeAssignComponent } from '@shared/components/badge/badge-assign.comp
     MatTabGroup, MatTab, MatTabContent,
     ChartComponent, DecimalPipe, DatePipe,
     ChargeVueComponent, RouterLink, SuiviIndividuelComponent,
-    BadgeListeComponent, BadgeAssignComponent
+    BadgeListeComponent, BadgeAssignComponent, InfoHintComponent
   ]
 })
 export class JoueurDetailComponent implements OnInit {
 
   joueur: Joueur | null = null;
-  risque: any = null;
+  risque: RisqueBlessure | null = null;
   chargeCible: any = null;
   fatigue: NiveauFatigue | null = null;
   /** Résumé d'équipe chargé UNE fois (porte l'ACWR, charges aiguë/chronique, readiness…). */
@@ -237,8 +239,25 @@ export class JoueurDetailComponent implements OnInit {
     return 'Surcharge';
   }
 
-  riskTone(score: number): 'ok' | 'warn' | 'alert' { return score < 35 ? 'ok' : score < 60 ? 'warn' : 'alert'; }
-  fatigueTone(score: number): 'ok' | 'warn' | 'alert' { return score < 40 ? 'ok' : score < 65 ? 'warn' : 'alert'; }
+  /**
+   * Tonalités dérivées du NIVEAU calculé par le moteur, et non plus de seuils recopiés côté front.
+   * Les anciens seuils (risque 35/60, fatigue 40/65) divergeaient de ceux du moteur (30/60) : un
+   * score de 32 affichait le badge « VIGILANCE » sur fond vert, et 62 « ALERTE » en orange.
+   * Une seule source de vérité désormais — le back.
+   */
+  riskTone(niveau?: string | null): 'ok' | 'warn' | 'alert' {
+    return niveau === 'ELEVE' ? 'alert' : niveau === 'MODERE' ? 'warn' : 'ok';
+  }
+  fatigueTone(niveau?: string | null): 'ok' | 'warn' | 'alert' {
+    return niveau === 'ALERTE' ? 'alert' : niveau === 'VIGILANCE' ? 'warn' : 'ok';
+  }
+  /** Vocabulaire unique des niveaux (celui du moteur et de la méthodologie). */
+  niveauRisqueLibelle(niveau?: string | null): string {
+    return ({ FAIBLE: 'Faible', MODERE: 'Modéré', ELEVE: 'Élevé' } as Record<string, string>)[niveau ?? ''] ?? '—';
+  }
+  niveauFatigueLibelle(niveau?: string | null): string {
+    return ({ NOMINAL: 'Nominal', VIGILANCE: 'Vigilance', ALERTE: 'Alerte' } as Record<string, string>)[niveau ?? ''] ?? '—';
+  }
   ecartTone(ecart: number): 'ok' | 'warn' | 'alert' {
     const a = Math.abs(ecart);
     if (a <= 1) return 'ok';
@@ -261,10 +280,82 @@ export class JoueurDetailComponent implements OnInit {
     if (!this.risque) return '';
     // Phrase probabiliste explicable fournie par le back (sans ML), si disponible.
     if (this.risque.phrase) return this.risque.phrase;
-    const t = this.riskTone(this.risque.score_risque);
+    const t = this.riskTone(this.risque.niveau);
     return t === 'alert' ? 'Niveau élevé — surveillance rapprochée et charge individualisée recommandées.'
       : t === 'warn' ? 'Niveau modéré — maintenir le monitoring et adapter le volume.'
         : 'Niveau faible — disponibilité optimale pour la charge collective.';
+  }
+
+  // ── Explicabilité : composition des scores + lectures de l'ACWR ──
+
+  readonly AIDES = AIDES_INDICATEURS;
+
+  /**
+   * L'utilisateur a-t-il accès à /methodologie ? La route exige les permissions d'écriture GPS
+   * (mêmes que `PERMS_GPS` dans app.routes.ts) : un médecin ou un joueur serait rejeté, donc on
+   * n'affiche pas le lien pour eux — la bulle reste autosuffisante.
+   */
+  get peutMethodologie(): boolean {
+    return this.auth.has('gps:import') || this.auth.has('pesees:write');
+  }
+  lienMethodologie(): string | null { return this.peutMethodologie ? '/methodologie' : null; }
+
+  /** Composition du score de risque, du facteur le plus lourd au plus léger. */
+  get compositionRisque(): LigneComposition[] {
+    return (this.risque?.contributions ?? []).map(c => ({ libelle: c.libelle, points: c.points }));
+  }
+
+  /** Composition du score de fatigue : fait mesuré devant, étiquette physiologique au second rang. */
+  get compositionFatigue(): LigneComposition[] {
+    return (this.fatigue?.signaux ?? []).map(s => ({
+      libelle: s.fait, points: s.points, type: s.type_suggere ?? null,
+    }));
+  }
+
+  /** Les 2 causes principales de la fatigue — le reste reste dans la bulle de composition. */
+  get fatigueCausesPrincipales(): LigneComposition[] { return this.compositionFatigue.slice(0, 2); }
+  get fatigueAutresCauses(): number { return Math.max(0, this.compositionFatigue.length - 2); }
+
+  /** Libellé lisible de la source de charge (au lieu du code brut « MIXTE »). */
+  sourceLibelle(source?: string | null): string {
+    return ({
+      GPS: 'GPS (charge mesurée)',
+      RPE: 'ressenti (sRPE)',
+      MIXTE: 'GPS + ressenti',
+    } as Record<string, string>)[source ?? ''] ?? 'source inconnue';
+  }
+
+  /**
+   * Les 3 lectures de l'ACWR : celle retenue (mixte pondéré 0,6/0,4 quand les deux sources
+   * existent), la charge mesurée seule et la charge ressentie seule. On les affiche ENSEMBLE
+   * plutôt qu'en sélecteur : c'est leur écart qui informe, et un sélecteur donnerait trois
+   * vérités concurrentes pour le même joueur.
+   */
+  get lecturesAcwr(): { code: string; libelle: string; valeur: number; semaines?: number | null; aide: string }[] {
+    const r = this.risque;
+    if (!r) return [];
+    const out: { code: string; libelle: string; valeur: number; semaines?: number | null; aide: string }[] = [];
+    if (r.acwr != null) {
+      out.push({
+        code: 'RETENU', libelle: `Retenu — ${this.sourceLibelle(r.source)}`, valeur: r.acwr,
+        aide: r.source === 'MIXTE'
+          ? 'Moyenne pondérée des deux ratios (60 % mesuré, 40 % ressenti). C\'est la valeur qui alimente le score de risque.'
+          : 'Une seule source disponible : ce ratio est celui qui alimente le score de risque.',
+      });
+    }
+    if (r.acwr_gps != null) {
+      out.push({
+        code: 'GPS', libelle: 'Charge mesurée (GPS)', valeur: r.acwr_gps, semaines: r.semaines_gps,
+        aide: 'Ratio calculé sur les distances parcourues. Reflète ce que le joueur a réellement produit.',
+      });
+    }
+    if (r.acwr_rpe != null) {
+      out.push({
+        code: 'RPE', libelle: 'Charge ressentie (sRPE)', valeur: r.acwr_rpe, semaines: r.semaines_rpe,
+        aide: 'Ratio calculé sur le RPE × durée déclaré par le joueur. Reflète ce qu\'il a vécu, y compris hors terrain.',
+      });
+    }
+    return out;
   }
 
   /** Cercle de progression du donut de risque (r = 36). */
@@ -410,10 +501,16 @@ export class JoueurDetailComponent implements OnInit {
       this.chargerJoueur(id);
     });
 
-    // Deep-link depuis la vue équipe « Suivi des entretiens » : ?tab=suivi ouvre l'onglet dédié.
+    // Deep-links d'onglet : ?tab=suivi (entretiens, depuis « Suivi des entretiens ») et
+    // ?tab=subjectif (Hooper/sRPE, depuis Performance › RPE/sRPE — sans ça on atterrissait sur
+    // l'onglet Profil et il fallait recliquer).
     this.route.queryParamMap.subscribe(q => {
-      if (q.get('tab') === 'suivi' && this.peutSuivi) {
+      const tab = q.get('tab');
+      if (tab === 'suivi' && this.peutSuivi) {
         this.activeTab = this.tabLabels.length - 1;
+      } else if (tab === 'subjectif') {
+        this.activeTab = 2;
+        if (this.wellnessHisto.length) this.buildSuiviChart();
       }
     });
   }
@@ -483,29 +580,37 @@ export class JoueurDetailComponent implements OnInit {
     return w.sommeil + w.fatigue + w.douleur + w.stress + w.humeur;
   }
 
+  // Seuils du total Hooper (5..50, plus bas = mieux). Bornes UNIQUES : elles étaient à 33 ici et
+  // à 34 dans les barres du graphe et dans /suivi-subjectif — un total de 34 donnait donc une barre
+  // orange sous un badge rouge « Alerte », dans le même onglet.
+  static readonly HOOPER_OK = 22;
+  static readonly HOOPER_VIGILANCE = 34;
+
   /** Classe d'état d'après le total Hooper (5..50, plus bas = mieux). */
   hooperClasse(v: number | null): string {
     if (v == null) return '';
-    if (v <= 22) return 'ok';
-    if (v <= 33) return 'moyen';
+    if (v <= JoueurDetailComponent.HOOPER_OK) return 'ok';
+    if (v <= JoueurDetailComponent.HOOPER_VIGILANCE) return 'moyen';
     return 'bad';
   }
 
   /** Tonalité sémantique du total Hooper. */
   hooperTone(v: number | null): 'ok' | 'warn' | 'alert' | 'neutral' {
     if (v == null) return 'neutral';
-    if (v <= 22) return 'ok';
-    if (v <= 33) return 'warn';
+    if (v <= JoueurDetailComponent.HOOPER_OK) return 'ok';
+    if (v <= JoueurDetailComponent.HOOPER_VIGILANCE) return 'warn';
     return 'alert';
   }
   hooperLabel(v: number | null): string {
     if (v == null) return '—';
-    if (v <= 22) return 'Bon';
-    if (v <= 33) return 'Vigilance';
+    if (v <= JoueurDetailComponent.HOOPER_OK) return 'Bon';
+    if (v <= JoueurDetailComponent.HOOPER_VIGILANCE) return 'Vigilance';
     return 'Alerte';
   }
-  /** Couleur d'un item Hooper (1..10, plus haut = moins bon). */
+  /** Couleur d'un item Hooper (1..10, plus haut = moins bon). Convention app : ≥8 = alerte. */
   itemColor(v: number): string { return v <= 4 ? '#22c55e' : v <= 7 ? '#f59e0b' : '#ef4444'; }
+  /** Segments d'une mini-jauge d'item : 10 crans depuis V46 (l'échelle 1-5 en laissait 5). */
+  readonly CRANS_ITEM = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
 
   /** Série des N derniers jours (du plus récent au plus ancien) : Hooper + sRPE + gêne. */
   get serieWellness(): {
@@ -563,7 +668,9 @@ export class JoueurDetailComponent implements OnInit {
     ];
     return defs.map(([label, v]) => ({
       label, value: v, color: this.itemColor(v),
-      segs: [1, 2, 3, 4, 5].map(n => n <= v),
+      // 10 crans : avec les 5 d'avant, toute valeur ≥ 5 remplissait la jauge — un joueur à 5/10
+      // et un joueur à 10/10 étaient visuellement identiques.
+      segs: this.CRANS_ITEM.map(n => n <= v),
     }));
   }
 
@@ -579,13 +686,21 @@ export class JoueurDetailComponent implements OnInit {
     return null;
   }
 
+  /**
+   * Dernière saisie retenue = la dernière DE LA FENÊTRE affichée. C'était auparavant la dernière de
+   * tout l'historique : avec une saisie vieille de deux mois, le KPI affichait un score que le bloc
+   * « Dernier relevé » (lui, borné à la fenêtre) ne savait pas décomposer → « D'où vient le score
+   * de 34/50 ? » suivi d'aucune jauge.
+   */
   get wellnessDernier(): Wellness | null {
-    return [...this.wellnessHisto].sort((a, b) => b.date.localeCompare(a.date))[0] ?? null;
+    return this.wellnessDernierRempli;
   }
   get hooperDernier(): number | null {
     const w = this.wellnessDernier;
     return w ? this.hooperTotal(w) : null;
   }
+  /** Date de la dernière saisie retenue, pour dater explicitement le KPI. */
+  get hooperDernierDate(): string | null { return this.wellnessDernier?.date ?? null; }
   get hooperMoyen(): number | null {
     const vals = this.serieWellness.map(j => j.hooper).filter((v): v is number => v != null);
     return vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : null;

@@ -1,7 +1,7 @@
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { DatePipe, DecimalPipe, NgTemplateOutlet } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import { MatIcon } from '@angular/material/icon';
 import { AuthService } from '@core/services/auth.service';
 import { EspaceJoueurService } from '@core/services/espace-joueur.service';
@@ -18,13 +18,29 @@ interface HooperItem {
   haut: string;  // sens de la valeur 10
 }
 
-/** Point du graphe : barre (total Hooper /50 ou item /10 selon le critère) + point RPE (/10). */
+/**
+ * Point du graphe : barre (total Hooper /50 ou item /10 selon le critère) + charge du jour.
+ * `charge` est la SOMME des séances de la journée et `nbSeances` leur nombre : deux séances le
+ * même jour s'additionnent au lieu que la seconde masque la première. `rpe` est l'intensité
+ * moyenne PONDÉRÉE PAR LA DURÉE — une intensité ne s'additionne pas, contrairement à la charge.
+ */
 interface JourSerie {
   date: string;
   jour: string;        // libellé court (Lun, Mar… ou jj/mm sur longue période)
   hooper: number | null;
   rpe: number | null;
+  charge: number | null;
+  nbSeances: number;
   aujourdhui: boolean;
+}
+
+/** Le sRPE d'une journée : total cumulé + détail par séance. */
+interface JourneeSrpe {
+  date: string;
+  charge: number;
+  rpeMoyen: number | null;
+  dureeTotale: number;
+  seances: Rpe[];
 }
 
 /** Ligne de la vue équipe (lecture staff). */
@@ -34,8 +50,12 @@ interface LigneEquipe {
   prenom: string;
   poste?: string;
   hooper: number | null;
+  /** Ancienneté du Hooper affiché, en jours : sans repère, une valeur de 3 semaines passe pour du jour. */
+  hooperJours: number | null;
   rpe: number | null;
   charge: number | null;
+  nbSeancesJour: number;
+  dateCharge: string | null;
   gene: boolean;
   remplitAuj: boolean;
   derniere: string | null;
@@ -57,7 +77,7 @@ const ICONES_CONSEIL: { key: string; label: string; icon: string }[] = [
   standalone: true,
   templateUrl: './suivi-subjectif.component.html',
   styleUrl: './suivi-subjectif.component.scss',
-  imports: [DatePipe, DecimalPipe, NgTemplateOutlet, FormsModule, MatIcon],
+  imports: [DatePipe, DecimalPipe, NgTemplateOutlet, FormsModule, MatIcon, RouterLink],
 })
 export class SuiviSubjectifComponent implements OnInit {
 
@@ -180,8 +200,16 @@ export class SuiviSubjectifComponent implements OnInit {
     }
   }
 
+  /** Panneau de plage libre replié par défaut : les filtres tiennent ainsi sur une seule ligne. */
+  plageOuverte = signal(false);
+  /** Message d'erreur de plage (bornes inversées) — c'était ignoré en silence. */
+  plageErreur = signal<string | null>(null);
+  /** Jour survolé dans le graphe (infobulle). */
+  survol = signal<JourSerie | null>(null);
+
   setFenetre(n: number): void {
     this.plageActive.set(false);
+    this.plageErreur.set(null);
     this.fenetreJours.set(n);
   }
 
@@ -189,10 +217,30 @@ export class SuiviSubjectifComponent implements OnInit {
   setPlage(borne: 'debut' | 'fin', val: string): void {
     if (borne === 'debut') this.plageDebut.set(val); else this.plageFin.set(val);
     const d = this.plageDebut(), f = this.plageFin();
-    this.plageActive.set(!!d && !!f && d <= f);
+    const ok = !!d && !!f && d <= f;
+    this.plageActive.set(ok);
+    this.plageErreur.set(!!d && !!f && d > f ? 'La date de fin est antérieure à la date de début.' : null);
+  }
+
+  /**
+   * Efface la plage libre et revient à la fenêtre glissante. Sans ça, les dates restaient
+   * affichées dans les champs après un clic sur « 7 j » : on croyait la plage encore active.
+   */
+  reinitialiserPlage(): void {
+    this.plageDebut.set('');
+    this.plageFin.set('');
+    this.plageActive.set(false);
+    this.plageErreur.set(null);
+    this.plageOuverte.set(false);
   }
 
   setCritere(c: 'total' | HooperItem['key']): void { this.critere.set(c); }
+
+  /** Lien profond vers l'onglet « Suivi subjectif » de la fiche du joueur affiché. */
+  get lienFicheJoueur(): string[] | null {
+    const jc = this.joueurCourant();
+    return jc ? ['/joueurs', jc.id] : null;
+  }
 
   // ──────────────────────────── Chargement staff ────────────────────────────
 
@@ -241,6 +289,30 @@ export class SuiviSubjectifComponent implements OnInit {
     return rows[0] ?? null;
   });
 
+  /**
+   * Dernière JOURNÉE notée : charge cumulée de toutes ses séances + détail. On affichait la
+   * dernière séance seule, si bien qu'avec deux séances le même jour la première disparaissait
+   * de l'écran — alors que la base les conserve toutes les deux (une ligne par séance).
+   */
+  readonly journeeSrpeCourante = computed<JourneeSrpe | null>(() => {
+    const rows = this.rpe();
+    if (!rows.length) return null;
+    const derniere = rows.reduce((max, r) => (r.date > max ? r.date : max), rows[0].date);
+    return this.journeeSrpe(derniere);
+  });
+
+  /** Agrège toutes les saisies sRPE d'une date : total, intensité moyenne pondérée, détail. */
+  private journeeSrpe(date: string): JourneeSrpe {
+    const seances = this.rpe().filter(r => r.date === date);
+    const charge = seances.reduce((t, r) => t + (r.charge ?? 0), 0);
+    const dureeTotale = seances.reduce((t, r) => t + (r.dureeMinutes ?? 0), 0);
+    // Intensité moyenne pondérée par la durée : une séance de 90 min pèse plus qu'un 20 min.
+    const rpeMoyen = dureeTotale > 0
+      ? seances.reduce((t, r) => t + r.rpe * (r.dureeMinutes ?? 0), 0) / dureeTotale
+      : (seances.length ? seances.reduce((t, r) => t + r.rpe, 0) / seances.length : null);
+    return { date, charge, rpeMoyen, dureeTotale, seances };
+  }
+
   /** Valeur affichée d'un item : le brouillon en édition joueur, sinon la dernière saisie. */
   valeurItem(key: HooperItem['key']): number | null {
     if (this.isJoueur) return this.wForm()[key];
@@ -283,9 +355,16 @@ export class SuiviSubjectifComponent implements OnInit {
     const jours = ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam'];
     const auj = this.dateISO(new Date());
     const wByDate = new Map(this.wellness().map(w => [w.date, w]));
-    const rpeByDate = new Map<string, number>();
+    // Agrégat PAR JOUR : la charge se somme, l'intensité se moyenne (pondérée par la durée).
+    // Avant, seul `Math.max(rpe)` était retenu : la charge de la 2e séance du jour était perdue.
+    const parJour = new Map<string, { charge: number; duree: number; produit: number; n: number }>();
     for (const r of this.rpe()) {
-      rpeByDate.set(r.date, Math.max(rpeByDate.get(r.date) ?? 0, r.rpe));
+      const cur = parJour.get(r.date) ?? { charge: 0, duree: 0, produit: 0, n: 0 };
+      cur.charge += r.charge ?? 0;
+      cur.duree += r.dureeMinutes ?? 0;
+      cur.produit += r.rpe * (r.dureeMinutes ?? 0);
+      cur.n += 1;
+      parJour.set(r.date, cur);
     }
     const crit = this.critere();
     const { debut, nbJours } = this.periode();
@@ -295,11 +374,14 @@ export class SuiviSubjectifComponent implements OnInit {
       d.setDate(debut.getDate() + i);
       const iso = this.dateISO(d);
       const w = wByDate.get(iso);
+      const agg = parJour.get(iso);
       out.push({
         date: iso,
         jour: nbJours <= 14 ? jours[d.getDay()] : `${d.getDate()}/${d.getMonth() + 1}`,
         hooper: w ? (crit === 'total' ? this.hooperTotal(w) : w[crit]) : null,
-        rpe: rpeByDate.get(iso) ?? null,
+        rpe: agg ? (agg.duree > 0 ? agg.produit / agg.duree : null) : null,
+        charge: agg ? agg.charge : null,
+        nbSeances: agg?.n ?? 0,
         aujourdhui: iso === auj,
       });
     }
@@ -366,6 +448,40 @@ export class SuiviSubjectifComponent implements OnInit {
     return 'bad';
   }
 
+  // ──────────────────────────── Infobulle du graphe ────────────────────────────
+
+  /**
+   * Explication du niveau affiché pour un jour donné. Au-delà de 21 jours les bulles de valeur
+   * disparaissent (`montrerPoints`) : sans infobulle, le graphe devenait illisible sur 30/60/90 j.
+   */
+  explicationJour(d: JourSerie): string {
+    if (d.hooper == null) return 'Aucun questionnaire rempli ce jour-là.';
+    if (this.critere() === 'total') {
+      const c = this.hooperBarClasse(d.hooper);
+      return c === 'ok' ? 'Bon état général déclaré.'
+        : c === 'moyen' ? 'État correct — à surveiller si ça se répète.'
+          : 'Ressenti dégradé — en parler au joueur avant la prochaine séance intense.';
+    }
+    const item = this.HOOPER_ITEMS.find(i => i.key === this.critere())!;
+    return d.hooper <= 4 ? `${item.label} : proche de « ${item.bas.toLowerCase()} ».`
+      : d.hooper <= 7 ? `${item.label} : intermédiaire, à surveiller.`
+        : `${item.label} : proche de « ${item.haut.toLowerCase()} ».`;
+  }
+
+  /** Libellé du niveau du jour (en-tête de l'infobulle). */
+  niveauJour(d: JourSerie): string {
+    if (d.hooper == null) return 'Non rempli';
+    const c = this.barClasse(d.hooper);
+    return c === 'ok' ? 'Bon' : c === 'moyen' ? 'Vigilance' : 'Alerte';
+  }
+
+  /** Détail des 5 items du jour survolé (uniquement en critère « Total »). */
+  itemsJour(d: JourSerie): { label: string; valeur: number }[] {
+    const w = this.wellness().find(x => x.date === d.date);
+    if (!w) return [];
+    return this.HOOPER_ITEMS.map(i => ({ label: i.label, valeur: w[i.key] }));
+  }
+
   // ──────────────────────────── Vue équipe (staff) ────────────────────────────
 
   readonly lignesEquipe = computed<LigneEquipe[]>(() => {
@@ -375,15 +491,27 @@ export class SuiviSubjectifComponent implements OnInit {
       const wRows = this.wellness().filter(w => w.joueurId === j.id).sort((a, b) => b.date.localeCompare(a.date));
       const rRows = this.rpe().filter(r => r.joueurId === j.id).sort((a, b) => b.date.localeCompare(a.date));
       const latest = wRows[0] ?? null;
-      const latestRpe = rRows[0] ?? null;
+      // Charge de la DERNIÈRE JOURNÉE notée, toutes ses séances additionnées : on n'affichait que
+      // la dernière séance, donc un joueur avec deux séances le même jour voyait la moitié de sa
+      // charge — c'est le « l'un remplace l'autre » signalé.
+      const dateCharge = rRows[0]?.date ?? null;
+      const duJour = dateCharge ? rRows.filter(r => r.date === dateCharge) : [];
+      const charge = duJour.reduce((t, r) => t + (r.charge ?? 0), 0);
+      const dureeJour = duJour.reduce((t, r) => t + (r.dureeMinutes ?? 0), 0);
+      const rpeMoyen = dureeJour > 0
+        ? duJour.reduce((t, r) => t + r.rpe * (r.dureeMinutes ?? 0), 0) / dureeJour
+        : (duJour.length ? duJour.reduce((t, r) => t + r.rpe, 0) / duJour.length : null);
       return {
         joueurId: j.id,
         nom: j.nom,
         prenom: j.prenom,
         poste: j.postePrincipal,
         hooper: latest ? this.hooperTotal(latest) : null,
-        rpe: latestRpe ? latestRpe.rpe : null,
-        charge: latestRpe ? (latestRpe.charge ?? null) : null,
+        hooperJours: latest ? Math.round((Date.parse(auj) - Date.parse(latest.date)) / 86400000) : null,
+        rpe: rpeMoyen,
+        charge: duJour.length ? charge : null,
+        nbSeancesJour: duJour.length,
+        dateCharge,
         gene: wRows.some(w => w.geneZone && !w.geneTraitee && w.date >= limite),
         remplitAuj: latest?.date === auj,
         derniere: latest?.date ?? null,

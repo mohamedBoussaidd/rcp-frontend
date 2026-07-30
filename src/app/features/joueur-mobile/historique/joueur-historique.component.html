@@ -28,8 +28,12 @@
           @for (j of serie(); track j.date) {
             <div class="histo-col" [class.is-today]="j.aujourdhui">
               <div class="histo-col__track">
+                <!-- Intensité moyenne du jour, pondérée par la durée (plusieurs séances possibles). -->
                 @if (j.rpe !== null) {
-                  <span class="histo-col__rpe" [style.bottom.%]="j.rpe * 9">{{ j.rpe }}</span>
+                  <span class="histo-col__rpe" [style.bottom.%]="j.rpe * 9"
+                        [title]="j.nbSeances > 1 ? j.nbSeances + ' séances · ' + j.charge + ' UA cumulées' : ''">
+                    {{ j.rpe | number:'1.0-1' }}
+                  </span>
                 }
                 <div class="histo-col__bar" [class]="classe(j.hooper)" [style.height.%]="barH(j.hooper)"></div>
               </div>

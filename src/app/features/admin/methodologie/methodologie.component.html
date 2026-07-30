@@ -16,7 +16,9 @@
   </div>
 
   <!-- ─── Signal 1 ─── -->
-  <mat-card class="methodo-card signal-1">
+  <!-- Les `id` servent de cibles aux bulles d'aide des indicateurs (voir aides-indicateurs.ts) :
+       un clic sur « Voir la méthodologie » arrive directement sur la bonne carte. -->
+  <mat-card id="acwr" class="methodo-card signal-1">
     <mat-card-header>
       <div class="signal-badge s1">S1</div>
       <mat-card-title>Surcharge aiguë — Ratio ACWR</mat-card-title>
@@ -109,7 +111,7 @@
   </mat-card>
 
   <!-- ─── Signal 3 ─── -->
-  <mat-card class="methodo-card signal-3">
+  <mat-card id="monotonie" class="methodo-card signal-3">
     <mat-card-header>
       <div class="signal-badge s3">S3</div>
       <mat-card-title>Monotonie de Foster — Surmenage chronique</mat-card-title>
@@ -250,7 +252,7 @@
   </mat-card>
 
   <!-- ─── Risque blessure ─── -->
-  <mat-card class="methodo-card signal-risque">
+  <mat-card id="risque" class="methodo-card signal-risque">
     <mat-card-header>
       <div class="signal-badge sr">R</div>
       <mat-card-title>Score de risque blessure — Modèle composite</mat-card-title>
