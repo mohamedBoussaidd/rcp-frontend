@@ -2,14 +2,27 @@
 
 .params-loading { padding: 32px; text-align: center; color: var(--muted); }
 
+/*
+ * Grille de 3 blocs par ligne. L'ordre du tableau `groupes` est pensé pour que chaque ligne
+ * réunisse des réglages qu'on ajuste ensemble (charge / signaux GPS / ressenti / contexte).
+ * `align-items: start` empêche les cartes d'une même ligne de s'étirer à la hauteur de la plus
+ * haute — sinon une carte à 2 réglages afficherait un grand vide sous son bouton.
+ */
 .params-content {
   padding: 24px;
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: start;
   gap: 16px;
-  max-width: 860px;
+  max-width: 1400px;
   margin: 0 auto;
 }
+
+/* Les bannières de niveau séparent des sections entières : elles occupent la ligne. */
+.params-intro { grid-column: 1 / -1; }
+
+/* Le tableau des cibles a 5 colonnes, il ne tient pas dans un tiers d'écran. */
+.cibles-card { grid-column: 1 / -1; }
 
 /* Bannières de section */
 .params-intro {
@@ -31,8 +44,16 @@
   }
 }
 
-/* Carte de groupe */
-.groupe-card { width: 100%; &.collapsed { opacity: .85; } }
+/*
+ * Carte de groupe : un tiers de ligne quand elle est repliée, ligne entière quand on l'ouvre.
+ * Les blocs les plus fournis (11 objectifs GPS, 10 réglages du Signal 2) deviendraient
+ * illisibles dans une colonne étroite — libellé et champ passeraient l'un sous l'autre.
+ */
+.groupe-card {
+  width: 100%;
+  &.collapsed { opacity: .85; }
+  &:not(.collapsed) { grid-column: 1 / -1; }
+}
 
 .groupe-header {
   cursor: pointer;
@@ -89,6 +110,15 @@
 .param-unite      { font-size: 0.75rem; color: var(--muted); white-space: nowrap; min-width: 50px; }
 
 mat-card-actions { padding: 8px 16px 12px; display: flex; gap: 8px; flex-wrap: wrap; }
+
+/* Sous 1200px, 3 colonnes rendraient les titres de blocs illisibles sur 2-3 lignes. */
+@media (max-width: 1200px) {
+  .params-content { grid-template-columns: repeat(2, minmax(0, 1fr)); max-width: 900px; }
+}
+
+@media (max-width: 820px) {
+  .params-content { grid-template-columns: minmax(0, 1fr); max-width: 560px; }
+}
 
 @media (max-width: 768px) {
   .params-content { padding: 12px 8px; }

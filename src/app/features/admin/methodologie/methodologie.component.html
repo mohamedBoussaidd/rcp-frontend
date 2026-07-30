@@ -29,9 +29,18 @@
           <h4>Ce que ça mesure</h4>
           <p>
             L'ACWR (Acute:Chronic Workload Ratio) compare la charge de la semaine en cours
-            à la charge hebdomadaire habituelle du joueur sur les 3 semaines précédentes.
-            Un ratio élevé indique que le joueur travaille bien au-delà de sa norme — signal
-            d'une surcharge aiguë susceptible d'augmenter le risque de blessure.
+            à la charge hebdomadaire habituelle du joueur sur les semaines précédentes
+            (4 par défaut, réglable). Un ratio élevé indique que le joueur travaille bien
+            au-delà de sa norme — signal d'une surcharge aiguë susceptible d'augmenter le
+            risque de blessure.
+          </p>
+          <h4>Historique court</h4>
+          <p>
+            Si le joueur a moins de semaines de données que la fenêtre configurée — début de
+            saison, reprise, joueur qui vient d'arriver — la moyenne est faite sur les semaines
+            <strong>réellement disponibles</strong>, pas sur la fenêtre théorique. Diviser une
+            seule semaine de données par quatre donnerait une « normale » quatre fois trop
+            basse, et donc une surcharge imaginaire.
           </p>
           <h4>Zone optimale</h4>
           <p>
@@ -45,7 +54,7 @@
           <div class="formula-block">
             <span class="formula-line">Charge semaine = Σ (distance GPS × poids séance)</span>
             <span class="formula-line">Charge aiguë = charge semaine en cours</span>
-            <span class="formula-line">Charge chronique = moyenne des 3 semaines précédentes</span>
+            <span class="formula-line">Charge chronique = charge des semaines précédentes ÷ semaines réellement présentes</span>
             <span class="formula-line formula-result">ACWR = Charge aiguë / Charge chronique</span>
           </div>
           <div class="reference">
@@ -71,9 +80,16 @@
         <div>
           <h4>Ce que ça mesure</h4>
           <p>
-            Ce signal détecte une baisse de performance sur les 2 dernières séances
-            par rapport à la baseline historique du joueur sur ce type de séance.
+            Ce signal détecte une baisse de performance sur les dernières séances
+            (2 par défaut) par rapport à la baseline historique du joueur sur ce type de séance.
             Il analyse 3 métriques GPS complémentaires pour distinguer les types de fatigue.
+          </p>
+          <p>
+            Le nombre de séances récentes moyennées est réglable <strong>indépendamment pour
+            chacune des trois métriques</strong>. Une vitesse de pointe jugée sur 2 séances est
+            très sensible au contenu de ces séances : si le joueur n'a pas eu l'occasion de
+            sprinter, la moyenne chute sans la moindre fatigue. Élargir cette fenêtre stabilise
+            l'indicateur au prix d'une détection un peu plus tardive.
           </p>
           <div class="sub-signals">
             <div class="sub-signal">
@@ -94,7 +110,7 @@
           <h4>Formule</h4>
           <div class="formula-block">
             <span class="formula-line">Baseline = moyenne historique sur ce type de séance</span>
-            <span class="formula-line">Récent = moyenne des 2 dernières séances du même type</span>
+            <span class="formula-line">Récent = moyenne des N dernières séances du même type (N réglable)</span>
             <span class="formula-line formula-result">Ratio = Récent / Baseline</span>
             <span class="formula-line">Alerte si Ratio &lt; seuil configuré</span>
           </div>
@@ -139,7 +155,7 @@
           <h4>Formule</h4>
           <div class="formula-block">
             <span class="formula-line">Charges_hebdo = [C1, C2, C3, C4, C5, C6, C7, C8]</span>
-            <span class="formula-line">(8 semaines glissantes, pondérées par ancienneté)</span>
+            <span class="formula-line">(8 semaines glissantes, distances pondérées par type de séance)</span>
             <span class="formula-line">&nbsp;</span>
             <span class="formula-line">Moyenne = moy(Charges_hebdo)</span>
             <span class="formula-line">Écart-type = σ(Charges_hebdo)</span>

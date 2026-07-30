@@ -169,6 +169,26 @@ export const PARAM_META: Record<string, ParamMeta> = {
     description: 'Seuil bas de détection de fatigue sur les efforts à haute intensité (>19 km/h). Indique une réduction modérée de la capacité à produire des efforts explosifs répétés.',
     unite: '×', min: 0.60, max: 0.99, step: 0.01, defaut: 0.85
   },
+  nb_seances_recentes_intensite: {
+    label: 'Intensité m/min — séances récentes analysées',
+    description: 'Nombre de séances les plus récentes dont la moyenne est comparée aux séances précédentes pour l\'intensité globale (m/min). Plus la valeur est basse, plus l\'alerte est réactive mais sensible au hasard d\'une séance ; plus elle est haute, plus le signal est stable mais tardif. 2 séances suffisent souvent pour l\'intensité moyenne, qui varie peu d\'une séance à l\'autre.',
+    unite: 'séances', min: 1, max: 6, step: 1, defaut: 2
+  },
+  nb_seances_recentes_vmax: {
+    label: 'Vitesse max — séances récentes analysées',
+    description: 'Nombre de séances récentes moyennées pour la vitesse de pointe. C\'est l\'indicateur le plus bruité des trois : une séance où le joueur n\'a simplement pas eu l\'occasion de sprinter fait chuter la moyenne sans aucune fatigue. Passer à 3 ou 4 séances est recommandé si vous constatez des alertes de fatigue explosive qui disparaissent d\'elles-mêmes.',
+    unite: 'séances', min: 1, max: 6, step: 1, defaut: 2
+  },
+  nb_seances_recentes_hi: {
+    label: '>19 km/h — séances récentes analysées',
+    description: 'Nombre de séances récentes moyennées pour la part de distance parcourue à plus de 19 km/h. Comme la vitesse max, cet indicateur dépend beaucoup du contenu de la séance : une séance technique fait naturellement chuter la part de haute intensité.',
+    unite: 'séances', min: 1, max: 6, step: 1, defaut: 2
+  },
+  nb_seances_reference_min: {
+    label: 'Séances de comparaison minimum',
+    description: 'Nombre minimum de séances plus anciennes exigé pour qu\'une comparaison soit calculée. En dessous, l\'indicateur ne s\'affiche pas du tout plutôt que de comparer à une seule séance de référence. Augmenter cette valeur rend les alertes plus rares mais plus fiables en début de saison.',
+    unite: 'séances', min: 1, max: 8, step: 1, defaut: 2
+  },
 
   // ── Monotonie (Signal 3) ──
   seuil_monotonie_alerte: {
@@ -245,37 +265,117 @@ export const PARAM_META: Record<string, ParamMeta> = {
     unite: 'matchs/15j', min: 2, max: 6, step: 1, defaut: 3
   },
 
-  // ── Météo ──
-  temp_chaleur_forte_c: {
-    label: 'Température — chaleur forte',
-    description: 'Température en °C à partir de laquelle une forte chaleur est détectée. Au-delà de ce seuil, l\'objectif GPS attendu du joueur est automatiquement réduit (coefficient configurable ci-dessous) pour tenir compte de l\'impact physiologique de la chaleur sur la performance.',
-    unite: '°C', min: 25, max: 45, step: 1, defaut: 32
+  // ── Fenêtre et zones cibles de l'ACWR ──
+  acwr_semaines_chronique: {
+    label: 'Fenêtre de charge chronique',
+    description: 'Nombre de semaines servant de référence pour calculer la charge "habituelle" d\'un joueur, à laquelle sa semaine en cours est comparée (ACWR et Signal 1). Une fenêtre courte suit mieux les changements de rythme, une fenêtre longue est plus stable. Si un joueur a moins de semaines de données que cette valeur, le calcul s\'adapte automatiquement au nombre de semaines réellement disponibles.',
+    unite: 'semaines', min: 2, max: 8, step: 1, defaut: 4
   },
-  temp_chaleur_moderee_c: {
-    label: 'Température — chaleur modérée',
-    description: 'Température en °C pour une chaleur modérée. Doit être inférieure au seuil "chaleur forte". Une réduction légère de l\'objectif est appliquée dans cette plage.',
-    unite: '°C', min: 20, max: 38, step: 1, defaut: 28
+  acwr_cible_min: {
+    label: 'ACWR — plancher de la zone optimale',
+    description: 'En dessous de ce ratio, le joueur est considéré en sous-charge : il s\'entraîne moins que son habitude, ce qui érode progressivement sa capacité à encaisser les efforts. 0.80 est la borne basse communément retenue.',
+    unite: '×', min: 0.50, max: 1.00, step: 0.05, defaut: 0.80
   },
-  correcteur_chaleur_forte: {
-    label: 'Correcteur — chaleur forte',
-    description: 'Coefficient multiplicateur appliqué à la distance attendue en cas de forte chaleur. Ex: 0.90 = l\'objectif est réduit de 10%. Ajuster selon le niveau d\'acclimatation de vos joueurs à la chaleur.',
-    unite: '×', min: 0.70, max: 1.00, step: 0.01, defaut: 0.90
+  acwr_cible_ideal: {
+    label: 'ACWR — valeur idéale',
+    description: 'Ratio visé : la charge de la semaine en cours dépasse très légèrement l\'habitude, ce qui fait progresser le joueur sans le mettre en danger. Sert de repère visuel sur les jauges d\'ACWR.',
+    unite: '×', min: 0.90, max: 1.30, step: 0.05, defaut: 1.05
   },
-  correcteur_chaleur_moderee: {
-    label: 'Correcteur — chaleur modérée',
-    description: 'Coefficient pour chaleur modérée. Ex: 0.95 = l\'objectif est réduit de 5%. Impact physiologique réel mais moins marqué qu\'en forte chaleur.',
-    unite: '×', min: 0.80, max: 1.00, step: 0.01, defaut: 0.95
+  acwr_cible_haute: {
+    label: 'ACWR — début de zone haute',
+    description: 'Ratio à partir duquel la progression de charge devient soutenue et mérite d\'être surveillée, sans être encore anormale. Zone d\'attention entre la cible idéale et le plafond.',
+    unite: '×', min: 1.00, max: 1.50, step: 0.05, defaut: 1.20
   },
-  correcteur_neige: {
-    label: 'Correcteur — neige',
-    description: 'Coefficient pour conditions neigeuses. La neige réduit significativement la vitesse de déplacement et augmente le coût énergétique. Un objectif GPS plus bas est donc normal.',
-    unite: '×', min: 0.70, max: 1.00, step: 0.01, defaut: 0.88
+  acwr_cible_max: {
+    label: 'ACWR — plafond',
+    description: 'Au-delà de ce ratio, le joueur est en surcharge : sa semaine dépasse trop nettement ce que son organisme a l\'habitude d\'encaisser. 1.30 correspond au seuil au-delà duquel la littérature observe une hausse du risque de blessure.',
+    unite: '×', min: 1.10, max: 2.00, step: 0.05, defaut: 1.30
   },
-  correcteur_pluie: {
-    label: 'Correcteur — pluie / vent',
-    description: 'Coefficient pour pluie ou vent fort. Impact modéré sur la distance parcourue — principalement lié à la prudence dans les appuis et aux glissades. Peut varier selon la qualité du terrain.',
-    unite: '×', min: 0.85, max: 1.00, step: 0.01, defaut: 0.97
+
+  // ── Combinaison des deux sources de charge ──
+  poids_charge_gps: {
+    label: 'Poids de la charge GPS',
+    description: 'Importance donnée à la charge mesurée par GPS (distance réellement parcourue) lorsque le joueur dispose des deux sources. Le GPS mesure ce que le joueur a FAIT, indépendamment de ce qu\'il en a ressenti.',
+    unite: '', min: 0, max: 1, step: 0.1, defaut: 0.6
   },
+  poids_charge_rpe: {
+    label: 'Poids de la charge ressentie',
+    description: 'Importance donnée à la charge ressentie (RPE × durée, saisie par le joueur). Elle capte ce que le GPS ignore : la fatigue nerveuse, le stress, la mauvaise nuit. Augmenter ce poids si vos joueurs remplissent leur RPE avec sérieux.',
+    unite: '', min: 0, max: 1, step: 0.1, defaut: 0.4
+  },
+  seuil_ecart_sources: {
+    label: 'Écart GPS / ressenti signalé',
+    description: 'Écart entre les deux ratios de charge au-delà duquel une divergence est signalée. C\'est souvent l\'information la plus utile : "il en fait autant que d\'habitude mais le vit beaucoup plus mal" est un signal d\'alerte précoce qu\'aucune des deux sources ne donne seule.',
+    unite: '×', min: 0.10, max: 1.00, step: 0.05, defaut: 0.30
+  },
+
+  // ── Ressenti quotidien (Hooper) ──
+  seuil_wellness_alerte: {
+    label: 'Ressenti — seuil d\'alerte',
+    description: 'Score de bien-être (0-100, calculé sur les 5 items du questionnaire quotidien : sommeil, fatigue, courbatures, stress, humeur) en dessous duquel le ressenti est jugé dégradé (+25 pts de fatigue). Plus le score est bas, plus le joueur se sent mal.',
+    unite: '/100', min: 20, max: 60, step: 5, defaut: 40
+  },
+  seuil_wellness_vigilance: {
+    label: 'Ressenti — seuil de vigilance',
+    description: 'Seuil bas de vigilance sur le ressenti (+12 pts). Doit être supérieur au seuil d\'alerte. Un joueur dans cette plage ne va pas mal, mais ne va pas bien non plus : c\'est le bon moment pour lui parler.',
+    unite: '/100', min: 35, max: 80, step: 5, defaut: 55
+  },
+
+  // ── Charge ressentie (sRPE) ──
+  seuil_srpe_probable: {
+    label: 'Charge ressentie — surcharge probable',
+    description: 'Ratio charge ressentie de la semaine / charge ressentie habituelle au-delà duquel une surcharge subjective probable est signalée (+25 pts). Ex: 1.50 = le joueur a ressenti une semaine 50% plus dure que son habitude, indépendamment des kilomètres parcourus.',
+    unite: '×', min: 1.10, max: 2.50, step: 0.05, defaut: 1.50
+  },
+  seuil_srpe_possible: {
+    label: 'Charge ressentie — surcharge possible',
+    description: 'Seuil bas de surcharge ressentie (+12 pts). Doit être inférieur au seuil "probable".',
+    unite: '×', min: 1.05, max: 2.00, step: 0.05, defaut: 1.30
+  },
+
+  // ── Capacité de vitesse de pointe ──
+  seuil_vmax_capacite_possible: {
+    label: 'Pic de vitesse — baisse possible',
+    description: 'Rapport entre la meilleure vitesse de pointe des 7 derniers jours et celle des 5 semaines précédentes, en dessous duquel une baisse de capacité est envisagée. À la différence du Signal 2 qui moyenne les séances, on compare ici des pics : un joueur capable de retoucher sa vitesse maximale n\'est pas en fatigue neuromusculaire profonde.',
+    unite: '×', min: 0.80, max: 1.00, step: 0.01, defaut: 0.93
+  },
+  seuil_vmax_capacite_probable: {
+    label: 'Pic de vitesse — baisse probable',
+    description: 'Seuil en dessous duquel la perte de capacité de vitesse devient probable. Doit être inférieur au seuil "possible".',
+    unite: '×', min: 0.75, max: 0.98, step: 0.01, defaut: 0.90
+  },
+  seuil_sprint_corroboration: {
+    label: 'Corroboration par les sprints',
+    description: 'Rapport de volume de course à très haute vitesse (>28 km/h) récent vs historique en dessous duquel la baisse de pic est considérée comme confirmée. Une baisse de vitesse maximale accompagnée d\'une chute du volume de sprint est un signal bien plus solide qu\'une baisse isolée.',
+    unite: '×', min: 0.50, max: 1.00, step: 0.05, defaut: 0.80
+  },
+
+  // ── Fraîcheur des données et baseline ──
+  jours_inactif_max: {
+    label: 'Inactivité avant mise en veille',
+    description: 'Nombre de jours sans aucune donnée au-delà duquel un joueur est considéré inactif : ses indicateurs de fatigue et de risque cessent d\'être évalués plutôt que d\'afficher un chiffre calculé sur des données périmées. Augmenter si vos séances sont espacées (équipes amateurs).',
+    unite: 'jours', min: 3, max: 45, step: 1, defaut: 10
+  },
+  baseline_recence_jours: {
+    label: 'Profondeur de la baseline historique',
+    description: 'Ancienneté maximale des séances retenues pour établir la référence personnelle d\'un joueur (sa "normale" à lui). Une fenêtre courte colle à sa forme actuelle, une fenêtre longue résiste mieux aux variations de contenu des séances.',
+    unite: 'jours', min: 30, max: 365, step: 15, defaut: 90
+  },
+  tendance_seuil_pts: {
+    label: 'Variation minimale d\'une tendance',
+    description: 'Écart de score minimum, en points, pour qu\'une évolution soit annoncée comme une hausse ou une baisse plutôt que comme stable. Évite d\'annoncer une "dégradation" pour 1 point d\'écart, qui n\'a aucune signification.',
+    unite: 'pts', min: 1, max: 20, step: 1, defaut: 5
+  },
+
+  // ── Météo : réglages RETIRÉS de l'écran (2026-07-30) ──
+  // Les 6 clés (temp_chaleur_forte_c, temp_chaleur_moderee_c, correcteur_chaleur_forte,
+  // correcteur_chaleur_moderee, correcteur_neige, correcteur_pluie) existent toujours en base
+  // avec leurs valeurs, mais AUCUN code ne les lit : ni le moteur Python, ni le back Java. Les
+  // laisser éditables laissait croire qu'on agissait sur les objectifs GPS alors que les
+  // modifier ne changeait strictement aucun indicateur. Les rétablir = remettre ce bloc et son
+  // groupe, une fois la correction météo réellement implémentée (il faudra d'abord que la météo
+  // soit saisie à la création de séance : `seance.conditions_meteo` est renseignée 4 fois sur
+  // 1394, avec un vocabulaire libre qui ne correspond pas à ces clés).
 };
 
 interface GroupeParams {
@@ -320,6 +420,24 @@ export class ParametresComponent implements OnInit {
       cles: ['objectif_gardien', 'objectif_defenseur_central', 'objectif_lateral_droit', 'objectif_lateral_gauche', 'objectif_milieu_defensif', 'objectif_milieu_central', 'objectif_milieu_offensif', 'objectif_ailier_droit', 'objectif_ailier_gauche', 'objectif_attaquant', 'objectif_avant_centre'],
       expanded: true
     },
+
+    // Les blocs sont ORDONNÉS pour se lire par lignes de 3 dans la grille : chaque ligne
+    // regroupe des réglages qu'on vient ajuster ensemble. Déplacer un bloc casse cette lecture.
+    // ── Ligne : la charge et la référence à laquelle on la compare ──
+    {
+      id: 'acwr',
+      titre: 'Fenêtre et zones cibles de l\'ACWR',
+      description: 'L\'ACWR compare la charge de la semaine en cours à la charge habituelle du joueur. Ces réglages définissent sur combien de semaines se calcule cette habitude, et à partir de quel ratio on parle de sous-charge, de zone optimale ou de surcharge. Ils pilotent à la fois la carte ACWR et le Signal 1 de fatigue.',
+      cles: ['acwr_semaines_chronique', 'acwr_cible_min', 'acwr_cible_ideal', 'acwr_cible_haute', 'acwr_cible_max'],
+      expanded: false
+    },
+    {
+      id: 'sources_charge',
+      titre: 'Sources de charge (GPS et ressenti)',
+      description: 'Quand un joueur dispose à la fois de données GPS et de RPE saisis, les deux charges sont combinées. Ces réglages fixent le poids de chaque source et à partir de quand un écart entre les deux mérite d\'être signalé.',
+      cles: ['poids_charge_gps', 'poids_charge_rpe', 'seuil_ecart_sources'],
+      expanded: false
+    },
     {
       id: 'seuils_charge',
       titre: 'Seuils de charge hebdomadaire (Signal 1)',
@@ -327,18 +445,21 @@ export class ParametresComponent implements OnInit {
       cles: ['seuil_surcharge_probable', 'seuil_surcharge_possible'],
       expanded: false
     },
-    {
-      id: 'seuils_norme',
-      titre: 'Seuils de norme GPS (rapport de séance)',
-      description: 'Définissent l\'écart toléré par rapport à la baseline historique d\'un joueur avant qu\'une séance soit classée "sous la norme" ou "sur la norme". Impacte le rapport détaillé de chaque séance.',
-      cles: ['seuil_sous_norme_pct', 'seuil_sur_norme_pct'],
-      expanded: false
-    },
+
+    // ── Ligne : ce que le GPS révèle d'une baisse de forme ──
     {
       id: 'seuils_performance',
       titre: 'Seuils de dégradation de performance (Signal 2)',
-      description: 'Seuils de comparaison entre les dernières séances et la baseline historique sur 3 indicateurs GPS. Permettent de détecter une baisse de performance avant qu\'elle soit visible à l\'œil nu.',
-      cles: ['seuil_mmin_probable', 'seuil_mmin_possible', 'seuil_vmax_probable', 'seuil_vmax_possible', 'seuil_hi_probable', 'seuil_hi_possible'],
+      description: 'Seuils de comparaison entre les dernières séances et la baseline historique sur 3 indicateurs GPS. Permettent de détecter une baisse de performance avant qu\'elle soit visible à l\'œil nu. Les 4 derniers réglages fixent sur combien de séances récentes chaque indicateur est jugé : c\'est le principal levier contre les fausses alertes, une vitesse de pointe mesurée sur 2 séances étant très sensible au contenu de ces séances.',
+      cles: ['seuil_mmin_probable', 'seuil_mmin_possible', 'seuil_vmax_probable', 'seuil_vmax_possible', 'seuil_hi_probable', 'seuil_hi_possible',
+             'nb_seances_recentes_intensite', 'nb_seances_recentes_vmax', 'nb_seances_recentes_hi', 'nb_seances_reference_min'],
+      expanded: false
+    },
+    {
+      id: 'capacite_vitesse',
+      titre: 'Capacité de vitesse de pointe',
+      description: 'Détection d\'une perte de capacité en comparant le meilleur pic de vitesse récent à celui des semaines précédentes. Un joueur qui retouche sa vitesse maximale n\'est pas en fatigue neuromusculaire profonde, quels que soient ses autres indicateurs.',
+      cles: ['seuil_vmax_capacite_possible', 'seuil_vmax_capacite_probable', 'seuil_sprint_corroboration'],
       expanded: false
     },
     {
@@ -348,6 +469,22 @@ export class ParametresComponent implements OnInit {
       cles: ['seuil_monotonie_alerte', 'seuil_monotonie_vigilance'],
       expanded: false
     },
+
+    // ── Ligne : ce que le joueur ressent, et ce que son planning lui laisse récupérer ──
+    {
+      id: 'seuils_wellness',
+      titre: 'Ressenti quotidien (indice de Hooper)',
+      description: 'Seuils appliqués au score de bien-être issu du questionnaire quotidien rempli par les joueurs. C\'est le seul signal qui capte ce qu\'aucun capteur ne mesure : la nuit blanche, le stress personnel, la douleur naissante.',
+      cles: ['seuil_wellness_alerte', 'seuil_wellness_vigilance'],
+      expanded: false
+    },
+    {
+      id: 'seuils_srpe',
+      titre: 'Charge ressentie (sRPE)',
+      description: 'Seuils appliqués au rapport entre la charge ressentie de la semaine et la charge ressentie habituelle. Utile notamment pour les séances sans GPS (techniques, salle), invisibles autrement.',
+      cles: ['seuil_srpe_probable', 'seuil_srpe_possible'],
+      expanded: false
+    },
     {
       id: 'recuperation',
       titre: 'Espacement entre séances (Signal 4)',
@@ -355,18 +492,13 @@ export class ParametresComponent implements OnInit {
       cles: ['delai_match_match_jours', 'delai_intensif_intensif_jours', 'repos_min_14_jours'],
       expanded: false
     },
+
+    // ── Ligne : le contexte propre au joueur, qui majore ses scores ──
     {
       id: 'blessures',
       titre: 'Blessures récentes (bonus de fatigue)',
       description: 'Paramètres du bonus appliqué au score de fatigue en cas de blessure récente. Un joueur qui reprend après une blessure doit être géré avec plus de précaution — ces valeurs amplifient les alertes pour ce profil.',
       cles: ['fenetre_blessure_fatigue_jours', 'bonus_blessure_pts'],
-      expanded: false
-    },
-    {
-      id: 'poids_risque',
-      titre: 'Correction surpoids',
-      description: 'Impact du surpoids sur le score de risque blessure (points) et sur l\'objectif GPS d\'un match (réduction en %). Permet d\'adapter l\'analyse à la réalité physique du joueur sans le pénaliser injustement.',
-      cles: ['correction_surpoids_pts_par_kg', 'correction_surpoids_plafond_pts', 'correction_surpoids_pct_par_kg', 'correction_surpoids_plafond_pct'],
       expanded: false
     },
     {
@@ -377,12 +509,31 @@ export class ParametresComponent implements OnInit {
       expanded: false
     },
     {
-      id: 'meteo',
-      titre: 'Correcteurs météo et température',
-      description: 'Coefficients appliqués aux objectifs GPS en fonction des conditions climatiques. Permettent d\'éviter de pénaliser un joueur qui a produit un effort normal dans des conditions difficiles (forte chaleur, neige, pluie).',
-      cles: ['temp_chaleur_forte_c', 'temp_chaleur_moderee_c', 'correcteur_chaleur_forte', 'correcteur_chaleur_moderee', 'correcteur_neige', 'correcteur_pluie'],
+      id: 'poids_risque',
+      titre: 'Correction surpoids',
+      description: 'Impact du surpoids sur le score de risque blessure (points) et sur l\'objectif GPS d\'un match (réduction en %). Permet d\'adapter l\'analyse à la réalité physique du joueur sans le pénaliser injustement.',
+      cles: ['correction_surpoids_pts_par_kg', 'correction_surpoids_plafond_pts', 'correction_surpoids_pct_par_kg', 'correction_surpoids_plafond_pct'],
       expanded: false
     },
+
+    // ── Ligne : les règles de calcul communes à tous les indicateurs ──
+    {
+      id: 'seuils_norme',
+      titre: 'Seuils de norme GPS (rapport de séance)',
+      description: 'Définissent l\'écart toléré par rapport à la baseline historique d\'un joueur avant qu\'une séance soit classée "sous la norme" ou "sur la norme". Impacte le rapport détaillé de chaque séance.',
+      cles: ['seuil_sous_norme_pct', 'seuil_sur_norme_pct'],
+      expanded: false
+    },
+    {
+      id: 'fraicheur',
+      titre: 'Fraîcheur des données et baseline',
+      description: 'Règles qui déterminent quand les données d\'un joueur sont trop anciennes pour conclure, sur quelle profondeur d\'historique se construit sa référence personnelle, et à partir de quel écart une évolution est annoncée plutôt que jugée stable.',
+      cles: ['jours_inactif_max', 'baseline_recence_jours', 'tendance_seuil_pts'],
+      expanded: false
+    },
+    // Le groupe « Correcteurs météo » a été retiré ici : ses 6 coefficients n'étaient lus par
+    // aucun code (cf. commentaire en fin de PARAM_META). Un réglage sans effet est pire qu'un
+    // réglage absent — on croit avoir agi.
   ];
 
   readonly meta = PARAM_META;

@@ -21,7 +21,7 @@
     </div>
 
     <!-- ── Cibles d'équipe par type de séance (pré-remplissent le formulaire) ── -->
-    <mat-card class="groupe-card" [class.collapsed]="!ciblesOuvert">
+    <mat-card class="groupe-card cibles-card" [class.collapsed]="!ciblesOuvert">
       <mat-card-header class="groupe-header" (click)="ciblesOuvert = !ciblesOuvert">
         <mat-card-title>Cibles par type de séance</mat-card-title>
         <span class="groupe-toggle">{{ ciblesOuvert ? '▲' : '▼' }}</span>
