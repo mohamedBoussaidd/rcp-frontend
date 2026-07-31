@@ -12,6 +12,7 @@ const LIBELLES: Record<string, string> = {
   RAPPEL_WELLNESS: 'Rappel wellness', RAPPEL_RPE: 'Rappel RPE', RAPPEL_POIDS: 'Rappel pesée',
   RAPPEL_SEANCE: 'Rappel séance', SEANCE_MODIFIEE: 'Séance modifiée', DOC_MEDICAL: 'Document médical',
   GENE_SUIVI: 'Suivi de gêne', MESSAGE_STAFF: 'Message du staff', MESSAGE_JOUEUR: 'Message joueur',
+  EVENEMENT_EXTRASPORTIF: 'Événement du club',
   ALERTE_CHARGE: 'Alerte charge (ACWR)', ALERTE_READINESS: 'Alerte readiness', ALERTE_WELLNESS: 'Alerte wellness',
   ALERTE_POIDS: 'Alerte poids', ALERTE_COMPLETION: 'Alerte complétion', ALERTE_STATUT: 'Changement de statut',
   ALERTE_GENE: 'Gêne signalée (urgent)', DIGEST: 'Digest « à surveiller »', COMPTE: 'Comptes', ECHEANCE: 'Échéances',

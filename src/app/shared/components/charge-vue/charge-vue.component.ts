@@ -6,16 +6,7 @@ import { MatIcon } from '@angular/material/icon';
 import { ChartComponent, ApexChart, ApexAxisChartSeries, ApexXAxis, ApexPlotOptions, ApexDataLabels, ApexTooltip, ApexYAxis, ApexLegend } from 'ng-apexcharts';
 import { DecimalPipe, DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-
-const COULEURS_TYPE: Record<string, string> = {
-  MATCH:        '#ef4444',
-  MATCH_AMICAL: '#f97316',
-  INTENSIF:     '#6366f1',
-  TECHNIQUE:    '#0ea5a0',
-  REPRISE:      '#22c55e',
-  PRE_MATCH:    '#eab308',
-  FORCE:        '#8b5cf6',
-};
+import { CouleursTypeService } from '@core/services/couleurs-type.service';
 
 /**
  * Vue « GPS & Charge » réutilisable : KPIs, graphe distance/séance, répartition par type
@@ -38,8 +29,11 @@ export class ChargeVueComponent implements OnChanges, OnInit {
 
   /** Métriques actives + seuils réels du club (masquage des colonnes jamais importées). */
   readonly metriquesClub = inject(MetriquesClubService);
+  /** Couleurs de type resolues depuis type_seance.couleur (V93), repli historique inclus. */
+  private couleursType = inject(CouleursTypeService);
 
   ngOnInit(): void {
+    this.couleursType.charger();   // couleurs du club (idempotent)
     this.metriquesClub.charger();
   }
 
@@ -377,6 +371,6 @@ export class ChargeVueComponent implements OnChanges, OnInit {
   }
 
   couleurType(code: string): string {
-    return COULEURS_TYPE[code] ?? '#6366f1';
+    return this.couleursType.couleur(code);
   }
 }

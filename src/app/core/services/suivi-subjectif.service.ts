@@ -33,9 +33,21 @@ export interface Rpe {
   seanceType: 'PHYSIQUE' | 'TECHNIQUE';
   date: string;
   rpe: number;
+  /** Durée RÉELLEMENT effectuée (base de la charge). */
   dureeMinutes?: number;
   charge?: number;
+  /** Plaisir ressenti 1..10 — saisi en PWA depuis V91, ou importé du CSV (V69). */
+  plaisir?: number;
   commentaire?: string;
+  seanceTitre?: string;
+  /** Durée planifiée : un écart avec `dureeMinutes` révèle une participation partielle. */
+  dureePrevueMinutes?: number;
+  geneZone?: string;
+  geneIntensite?: number;
+  geneMoment?: string;
+  geneTraitee?: boolean;
+  geneResolution?: 'ARCHIVEE' | 'CONVERTIE';
+  geneTraiteeLe?: string;
 }
 
 /** Suivi subjectif (wellness + RPE) côté staff — lecture filtrée par équipe. */
@@ -68,5 +80,20 @@ export class SuiviSubjectifService {
   /** Rouvre une gêne traitée (médical) : elle redevient active dans les alertes. */
   rouvrirGene(wellnessId: string): Observable<Wellness> {
     return this.http.patch<Wellness>(`/api/wellness/${wellnessId}/gene-rouvrir`, {});
+  }
+
+  /**
+   * Traite la gêne déclarée dans un questionnaire POST-SÉANCE (V91). Depuis que la gêne peut
+   * naître de deux sources, le staff doit pouvoir solder l'une comme l'autre — sans ça une
+   * gêne d'entraînement resterait éternellement active dans les alertes.
+   */
+  traiterGeneRpe(rpeId: string, resolution: 'ARCHIVEE' | 'CONVERTIE' = 'ARCHIVEE'): Observable<Rpe> {
+    const params = new HttpParams().set('resolution', resolution);
+    return this.http.patch<Rpe>(`/api/rpe/${rpeId}/gene-traitee`, {}, { params });
+  }
+
+  /** Rouvre une gêne post-séance traitée (médical). */
+  rouvrirGeneRpe(rpeId: string): Observable<Rpe> {
+    return this.http.patch<Rpe>(`/api/rpe/${rpeId}/gene-rouvrir`, {});
   }
 }

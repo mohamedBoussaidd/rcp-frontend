@@ -1,0 +1,106 @@
+<div class="ev-dialog">
+
+  <div class="ev-head">
+    <h2>{{ estEdition ? 'Modifier l\'événement' : 'Nouvel événement extrasportif' }}</h2>
+    <button type="button" class="ev-close" (click)="annuler()" aria-label="Fermer">✕</button>
+  </div>
+
+  <div class="ev-body">
+
+    <!-- Type : l'icône porte l'information, la couleur reste neutre pour tous -->
+    <div class="ev-field">
+      <label>Type</label>
+      <div class="ev-types">
+        @for (t of TYPES; track t.val) {
+          <button type="button" class="ev-type" [class.is-active]="type() === t.val" (click)="type.set(t.val)">
+            <span class="ev-type__ic">{{ t.icone }}</span>
+            <span class="ev-type__lbl">{{ t.label }}</span>
+          </button>
+        }
+      </div>
+    </div>
+
+    <div class="ev-field">
+      <label>Intitulé <em>obligatoire</em></label>
+      <input type="text" maxlength="160" [ngModel]="titre()" (ngModelChange)="titre.set($event)"
+             placeholder="ex. Assemblée générale du club">
+    </div>
+
+    <div class="ev-row">
+      <div class="ev-field">
+        <label>Date</label>
+        <input type="date" [ngModel]="date()" (ngModelChange)="date.set($event)">
+      </div>
+      <div class="ev-field">
+        <label>Fin <em>si plusieurs jours</em></label>
+        <input type="date" [ngModel]="dateFin()" (ngModelChange)="dateFin.set($event)" [min]="date()">
+      </div>
+    </div>
+
+    <div class="ev-row">
+      <div class="ev-field">
+        <label>Heure de début</label>
+        <input type="time" [ngModel]="heureDebut()" (ngModelChange)="heureDebut.set($event)">
+      </div>
+      <div class="ev-field">
+        <label>Heure de fin</label>
+        <input type="time" [ngModel]="heureFin()" (ngModelChange)="heureFin.set($event)">
+      </div>
+    </div>
+
+    <div class="ev-field">
+      <label>Lieu</label>
+      <input type="text" maxlength="160" [ngModel]="lieu()" (ngModelChange)="lieu.set($event)"
+             placeholder="ex. Club-house">
+    </div>
+
+    <div class="ev-field">
+      <label>Description</label>
+      <textarea rows="2" [ngModel]="description()" (ngModelChange)="description.set($event)"
+                placeholder="Précisions utiles au staff et aux joueurs concernés…"></textarea>
+    </div>
+
+    <!-- Ciblage : vide = toute l'équipe -->
+    <div class="ev-field">
+      <div class="ev-cibles-head">
+        <label>Personnes concernées</label>
+        <span class="ev-cibles-etat">
+          @if (cibles().size === 0) { Toute l'équipe }
+          @else {
+            {{ cibles().size }} sélectionnée{{ cibles().size > 1 ? 's' : '' }}
+            <button type="button" class="ev-mini" (click)="effacerCibles()">Tout l'effectif</button>
+          }
+        </span>
+      </div>
+      <input class="ev-search" type="text" [ngModel]="recherche()" (ngModelChange)="recherche.set($event)"
+             placeholder="Rechercher une personne…">
+      <div class="ev-liste">
+        @for (j of joueursFiltres; track j.id) {
+          <button type="button" class="ev-personne" [class.is-active]="estCible(j.id)" (click)="basculerCible(j.id)">
+            <span class="ev-personne__check">{{ estCible(j.id) ? '✓' : '' }}</span>
+            {{ j.prenom }} {{ j.nom }}
+          </button>
+        }
+        @if (joueursFiltres.length === 0) {
+          <div class="ev-vide">Aucune personne trouvée.</div>
+        }
+      </div>
+    </div>
+
+    <label class="ev-check">
+      <input type="checkbox" [ngModel]="visibleJoueurs()" (ngModelChange)="visibleJoueurs.set($event)">
+      Visible par les joueurs concernés dans leur application
+    </label>
+
+    @if (erreur()) {
+      <div class="ev-erreur">{{ erreur() }}</div>
+    }
+  </div>
+
+  <div class="ev-foot">
+    <button type="button" class="ev-btn" (click)="annuler()">Annuler</button>
+    <button type="button" class="ev-btn ev-btn--primary" [disabled]="!valide || envoi()" (click)="enregistrer()">
+      {{ envoi() ? 'Enregistrement…' : (estEdition ? 'Enregistrer' : 'Créer l\'événement') }}
+    </button>
+  </div>
+</div>

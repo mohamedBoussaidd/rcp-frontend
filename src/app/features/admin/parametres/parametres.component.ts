@@ -3,6 +3,8 @@ import { Router } from '@angular/router';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { ConfigurationService } from '@core/services/configuration.service';
 import { SeanceService, TypeSeance } from '@core/services/seance.service';
+import { AuthService } from '@core/services/auth.service';
+import { CouleursTypeService } from '@core/services/couleurs-type.service';
 import { MatCard, MatCardHeader, MatCardTitle, MatCardContent, MatCardActions } from '@angular/material/card';
 import { MatTooltip } from '@angular/material/tooltip';
 import { FormsModule } from '@angular/forms';
@@ -404,6 +406,27 @@ export class ParametresComponent implements OnInit {
   ciblesOuvert = false;
   cibleSaving: string | null = null;
 
+  // ── Apparence & nature des types (catalogue GLOBAL, permission dédiée) ──
+  apparenceSaving: string | null = null;
+
+  readonly PROFILS: { val: string; label: string }[] = [
+    { val: 'TERRAIN',             label: 'Terrain (distance, GPS)' },
+    { val: 'MUSCULATION',         label: 'Musculation / renforcement' },
+    { val: 'SANS_CHARGE_EXTERNE', label: 'Sans charge externe (piscine, vidéo…)' },
+  ];
+
+  profilLabel(v?: string | null): string {
+    return this.PROFILS.find(p => p.val === v)?.label ?? '';
+  }
+
+  /**
+   * La NATURE d'un type vaut pour toute la plateforme (catalogue global) : seul le super-admin
+   * peut la changer. `typeseances:write` ne suffirait pas — quatre rôles la détiennent dans
+   * chaque club, ce qui laisserait un entraîneur reconfigurer tous les autres clubs.
+   * La couleur, elle, est propre au club et se règle dans le tableau des cibles.
+   */
+  get peutEditerTypes(): boolean { return this.auth.hasRole('SUPER_ADMIN'); }
+
 
   readonly groupes: GroupeParams[] = [
     {
@@ -542,6 +565,9 @@ export class ParametresComponent implements OnInit {
   private seanceService = inject(SeanceService);
   private snackBar = inject(MatSnackBar);
   private router = inject(Router);
+  private auth = inject(AuthService);
+  /** Cache partagé des couleurs de type — rafraîchi après édition. */
+  private couleursType = inject(CouleursTypeService);
 
   ngOnInit(): void {
     this.valeurs = Object.fromEntries(
@@ -563,15 +589,41 @@ export class ParametresComponent implements OnInit {
       objectifDistanceM: type.objectifDistanceM ?? null,
       objectifDistanceHauteIntensiteM: type.objectifDistanceHauteIntensiteM ?? null,
       objectifIntensite: type.objectifIntensite ?? null,
+      couleur: type.couleur ?? null,
     }).subscribe({
       next: maj => {
         this.cibleSaving = null;
         this.typesSeance = this.typesSeance.map(t => t.id === maj.id ? maj : t);
-        this.snackBar.open(`Cibles "${type.libelle}" enregistrées`, 'OK', { duration: 2500 });
+        // La couleur du club vient de changer : le cache partagé doit suivre immédiatement.
+        this.couleursType.rafraichir();
+        this.snackBar.open(`Réglages "${type.libelle}" enregistrés`, 'OK', { duration: 2500 });
       },
       error: () => {
         this.cibleSaving = null;
         this.snackBar.open('Enregistrement impossible', 'Fermer', { duration: 3500 });
+      },
+    });
+  }
+
+  /**
+   * Nature d'un type — réglage GLOBAL réservé au super-admin. Rafraîchit le cache pour que le
+   * changement soit visible tout de suite (les colonnes de distance disparaissent aussitôt
+   * qu'un type passe en musculation).
+   */
+  sauvegarderApparence(type: TypeSeance): void {
+    this.apparenceSaving = type.id;
+    this.seanceService.setApparenceType(type.id, {
+      profil: type.profil ?? 'TERRAIN',
+    }).subscribe({
+      next: maj => {
+        this.apparenceSaving = null;
+        this.typesSeance = this.typesSeance.map(t => t.id === maj.id ? maj : t);
+        this.couleursType.rafraichir();
+        this.snackBar.open(`« ${type.libelle} » mis à jour`, 'OK', { duration: 2500 });
+      },
+      error: err => {
+        this.apparenceSaving = null;
+        this.snackBar.open(err?.error?.message ?? 'Enregistrement impossible', 'Fermer', { duration: 3500 });
       },
     });
   }

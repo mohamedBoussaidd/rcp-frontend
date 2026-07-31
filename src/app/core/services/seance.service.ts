@@ -2,24 +2,60 @@ import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, of } from 'rxjs';
 
+/** Nature d'un type de séance (V93) : ce que l'application doit ATTENDRE d'une telle séance. */
+export type ProfilTypeSeance = 'TERRAIN' | 'MUSCULATION' | 'SANS_CHARGE_EXTERNE';
+
 export interface TypeSeance {
   id: string;
   code: string;
   libelle: string;
+  /** Échelle 1..5 (contrainte en base) — surtout PAS un pourcentage. */
   intensiteTheorique?: number;
   dureeTheoriqueMin?: number;
   objectifPrincipal?: string;
-  // Cibles d'équipe par défaut (propres au club actif) — pré-remplissent le formulaire
+  /** TERRAIN (défaut) | MUSCULATION | SANS_CHARGE_EXTERNE. */
+  profil?: ProfilTypeSeance;
+  /** Couleur du type, désormais portée par la base (était codée en dur côté front). */
+  couleur?: string;
+  // Cibles d'équipe par défaut (propres au club actif) — pré-remplissent le formulaire.
+  // Toujours absentes hors profil TERRAIN : une séance en salle n'a pas de mètres.
   objectifDistanceM?: number;
   objectifDistanceHauteIntensiteM?: number;
   objectifIntensite?: number;
 }
 
-/** Cibles paramétrables d'un type de séance (club actif). */
+/** Qualité travaillée en musculation (V93). */
+export type QualiteMuscu =
+  | 'FORCE_MAX' | 'HYPERTROPHIE' | 'PUISSANCE'
+  | 'ENDURANCE_FORCE' | 'PREVENTION' | 'REATHLETISATION';
+
+/** Régime de contraction (V93) : l'excentrique explique les courbatures à J+2. */
+export type RegimeMuscu = 'CONCENTRIQUE' | 'EXCENTRIQUE' | 'PLIOMETRIE' | 'ISOMETRIE' | 'MIXTE';
+
+export const QUALITES_MUSCU: { val: QualiteMuscu; label: string }[] = [
+  { val: 'FORCE_MAX',       label: 'Force maximale' },
+  { val: 'HYPERTROPHIE',    label: 'Hypertrophie' },
+  { val: 'PUISSANCE',       label: 'Puissance / explosivité' },
+  { val: 'ENDURANCE_FORCE', label: 'Endurance de force' },
+  { val: 'PREVENTION',      label: 'Prévention / renforcement' },
+  { val: 'REATHLETISATION', label: 'Réathlétisation' },
+];
+
+export const REGIMES_MUSCU: { val: RegimeMuscu; label: string; aide?: string }[] = [
+  { val: 'CONCENTRIQUE', label: 'Concentrique' },
+  { val: 'EXCENTRIQUE',  label: 'Excentrique', aide: 'Courbatures attendues à J+2' },
+  { val: 'PLIOMETRIE',   label: 'Pliométrie' },
+  { val: 'ISOMETRIE',    label: 'Isométrie' },
+  { val: 'MIXTE',        label: 'Mixte' },
+];
+
+/** Réglages d'un type de séance pour LE CLUB ACTIF (cibles + couleur). Rien de global ici. */
 export interface CiblesTypeRequest {
   objectifDistanceM?: number | null;
   objectifDistanceHauteIntensiteM?: number | null;
   objectifIntensite?: number | null;
+  /** Couleur du calendrier propre au club ; null = défaut de la plateforme. */
+  couleur?: string | null;
 }
 
 export interface Seance {
@@ -53,6 +89,11 @@ export interface Seance {
   objectifDistanceM?: number;
   objectifIntensite?: number;
   objectifDistanceHauteIntensiteM?: number;
+  // ── Musculation (V93) : renseignés uniquement si le type est de profil MUSCULATION ──
+  muscuQualite?: QualiteMuscu | null;
+  muscuRegime?: RegimeMuscu | null;
+  muscuNbSeries?: number | null;
+  muscuNbRepetitions?: number | null;
   // ── Mode avancé (module seance_avancee), tout optionnel ──
   dureeEffectiveMinutes?: number;
   // V68 : dosage 0-5 des cinq axes pédagogiques. Les `obj*` restent la ligne de détail.
@@ -423,6 +464,16 @@ export class SeanceService {
   /** Paramètre les cibles d'un type de séance pour le club actif. */
   setCiblesType(typeId: string, req: CiblesTypeRequest): Observable<TypeSeance> {
     return this.http.put<TypeSeance>(`${this.baseTypes}/${typeId}/cibles`, req);
+  }
+
+  /**
+   * Nature d'un type de séance (TERRAIN / MUSCULATION / SANS_CHARGE_EXTERNE).
+   * ⚠ Le catalogue des types est GLOBAL : ce réglage vaut pour TOUS les clubs de la
+   * plateforme, il est donc réservé au SUPER_ADMIN côté serveur. La couleur, elle, est
+   * propre au club et passe par {@link setCiblesType}.
+   */
+  setApparenceType(typeId: string, req: { profil?: string | null }): Observable<TypeSeance> {
+    return this.http.put<TypeSeance>(`${this.baseTypes}/${typeId}/apparence`, req);
   }
 
   // ── Préparation : exercices de la séance ──

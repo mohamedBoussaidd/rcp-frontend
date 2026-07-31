@@ -112,6 +112,14 @@
   &--mt { margin: 20px 0 8px; }
 }
 
+/* Marque un champ non obligatoire : sans ça, un questionnaire de 5 blocs se lit
+   comme 5 obligations et le joueur abandonne. */
+.rpe-opt {
+  margin-left: 6px;
+  font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em;
+  color: var(--text-4);
+}
+
 .rpe-val {
   display: flex;
   align-items: baseline;
@@ -155,7 +163,126 @@
   font-size: 10.5px; font-weight: 600; color: var(--text-4);
 }
 
-.rpe-duree { max-width: 140px; }
+.rpe-duree { max-width: 120px; }
+
+/* ── Durée réellement effectuée ── */
+.rpe-duree-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.rpe-duree-unit { font-size: 13px; font-weight: 700; color: var(--text-3); }
+
+.rpe-duree-reset {
+  margin-left: auto;
+  border: 1px solid var(--border-strong);
+  background: var(--surface);
+  border-radius: var(--r-md);
+  padding: 7px 11px;
+  font-size: 12px; font-weight: 700; color: var(--text-2);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.rpe-partiel {
+  margin-top: 10px;
+  padding: 10px 12px;
+  border-radius: var(--r-md);
+  background: var(--warn-bg);
+  border: 1px solid var(--warn);
+  font-size: 12px; font-weight: 600; line-height: 1.45;
+  color: var(--warn);
+}
+
+/* ── Bloc gêne repliable ── */
+.rpe-toggle {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: transparent;
+  border: 0;
+  padding: 0;
+  text-align: left;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+
+  &__ic { font-size: 22px; line-height: 1; }
+  &__body { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0; }
+  &__t { font-size: 13px; font-weight: 700; color: var(--text-2); }
+  &__s { font-size: 11.5px; font-weight: 600; color: var(--text-4); }
+  &__chev {
+    font-size: 20px; font-weight: 700; color: var(--text-3);
+    width: 28px; height: 28px;
+    display: grid; place-items: center;
+    border: 1.5px solid var(--border-strong);
+    border-radius: var(--r-md);
+  }
+  &.is-open &__chev { color: var(--green-700); border-color: var(--ok-bd); }
+}
+
+.rpe-gene { margin-top: 16px; }
+
+.rpe-card-title {
+  font-size: 13px; font-weight: 700; color: var(--text-2);
+  margin-bottom: 10px;
+}
+
+.rpe-row--mt { margin-top: 18px; }
+
+.rpe-zone-pill {
+  margin-top: 10px;
+  padding: 8px 12px;
+  border-radius: var(--r-md);
+  background: var(--green-50);
+  border: 1px solid var(--ok-bd);
+  font-size: 12.5px; font-weight: 700; color: var(--green-700);
+  text-align: center;
+}
+
+.rpe-zone-empty {
+  margin-top: 10px;
+  font-size: 12px; font-weight: 600; color: var(--text-4);
+  text-align: center;
+}
+
+.rpe-moments {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+}
+
+.rpe-moment {
+  min-height: 40px;
+  border: 1.5px solid var(--border-strong);
+  background: var(--surface);
+  border-radius: var(--r-md);
+  font-size: 12px; font-weight: 700; color: var(--text-2);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  &.is-active {
+    background: var(--green-50);
+    border-color: var(--ok-bd);
+    color: var(--green-700);
+  }
+}
+
+.rpe-comment {
+  width: 100%;
+  margin-top: 8px;
+  resize: vertical;
+  font-family: inherit;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.rpe-submit-hint {
+  margin-top: 8px;
+  font-size: 11.5px; font-weight: 600; color: var(--warn);
+  text-align: center;
+}
 
 /* ── Carte charge estimée ── */
 .rpe-load {

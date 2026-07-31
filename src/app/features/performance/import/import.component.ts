@@ -8,11 +8,7 @@ import {
   LigneGpsImport, MappingColonne, MetriqueImport, ProfilImport, ResolutionImport
 } from '@core/services/seance.service';
 import { JoueurService, Joueur } from '@core/services/joueur.service';
-
-const COULEURS_TYPE: Record<string, string> = {
-  MATCH: '#ef4444', MATCH_AMICAL: '#f97316', INTENSIF: '#6366f1',
-  TECHNIQUE: '#0ea5a0', REPRISE: '#22c55e', PRE_MATCH: '#eab308', FORCE: '#8b5cf6',
-};
+import { CouleursTypeService } from '@core/services/couleurs-type.service';
 
 const POSTES = [
   { value: 'GK',  label: 'Gardien' },
@@ -119,8 +115,11 @@ export class ImportComponent implements OnInit {
   private joueurService = inject(JoueurService);
   private snackBar = inject(MatSnackBar);
   private router = inject(Router);
+  /** Couleurs de type resolues depuis type_seance.couleur (V93), repli historique inclus. */
+  private couleursType = inject(CouleursTypeService);
 
   ngOnInit(): void {
+    this.couleursType.charger();   // couleurs du club (idempotent)
     const debut = this.dateStr(-365);
     const fin   = this.dateStr(30);
     this.seanceService.getSemaine(debut, fin).subscribe(seances => {
@@ -130,7 +129,7 @@ export class ImportComponent implements OnInit {
   }
 
   couleur(code: string): string {
-    return COULEURS_TYPE[code] ?? '#6366f1';
+    return this.couleursType.couleur(code);
   }
 
   selectionner(seance: Seance): void {

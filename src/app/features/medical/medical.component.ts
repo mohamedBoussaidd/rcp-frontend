@@ -1,7 +1,7 @@
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, RouterLink } from '@angular/router';
-import { map } from 'rxjs';
+import { Observable, map } from 'rxjs';
 import { FormsModule } from '@angular/forms';
 import { DatePipe, LowerCasePipe } from '@angular/common';
 import { MatSnackBar } from '@angular/material/snack-bar';
@@ -15,6 +15,29 @@ import { couleurTheme } from '@core/services/theme.service';
 import { Joueur, JoueurService } from '@core/services/joueur.service';
 import { AuthService } from '@core/services/auth.service';
 import { ChartComponent, ApexChart, ApexAxisChartSeries, ApexNonAxisChartSeries, ApexXAxis, ApexYAxis, ApexStroke, ApexFill, ApexPlotOptions, ApexDataLabels, ApexLegend, ApexGrid, ApexMarkers } from 'ng-apexcharts';
+
+/**
+ * Une gêne, quelle que soit sa provenance. Depuis V91 elle peut naître du ressenti quotidien
+ * (`wellness_quotidien`) OU du questionnaire post-séance (`rpe_seance`) : l'écran Médical les
+ * traite à l'identique, seul l'endpoint de résolution diffère. `contexte` porte le titre de la
+ * séance pour une gêne post-séance — c'est ce qui permet au staff de savoir d'où elle sort.
+ */
+interface GeneUnifiee {
+  id: string;
+  source: 'WELLNESS' | 'RPE';
+  joueurId: string;
+  joueurNom?: string;
+  joueurPrenom?: string;
+  date: string;
+  geneZone?: string;
+  geneIntensite?: number;
+  geneMoment?: string;
+  geneTraitee: boolean;
+  geneResolution?: 'ARCHIVEE' | 'CONVERTIE';
+  geneTraiteeLe?: string;
+  /** Titre de la séance concernée (source RPE), null pour une gêne du ressenti quotidien. */
+  contexte: string | null;
+}
 
 @Component({
   selector: 'app-medical',
@@ -235,6 +258,8 @@ export class MedicalComponent implements OnInit {
   saving          = signal(false);
   form: BlessureRequest = this.formVide();
   geneEnConversion = signal<string | null>(null);
+  /** Source de la gêne en cours de conversion : elle décide de l'endpoint à solder. */
+  geneSourceEnConversion = signal<'WELLNESS' | 'RPE'>('WELLNESS');
 
   /** Refonte Blessures : vue grille/liste, étapes de la modale, onglet du drawer. */
   vueBlessures = signal<'grille' | 'liste'>('grille');
@@ -327,15 +352,46 @@ export class MedicalComponent implements OnInit {
 
   joueursRisque     = signal<ResumeJoueur[]>([]);
   wellnessAlertes   = signal<Wellness[]>([]);
+  /** Gênes déclarées APRÈS une séance (V91) — seconde source, à traiter comme la première. */
+  rpeAlertes        = signal<Rpe[]>([]);
   readonly SEUIL_RETOUR_IMMINENT = 7;
   readonly MOMENTS_GENE: Record<string, string> = { EFFORT: "à l'effort", APRES: 'juste après', REPOS: 'au repos' };
 
-  get genesSignalees(): Wellness[] {
-    const limite = new Date(Date.now() - 7 * 86400000).toISOString().slice(0, 10);
-    return this.wellnessAlertes().filter(w => w.geneZone && !w.geneTraitee && w.date >= limite).sort((a, b) => b.date.localeCompare(a.date));
+  /**
+   * Toutes les gênes, quelle que soit leur origine, ramenées à une forme commune.
+   * Depuis V91 une gêne naît du ressenti quotidien OU du questionnaire post-séance : n'en lire
+   * qu'une source revenait à ignorer en silence les douleurs signalées après l'entraînement.
+   */
+  private get toutesGenes(): GeneUnifiee[] {
+    const duWellness: GeneUnifiee[] = this.wellnessAlertes()
+      .filter(w => w.geneZone)
+      .map(w => ({
+        id: w.id, source: 'WELLNESS', joueurId: w.joueurId,
+        joueurNom: w.joueurNom, joueurPrenom: w.joueurPrenom, date: w.date,
+        geneZone: w.geneZone, geneIntensite: w.geneIntensite, geneMoment: w.geneMoment,
+        geneTraitee: !!w.geneTraitee, geneResolution: w.geneResolution, geneTraiteeLe: w.geneTraiteeLe,
+        contexte: null,
+      }));
+    const duRpe: GeneUnifiee[] = this.rpeAlertes()
+      .filter(r => r.geneZone)
+      .map(r => ({
+        id: r.id, source: 'RPE', joueurId: r.joueurId,
+        joueurNom: r.joueurNom, joueurPrenom: r.joueurPrenom, date: r.date,
+        geneZone: r.geneZone, geneIntensite: r.geneIntensite, geneMoment: r.geneMoment,
+        geneTraitee: !!r.geneTraitee, geneResolution: r.geneResolution, geneTraiteeLe: r.geneTraiteeLe,
+        contexte: r.seanceTitre ?? 'Séance',
+      }));
+    return [...duWellness, ...duRpe];
   }
-  get genesHistorique(): Wellness[] {
-    return this.wellnessAlertes().filter(w => w.geneZone && w.geneTraitee).sort((a, b) => (b.geneTraiteeLe ?? b.date).localeCompare(a.geneTraiteeLe ?? a.date));
+
+  get genesSignalees(): GeneUnifiee[] {
+    const limite = new Date(Date.now() - 7 * 86400000).toISOString().slice(0, 10);
+    return this.toutesGenes.filter(g => !g.geneTraitee && g.date >= limite)
+      .sort((a, b) => b.date.localeCompare(a.date));
+  }
+  get genesHistorique(): GeneUnifiee[] {
+    return this.toutesGenes.filter(g => g.geneTraitee)
+      .sort((a, b) => (b.geneTraiteeLe ?? b.date).localeCompare(a.geneTraiteeLe ?? a.date));
   }
 
   momentGeneLabel(v?: string): string   { return v ? (this.MOMENTS_GENE[v] ?? v) : ''; }
@@ -345,24 +401,37 @@ export class MedicalComponent implements OnInit {
   get peutVoirHistoriqueGenes(): boolean { return this.auth.canTraiterGene(); }
   get peutRouvrirGene(): boolean      { return this.auth.canRouvrirGene(); }
 
-  traiterGene(w: Wellness): void {
+  /** Applique la mise à jour renvoyée par le serveur dans la bonne liste source. */
+  private majGene(g: GeneUnifiee, maj: Wellness | Rpe): void {
+    if (g.source === 'RPE') this.rpeAlertes.update(l => l.map(x => x.id === g.id ? maj as Rpe : x));
+    else this.wellnessAlertes.update(l => l.map(x => x.id === g.id ? maj as Wellness : x));
+  }
+
+  traiterGene(g: GeneUnifiee): void {
     if (!confirm('Archiver cette gêne ?')) return;
-    this.suiviService.traiterGene(w.id, 'ARCHIVEE').subscribe({
-      next: maj => this.wellnessAlertes.update(l => l.map(x => x.id === w.id ? maj : x)),
+    const obs: Observable<Wellness | Rpe> = g.source === 'RPE'
+      ? this.suiviService.traiterGeneRpe(g.id, 'ARCHIVEE')
+      : this.suiviService.traiterGene(g.id, 'ARCHIVEE');
+    obs.subscribe({
+      next: maj => this.majGene(g, maj),
       error: ()  => this.snack.open('Action impossible', 'Fermer', { duration: 3000 }),
     });
   }
-  rouvrirGene(w: Wellness): void {
-    this.suiviService.rouvrirGene(w.id).subscribe({
-      next: maj => this.wellnessAlertes.update(l => l.map(x => x.id === w.id ? maj : x)),
+  rouvrirGene(g: GeneUnifiee): void {
+    const obs: Observable<Wellness | Rpe> = g.source === 'RPE'
+      ? this.suiviService.rouvrirGeneRpe(g.id)
+      : this.suiviService.rouvrirGene(g.id);
+    obs.subscribe({
+      next: maj => this.majGene(g, maj),
       error: ()  => this.snack.open('Action impossible', 'Fermer', { duration: 3000 }),
     });
   }
-  convertirGeneEnBlessure(w: Wellness): void {
-    if (!w.geneZone) return;
+  convertirGeneEnBlessure(g: GeneUnifiee): void {
+    if (!g.geneZone) return;
     this.editingId.set(null);
-    this.form = { ...this.formVide(), joueurId: w.joueurId, dateBlessure: w.date, zoneCorporelle: w.geneZone };
-    this.geneEnConversion.set(w.id);
+    this.form = { ...this.formVide(), joueurId: g.joueurId, dateBlessure: g.date, zoneCorporelle: g.geneZone };
+    this.geneEnConversion.set(g.id);
+    this.geneSourceEnConversion.set(g.source);
     this.formStep.set(1);
     this.showForm.set(true);
   }
@@ -422,6 +491,8 @@ export class MedicalComponent implements OnInit {
     this.charger(); this.chargerDocuments(); this.chargerSuivi(); this.chargerProtocoles();
     this.predictionService.getResumeEquipe().subscribe({ next: d => this.joueursRisque.set(d), error: () => {} });
     this.suiviService.getWellness().subscribe({ next: d => this.wellnessAlertes.set(d), error: () => {} });
+    // Seconde source de gênes depuis V91 : les déclarations faites après une séance.
+    this.suiviService.getRpe().subscribe({ next: d => this.rpeAlertes.set(d), error: () => {} });
   }
 
   charger(): void {
@@ -449,7 +520,20 @@ export class MedicalComponent implements OnInit {
     obs.subscribe({
       next: () => {
         const geneId = this.geneEnConversion();
-        if (geneId) { this.suiviService.traiterGene(geneId, 'CONVERTIE').subscribe({ next: maj => this.wellnessAlertes.update(l => l.map(x => x.id === geneId ? maj : x)), error: () => {} }); this.geneEnConversion.set(null); }
+        if (geneId) {
+          // La gêne convertie est soldée dans SA source (ressenti du jour ou post-séance).
+          const estRpe = this.geneSourceEnConversion() === 'RPE';
+          const solde: Observable<Wellness | Rpe> = estRpe
+            ? this.suiviService.traiterGeneRpe(geneId, 'CONVERTIE')
+            : this.suiviService.traiterGene(geneId, 'CONVERTIE');
+          solde.subscribe({
+            next: maj => estRpe
+              ? this.rpeAlertes.update(l => l.map(x => x.id === geneId ? maj as Rpe : x))
+              : this.wellnessAlertes.update(l => l.map(x => x.id === geneId ? maj as Wellness : x)),
+            error: () => {},
+          });
+          this.geneEnConversion.set(null);
+        }
         this.saving.set(false); this.showForm.set(false); this.editingId.set(null); this.charger();
       },
       error: () => { this.saving.set(false); this.snack.open("Erreur lors de l'enregistrement", 'Fermer', { duration: 3000 }); },

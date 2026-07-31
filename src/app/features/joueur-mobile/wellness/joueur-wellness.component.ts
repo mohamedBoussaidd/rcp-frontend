@@ -1,7 +1,7 @@
 import { Component, OnInit, computed, effect, inject, signal } from '@angular/core';
 import { Router, ActivatedRoute } from '@angular/router';
 import { FormsModule } from '@angular/forms';
-import { BodyMapComponent } from './body-map.component';
+import { BodyMapComponent } from '@shared/components/body-map/body-map.component';
 import { JoueurStore, HooperKey, GeneForm } from '../joueur.store';
 
 interface ScaleItem {

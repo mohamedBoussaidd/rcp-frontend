@@ -257,41 +257,100 @@
         <div class="sm-pile">
 
           <div class="sm-section-head">
-            <span class="sm-section-titre">Cibles physiques d'équipe</span>
-            @if (selectedType) {
+            <span class="sm-section-titre">
+              @if (estMusculation) { Contenu de la séance de musculation }
+              @else { Cibles physiques d'équipe }
+            </span>
+            @if (selectedType && !estMusculation) {
               <button type="button" class="btn-ajout-exo" (click)="appliquerCiblesType()">↻ Cibles du type</button>
             }
           </div>
 
-          <div class="trio">
-            <label class="champ">
-              <span class="champ__label">Distance cible</span>
-              <div class="ligne-unite">
-                <input class="input mono" type="number" min="0" formControlName="objectifDistanceM"
-                       placeholder="ex : 6000">
-                <span class="unite">m</span>
-              </div>
-              @if (suggestionDistanceM > 0) {
-                <span class="champ__hint">Σ exercices physiques : {{ suggestionDistanceM }} m</span>
-              }
-            </label>
-            <label class="champ">
-              <span class="champ__label">dont haute intensité</span>
-              <div class="ligne-unite">
-                <input class="input mono" type="number" min="0"
-                       formControlName="objectifDistanceHauteIntensiteM" placeholder="ex : 1000">
-                <span class="unite">m</span>
-              </div>
-            </label>
-            <label class="champ">
+          <!-- Une séance qui ne produit pas de déplacement mesuré n'a PAS de distance cible :
+               réclamer des mètres pour du squat était le symptôme principal du lot F. -->
+          @if (attendGps) {
+            <div class="trio">
+              <label class="champ">
+                <span class="champ__label">Distance cible</span>
+                <div class="ligne-unite">
+                  <input class="input mono" type="number" min="0" formControlName="objectifDistanceM"
+                         placeholder="ex : 6000">
+                  <span class="unite">m</span>
+                </div>
+                @if (suggestionDistanceM > 0) {
+                  <span class="champ__hint">Σ exercices physiques : {{ suggestionDistanceM }} m</span>
+                }
+              </label>
+              <label class="champ">
+                <span class="champ__label">dont haute intensité</span>
+                <div class="ligne-unite">
+                  <input class="input mono" type="number" min="0"
+                         formControlName="objectifDistanceHauteIntensiteM" placeholder="ex : 1000">
+                  <span class="unite">m</span>
+                </div>
+              </label>
+              <label class="champ">
+                <span class="champ__label">Intensité cible</span>
+                <div class="ligne-unite">
+                  <input class="input input--num mono" type="number" min="1" max="5"
+                         formControlName="objectifIntensite" placeholder="1–5">
+                  <span class="unite">sur 5</span>
+                </div>
+              </label>
+            </div>
+          } @else {
+            <label class="champ champ--seul">
               <span class="champ__label">Intensité cible</span>
               <div class="ligne-unite">
                 <input class="input input--num mono" type="number" min="1" max="5"
                        formControlName="objectifIntensite" placeholder="1–5">
                 <span class="unite">sur 5</span>
               </div>
+              <span class="champ__hint">
+                Ce type de séance ne produit pas de données de déplacement : sa charge est
+                comptée via le sRPE une fois la séance notée par les joueurs.
+              </span>
             </label>
-          </div>
+          }
+
+          <!-- ── Musculation (V93) ── -->
+          @if (estMusculation) {
+            <div class="quatuor">
+              <label class="champ">
+                <span class="champ__label">Qualité travaillée</span>
+                <select class="input" formControlName="muscuQualite">
+                  <option [ngValue]="null">— Non précisée —</option>
+                  @for (q of QUALITES_MUSCU; track q.val) {
+                    <option [ngValue]="q.val">{{ q.label }}</option>
+                  }
+                </select>
+              </label>
+              <label class="champ">
+                <span class="champ__label">Régime de contraction</span>
+                <select class="input" formControlName="muscuRegime">
+                  <option [ngValue]="null">— Non précisé —</option>
+                  @for (r of REGIMES_MUSCU; track r.val) {
+                    <option [ngValue]="r.val">{{ r.label }}</option>
+                  }
+                </select>
+                @if (regimeExcentrique) {
+                  <span class="champ__hint">
+                    Courbatures attendues à J+2 : le pic de douleur du surlendemain sera normal.
+                  </span>
+                }
+              </label>
+              <label class="champ">
+                <span class="champ__label">Séries (total)</span>
+                <input class="input input--num mono" type="number" min="1" max="200"
+                       formControlName="muscuNbSeries" placeholder="ex : 18">
+              </label>
+              <label class="champ">
+                <span class="champ__label">Répétitions (total)</span>
+                <input class="input input--num mono" type="number" min="1" max="5000"
+                       formControlName="muscuNbRepetitions" placeholder="ex : 180">
+              </label>
+            </div>
+          }
 
           <!-- Chaque météo annonce sa correction : le coach voit ce que son choix implique -->
           <div class="champ">

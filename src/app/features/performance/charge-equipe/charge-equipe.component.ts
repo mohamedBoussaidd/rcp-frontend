@@ -10,6 +10,7 @@ import { AuthService } from '@core/services/auth.service';
 import { couleurTheme } from '@core/services/theme.service';
 import { InfoHintComponent } from '@shared/components/info-hint/info-hint.component';
 import { BriefingCardComponent } from '@shared/components/briefing-card/briefing-card.component';
+import { CouleursTypeService } from '@core/services/couleurs-type.service';
 
 /**
  * Scénarios de simulation. Un seul aujourd'hui ; la liste est le point d'extension prévu
@@ -18,16 +19,6 @@ import { BriefingCardComponent } from '@shared/components/briefing-card/briefing
  */
 type CodeScenario = 'seance';
 interface Scenario { code: CodeScenario; libelle: string; description: string; }
-
-const COULEURS_TYPE: Record<string, string> = {
-  MATCH:        '#ef4444',
-  MATCH_AMICAL: '#f97316',
-  INTENSIF:     '#6366f1',
-  TECHNIQUE:    '#0ea5a0',
-  REPRISE:      '#22c55e',
-  PRE_MATCH:    '#eab308',
-  FORCE:        '#8b5cf6',
-};
 
 type TriCol = 'distance_totale_m' | 'distance_attendue_m' | 'delta_pct' | 'ratio_reel'
   | 'duree_minutes' | 'nb_sprints' | 'vitesse_max' | 'nb_seances';
@@ -44,6 +35,8 @@ export class ChargeEquipeComponent implements OnInit {
   private predictionService = inject(PredictionService);
   private seanceService = inject(SeanceService);
   private auth = inject(AuthService);
+  /** Couleurs de type resolues depuis type_seance.couleur (V93), repli historique inclus. */
+  private couleursType = inject(CouleursTypeService);
 
   data: ChargeEquipe | null = null;
   loading = true;
@@ -108,6 +101,7 @@ export class ChargeEquipeComponent implements OnInit {
   @ViewChild('equipeChart') private equipeChart?: ChartComponent;
 
   ngOnInit(): void {
+    this.couleursType.charger();   // couleurs du club (idempotent)
     this.appliquerJours(this.raccourciJours ?? 7);
     this.charger();
     this.chargerObjectif();
@@ -380,7 +374,7 @@ export class ChargeEquipeComponent implements OnInit {
   }
 
   // ── Statut / couleurs ──
-  couleurType(code: string): string { return COULEURS_TYPE[code] ?? '#6366f1'; }
+  couleurType(code: string): string { return this.couleursType.couleur(code); }
 
   chargeTone(statut: string): string {
     if (statut === 'DANS_NORME') return 'tone-ok';

@@ -8,16 +8,7 @@ import { SeanceService, Seance } from '@core/services/seance.service';
 import { PredictionService, RapportSeance, LigneRapport } from '@core/services/prediction.service';
 import { MetriquesClubService } from '@core/services/metriques-club.service';
 import { DebriefCardComponent } from '@shared/components/debrief-card/debrief-card.component';
-
-const COULEURS_TYPE: Record<string, string> = {
-  MATCH:        '#ef4444',
-  MATCH_AMICAL: '#f97316',
-  INTENSIF:     '#6366f1',
-  TECHNIQUE:    '#0ea5a0',
-  REPRISE:      '#22c55e',
-  PRE_MATCH:    '#eab308',
-  FORCE:        '#8b5cf6',
-};
+import { CouleursTypeService } from '@core/services/couleurs-type.service';
 
 type GroupePoste = 'TOUS' | 'DF' | 'ML' | 'ATT';
 
@@ -44,6 +35,8 @@ export class VueSeanceComponent implements OnInit {
   private seanceService     = inject(SeanceService);
   private predictionService = inject(PredictionService);
   readonly metriquesClub    = inject(MetriquesClubService);
+  /** Couleurs de type resolues depuis type_seance.couleur (V93), repli historique inclus. */
+  private couleursType = inject(CouleursTypeService);
 
   /** Bandes Z1..Z5 aux seuils réels du club (profil d'import), défaut 15/19/24/28. */
   readonly ZONES = this.metriquesClub.zones;
@@ -66,6 +59,7 @@ export class VueSeanceComponent implements OnInit {
   private expanded = signal<Set<string>>(new Set());
 
   ngOnInit(): void {
+    this.couleursType.charger();   // couleurs du club (idempotent)
     this.metriquesClub.charger();
     this.seanceService.getAll().subscribe({
       next: data => {
@@ -250,7 +244,7 @@ export class VueSeanceComponent implements OnInit {
   }
 
   // ── Helpers d'affichage (repris de seance-detail) ──────────────
-  couleurType(code?: string): string { return COULEURS_TYPE[code ?? ''] ?? '#6366f1'; }
+  couleurType(code?: string): string { return this.couleursType.couleur(code); }
 
   statutClass(statut: string): string {
     return { SOUS_NORME: 'statut-sous', DANS_NORME: 'statut-dans', SUR_NORME: 'statut-sur', SANS_BASELINE: 'statut-sans' }[statut] ?? '';

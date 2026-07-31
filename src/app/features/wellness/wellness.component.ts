@@ -8,7 +8,6 @@ import { EspaceJoueurService } from '@core/services/espace-joueur.service';
 import { SuiviSubjectifService, Wellness, Rpe } from '@core/services/suivi-subjectif.service';
 import { Conseil, ConseilRequest, ConseilService } from '@core/services/conseil.service';
 import { Joueur, JoueurService } from '@core/services/joueur.service';
-import { Seance } from '@core/services/seance.service';
 
 /** Item de l'indice de Hooper. Échelle 1..10, sens « 1 = bon → 10 = mauvais » (Hooper standard). */
 interface HooperItem {
@@ -32,15 +31,6 @@ interface JourSerie {
   charge: number | null;
   nbSeances: number;
   aujourdhui: boolean;
-}
-
-/** Le sRPE d'une journée : total cumulé + détail par séance. */
-interface JourneeSrpe {
-  date: string;
-  charge: number;
-  rpeMoyen: number | null;
-  dureeTotale: number;
-  seances: Rpe[];
 }
 
 /** Ligne de la vue équipe (lecture staff). */
@@ -73,13 +63,13 @@ const ICONES_CONSEIL: { key: string; label: string; icon: string }[] = [
 ];
 
 @Component({
-  selector: 'app-suivi-subjectif',
+  selector: 'app-wellness',
   standalone: true,
-  templateUrl: './suivi-subjectif.component.html',
-  styleUrl: './suivi-subjectif.component.scss',
+  templateUrl: './wellness.component.html',
+  styleUrl: './wellness.component.scss',
   imports: [DatePipe, DecimalPipe, NgTemplateOutlet, FormsModule, MatIcon, RouterLink],
 })
-export class SuiviSubjectifComponent implements OnInit {
+export class WellnessComponent implements OnInit {
 
   readonly today = new Date();
 
@@ -110,7 +100,6 @@ export class SuiviSubjectifComponent implements OnInit {
   get peutEditerConseils(): boolean { return this.auth.canEditerConseils(); }
 
   readonly NOTES_HOOPER = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
-  readonly NOTES_RPE = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
   readonly ICONES = ICONES_CONSEIL;
   readonly HOOPER_ITEMS: HooperItem[] = [
     { key: 'fatigue', label: 'Fatigue générale',   bas: 'Très frais',  haut: 'Épuisé' },
@@ -129,7 +118,6 @@ export class SuiviSubjectifComponent implements OnInit {
 
   // ── Joueur ──
   profil = signal<Joueur | null>(null);
-  seances = signal<Seance[]>([]);
 
   // ── Staff ──
   joueurs = signal<Joueur[]>([]);
@@ -164,18 +152,6 @@ export class SuiviSubjectifComponent implements OnInit {
 
   geneEnvoi = signal(false);
 
-  // ── Formulaire sRPE (joueur) ──
-  rpeSeanceId = signal<string>('');
-  rpeIntensite = signal<number>(0);
-  rpeDuree = signal<number | null>(null);
-  rpeEnvoi = signal(false);
-
-  readonly chargeCalculee = computed(() => {
-    const i = this.rpeIntensite();
-    const d = this.rpeDuree();
-    return i > 0 && d ? i * d : null;
-  });
-
   // ── Conseils (édition staff) ──
   conseilFormOuvert = signal(false);
   conseilEditId = signal<string | null>(null);
@@ -184,14 +160,24 @@ export class SuiviSubjectifComponent implements OnInit {
   cEnvoi = signal(false);
 
   ngOnInit(): void {
+    // ?date= : arrivée depuis la pastille « ressenti » du calendrier — la page doit s'ouvrir
+    // SUR ce jour-là et non sur la dernière saisie, sinon le clic ne mène nulle part.
+    // ?joueur= : arrivée depuis une ligne nominative.
+    const q = this.route.snapshot.queryParamMap;
+    const date = q.get('date');
+    if (date) this.dateFocus.set(date);
+    const joueur = q.get('joueur');
+    if (joueur && !this.isJoueur) this.selectedJoueurId.set(joueur);
+
     if (this.isJoueur) {
       this.espace.getProfil().subscribe({
         next: p => { this.profil.set(p); this.loading.set(false); this.prefillForm(); },
         error: err => { this.loading.set(false); if (err.status === 409) this.nonLie.set(true); },
       });
       this.espace.getWellness().subscribe({ next: d => { this.wellness.set(d); this.prefillForm(); }, error: () => {} });
+      // Le sRPE reste chargé : il alimente la charge du jour affichée en contexte du Hooper
+      // (la SAISIE et le détail par séance vivent désormais dans /rpe).
       this.espace.getRpe().subscribe({ next: d => this.rpe.set(d), error: () => {} });
-      this.espace.getSeances().subscribe({ next: d => this.seances.set(d), error: () => {} });
       this.espace.getConseils().subscribe({ next: d => this.conseils.set(d), error: () => {} });
     } else {
       this.triNonRemplis.set(this.route.snapshot.queryParamMap.get('focus') === 'non-remplis');
@@ -264,11 +250,25 @@ export class SuiviSubjectifComponent implements OnInit {
     return w.sommeil + w.fatigue + w.douleur + w.stress + w.humeur;
   }
 
-  /** Saisie wellness la plus récente du joueur courant (vue détaillée). */
+  /**
+   * Jour mis au point par le calendrier (`?date=`). Tant qu'il est posé, la fiche affiche la
+   * saisie de CE jour-là plutôt que la plus récente.
+   */
+  dateFocus = signal<string | null>(null);
+
+  /** Quitte le jour ciblé et revient à la dernière saisie. */
+  quitterDateFocus(): void { this.dateFocus.set(null); }
+
+  /** Saisie wellness affichée : celle du jour ciblé, sinon la plus récente. */
   readonly wellnessCourant = computed<Wellness | null>(() => {
+    const focus = this.dateFocus();
+    if (focus) return this.wellness().find(w => w.date === focus) ?? null;
     const rows = [...this.wellness()].sort((a, b) => b.date.localeCompare(a.date));
     return rows[0] ?? null;
   });
+
+  /** Le jour ciblé existe mais personne n'a rempli : il faut le dire, pas afficher un vide. */
+  readonly focusSansSaisie = computed(() => !!this.dateFocus() && !this.wellnessCourant());
 
   readonly totalCourant = computed(() => {
     const w = this.wellnessCourant();
@@ -283,35 +283,11 @@ export class SuiviSubjectifComponent implements OnInit {
   /** Le wellness du jour a déjà été validé : le Hooper se verrouille. */
   readonly dejaValide = computed(() => !!this.wellnessDuJour());
 
-  /** RPE le plus récent du joueur courant (affichage lecture sRPE). */
-  readonly rpeCourant = computed<Rpe | null>(() => {
-    const rows = [...this.rpe()].sort((a, b) => b.date.localeCompare(a.date));
-    return rows[0] ?? null;
-  });
-
-  /**
-   * Dernière JOURNÉE notée : charge cumulée de toutes ses séances + détail. On affichait la
-   * dernière séance seule, si bien qu'avec deux séances le même jour la première disparaissait
-   * de l'écran — alors que la base les conserve toutes les deux (une ligne par séance).
-   */
-  readonly journeeSrpeCourante = computed<JourneeSrpe | null>(() => {
+  /** Date de la dernière journée notée en sRPE — sert au lien vers /rpe. */
+  readonly derniereDateSrpe = computed<string | null>(() => {
     const rows = this.rpe();
-    if (!rows.length) return null;
-    const derniere = rows.reduce((max, r) => (r.date > max ? r.date : max), rows[0].date);
-    return this.journeeSrpe(derniere);
+    return rows.length ? rows.reduce((max, r) => (r.date > max ? r.date : max), rows[0].date) : null;
   });
-
-  /** Agrège toutes les saisies sRPE d'une date : total, intensité moyenne pondérée, détail. */
-  private journeeSrpe(date: string): JourneeSrpe {
-    const seances = this.rpe().filter(r => r.date === date);
-    const charge = seances.reduce((t, r) => t + (r.charge ?? 0), 0);
-    const dureeTotale = seances.reduce((t, r) => t + (r.dureeMinutes ?? 0), 0);
-    // Intensité moyenne pondérée par la durée : une séance de 90 min pèse plus qu'un 20 min.
-    const rpeMoyen = dureeTotale > 0
-      ? seances.reduce((t, r) => t + r.rpe * (r.dureeMinutes ?? 0), 0) / dureeTotale
-      : (seances.length ? seances.reduce((t, r) => t + r.rpe, 0) / seances.length : null);
-    return { date, charge, rpeMoyen, dureeTotale, seances };
-  }
 
   /** Valeur affichée d'un item : le brouillon en édition joueur, sinon la dernière saisie. */
   valeurItem(key: HooperItem['key']): number | null {
@@ -485,11 +461,21 @@ export class SuiviSubjectifComponent implements OnInit {
   // ──────────────────────────── Vue équipe (staff) ────────────────────────────
 
   readonly lignesEquipe = computed<LigneEquipe[]>(() => {
-    const auj = this.dateISO(new Date());
-    const limite = this.dateISO(new Date(Date.now() - 6 * 86400000));
+    // Jour de référence de la vue équipe : celui ciblé par le calendrier (`?date=`), sinon
+    // aujourd'hui. Sans ça, cliquer sur la pastille du 17 avril ouvrait bien un bandeau
+    // « Ressenti du 17 avril » mais le tableau continuait d'afficher les dernières saisies
+    // connues de chacun — le clic ne menait nulle part.
+    const auj = this.dateFocus() ?? this.dateISO(new Date());
+    const limite = this.dateISO(new Date(Date.parse(auj) - 6 * 86400000));
     return this.joueurs().map(j => {
-      const wRows = this.wellness().filter(w => w.joueurId === j.id).sort((a, b) => b.date.localeCompare(a.date));
-      const rRows = this.rpe().filter(r => r.joueurId === j.id).sort((a, b) => b.date.localeCompare(a.date));
+      // À jour ciblée, on ne regarde jamais « après » : afficher une saisie postérieure
+      // ferait passer pour rempli un jour qui ne l'était pas.
+      const wRows = this.wellness()
+        .filter(w => w.joueurId === j.id && w.date <= auj)
+        .sort((a, b) => b.date.localeCompare(a.date));
+      const rRows = this.rpe()
+        .filter(r => r.joueurId === j.id && r.date <= auj)
+        .sort((a, b) => b.date.localeCompare(a.date));
       const latest = wRows[0] ?? null;
       // Charge de la DERNIÈRE JOURNÉE notée, toutes ses séances additionnées : on n'affichait que
       // la dernière séance, donc un joueur avec deux séances le même jour voyait la moitié de sa
@@ -616,23 +602,6 @@ export class SuiviSubjectifComponent implements OnInit {
     this.gForm.update(f => ({ ...f, [key]: val }));
   }
 
-  /** Séances passées (≤14 j) non encore notées par le joueur, pour le sélecteur sRPE. */
-  readonly seancesANoter = computed(() => {
-    const auj = this.dateISO(new Date());
-    const limite = this.dateISO(new Date(Date.now() - 14 * 86400000));
-    const notes = new Set(this.rpe().map(r => r.seanceId));
-    return this.seances()
-      .filter(s => s.statut !== 'ANNULEE' && s.date <= auj && s.date >= limite && !notes.has(s.id))
-      .map(s => ({ id: s.id, date: s.date, titre: s.titre || s.typeSeance?.libelle || 'Séance', duree: s.dureeMinutes }))
-      .sort((a, b) => b.date.localeCompare(a.date));
-  });
-
-  onSelectSeance(id: string): void {
-    this.rpeSeanceId.set(id);
-    const s = this.seancesANoter().find(x => x.id === id);
-    if (s?.duree) this.rpeDuree.set(s.duree);
-  }
-
   /**
    * Enregistre le wellness du jour (POST upsert joueur+date). Sert à la fois à la
    * première validation (Hooper + gêne) et à la mise à jour de la gêne en cours de
@@ -665,23 +634,6 @@ export class SuiviSubjectifComponent implements OnInit {
     if (!this.isJoueur) return;
     this.geneEnvoi.set(true);
     this.postWellness(() => this.geneEnvoi.set(false));
-  }
-
-  /** Enregistre le sRPE de la séance sélectionnée (indépendant du wellness). */
-  enregistrerRpe(): void {
-    if (!this.isJoueur) return;
-    const seanceId = this.rpeSeanceId();
-    const intensite = this.rpeIntensite();
-    if (!seanceId || intensite <= 0) return;
-    this.rpeEnvoi.set(true);
-    this.espace.saisirRpe({ seanceId, seanceType: 'PHYSIQUE', rpe: intensite, dureeMinutes: this.rpeDuree() ?? undefined }).subscribe({
-      next: r => {
-        this.rpe.update(list => [r, ...list.filter(x => x.seanceId !== r.seanceId)]);
-        this.rpeSeanceId.set(''); this.rpeIntensite.set(0); this.rpeDuree.set(null);
-        this.rpeEnvoi.set(false);
-      },
-      error: () => this.rpeEnvoi.set(false),
-    });
   }
 
   // ──────────────────────────── Utilitaires ────────────────────────────

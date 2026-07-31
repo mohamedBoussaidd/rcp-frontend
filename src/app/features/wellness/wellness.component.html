@@ -1,17 +1,21 @@
 <div class="screen">
 
-  <!-- Onglets (seul Wellness/sRPE actif) -->
-  <div class="ss-tabs">
-    <span class="ss-tab is-active">Wellness / sRPE</span>
-    <span class="ss-tab is-disabled">Tests physiques <em>Bientôt</em></span>
-  </div>
+  <!-- Les onglets internes ont été retirés : depuis la scission (lot B), « Ressenti quotidien »
+       et « RPE/sRPE » sont deux entrées de la navigation. Les répéter ici créait un sous-menu
+       en double, et un onglet « Charge perçue » qui sautait vers un autre menu. -->
 
   <!-- En-tête + sélecteur -->
   <header class="ss-head">
     <div>
-      <h1 class="ss-title">Wellness &amp; charge perçue</h1>
+      <h1 class="ss-title">Ressenti quotidien (Hooper)</h1>
       <p class="ss-sub">
-        {{ today | date:'EEEE d MMMM y' }}
+        <!-- La date affichée suit le jour ciblé : sinon l'écran annonçait « aujourd'hui »
+             alors qu'il montrait l'état d'un autre jour. -->
+        @if (dateFocus(); as d) {
+          {{ d | date:'EEEE d MMMM y':'':'fr' }}
+        } @else {
+          {{ today | date:'EEEE d MMMM y' }}
+        }
         @if (isJoueur) {
           · à remplir avant 11h00 · <span class="ss-pill">{{ joursRemplis() }} jours remplis sur {{ periode().nbJours }}</span>
         }
@@ -42,6 +46,18 @@
     <div class="ss-empty">Votre compte n'est pas rattaché à une fiche joueur.</div>
   }
 
+  <!-- Arrivée depuis la pastille « ressenti » du calendrier : on affiche CE jour-là. -->
+  @if (dateFocus(); as d) {
+    <div class="ss-focus-banner">
+      <mat-icon>event</mat-icon>
+      <span>
+        Ressenti du <strong>{{ d | date:'EEEE d MMMM y':'':'fr' }}</strong>
+        @if (focusSansSaisie()) { — <strong>aucune saisie ce jour-là</strong>. }
+      </span>
+      <button class="ss-btn ss-btn--sm" (click)="quitterDateFocus()">Voir la dernière saisie</button>
+    </div>
+  }
+
   <!-- ════════════════ VUE ÉQUIPE (staff) ════════════════ -->
   @if (modeEquipe()) {
     @if (moyenneEquipe(); as m) {
@@ -55,7 +71,7 @@
           <span class="ss-stat__value">{{ m.charge != null ? (m.charge | number:'1.0-0') : '—' }}<small>UA · dernier jour noté</small></span>
         </div>
         <div class="ss-stat">
-          <span class="ss-stat__label">Wellness rempli (auj.)</span>
+          <span class="ss-stat__label">Wellness rempli {{ dateFocus() ? 'ce jour-là' : '(auj.)' }}</span>
           <span class="ss-stat__value">{{ m.remplisAuj }}/{{ m.total }}<small>{{ m.pctRemplis }}%</small></span>
         </div>
         <div class="ss-stat" [class.ss-stat--alert]="m.nbGenes > 0">
@@ -224,87 +240,24 @@
           }
         </div>
 
-        <!-- Charge perçue (sRPE) -->
-        <div class="ss-card">
-          <div class="ss-card__head">
-            <div>
-              <h2 class="ss-card__title">Charge perçue (sRPE)</h2>
-              <p class="ss-card__sub">Après la séance · intensité × durée = unités arbitraires</p>
-            </div>
-          </div>
-
-          @if (isJoueur) {
-            <div class="ss-field">
-              <label>Séance à noter</label>
-              <select [ngModel]="rpeSeanceId()" (ngModelChange)="onSelectSeance($event)">
-                <option value="">— Choisir une séance —</option>
-                @for (s of seancesANoter(); track s.id) {
-                  <option [value]="s.id">{{ s.date | date:'dd/MM' }} · {{ s.titre }}</option>
-                }
-              </select>
-              @if (seancesANoter().length === 0) { <small class="ss-hint">Aucune séance récente à noter.</small> }
-            </div>
-
-            <div class="ss-srpe">
-              <div class="ss-srpe__box">
-                <span class="ss-srpe__label">Intensité (RPE)</span>
-                <div class="ss-notes ss-notes--wrap">
-                  @for (n of NOTES_RPE; track n) {
-                    <button type="button" class="ss-note"
-                            [class.is-active]="rpeIntensite() === n" (click)="rpeIntensite.set(n)">{{ n }}</button>
-                  }
-                </div>
-              </div>
-              <div class="ss-srpe__box">
-                <span class="ss-srpe__label">Durée (min)</span>
-                <input type="number" min="0" max="240" [ngModel]="rpeDuree()" (ngModelChange)="rpeDuree.set($event)">
-              </div>
-              <div class="ss-srpe__box ss-srpe__box--charge">
-                <span class="ss-srpe__label">Charge calculée</span>
-                <span class="ss-srpe__charge">{{ chargeCalculee() ?? '—' }}</span>
-                <small>UA · {{ rpeIntensite() || 0 }} × {{ rpeDuree() || 0 }} min</small>
-              </div>
-            </div>
-            <div class="ss-card__foot">
-              <button class="ss-btn ss-btn--primary" [disabled]="rpeEnvoi() || !rpeSeanceId() || rpeIntensite() <= 0" (click)="enregistrerRpe()">
-                Enregistrer le RPE
-              </button>
-            </div>
-          } @else {
-            <!-- Lecture staff : la DERNIÈRE JOURNÉE notée, toutes séances confondues. On n'affichait
-                 que la dernière séance : avec deux séances le même jour, la première était invisible. -->
-            @if (journeeSrpeCourante(); as j) {
-              <div class="ss-srpe">
-                <div class="ss-srpe__box">
-                  <span class="ss-srpe__label">Intensité moyenne</span>
-                  <span class="ss-srpe__charge sm">{{ j.rpeMoyen != null ? (j.rpeMoyen | number:'1.1-1') : '—' }}</span>
-                  <small>pondérée par la durée</small>
-                </div>
-                <div class="ss-srpe__box">
-                  <span class="ss-srpe__label">Durée cumulée</span>
-                  <span class="ss-srpe__charge sm">{{ j.dureeTotale }}</span><small>min</small>
-                </div>
-                <div class="ss-srpe__box ss-srpe__box--charge">
-                  <span class="ss-srpe__label">Charge du jour</span>
-                  <span class="ss-srpe__charge">{{ j.charge | number:'1.0-0' }}</span>
-                  <small>UA · {{ j.date | date:'dd/MM' }}@if (j.seances.length > 1) { · {{ j.seances.length }} séances }</small>
-                </div>
-              </div>
-              @if (j.seances.length > 1) {
-                <div class="ss-srpe__detail">
-                  <div class="ss-srpe__detailtitre">Détail des séances de la journée</div>
-                  @for (s of j.seances; track s.id) {
-                    <div class="ss-srpe__ligne">
-                      <span>RPE {{ s.rpe }}/10 × {{ s.dureeMinutes ?? '?' }} min</span>
-                      <b>{{ s.charge != null ? (s.charge | number:'1.0-0') + ' UA' : '—' }}</b>
-                    </div>
-                  }
-                </div>
+        <!-- Renvoi vers la charge perçue : la SAISIE et le détail par séance vivent
+             désormais dans /rpe (lot B). On garde ici le seul repère utile en contexte
+             du Hooper, sans obliger à changer de page pour lire l'état du jour. -->
+        <div class="ss-card ss-card--renvoi">
+          <div>
+            <h2 class="ss-card__title">Charge perçue (sRPE)</h2>
+            <p class="ss-card__sub">
+              @if (derniereDateSrpe(); as d) {
+                Dernier retour le {{ d | date:'EEEE d MMMM':'':'fr' }}.
+              } @else {
+                Aucun retour sRPE enregistré pour l'instant.
               }
-            } @else {
-              <p class="ss-muted">Aucun RPE renseigné récemment.</p>
-            }
-          }
+            </p>
+          </div>
+          <a class="ss-btn ss-btn--sm" routerLink="/rpe"
+             [queryParams]="joueurCourant() ? { joueur: joueurCourant()!.id } : {}">
+            {{ isJoueur ? 'Noter mes séances' : 'Voir les retours par séance' }} <mat-icon>arrow_forward</mat-icon>
+          </a>
         </div>
       </div>
 

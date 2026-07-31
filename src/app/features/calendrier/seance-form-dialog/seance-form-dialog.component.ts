@@ -6,7 +6,7 @@ import { Subscription } from 'rxjs';
 import {
   BlocRequest, GroupeRequest, GroupesAuto, JoueurRefSeance, Perimatch, RefDominante,
   RefSousPrincipe, RoleBloc, Seance, SeanceCreate, SeanceService, StaffRef, TypeBloc, TypeSeance,
-  LigneExerciceRequest,
+  LigneExerciceRequest, QUALITES_MUSCU, REGIMES_MUSCU,
 } from '@core/services/seance.service';
 import { TerrainZonesComponent } from '@shared/components/terrain-zones/terrain-zones.component';
 import {
@@ -206,6 +206,22 @@ export class SeanceFormDialogComponent implements OnInit, OnDestroy {
     const c = this.selectedType?.code;
     return c === 'MATCH' || c === 'MATCH_AMICAL';
   }
+
+  readonly QUALITES_MUSCU = QUALITES_MUSCU;
+  readonly REGIMES_MUSCU = REGIMES_MUSCU;
+
+  /** Nature du type sélectionné (V93) — défaut TERRAIN pour les bases pas encore migrées. */
+  get profilType(): string { return this.selectedType?.profil ?? 'TERRAIN'; }
+
+  /** Ce type attend-il des données de déplacement ? Sinon : ni distance ni haute intensité. */
+  get attendGps(): boolean { return this.profilType === 'TERRAIN'; }
+
+  get estMusculation(): boolean { return this.profilType === 'MUSCULATION'; }
+
+  /** Le régime excentrique annonce des courbatures à J+2 — on le signale au coach. */
+  get regimeExcentrique(): boolean {
+    return this.form?.get('muscuRegime')?.value === 'EXCENTRIQUE';
+  }
   get dureeTheorique(): number | null { return this.selectedType?.dureeTheoriqueMin ?? null; }
 
   /**
@@ -309,6 +325,11 @@ export class SeanceFormDialogComponent implements OnInit, OnDestroy {
       objectifDistanceM: [null],
       objectifIntensite: [null],
       objectifDistanceHauteIntensiteM: [null],
+      // Musculation (V93) — n'apparaissent que pour un type de profil MUSCULATION
+      muscuQualite: [null],
+      muscuRegime: [null],
+      muscuNbSeries: [null],
+      muscuNbRepetitions: [null],
       // Mode avancé
       dureeEffectiveMinutes: [null],
       objTactiqueOrg: [''],
@@ -330,6 +351,8 @@ export class SeanceFormDialogComponent implements OnInit, OnDestroy {
         objectif: s.objectif ?? '', objectifDistanceM: s.objectifDistanceM ?? null,
         objectifIntensite: s.objectifIntensite ?? null,
         objectifDistanceHauteIntensiteM: s.objectifDistanceHauteIntensiteM ?? null,
+        muscuQualite: s.muscuQualite ?? null, muscuRegime: s.muscuRegime ?? null,
+        muscuNbSeries: s.muscuNbSeries ?? null, muscuNbRepetitions: s.muscuNbRepetitions ?? null,
         dureeEffectiveMinutes: s.dureeEffectiveMinutes ?? null,
         objTactiqueOrg: s.objTactiqueOrg ?? '', objTactiqueFonc: s.objTactiqueFonc ?? '',
         objMental: s.objMental ?? '', objTechnique: s.objTechnique ?? '', objAthletique: s.objAthletique ?? '',
@@ -970,6 +993,14 @@ export class SeanceFormDialogComponent implements OnInit, OnDestroy {
       objectifDistanceM: v.objectifDistanceM != null ? Number(v.objectifDistanceM) : undefined,
       objectifIntensite: v.objectifIntensite != null ? Number(v.objectifIntensite) : undefined,
       objectifDistanceHauteIntensiteM: v.objectifDistanceHauteIntensiteM != null ? Number(v.objectifDistanceHauteIntensiteM) : undefined,
+      // Paramètres de musculation : envoyés uniquement pour un type MUSCULATION. Le serveur
+      // renettoie de toute façon selon le profil (SeanceService.normaliserSelonProfil).
+      ...(this.estMusculation && {
+        muscuQualite: v.muscuQualite || undefined,
+        muscuRegime: v.muscuRegime || undefined,
+        muscuNbSeries: v.muscuNbSeries != null ? Number(v.muscuNbSeries) : undefined,
+        muscuNbRepetitions: v.muscuNbRepetitions != null ? Number(v.muscuNbRepetitions) : undefined,
+      }),
       ...(this.estMatch && {
         adversaire: v.adversaire,
         competition: v.competition || undefined,

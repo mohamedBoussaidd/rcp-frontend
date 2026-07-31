@@ -85,7 +85,7 @@ const ALL_MODULES: NavModule[] = [
   // ── 03 · Performance : préparation physique (+ overview préparateur) ──
   {
     key: 'performance', label: 'Performance', icon: 'fitness_center',
-    link: '/performance', matches: ['/performance', '/vue-seance', '/etat-effectif', '/charge-equipe', '/suivi-subjectif', '/pesees', '/import', '/import-rpe', '/import-hooper', '/methodologie', '/parametres'],
+    link: '/performance', matches: ['/performance', '/vue-seance', '/etat-effectif', '/charge-equipe', '/wellness', '/rpe', '/suivi-subjectif', '/pesees', '/import', '/import-rpe', '/import-hooper', '/methodologie', '/parametres'],
     roles: ['SUPER_ADMIN', 'PRESIDENT', 'PREPARATEUR', 'MEDICAL'],
     perms: ['pesees:write', 'gps:import'],
     modulesAny: ['gps', 'prepa_physique', 'wellness', 'pesees'],
@@ -94,7 +94,10 @@ const ALL_MODULES: NavModule[] = [
       { label: 'État de l\'effectif', link: '/etat-effectif', module: 'prepa_physique' },
       { label: 'Charge d\'entrainement', link: '/charge-equipe', module: 'gps' },
       { label: 'Vue séance',        link: '/vue-seance', module: 'gps' },
-      { label: 'RPE/sRPE',          link: '/suivi-subjectif', module: 'wellness' },
+      // Deux entrées depuis le lot B : le ressenti QUOTIDIEN et la charge PERÇUE par séance
+      // ne se lisent pas au même moment ni pour la même question.
+      { label: 'Ressenti quotidien', link: '/wellness', module: 'wellness' },
+      { label: 'RPE/sRPE',          link: '/rpe',      module: 'wellness' },
       { label: 'Pesées',            link: '/pesees',       roles: ['SUPER_ADMIN', 'PRESIDENT', 'PREPARATEUR', 'MEDICAL'], perms: ['pesees:write'], module: 'pesees' },
       { label: 'Paramètres',        link: '/parametres',   roles: ['SUPER_ADMIN', 'PRESIDENT', 'PREPARATEUR'], perms: ['configuration:write'] },
       { label: 'Import GPS',        link: '/import',       roles: ['SUPER_ADMIN', 'PREPARATEUR'], perms: ['gps:import'], module: 'gps' },
@@ -119,7 +122,7 @@ const ALL_MODULES: NavModule[] = [
   // ── 05 · Médical (inchangé) ──
   {
     key: 'medical', label: 'Médical', icon: 'healing',
-    link: '/medical', query: { section: 'alertes' }, matches: ['/medical', '/mon-espace', '/suivi-subjectif', '/mes-blessures'],
+    link: '/medical', query: { section: 'alertes' }, matches: ['/medical', '/mon-espace', '/wellness', '/rpe', '/suivi-subjectif', '/mes-blessures'],
     roles: ['SUPER_ADMIN', 'PRESIDENT', 'ENTRAINEUR', 'PREPARATEUR', 'MEDICAL', 'ADMINISTRATIF', 'JOUEUR'],
     module: 'medical',
     subnav: [
@@ -129,7 +132,8 @@ const ALL_MODULES: NavModule[] = [
       { label: 'Protocoles',                    link: '/medical', section: 'protocoles', roles: ['SUPER_ADMIN', 'PRESIDENT', 'MEDICAL'], module: 'medical' },
       { label: 'Bilan blessures',               link: '/medical', section: 'bilan', roles: ['SUPER_ADMIN', 'PRESIDENT', 'ENTRAINEUR', 'PREPARATEUR', 'MEDICAL'], module: 'medical' },
       { label: 'Documents',                     link: '/medical', section: 'documents', roles: ['SUPER_ADMIN', 'PRESIDENT', 'ENTRAINEUR', 'PREPARATEUR', 'MEDICAL'], module: 'medical' },
-      { label: 'Mon suivi',                     link: '/suivi-subjectif', roles: ['JOUEUR'], module: 'wellness' },
+      { label: 'Mon suivi',                     link: '/wellness', roles: ['JOUEUR'], module: 'wellness' },
+      { label: 'Mes séances notées',            link: '/rpe', roles: ['JOUEUR'], module: 'wellness' },
       { label: 'Mes blessures',                 link: '/mes-blessures', roles: ['JOUEUR'], module: 'medical' },
       { label: 'Mon espace',                    link: '/mon-espace', roles: ['JOUEUR'] },
     ],

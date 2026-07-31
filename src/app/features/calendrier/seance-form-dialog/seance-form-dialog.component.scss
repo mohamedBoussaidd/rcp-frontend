@@ -365,6 +365,16 @@
   gap: 14px;
 }
 
+/* Bloc musculation (V93) : 4 champs sur une ligne, repliés en 2 puis 1 colonne. */
+.quatuor {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+}
+
+/* Séance sans GPS : l'intensité cible reste seule, sans occuper toute la largeur. */
+.champ--seul { max-width: 260px; }
+
 .ligne-unite {
   display: flex;
   align-items: center;
@@ -1250,7 +1260,8 @@
   .sm-rail__spacer { display: none; }
 
   .duo,
-  .trio { grid-template-columns: 1fr; }
+  .trio,
+  .quatuor { grid-template-columns: 1fr; }
 
   .bloc-card__body { grid-template-columns: minmax(0, 1fr); }
 }

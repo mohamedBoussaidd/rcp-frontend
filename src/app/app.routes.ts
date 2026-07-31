@@ -102,12 +102,23 @@ export const routes: Routes = [
     data: { roles: [...STAFF, 'ADMINISTRATIF'], perms: ['espace_staff:access'], module: 'espace_staff' },
     loadChildren: () => import('./features/staff-mobile/staff.routes').then(m => m.default)
   },
-  // Suivi subjectif (wellness / sRPE) : rangé côté PRÉPA (module wellness), plus derrière une
-  // permission GPS. Accès staff physique + joueur ; gaté par le module « Ressenti & RPE ».
+  // Suivi subjectif : rangé côté PRÉPA (module wellness), plus derrière une permission GPS.
+  // Accès staff physique + joueur ; gaté par le module « Ressenti & RPE ».
+  // Deux écrans distincts depuis le lot B : le ressenti QUOTIDIEN (Hooper, gênes, conseils) et
+  // la charge PERÇUE par séance (sRPE) — ils répondaient à deux questions différentes dans une
+  // page unique de 550 lignes, et aucun lien profond n'était possible vers l'un ou l'autre.
   {
-    path: 'suivi-subjectif', canActivate: [authGuard, roleGuard, contexteGuard, saisonGuard, moduleGuard], data: { roles: [...STAFF_PHYSIQUE, 'JOUEUR'], module: 'wellness' },
-    loadComponent: () => import('./features/suivi-subjectif/suivi-subjectif.component').then(m => m.SuiviSubjectifComponent)
+    path: 'wellness', canActivate: [authGuard, roleGuard, contexteGuard, saisonGuard, moduleGuard], data: { roles: [...STAFF_PHYSIQUE, 'JOUEUR'], module: 'wellness' },
+    loadComponent: () => import('./features/wellness/wellness.component').then(m => m.WellnessComponent)
   },
+  {
+    path: 'rpe', canActivate: [authGuard, roleGuard, contexteGuard, saisonGuard, moduleGuard], data: { roles: [...STAFF_PHYSIQUE, 'JOUEUR'], module: 'wellness' },
+    loadComponent: () => import('./features/rpe/rpe.component').then(m => m.RpeComponent)
+  },
+  // Ancienne URL : conservée en redirection car elle est encore pointée par le dashboard prépa,
+  // la surveillance, l'espace staff et la fiche joueur (souvent avec ?focus=non-remplis, qui doit
+  // survivre — d'où `queryParamsHandling` implicite de redirectTo sur une route sans paramètre).
+  { path: 'suivi-subjectif', redirectTo: 'wellness' },
   {
     path: 'mes-blessures', canActivate: [authGuard, roleGuard, moduleGuard], data: { roles: ['JOUEUR'], module: 'medical' },
     loadComponent: () => import('./features/mes-blessures/mes-blessures.component').then(m => m.MesBlessuresComponent)

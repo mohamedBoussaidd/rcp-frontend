@@ -1,0 +1,401 @@
+<div class="screen">
+
+  <!-- ════════════════ En-tête ════════════════ -->
+  <header class="rp-head">
+    <div>
+      <h1 class="rp-title">Charge perçue (sRPE)</h1>
+      <p class="rp-sub">
+        Ce que les joueurs ont ressenti après chaque séance · intensité × durée réelle = unités arbitraires
+      </p>
+    </div>
+
+    <div class="rp-selector">
+      @if (isStaff) {
+        <label class="rp-selector__label">Joueur</label>
+        <select class="rp-selector__select" [ngModel]="selectedJoueurId()" (ngModelChange)="onSelectJoueur($event)">
+          <option value="">Toute l'équipe</option>
+          @for (j of joueurs(); track j.id) {
+            <option [value]="j.id">{{ j.prenom }} {{ j.nom }}</option>
+          }
+        </select>
+      }
+      <a class="rp-lien" routerLink="/wellness">
+        <mat-icon>monitor_heart</mat-icon> Ressenti quotidien
+      </a>
+    </div>
+  </header>
+
+  @if (nonLie()) {
+    <div class="rp-empty">Votre compte n'est pas rattaché à une fiche joueur.</div>
+  }
+
+  <!-- ════════════════ Fenêtre ════════════════ -->
+  @if (!modeSeance()) {
+    <div class="rp-filtres">
+      <div class="rp-fenetre">
+        @for (n of FENETRES; track n) {
+          <button class="rp-fenetre__btn" [class.is-active]="fenetreJours() === n" (click)="setFenetre(n)">{{ n }} j</button>
+        }
+      </div>
+      @if (synthese(); as s) {
+        <span class="rp-compteur">
+          {{ s.nbSeances }} séance{{ s.nbSeances > 1 ? 's' : '' }} notée{{ s.nbSeances > 1 ? 's' : '' }}
+          · {{ s.nbReponses }} retour{{ s.nbReponses > 1 ? 's' : '' }}
+        </span>
+      }
+    </div>
+  }
+
+  <!-- ════════════════ MODE SÉANCE : les retours d'une séance ════════════════ -->
+  @if (modeSeance()) {
+    <button class="rp-retour" (click)="fermerSeance()"><mat-icon>arrow_back</mat-icon> Toutes les séances</button>
+
+    @if (seanceCourante(); as sc) {
+      <div class="rp-card">
+        <div class="rp-card__head">
+          <div>
+            <h2 class="rp-card__title">{{ sc.titre }}</h2>
+            <p class="rp-card__sub">
+              {{ sc.date | date:'EEEE d MMMM y':'':'fr' }}
+              @if (sc.dureePrevue) { · {{ sc.dureePrevue }} min prévues }
+            </p>
+          </div>
+          <span class="rp-taux">
+            {{ sc.reponses.length }}@if (effectif()) { / {{ effectif() }} } retour{{ sc.reponses.length > 1 ? 's' : '' }}
+            @if (tauxRetour(sc); as t) { <em>{{ t }}%</em> }
+          </span>
+        </div>
+
+        <div class="rp-synthese">
+          <div class="rp-stat">
+            <span class="rp-stat__label">Intensité moyenne</span>
+            <span class="rp-stat__value" [style.color]="couleur(sc.rpeMoyen)">
+              {{ sc.rpeMoyen != null ? (sc.rpeMoyen | number:'1.1-1') : '—' }}<small>/10 · pondérée durée</small>
+            </span>
+          </div>
+          <div class="rp-stat">
+            <span class="rp-stat__label">Charge moyenne</span>
+            <span class="rp-stat__value">{{ sc.chargeMoyenne != null ? (sc.chargeMoyenne | number:'1.0-0') : '—' }}<small>UA</small></span>
+          </div>
+          <div class="rp-stat">
+            <span class="rp-stat__label">Plaisir moyen</span>
+            <span class="rp-stat__value" [style.color]="couleurPlaisir(sc.plaisirMoyen)">
+              {{ sc.plaisirMoyen != null ? (sc.plaisirMoyen | number:'1.1-1') : '—' }}<small>/10</small>
+            </span>
+          </div>
+          <div class="rp-stat" [class.rp-stat--alert]="sc.nbGenes > 0">
+            <span class="rp-stat__label">Gênes déclarées</span>
+            <span class="rp-stat__value">{{ sc.nbGenes }}</span>
+          </div>
+          <div class="rp-stat" [class.rp-stat--warn]="sc.nbPartiels > 0">
+            <span class="rp-stat__label">Séances écourtées</span>
+            <span class="rp-stat__value">{{ sc.nbPartiels }}</span>
+          </div>
+          <div class="rp-stat" [class.rp-stat--warn]="manquantsSeance().length > 0">
+            <span class="rp-stat__label">Sans réponse</span>
+            <span class="rp-stat__value">{{ manquantsSeance().length }}</span>
+          </div>
+        </div>
+
+        <!-- Qui n'a pas répondu : tout le monde est censé répondre, et un import CSV
+             partiel faisait disparaître les absents au lieu de les signaler. -->
+        @if (manquantsSeance().length > 0) {
+          <div class="rp-manquants">
+            <span class="rp-manquants__titre">
+              N'ont pas répondu <em>{{ manquantsSeance().length }}</em>
+            </span>
+            <div class="rp-manquants__liste">
+              @for (j of manquantsSeance(); track j.id) {
+                <span class="rp-manquant">
+                  <span class="rp-avatar rp-avatar--vide">{{ initiales(j.prenom, j.nom) }}</span>
+                  {{ j.prenom }} {{ j.nom }}
+                </span>
+              }
+            </div>
+          </div>
+        }
+
+        <div class="rp-liste">
+          @for (r of sc.reponses; track r.id) {
+            <div class="rp-reponse" [class.rp-reponse--gene]="r.geneZone && !r.geneTraitee">
+              <span class="rp-reponse__qui">
+                <span class="rp-avatar">{{ initiales(r.joueurPrenom, r.joueurNom) }}</span>
+                {{ r.joueurPrenom }} {{ r.joueurNom }}
+              </span>
+
+              <span class="rp-reponse__metriques">
+                <span class="rp-metric">
+                  <em>RPE</em>
+                  <b [style.color]="couleur(r.rpe)">{{ r.rpe }}</b>
+                </span>
+                <span class="rp-metric">
+                  <em>Durée</em>
+                  <b [class.is-partiel]="estPartiel(r)">
+                    {{ r.dureeMinutes ?? '—' }}@if (estPartiel(r)) { <i>/ {{ r.dureePrevueMinutes }}</i> }
+                  </b>
+                </span>
+                <span class="rp-metric">
+                  <em>Charge</em>
+                  <b>{{ r.charge != null ? (r.charge | number:'1.0-0') : '—' }}</b>
+                </span>
+                <span class="rp-metric">
+                  <em>Plaisir</em>
+                  <b [style.color]="couleurPlaisir(r.plaisir ?? null)">{{ r.plaisir ?? '—' }}</b>
+                </span>
+              </span>
+
+              @if (r.geneZone || r.commentaire) {
+                <div class="rp-reponse__detail">
+                  @if (r.geneZone) {
+                    <span class="rp-gene" [class.is-traitee]="r.geneTraitee">
+                      <mat-icon>healing</mat-icon>
+                      {{ r.geneZone }} · {{ r.geneIntensite ?? '?' }}/10 · {{ momentLabel(r.geneMoment) }}
+                      @if (r.geneTraitee) { <em>{{ r.geneResolution === 'CONVERTIE' ? 'convertie' : 'traitée' }}</em> }
+                    </span>
+                    @if (peutTraiterGene && !r.geneTraitee) {
+                      <span class="rp-gene__actions">
+                        <button class="rp-btn rp-btn--sm" (click)="traiterGene(r, 'ARCHIVEE')">Archiver</button>
+                        <button class="rp-btn rp-btn--sm" (click)="traiterGene(r, 'CONVERTIE')">Convertie en blessure</button>
+                      </span>
+                    }
+                  }
+                  @if (r.commentaire) {
+                    <p class="rp-comment">« {{ r.commentaire }} »</p>
+                  }
+                </div>
+              }
+            </div>
+          }
+        </div>
+      </div>
+    } @else {
+      <div class="rp-card rp-card--vide">
+        <mat-icon>hourglass_empty</mat-icon>
+        <div>
+          <strong>{{ titreFocusVide() }}</strong>
+          <p>Aucun retour sRPE n'a encore été enregistré pour cette séance.</p>
+        </div>
+      </div>
+    }
+  }
+
+  <!-- ════════════════ MODE ÉQUIPE : les séances récentes ════════════════ -->
+  @if (modeEquipe()) {
+    @if (synthese(); as s) {
+      <div class="rp-synthese rp-synthese--top">
+        <div class="rp-stat">
+          <span class="rp-stat__label">Charge cumulée</span>
+          <span class="rp-stat__value">{{ s.chargeTotale | number:'1.0-0' }}<small>UA sur la période</small></span>
+        </div>
+        <div class="rp-stat">
+          <span class="rp-stat__label">Plaisir moyen</span>
+          <span class="rp-stat__value" [style.color]="couleurPlaisir(s.plaisirMoyen)">
+            {{ s.plaisirMoyen != null ? (s.plaisirMoyen | number:'1.1-1') : '—' }}<small>/10</small>
+          </span>
+        </div>
+        <div class="rp-stat" [class.rp-stat--alert]="s.nbGenes > 0">
+          <span class="rp-stat__label">Gênes actives</span>
+          <span class="rp-stat__value">{{ s.nbGenes }}</span>
+        </div>
+        <div class="rp-stat" [class.rp-stat--warn]="s.nbPartiels > 0">
+          <span class="rp-stat__label">Participations partielles</span>
+          <span class="rp-stat__value">{{ s.nbPartiels }}</span>
+        </div>
+      </div>
+    }
+
+    <div class="rp-card rp-card--table">
+      <table class="rp-table">
+        <thead>
+          <tr>
+            <th>Séance</th>
+            <th class="num">Retours</th>
+            <th class="num">Intensité</th>
+            <th class="num">Charge moy.</th>
+            <th class="num">Plaisir</th>
+            <th class="num">Signaux</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (s of parSeance(); track s.seanceId) {
+            <tr class="rp-row" (click)="ouvrirSeance(s.seanceId)">
+              <td>
+                <span class="rp-rowname">{{ s.titre }}</span>
+                <span class="rp-rowdate">{{ s.date | date:'EEE d MMM':'':'fr' }}</span>
+              </td>
+              <td class="num">
+                {{ s.reponses.length }}@if (effectif()) { <span class="rp-sur">/ {{ effectif() }}</span> }
+              </td>
+              <td class="num"><b [style.color]="couleur(s.rpeMoyen)">{{ s.rpeMoyen != null ? (s.rpeMoyen | number:'1.1-1') : '—' }}</b></td>
+              <td class="num">{{ s.chargeMoyenne != null ? (s.chargeMoyenne | number:'1.0-0') + ' UA' : '—' }}</td>
+              <td class="num"><b [style.color]="couleurPlaisir(s.plaisirMoyen)">{{ s.plaisirMoyen != null ? (s.plaisirMoyen | number:'1.1-1') : '—' }}</b></td>
+              <td class="num">
+                @if (s.nbGenes > 0) { <span class="rp-tag rp-tag--bad">{{ s.nbGenes }} gêne{{ s.nbGenes > 1 ? 's' : '' }}</span> }
+                @if (s.nbPartiels > 0) { <span class="rp-tag rp-tag--warn">{{ s.nbPartiels }} écourtée{{ s.nbPartiels > 1 ? 's' : '' }}</span> }
+                @if (s.nbGenes === 0 && s.nbPartiels === 0) { <span class="rp-tag rp-tag--ok">RAS</span> }
+              </td>
+            </tr>
+          }
+          @if (parSeance().length === 0) {
+            <tr><td colspan="6" class="rp-table__empty">Aucun retour sRPE sur cette période.</td></tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+
+  <!-- ════════════════ MODE JOUEUR ════════════════ -->
+  @if (!modeEquipe() && !modeSeance() && !nonLie()) {
+
+    <!-- Saisie (joueur connecté uniquement) -->
+    @if (isJoueur) {
+      <div class="rp-card">
+        <div class="rp-card__head">
+          <div>
+            <h2 class="rp-card__title">Noter une séance</h2>
+            <p class="rp-card__sub">Intensité et durée sont obligatoires · le reste est facultatif</p>
+          </div>
+        </div>
+
+        <div class="rp-field">
+          <label>Séance à noter</label>
+          <select [ngModel]="rpeSeanceId()" (ngModelChange)="onSelectSeance($event)">
+            <option value="">— Choisir une séance —</option>
+            @for (s of seancesANoter(); track s.id) {
+              <option [value]="s.id">{{ s.date | date:'dd/MM' }} · {{ s.titre }}</option>
+            }
+          </select>
+          @if (seancesANoter().length === 0) { <small class="rp-hint">Aucune séance récente à noter.</small> }
+        </div>
+
+        @if (rpeSeanceId()) {
+          <div class="rp-saisie">
+            <div class="rp-saisie__box">
+              <span class="rp-saisie__label">Intensité ressentie (RPE)</span>
+              <div class="rp-notes">
+                @for (n of NOTES; track n) {
+                  <button type="button" class="rp-note" [class.is-active]="rpeIntensite() === n"
+                          [style.background]="rpeIntensite() === n ? couleur(n) : null"
+                          [style.borderColor]="rpeIntensite() === n ? couleur(n) : null"
+                          [style.color]="rpeIntensite() === n ? '#fff' : null"
+                          (click)="rpeIntensite.set(n)">{{ n }}</button>
+                }
+              </div>
+            </div>
+
+            <div class="rp-saisie__box">
+              <span class="rp-saisie__label">Durée réellement effectuée (min)</span>
+              <input type="number" min="0" max="300" [ngModel]="rpeDuree()" (ngModelChange)="rpeDuree.set($event)">
+              @if (participationPartielle()) {
+                <small class="rp-partiel">
+                  Séance écourtée : {{ rpeDuree() }} min sur {{ seanceANoterSel()?.duree }} prévues.
+                </small>
+              }
+            </div>
+
+            <div class="rp-saisie__box rp-saisie__box--charge">
+              <span class="rp-saisie__label">Charge calculée</span>
+              <span class="rp-saisie__charge">{{ chargeCalculee() ?? '—' }}</span>
+              <small>UA · {{ rpeIntensite() || 0 }} × {{ rpeDuree() || 0 }} min</small>
+            </div>
+          </div>
+
+          <div class="rp-saisie__box rp-saisie__box--full">
+            <span class="rp-saisie__label">Plaisir ressenti <em>facultatif</em></span>
+            <div class="rp-notes">
+              @for (n of NOTES; track n) {
+                <button type="button" class="rp-note" [class.is-active]="rpePlaisir() === n"
+                        [style.background]="rpePlaisir() === n ? couleurPlaisir(n) : null"
+                        [style.borderColor]="rpePlaisir() === n ? couleurPlaisir(n) : null"
+                        [style.color]="rpePlaisir() === n ? '#fff' : null"
+                        (click)="rpePlaisir.set(rpePlaisir() === n ? 0 : n)">{{ n }}</button>
+              }
+            </div>
+          </div>
+
+          <div class="rp-gene-form">
+            <label class="rp-check">
+              <input type="checkbox" [ngModel]="geneActive()" (ngModelChange)="geneActive.set($event)">
+              Signaler une gêne / douleur ressentie sur cette séance
+            </label>
+            @if (geneActive()) {
+              <div class="rp-gene-form__row">
+                <select [ngModel]="gForm().zone" (ngModelChange)="setG('zone', $event)">
+                  @for (z of ZONES_GENE; track z) { <option [value]="z">{{ z }}</option> }
+                </select>
+                <select [ngModel]="gForm().moment" (ngModelChange)="setG('moment', $event)">
+                  @for (mm of MOMENTS_GENE; track mm.val) { <option [value]="mm.val">{{ mm.label }}</option> }
+                </select>
+                <div class="rp-notes rp-notes--sm">
+                  @for (n of NOTES; track n) {
+                    <button type="button" class="rp-note" [class.is-active]="gForm().intensite === n"
+                            (click)="setG('intensite', n)">{{ n }}</button>
+                  }
+                </div>
+              </div>
+            }
+          </div>
+
+          <div class="rp-field">
+            <label>Commentaire <em>facultatif</em></label>
+            <textarea rows="2" maxlength="500" [ngModel]="rpeCommentaire()" (ngModelChange)="rpeCommentaire.set($event)"
+                      placeholder="ex. j'ai pris un coup au genou, mal dormi cette nuit…"></textarea>
+          </div>
+
+          <div class="rp-card__foot">
+            <button class="rp-btn rp-btn--primary" [disabled]="!peutEnregistrer()" (click)="enregistrerRpe()">
+              Enregistrer ma séance
+            </button>
+          </div>
+        }
+      </div>
+    }
+
+    <!-- Historique du joueur affiché -->
+    <div class="rp-card rp-card--table">
+      <div class="rp-card__head">
+        <h2 class="rp-card__title">{{ isJoueur ? 'Mes séances notées' : 'Séances notées' }}</h2>
+      </div>
+      <table class="rp-table">
+        <thead>
+          <tr>
+            <th>Séance</th>
+            <th class="num">RPE</th>
+            <th class="num">Durée</th>
+            <th class="num">Charge</th>
+            <th class="num">Plaisir</th>
+            <th>Signalement</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (s of parSeance(); track s.seanceId) {
+            @for (r of s.reponses; track r.id) {
+              <tr>
+                <td>
+                  <span class="rp-rowname">{{ s.titre }}</span>
+                  <span class="rp-rowdate">{{ s.date | date:'EEE d MMM':'':'fr' }}</span>
+                </td>
+                <td class="num"><b [style.color]="couleur(r.rpe)">{{ r.rpe }}</b></td>
+                <td class="num" [class.is-partiel]="estPartiel(r)">
+                  {{ r.dureeMinutes ?? '—' }}@if (estPartiel(r)) { <i> / {{ r.dureePrevueMinutes }}</i> }
+                </td>
+                <td class="num">{{ r.charge != null ? (r.charge | number:'1.0-0') : '—' }}</td>
+                <td class="num"><b [style.color]="couleurPlaisir(r.plaisir ?? null)">{{ r.plaisir ?? '—' }}</b></td>
+                <td>
+                  @if (r.geneZone) {
+                    <span class="rp-tag rp-tag--bad">{{ r.geneZone }} · {{ r.geneIntensite ?? '?' }}/10</span>
+                  }
+                  @if (r.commentaire) { <span class="rp-comment rp-comment--inline">« {{ r.commentaire }} »</span> }
+                  @if (!r.geneZone && !r.commentaire) { — }
+                </td>
+              </tr>
+            }
+          }
+          @if (parSeance().length === 0) {
+            <tr><td colspan="6" class="rp-table__empty">Aucune séance notée sur cette période.</td></tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+</div>

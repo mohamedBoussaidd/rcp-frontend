@@ -1,9 +1,9 @@
 import { Component, OnInit, inject } from '@angular/core';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { FormsModule } from '@angular/forms';
-import { SeanceService, Seance, TypeSeance } from '@core/services/seance.service';
+import { SeanceService, Seance, TypeSeance, QUALITES_MUSCU, REGIMES_MUSCU } from '@core/services/seance.service';
 import { EspaceJoueurService } from '@core/services/espace-joueur.service';
 import { ContexteService } from '@core/services/contexte.service';
 import { AgendaEntretien, EntretienService } from '@core/services/entretien.service';
@@ -15,26 +15,21 @@ import { DatePipe, LowerCasePipe, SlicePipe, NgTemplateOutlet } from '@angular/c
 import { AuthService } from '@core/services/auth.service';
 import { IaBadgeComponent } from '@shared/components/ia-badge/ia-badge.component';
 import { BadgeListeComponent } from '@shared/components/badge/badge-liste.component';
+import { Evenement, EvenementService, TypeEvenement } from '@core/services/evenement.service';
+import {
+  Anniversaire, CalendrierContexteService, ContexteCalendrier, JourRessenti, SeanceRessenti,
+} from '@core/services/calendrier-contexte.service';
+import { EvenementDialogComponent } from './evenement-dialog/evenement-dialog.component';
+import { CouleursTypeService } from '@core/services/couleurs-type.service';
 
-export const COULEURS_TYPE: Record<string, string> = {
-  MATCH:        '#ef4444',
-  MATCH_AMICAL: '#f97316',
-  INTENSIF:     '#6366f1',
-  TECHNIQUE:    '#0ea5a0',
-  REPRISE:      '#22c55e',
-  PRE_MATCH:    '#eab308',
-  FORCE:        '#8b5cf6',
-};
+// Les couleurs de type ne vivent plus ici : elles sont résolues pour le CLUB actif par
+// `CouleursTypeService` (surcharge `type_seance_cible.couleur` V94, repli historique inclus).
+// Une table locale redonnerait la couleur par défaut de la plateforme à tout le monde.
 
-export const INFOS_TYPE: Record<string, { intensite: number; duree: string; description: string; objectifs: string[] }> = {
-  REPRISE:      { intensite: 70, duree: '40–50 min', description: 'Réactivation neuromusculaire légère après repos.',       objectifs: ['< 3 500 m total', 'Aucun sprint', 'Pas de HI'] },
-  INTENSIF:     { intensite: 95, duree: '70–80 min', description: 'Haute intensité — puissance et endurance.',               objectifs: ['> 7 000 m total', '> 1 000 m à +19 km/h', 'ACWR 1.0–1.3'] },
-  TECHNIQUE:    { intensite: 80, duree: '55–65 min', description: 'Travail technico-tactique à intensité modérée.',          objectifs: ['5 000–6 500 m total', 'Accélérations prioritaires', 'Peu de sprints'] },
-  PRE_MATCH:    { intensite: 55, duree: '25–35 min', description: 'Activation pré-match — conserver la fraîcheur.',          objectifs: ['< 2 500 m total', 'Quelques accélérations', 'Zéro fatigue'] },
-  MATCH:        { intensite: 100, duree: '90 min',   description: 'Match officiel — référence d\'intensité maximale.',       objectifs: ['8 000–12 000 m total', '> 1 500 m à +19 km/h', '10–20 sprints'] },
-  MATCH_AMICAL: { intensite: 85, duree: '90 min',    description: 'Match amical — intensité proche match sans enjeu.',       objectifs: ['7 000–10 000 m total', 'Rotation effectif', 'Test tactique'] },
-  FORCE:        { intensite: 60, duree: '50–60 min', description: 'Renforcement musculaire — faible distance parcourue.',    objectifs: ['< 3 000 m total', 'Charge musculaire élevée', 'Faible volume GPS'] },
-};
+/** Couche extrasportive : ardoise neutre, volontairement hors de la palette sportive. */
+export const COULEUR_EVENEMENT = '#64748B';
+/** Anniversaires : rose, seule famille libre (ambre = entretiens, ardoise = extrasportif). */
+export const COULEUR_ANNIVERSAIRE = '#DB2777';
 
 const JOURS = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'];
 const JOURS_COURTS = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
@@ -51,15 +46,26 @@ interface JourCell {
 
 type Vue = 'liste' | 'calendrier';
 type SousVue = 'jour' | 'semaine' | 'mois';
-/** Couches d'événements affichées : séances, rendez-vous d'entretien, ou les deux. */
-type Couche = 'tout' | 'seances' | 'rdv';
+/** Couches affichées : séances, RDV d'entretien, événements extrasportifs, ou tout. */
+type Couche = 'tout' | 'seances' | 'rdv' | 'extra';
+
+/** Ce que la carte d'une séance affiche réellement — construit depuis la BASE, plus depuis
+ *  un dictionnaire codé en dur. Un champ absent n'est PAS affiché (jamais de valeur inventée). */
+interface InfoSeance {
+  /** Intensité théorique du type, échelle 1..5 (et non un pourcentage). */
+  intensite: number | null;
+  profil: string;
+  /** Puces d'objectifs réellement saisis sur la séance (peut être vide). */
+  objectifs: string[];
+  description: string | null;
+}
 
 @Component({
   selector: 'app-calendrier',
   standalone: true,
   templateUrl: './calendrier.component.html',
   styleUrl: './calendrier.component.scss',
-  imports: [MatTooltip, DatePipe, LowerCasePipe, SlicePipe, NgTemplateOutlet, FormsModule, IaBadgeComponent, BadgeListeComponent]
+  imports: [MatTooltip, DatePipe, LowerCasePipe, SlicePipe, NgTemplateOutlet, FormsModule, RouterLink, IaBadgeComponent, BadgeListeComponent]
 })
 export class CalendrierComponent implements OnInit {
 
@@ -68,9 +74,12 @@ export class CalendrierComponent implements OnInit {
   /** Couche RDV : entretiens de la période (staff : équipe ; joueur : ses RDV planifiés). */
   rdvs: AgendaEntretien[] = [];
 
-  // Mode d'affichage : Liste (défaut) ou Calendrier (Jour / Semaine / Mois).
+  // Mode d'affichage : Calendrier (Mois par défaut) ou Liste.
+  // Le Mois donne la lecture de la charge sur un cycle complet — c'est la vue de travail du
+  // préparateur, et c'est là que les couches ressenti / extrasportif / anniversaires prennent
+  // leur sens. La densité y est gérée par le repli « + N autres » des cellules.
   vue: Vue = 'calendrier';
-  sousVue: SousVue = 'semaine';
+  sousVue: SousVue = 'mois';
   /** Filtre par type (code) ; null = Tous. */
   typeFiltre: string | null = null;
   /** Couches affichées : séances / RDV entretiens / tout (défaut). */
@@ -84,8 +93,18 @@ export class CalendrierComponent implements OnInit {
   readonly today = this.toDateStr(new Date());
   readonly jours = JOURS;
   readonly joursCourts = JOURS_COURTS;
-  readonly couleursType = COULEURS_TYPE;
-  readonly infosType = INFOS_TYPE;
+  readonly couleurEvenement = COULEUR_EVENEMENT;
+  readonly couleurAnniversaire = COULEUR_ANNIVERSAIRE;
+
+  /** Événements extrasportifs de la période (couche ardoise). */
+  evenements: Evenement[] = [];
+  /** Contexte ressenti + anniversaires (best-effort : vide si 403). */
+  contexteRessenti: ContexteCalendrier = { jours: [], seances: [], anniversaires: [] };
+
+  /** Au-delà, une cellule mensuelle se replie derrière « + N autres ». */
+  readonly MAX_PAR_CELLULE = 3;
+  /** Jours dont la cellule mensuelle est dépliée (clic sur « + N autres »). */
+  private cellulesDepliees = new Set<string>();
 
   private seanceService = inject(SeanceService);
   private dialog = inject(MatDialog);
@@ -97,6 +116,10 @@ export class CalendrierComponent implements OnInit {
   private espaceJoueur = inject(EspaceJoueurService);
   private entretienService = inject(EntretienService);
   private mesEntretiens = inject(MesEntretiensService);
+  private evenementService = inject(EvenementService);
+  private contexteService = inject(CalendrierContexteService);
+  /** Couleurs résolues pour le club actif (surcharge V94, repli historique inclus). */
+  private couleursType = inject(CouleursTypeService);
 
   /** Joueur : calendrier en lecture seule, données scopées via /api/moi (endpoints staff bloqués). */
   get lectureSeule(): boolean { return this.auth.hasRole('JOUEUR'); }
@@ -125,6 +148,9 @@ export class CalendrierComponent implements OnInit {
   }
 
   ngOnInit(): void {
+    // Idempotent : garantit que les couleurs du club sont chargées même si la première
+    // tentative (au démarrage de l'application, avant l'authentification) a échoué.
+    this.couleursType.charger();
     if (!this.lectureSeule) {
       this.seanceService.getTypeSeances().subscribe(t => {
         this.typeSeances = t;
@@ -157,6 +183,28 @@ export class CalendrierComponent implements OnInit {
       : this.seanceService.getSemaine(d, f);
     seances$.subscribe(s => this.seances = s);
     this.chargerRdvs(d, f);
+    this.chargerEvenements(d, f);
+    this.chargerContexte(d, f);
+    this.cellulesDepliees.clear();
+  }
+
+  /** Couche extrasportive (module socle Planning : jamais gatée, mais tolérante au 403). */
+  private chargerEvenements(debut: string, fin: string): void {
+    const source$ = this.lectureSeule
+      ? this.evenementService.mesEvenements(debut, fin)
+      : this.evenementService.lister(debut, fin);
+    source$.subscribe({ next: e => this.evenements = e, error: () => this.evenements = [] });
+  }
+
+  /** Contexte ressenti + anniversaires. Best-effort : le planning doit survivre à son absence. */
+  private chargerContexte(debut: string, fin: string): void {
+    const source$ = this.lectureSeule
+      ? this.contexteService.monContexte(debut, fin)
+      : this.contexteService.contexte(debut, fin);
+    source$.subscribe({
+      next: c => this.contexteRessenti = c,
+      error: () => this.contexteRessenti = { jours: [], seances: [], anniversaires: [] },
+    });
   }
 
   /** Couche RDV entretiens — best-effort : sans permission ou module inactif (403), couche vide. */
@@ -280,7 +328,184 @@ export class CalendrierComponent implements OnInit {
   /** Jours de la semaine courante qui portent au moins un événement (vue Liste). */
   get joursAvecSeances(): JourCell[] {
     return this.joursGrid.filter(j =>
-      this.seancesDuJour(j.dateStr).length > 0 || this.rdvsDuJour(j.dateStr).length > 0);
+      this.seancesDuJour(j.dateStr).length > 0
+      || this.rdvsDuJour(j.dateStr).length > 0
+      || this.evenementsDuJour(j.dateStr).length > 0
+      || this.anniversairesDuJour(j.dateStr).length > 0);
+  }
+
+  // ══════════ Couche extrasportive ══════════
+
+  /** Événements visibles selon le filtre de couche. */
+  get evenementsVisibles(): Evenement[] {
+    return (this.couche === 'seances' || this.couche === 'rdv') ? [] : this.evenements;
+  }
+
+  /**
+   * Événements couvrant ce jour. Un événement sur plusieurs jours (stage, vacances scolaires)
+   * apparaît sur CHACUN des jours qu'il couvre, pas seulement le premier.
+   */
+  evenementsDuJour(dateStr: string): Evenement[] {
+    return this.evenementsVisibles
+      .filter(e => dateStr >= e.date && dateStr <= (e.dateFin ?? e.date))
+      .sort((a, b) => (a.heureDebut ?? '').localeCompare(b.heureDebut ?? ''));
+  }
+
+  evenementIcone(e: Evenement): string { return EvenementService.iconeDe(e.type); }
+  evenementLabel(e: Evenement): string { return EvenementService.labelDe(e.type); }
+
+  /** Sous-titre d'un événement : heure, lieu et personnes ciblées (vide = toute l'équipe). */
+  evenementDetail(e: Evenement): string {
+    const bouts: string[] = [];
+    if (e.heureDebut) bouts.push(e.heureDebut.slice(0, 5));
+    if (e.lieu) bouts.push(e.lieu);
+    if (e.concernes.length) {
+      bouts.push(e.concernes.length <= 2
+        ? e.concernes.map(p => `${p.prenom} ${p.nom}`).join(', ')
+        : `${e.concernes.length} personnes`);
+    }
+    return bouts.join(' · ');
+  }
+
+  // ══════════ Couche anniversaires ══════════
+
+  /** Anniversaires tombant ce jour-là. Ni la date de naissance ni l'âge ne sortent du serveur. */
+  anniversairesDuJour(dateStr: string): Anniversaire[] {
+    if (this.couche === 'seances' || this.couche === 'rdv') return [];
+    const [, mois, jour] = dateStr.split('-').map(Number);
+    return this.contexteRessenti.anniversaires.filter(a => a.jour === jour && a.mois === mois);
+  }
+
+  // ══════════ Couche ressenti ══════════
+
+  /** État du ressenti quotidien pour un jour (null si le serveur n'a rien renvoyé). */
+  ressentiDuJour(dateStr: string): JourRessenti | null {
+    return this.contexteRessenti.jours.find(j => j.date === dateStr) ?? null;
+  }
+
+  /**
+   * Faut-il afficher la pastille « ressenti » ce jour-là ? Seulement les jours ATTENDUS
+   * (cadence de l'équipe) et non futurs : annoncer « 0/18 » pour jeudi prochain n'informe personne.
+   */
+  montrerRessenti(dateStr: string): boolean {
+    const j = this.ressentiDuJour(dateStr);
+    return !!j && j.wellnessAttendu && dateStr <= this.today;
+  }
+
+  /** Classe d'état de la pastille ressenti : complet / partiel / manquant. */
+  classeRessenti(dateStr: string): string {
+    const j = this.ressentiDuJour(dateStr);
+    if (!j) return '';
+    if (this.lectureSeule) return j.moiFait ? 'ok' : 'manquant';
+    if (j.saisis === 0) return 'manquant';
+    return j.effectif > 0 && j.saisis >= j.effectif ? 'ok' : 'partiel';
+  }
+
+  /** Texte de la pastille ressenti : « 12/18 » côté staff, « rempli » côté joueur. */
+  texteRessenti(dateStr: string): string {
+    const j = this.ressentiDuJour(dateStr);
+    if (!j) return '';
+    if (this.lectureSeule) return j.moiFait ? 'Ressenti rempli' : 'Ressenti à remplir';
+    return j.effectif > 0 ? `${j.saisis}/${j.effectif}` : `${j.saisis}`;
+  }
+
+  /** Retours sRPE agrégés d'une séance (null si personne ne l'a notée). */
+  ressentiSeance(seanceId: string): SeanceRessenti | null {
+    return this.contexteRessenti.seances.find(s => s.seanceId === seanceId) ?? null;
+  }
+
+  /** Ouvre la page sRPE sur la séance choisie — le « retour RPE » demandé depuis le calendrier. */
+  ouvrirRpeSeance(seanceId: string, event: MouseEvent): void {
+    event.stopPropagation();
+    this.router.navigate(['/rpe'], { queryParams: { seance: seanceId } });
+  }
+
+  /** Ouvre le ressenti quotidien sur la date choisie. */
+  ouvrirWellnessJour(dateStr: string, event: MouseEvent): void {
+    event.stopPropagation();
+    this.router.navigate(['/wellness'], { queryParams: { date: dateStr } });
+  }
+
+  // ══════════ Densité de la vue Mois ══════════
+
+  /** Nombre total d'éléments posés sur un jour, toutes couches confondues. */
+  private nbElements(dateStr: string): number {
+    return this.seancesDuJour(dateStr).length + this.rdvsDuJour(dateStr).length
+      + this.evenementsDuJour(dateStr).length;
+  }
+
+  celluleDepliee(dateStr: string): boolean { return this.cellulesDepliees.has(dateStr); }
+
+  /**
+   * Combien d'éléments restent masqués dans une cellule mensuelle. Sans ce repli, une journée
+   * chargée (2 séances + un entretien + un événement + les pastilles) déborde de sa case.
+   */
+  nbMasques(dateStr: string): number {
+    if (this.celluleDepliee(dateStr)) return 0;
+    return Math.max(0, this.nbElements(dateStr) - this.MAX_PAR_CELLULE);
+  }
+
+  deplierCellule(dateStr: string, event: MouseEvent): void {
+    event.stopPropagation();
+    this.cellulesDepliees.add(dateStr);
+  }
+
+  /** Séances visibles dans une cellule mensuelle (les couches se partagent le quota). */
+  seancesCellule(dateStr: string): Seance[] {
+    const liste = this.seancesDuJour(dateStr);
+    return this.celluleDepliee(dateStr) ? liste : liste.slice(0, this.MAX_PAR_CELLULE);
+  }
+
+  rdvsCellule(dateStr: string): AgendaEntretien[] {
+    if (this.celluleDepliee(dateStr)) return this.rdvsDuJour(dateStr);
+    const reste = this.MAX_PAR_CELLULE - this.seancesDuJour(dateStr).length;
+    return reste > 0 ? this.rdvsDuJour(dateStr).slice(0, reste) : [];
+  }
+
+  evenementsCellule(dateStr: string): Evenement[] {
+    if (this.celluleDepliee(dateStr)) return this.evenementsDuJour(dateStr);
+    const reste = this.MAX_PAR_CELLULE
+      - this.seancesDuJour(dateStr).length - this.rdvsDuJour(dateStr).length;
+    return reste > 0 ? this.evenementsDuJour(dateStr).slice(0, reste) : [];
+  }
+
+  // ══════════ Carte de séance (données réelles) ══════════
+
+  /**
+   * Ce que la carte affiche pour une séance. Tout vient de la BASE : intensité et durée
+   * théoriques du type, objectifs réellement saisis sur la séance. Un champ non renseigné
+   * n'apparaît pas — auparavant un dictionnaire codé en dur annonçait « > 7 000 m total » et
+   * « ACWR 1.0–1.3 » à TOUTES les séances intensives, quelles que soient leurs vraies valeurs.
+   */
+  infoSeance(s: Seance): InfoSeance {
+    const type = s.typeSeance;
+    const profil = type?.profil ?? 'TERRAIN';
+    const objectifs: string[] = [];
+
+    if (profil === 'MUSCULATION') {
+      const q = QUALITES_MUSCU.find(x => x.val === s.muscuQualite);
+      if (q) objectifs.push(q.label);
+      const r = REGIMES_MUSCU.find(x => x.val === s.muscuRegime);
+      if (r) objectifs.push(r.aide ? `${r.label} — ${r.aide}` : r.label);
+      if (s.muscuNbSeries) objectifs.push(`${s.muscuNbSeries} séries`);
+      if (s.muscuNbRepetitions) objectifs.push(`${s.muscuNbRepetitions} répétitions`);
+    } else if (profil === 'TERRAIN') {
+      if (s.objectifDistanceM) objectifs.push(`${(s.objectifDistanceM / 1000).toFixed(1)} km visés`);
+      if (s.objectifDistanceHauteIntensiteM) objectifs.push(`${s.objectifDistanceHauteIntensiteM} m haute intensité`);
+    }
+
+    return {
+      intensite: s.objectifIntensite ?? type?.intensiteTheorique ?? null,
+      profil,
+      objectifs,
+      description: s.objectif || type?.objectifPrincipal || null,
+    };
+  }
+
+  /** Libellé de l'échelle d'intensité — 1..5, jamais un pourcentage inventé. */
+  libelleIntensite(n: number | null): string {
+    if (n == null) return '';
+    return ['', 'Très légère', 'Légère', 'Modérée', 'Soutenue', 'Maximale'][Math.max(1, Math.min(5, n))];
   }
 
   // ══════════ RDV entretiens (couche calendrier) ══════════
@@ -485,8 +710,49 @@ export class CalendrierComponent implements OnInit {
     return statut === 'REALISEE' ? 'Réalisée' : statut === 'ANNULEE' ? 'Annulée' : 'Planifiée';
   }
 
-  couleur(code?: string): string {
-    return (code && COULEURS_TYPE[code]) || '#6366f1';
+  /**
+   * Couleur d'un type, résolue par le catalogue du CLUB.
+   *
+   * ⚠ Ne jamais utiliser `seance.typeSeance.couleur` : `/api/seances` sérialise l'entité JPA,
+   * qui porte la couleur PAR DÉFAUT de la plateforme — la surcharge du club (V94) vit dans
+   * `type_seance_cible` et n'est résolue que par le catalogue. C'était la raison pour laquelle
+   * une couleur modifiée par un club ne se voyait nulle part.
+   */
+  couleur(code?: string, couleurType?: string | null): string {
+    return this.couleursType.couleur(code);
+  }
+
+  couleurSeance(s: Seance): string {
+    return this.couleursType.couleur(s.typeSeance?.code);
+  }
+
+  // ══════════ Actions événement extrasportif ══════════
+
+  ouvrirCreationEvenement(dateStr?: string): void {
+    const ref = this.dialog.open(EvenementDialogComponent, {
+      width: '620px', maxWidth: '96vw', panelClass: 'app-dialog',
+      data: { date: dateStr ?? this.toDateStr(this.ancre) },
+    });
+    ref.afterClosed().subscribe(ok => { if (ok) this.charger(); });
+  }
+
+  ouvrirEvenement(e: Evenement, event?: MouseEvent): void {
+    event?.stopPropagation();
+    if (this.lectureSeule || !this.auth.canEcrireSeances()) return;
+    const ref = this.dialog.open(EvenementDialogComponent, {
+      width: '620px', maxWidth: '96vw', panelClass: 'app-dialog',
+      data: { date: e.date, evenement: e },
+    });
+    ref.afterClosed().subscribe(ok => { if (ok) this.charger(); });
+  }
+
+  supprimerEvenement(e: Evenement, event: MouseEvent): void {
+    event.stopPropagation();
+    if (!confirm(`Supprimer l'événement « ${e.titre} » ?`)) return;
+    this.evenementService.supprimer(e.id).subscribe({
+      next: () => { this.charger(); this.snackBar.open('Événement supprimé', 'OK', { duration: 2500 }); },
+      error: () => this.snackBar.open('Suppression impossible', 'OK', { duration: 3000 }),
+    });
   }
 
   retourDashboard(): void {

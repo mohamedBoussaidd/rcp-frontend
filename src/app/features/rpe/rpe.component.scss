@@ -1,0 +1,621 @@
+/* ══════════════════════════════════════════════════════════════
+   Charge perçue (sRPE) — écran dédié (lot B).
+   Reprend le vocabulaire visuel de /wellness pour que la scission
+   du menu ne se paie pas d'une rupture de style.
+   ══════════════════════════════════════════════════════════════ */
+
+.screen {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 24px 28px 48px;
+}
+
+/* ── En-tête ── */
+.rp-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+  flex-wrap: wrap;
+  margin-bottom: 18px;
+}
+
+.rp-title {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--text);
+  letter-spacing: -.01em;
+}
+
+.rp-sub {
+  margin: 4px 0 0;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text-3);
+}
+
+.rp-selector {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+
+  &__label {
+    font-size: 10.5px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .05em;
+    color: var(--text-4);
+  }
+
+  &__select {
+    min-width: 200px;
+    padding: 8px 12px;
+    border: 1px solid var(--border-strong);
+    border-radius: var(--r-md);
+    background: var(--surface);
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+  }
+}
+
+.rp-lien {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-md);
+  background: var(--surface);
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--text-2);
+  text-decoration: none;
+
+  mat-icon { font-size: 17px; width: 17px; height: 17px; }
+  &:hover { border-color: var(--copper); color: var(--copper); }
+}
+
+/* ── Filtres de fenêtre ── */
+.rp-filtres {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+.rp-fenetre {
+  display: inline-flex;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-md);
+  overflow: hidden;
+
+  &__btn {
+    padding: 7px 13px;
+    border: 0;
+    background: var(--surface);
+    font-size: 12.5px;
+    font-weight: 700;
+    color: var(--text-3);
+    cursor: pointer;
+    & + & { border-left: 1px solid var(--border); }
+    &.is-active { background: var(--copper-soft); color: var(--copper); }
+  }
+}
+
+.rp-compteur { font-size: 12px; font-weight: 700; color: var(--text-4); }
+
+.rp-retour {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 14px;
+  padding: 7px 12px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-md);
+  background: var(--surface);
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--text-2);
+  cursor: pointer;
+
+  mat-icon { font-size: 17px; width: 17px; height: 17px; }
+  &:hover { border-color: var(--copper); color: var(--copper); }
+}
+
+/* ── Cartes ── */
+.rp-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-xl);
+  padding: 20px 22px;
+  margin-bottom: 18px;
+
+  &--table { padding: 20px 0 6px; }
+  &--vide {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    color: var(--text-3);
+    mat-icon { font-size: 30px; width: 30px; height: 30px; color: var(--text-4); }
+    strong { display: block; font-size: 14px; color: var(--text); }
+    p { margin: 4px 0 0; font-size: 12.5px; font-weight: 600; }
+  }
+
+  &__head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+    margin-bottom: 16px;
+    padding: 0 22px;
+  }
+  &--table > .rp-card__head { margin-bottom: 8px; }
+  &:not(.rp-card--table) > .rp-card__head { padding: 0; }
+
+  &__title { margin: 0; font-size: 15px; font-weight: 800; color: var(--text); }
+  &__sub { margin: 3px 0 0; font-size: 12px; font-weight: 600; color: var(--text-3); }
+
+  &__foot {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 16px;
+  }
+}
+
+.rp-taux {
+  font-size: 12.5px;
+  font-weight: 800;
+  color: var(--text-2);
+  em { margin-left: 6px; font-style: normal; color: var(--text-4); }
+}
+
+/* ── Synthèse ── */
+.rp-synthese {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 12px;
+  margin-bottom: 18px;
+
+  &--top { margin-bottom: 18px; }
+}
+
+.rp-stat {
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  background: var(--slate-25);
+
+  &--alert { border-color: var(--danger); background: var(--danger-bg, var(--slate-25)); }
+  &--warn { border-color: var(--warn); background: var(--warn-bg); }
+
+  &__label {
+    display: block;
+    font-size: 10.5px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    color: var(--text-4);
+    margin-bottom: 5px;
+  }
+
+  &__value {
+    display: block;
+    font-family: var(--font-num);
+    font-variant-numeric: tabular-nums;
+    font-size: 21px;
+    font-weight: 800;
+    color: var(--text);
+    small {
+      display: block;
+      margin-top: 2px;
+      font-family: inherit;
+      font-size: 10.5px;
+      font-weight: 700;
+      color: var(--text-4);
+    }
+  }
+}
+
+/* ── Liste des retours d'une séance ── */
+.rp-liste { display: flex; flex-direction: column; gap: 10px; }
+
+.rp-reponse {
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) auto;
+  gap: 10px 16px;
+  align-items: center;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+
+  &--gene { border-color: var(--danger); }
+
+  &__qui {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text);
+  }
+
+  &__metriques { display: inline-flex; gap: 18px; flex-wrap: wrap; }
+
+  &__detail {
+    grid-column: 1 / -1;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+    padding-top: 8px;
+    border-top: 1px dashed var(--border);
+  }
+}
+
+.rp-avatar {
+  width: 26px; height: 26px;
+  display: grid; place-items: center;
+  border-radius: 50%;
+  background: var(--copper-soft);
+  color: var(--copper);
+  font-size: 10.5px;
+  font-weight: 800;
+}
+
+.rp-metric {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  min-width: 52px;
+
+  em {
+    font-style: normal;
+    font-size: 10px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    color: var(--text-4);
+  }
+  b {
+    font-family: var(--font-num);
+    font-variant-numeric: tabular-nums;
+    font-size: 15px;
+    font-weight: 800;
+    color: var(--text);
+    &.is-partiel { color: var(--warn); }
+    i { font-style: normal; font-size: 11px; font-weight: 700; color: var(--text-4); }
+  }
+}
+
+.rp-gene {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border-radius: var(--r-md);
+  background: var(--danger-bg, var(--slate-50));
+  border: 1px solid var(--danger);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--danger);
+
+  mat-icon { font-size: 15px; width: 15px; height: 15px; }
+  em { font-style: normal; opacity: .8; }
+  &.is-traitee {
+    background: var(--slate-50);
+    border-color: var(--border-strong);
+    color: var(--text-3);
+  }
+
+  &__actions { display: inline-flex; gap: 6px; }
+}
+
+.rp-comment {
+  margin: 0;
+  font-size: 12.5px;
+  font-style: italic;
+  color: var(--text-3);
+  &--inline { display: block; margin-top: 3px; font-size: 11.5px; }
+}
+
+/* ── Tableaux ── */
+.rp-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+
+  th {
+    padding: 9px 22px;
+    text-align: left;
+    font-size: 10.5px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    color: var(--text-4);
+    border-bottom: 1px solid var(--border);
+    &.num { text-align: right; }
+  }
+
+  td {
+    padding: 11px 22px;
+    border-bottom: 1px solid var(--border);
+    color: var(--text-2);
+    vertical-align: middle;
+    &.num {
+      text-align: right;
+      font-family: var(--font-num);
+      font-variant-numeric: tabular-nums;
+    }
+    &.is-partiel { color: var(--warn); font-weight: 700; }
+    i { font-style: normal; font-size: 11px; color: var(--text-4); }
+  }
+
+  tbody tr:last-child td { border-bottom: 0; }
+
+  &__empty {
+    text-align: center;
+    color: var(--text-4);
+    font-weight: 600;
+    padding: 26px 0 !important;
+  }
+}
+
+.rp-row {
+  cursor: pointer;
+  &:hover { background: var(--slate-25); }
+}
+
+.rp-rowname { display: block; font-weight: 700; color: var(--text); }
+.rp-rowdate { display: block; margin-top: 2px; font-size: 11px; font-weight: 600; color: var(--text-4); }
+.rp-sur { font-size: 11px; color: var(--text-4); }
+
+.rp-tag {
+  display: inline-block;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: var(--slate-100);
+  font-size: 10.5px;
+  font-weight: 800;
+  color: var(--text-3);
+  & + & { margin-left: 5px; }
+
+  &--ok { background: var(--copper-soft); color: var(--copper); }
+  &--bad { background: var(--danger-bg, var(--slate-100)); color: var(--danger); }
+  &--warn { background: var(--warn-bg); color: var(--warn); }
+}
+
+/* ── Saisie joueur ── */
+.rp-field {
+  margin-bottom: 14px;
+
+  label {
+    display: block;
+    margin-bottom: 5px;
+    font-size: 11px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    color: var(--text-4);
+    em { font-style: normal; text-transform: none; letter-spacing: 0; opacity: .8; }
+  }
+
+  select, textarea, input {
+    width: 100%;
+    padding: 9px 12px;
+    border: 1px solid var(--border-strong);
+    border-radius: var(--r-md);
+    background: var(--surface);
+    font-family: inherit;
+    font-size: 13px;
+    color: var(--text);
+  }
+  textarea { resize: vertical; }
+}
+
+.rp-hint { display: block; margin-top: 5px; font-size: 11.5px; color: var(--text-4); }
+
+.rp-saisie {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 14px;
+  margin-bottom: 14px;
+
+  &__box {
+    padding: 12px 14px;
+    border: 1px solid var(--border);
+    border-radius: var(--r-lg);
+
+    &--charge { background: var(--copper-soft); border-color: var(--copper); }
+    &--full { grid-column: 1 / -1; margin-bottom: 14px; }
+
+    input {
+      width: 100%;
+      padding: 8px 11px;
+      border: 1px solid var(--border-strong);
+      border-radius: var(--r-md);
+      background: var(--surface);
+      font-family: var(--font-num);
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--text);
+    }
+  }
+
+  &__label {
+    display: block;
+    margin-bottom: 8px;
+    font-size: 10.5px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    color: var(--text-4);
+    em { font-style: normal; text-transform: none; letter-spacing: 0; opacity: .8; }
+  }
+
+  &__charge {
+    display: block;
+    font-family: var(--font-num);
+    font-variant-numeric: tabular-nums;
+    font-size: 26px;
+    font-weight: 800;
+    color: var(--copper);
+  }
+}
+
+.rp-partiel {
+  display: block;
+  margin-top: 7px;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--warn);
+}
+
+.rp-notes {
+  display: grid;
+  grid-template-columns: repeat(10, 1fr);
+  gap: 4px;
+
+  &--sm { grid-column: 1 / -1; }
+}
+
+.rp-note {
+  min-height: 34px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-md);
+  background: var(--surface);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-2);
+  cursor: pointer;
+  &.is-active { background: var(--copper-soft); border-color: var(--copper); color: var(--copper); }
+}
+
+.rp-gene-form {
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  margin-bottom: 14px;
+
+  &__row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 10px;
+    margin-top: 12px;
+
+    select {
+      padding: 8px 11px;
+      border: 1px solid var(--border-strong);
+      border-radius: var(--r-md);
+      background: var(--surface);
+      font-size: 12.5px;
+      color: var(--text);
+    }
+  }
+}
+
+.rp-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--text-2);
+  cursor: pointer;
+}
+
+/* ── Boutons ── */
+.rp-btn {
+  padding: 9px 16px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-md);
+  background: var(--surface);
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--text-2);
+  cursor: pointer;
+
+  &--sm { padding: 5px 10px; font-size: 11.5px; }
+  &--primary {
+    background: var(--copper);
+    border-color: var(--copper);
+    color: #fff;
+    &:disabled { opacity: .45; cursor: not-allowed; }
+  }
+  &:hover:not(:disabled):not(.rp-btn--primary) { border-color: var(--copper); color: var(--copper); }
+}
+
+.rp-empty {
+  padding: 26px;
+  text-align: center;
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--r-xl);
+  color: var(--text-3);
+  font-weight: 600;
+}
+
+@media (max-width: 820px) {
+  .screen { padding: 18px 14px 40px; }
+  .rp-reponse { grid-template-columns: 1fr; }
+  .rp-reponse__metriques { justify-content: space-between; width: 100%; }
+  .rp-table th, .rp-table td { padding-left: 14px; padding-right: 14px; }
+  .rp-card__head { padding: 0 14px; }
+}
+
+/* ── Joueurs sans retour sur la séance ──
+   Tout l'effectif est censé répondre : sans cette liste, une séance à 4 retours sur 20
+   se lisait comme une séance complète (particulièrement après un import CSV partiel). */
+.rp-manquants {
+  margin-bottom: 18px;
+  padding: 12px 14px;
+  border: 1px dashed var(--warn);
+  border-radius: var(--r-lg);
+  background: var(--warn-bg);
+
+  &__titre {
+    display: block;
+    margin-bottom: 9px;
+    font-size: 10.5px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    color: var(--warn);
+
+    em {
+      font-style: normal;
+      margin-left: 6px;
+      padding: 1px 7px;
+      border-radius: 999px;
+      background: var(--warn);
+      color: #fff;
+    }
+  }
+
+  &__liste {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 7px;
+  }
+}
+
+.rp-manquant {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px 4px 4px;
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  background: var(--surface);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-2);
+}
+
+.rp-avatar--vide {
+  background: var(--slate-100);
+  color: var(--text-3);
+}

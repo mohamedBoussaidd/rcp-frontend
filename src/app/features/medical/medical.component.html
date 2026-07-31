@@ -65,6 +65,8 @@
                 <div class="al-card__type">
                   <span class="al-card__typelabel al-card__typelabel--bad">Gêne signalée</span>
                   @if (g.geneZone) { <span class="al-tag">{{ joliLabel(g.geneZone) }}</span> }
+                  <!-- D'où sort la gêne : ressenti du matin ou questionnaire post-séance -->
+                  <span class="al-tag">{{ g.source === 'RPE' ? 'après séance' : 'ressenti du jour' }}</span>
                 </div>
                 <div class="al-card__status">
                   @if (g.geneIntensite) {
@@ -75,7 +77,9 @@
                   <span class="al-status al-status--active">Active</span>
                 </div>
               </div>
-              <p class="al-card__desc">Gêne à {{ joliLabel(g.geneZone) }} signalée {{ momentGeneLabel(g.geneMoment) }}.</p>
+              <p class="al-card__desc">
+                Gêne à {{ joliLabel(g.geneZone) }} signalée {{ momentGeneLabel(g.geneMoment) }}@if (g.contexte) { , après « {{ g.contexte }} »}.
+              </p>
               @if (peutTraiterGene) {
                 <div class="al-card__foot">
                   <div class="al-card__acts">

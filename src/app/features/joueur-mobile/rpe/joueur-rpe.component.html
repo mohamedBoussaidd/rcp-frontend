@@ -24,7 +24,7 @@
     }
   </div>
 } @else {
-  <!-- Notation d'une séance -->
+  <!-- ════════ Questionnaire post-séance ════════ -->
   <section class="pwa-card pwa-rise">
     <div class="rpe-head">
       <div class="rpe-head__icon">
@@ -32,11 +32,12 @@
       </div>
       <div class="rpe-head__body">
         <div class="rpe-head__title">{{ seanceSel()!.titre }}</div>
-        <div class="rpe-head__date">{{ seanceSel()!.date | date:'EEEE d MMMM':'':'fr' }}@if (seanceSel()!.duree) { · {{ seanceSel()!.duree }} min }</div>
+        <div class="rpe-head__date">{{ seanceSel()!.date | date:'EEEE d MMMM':'':'fr' }}@if (seanceSel()!.duree) { · {{ seanceSel()!.duree }} min prévues }</div>
       </div>
       <button type="button" class="rpe-head__close" (click)="fermer()" aria-label="Changer de séance">✕</button>
     </div>
 
+    <!-- 1 · Intensité ressentie (obligatoire) -->
     <div class="rpe-row">
       <span class="rpe-q">Intensité ressentie (RPE)</span>
       <span class="rpe-val">
@@ -56,15 +57,110 @@
     </div>
     <div class="rpe-legend"><span>Repos</span><span>Effort maximal</span></div>
 
-    <p class="rpe-q rpe-q--mt">Durée (minutes)</p>
-    <input class="input input--lg rpe-duree" type="number" inputmode="numeric" min="0" max="300"
-           [value]="duree() ?? ''" (input)="setDuree($any($event.target).value)" placeholder="ex. 75">
+    <!-- 2 · Durée réellement effectuée -->
+    <p class="rpe-q rpe-q--mt">Combien de temps as-tu réellement fait ?</p>
+    <div class="rpe-duree-row">
+      <input class="input input--lg rpe-duree" type="number" inputmode="numeric" min="0" max="300"
+             [value]="duree() ?? ''" (input)="setDuree($any($event.target).value)" placeholder="ex. 75">
+      <span class="rpe-duree-unit">min</span>
+      @if (participationPartielle()) {
+        <button type="button" class="rpe-duree-reset" (click)="restaurerDuree()">↺ {{ dureePrevue() }} min</button>
+      }
+    </div>
+    @if (participationPartielle()) {
+      <div class="rpe-partiel">
+        Séance écourtée : {{ duree() }} min sur {{ dureePrevue() }} prévues. Ta charge est calculée sur ce que tu as vraiment fait.
+      </div>
+    }
+  </section>
+
+  <!-- 3 · Plaisir ressenti (facultatif) -->
+  <section class="pwa-card pwa-rise">
+    <div class="rpe-row">
+      <span class="rpe-q">Tu as aimé cette séance ?<span class="rpe-opt">facultatif</span></span>
+      <span class="rpe-val">
+        <span class="rpe-val__num">{{ plaisir() || '–' }}</span>
+        <span class="rpe-val__lbl">{{ plaisirLabel() }}</span>
+      </span>
+    </div>
+    <div class="rpe-dots">
+      @for (n of NOTES; track n) {
+        <button type="button" class="rpe-dot"
+                [class.is-active]="plaisir() === n"
+                [style.background]="plaisir() === n ? couleurPlaisir(n) : null"
+                [style.borderColor]="plaisir() === n ? couleurPlaisir(n) : null"
+                [style.color]="plaisir() === n ? '#fff' : null"
+                (click)="setPlaisir(n)">{{ n }}</button>
+      }
+    </div>
+    <div class="rpe-legend"><span>Pas du tout</span><span>Beaucoup</span></div>
+  </section>
+
+  <!-- 4 · Gêne / douleur (facultatif, replié) -->
+  <section class="pwa-card pwa-rise">
+    <button type="button" class="rpe-toggle" [class.is-open]="geneActive()" (click)="basculerGene()">
+      <span class="rpe-toggle__ic">🩹</span>
+      <span class="rpe-toggle__body">
+        <span class="rpe-toggle__t">Signaler une gêne ou une douleur</span>
+        <span class="rpe-toggle__s">Quelque chose t'a fait mal pendant la séance ?</span>
+      </span>
+      <span class="rpe-toggle__chev">{{ geneActive() ? '−' : '+' }}</span>
+    </button>
+
+    @if (geneActive()) {
+      <div class="rpe-gene pwa-rise">
+        <div class="rpe-card-title">Où as-tu mal ?</div>
+        <app-body-map [value]="gForm().zone || null" (valueChange)="setZone($event)"></app-body-map>
+        @if (gForm().zone) {
+          <div class="rpe-zone-pill">Zone : {{ gForm().zone }}</div>
+        } @else {
+          <div class="rpe-zone-empty">Touche une zone du corps</div>
+        }
+
+        @if (gForm().zone) {
+          <div class="rpe-row rpe-row--mt">
+            <span class="rpe-q">Intensité de la gêne</span>
+            <span class="rpe-val">
+              <span class="rpe-val__num" [style.color]="couleur(gForm().intensite)">{{ gForm().intensite }}</span>
+              <span class="rpe-val__lbl">/10</span>
+            </span>
+          </div>
+          <div class="rpe-dots">
+            @for (n of NOTES; track n) {
+              <button type="button" class="rpe-dot"
+                      [class.is-active]="gForm().intensite === n"
+                      [style.background]="gForm().intensite === n ? couleur(n) : null"
+                      [style.borderColor]="gForm().intensite === n ? couleur(n) : null"
+                      [style.color]="gForm().intensite === n ? '#fff' : null"
+                      (click)="setGeneIntensite(n)">{{ n }}</button>
+            }
+          </div>
+          <div class="rpe-legend"><span>Légère</span><span>Très forte</span></div>
+
+          <p class="rpe-q rpe-q--mt">Quand ?</p>
+          <div class="rpe-moments">
+            @for (m of MOMENTS; track m.val) {
+              <button type="button" class="rpe-moment" [class.is-active]="gForm().moment === m.val"
+                      (click)="setMoment(m.val)">{{ m.label }}</button>
+            }
+          </div>
+        }
+      </div>
+    }
+  </section>
+
+  <!-- 5 · Commentaire libre (facultatif) -->
+  <section class="pwa-card pwa-rise">
+    <p class="rpe-q">Un mot sur la séance ?<span class="rpe-opt">facultatif</span></p>
+    <textarea class="input rpe-comment" rows="3" maxlength="500"
+              [value]="commentaire()" (input)="setCommentaire($any($event.target).value)"
+              placeholder="ex. j'ai pris un coup au genou, mal dormi cette nuit…"></textarea>
   </section>
 
   <div class="rpe-load pwa-rise">
     <div>
       <div class="rpe-load__t">Charge estimée</div>
-      <div class="rpe-load__s">RPE × durée</div>
+      <div class="rpe-load__s">RPE × durée réelle</div>
     </div>
     <span class="rpe-load__v">{{ charge() ?? '—' }} <span>UA</span></span>
   </div>
@@ -73,8 +169,11 @@
     <button type="button" class="pwa-btn pwa-btn--primary pwa-btn--block"
             [disabled]="!peutEnvoyer()" (click)="valider()">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
-      {{ envoi() ? 'Envoi…' : 'Enregistrer le RPE' }}
+      {{ envoi() ? 'Envoi…' : 'Enregistrer ma séance' }}
     </button>
+    @if (geneActive() && !gForm().zone) {
+      <div class="rpe-submit-hint">Touche la zone qui te gêne, ou referme le bloc.</div>
+    }
   </div>
 }
 

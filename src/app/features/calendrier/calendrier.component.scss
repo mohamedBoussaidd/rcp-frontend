@@ -464,3 +464,252 @@
   .filtre-compteur { margin-left: 0; }
   .lc-type .lc-cible { display: none; }
 }
+
+/* ══════════════════════════════════════════════════════════════
+   Couches ajoutées au calendrier (lots C, D, E)
+   Trois couches se superposent désormais au planning : le RESSENTI
+   (rose/vert selon l'état), l'EXTRASPORTIF (ardoise, pointillés) et
+   les ANNIVERSAIRES (rose, liseré haut). Chacune se distingue par sa
+   FORME autant que par sa couleur — l'ambre reste aux entretiens.
+   ══════════════════════════════════════════════════════════════ */
+
+/* ── Bouton « + Événement » ── */
+.btn-nouvel-evt {
+  padding: 9px 15px;
+  border: 1px dashed #64748B;
+  border-radius: var(--r-md);
+  background: var(--surface);
+  font-size: 12.5px;
+  font-weight: 700;
+  color: #64748B;
+  cursor: pointer;
+  &:hover { background: var(--slate-50); }
+}
+
+/* ── Pastille « ressenti du jour » ── */
+.ress-pill,
+.ress-mini {
+  border: 1px solid var(--border-strong);
+  background: var(--surface);
+  border-radius: 999px;
+  font-weight: 800;
+  color: var(--text-3);
+  cursor: pointer;
+  line-height: 1;
+
+  &.ok      { border-color: #15803D; color: #15803D; background: rgba(21, 128, 61, .08); }
+  &.partiel { border-color: #CA8A04; color: #CA8A04; background: rgba(202, 138, 4, .10); }
+  &.manquant{ border-color: #B91C1C; color: #B91C1C; background: rgba(185, 28, 28, .08); }
+}
+
+.ress-pill { padding: 3px 9px; font-size: 10.5px; }
+
+/* Vue Mois / Semaine : pastille compacte mais TEXTUELLE. Un simple coeur colore
+   demandait de deviner ce qu'il comptait ; le libelle et le ratio parlent seuls. */
+.ress-mini {
+  padding: 2px 7px;
+  font-size: 9.5px;
+  white-space: nowrap;
+}
+
+/* ── Pastille « retours sRPE » d'une séance ── */
+.srpe-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 9px;
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  background: var(--surface);
+  font-size: 10.5px;
+  font-weight: 800;
+  color: var(--text-2);
+  cursor: pointer;
+  white-space: nowrap;
+
+  &:hover { border-color: var(--copper); color: var(--copper); }
+  &--bloc { margin-top: 8px; align-self: flex-start; }
+}
+
+.srpe-gene   { color: #B91C1C; }
+.srpe-partiel{ color: #B45309; }
+
+/* Chiffre RPE posé dans la puce mensuelle */
+.me-rpe {
+  margin-left: auto;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, .82);
+  color: var(--text);
+  font-size: 9.5px;
+  font-weight: 800;
+}
+
+/* ── Anniversaires : liseré HAUT seulement.
+      Un cadre complet capterait plus l'œil qu'un match et détruirait la
+      lecture de la charge, qui est la fonction première du calendrier. ── */
+.mois-cell.a-anniv { box-shadow: inset 0 3px 0 0 #DB2777; }
+
+.anniv-puce {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 6px;
+  margin-bottom: 3px;
+  border-radius: var(--r-sm, 6px);
+  background: rgba(219, 39, 119, .10);
+  color: #DB2777;
+  font-size: 10px;
+  font-weight: 800;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.anniv-ligne {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 12px;
+  margin-bottom: 6px;
+  border-left: 3px solid #DB2777;
+  border-radius: var(--r-md);
+  background: rgba(219, 39, 119, .07);
+  font-size: 12.5px;
+  color: #DB2777;
+}
+
+.anniv-staff {
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: rgba(219, 39, 119, .16);
+  font-size: 9.5px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+
+/* ── Extrasportif : ardoise + pointillés + icône ── */
+.evt-ic { font-size: 13px; line-height: 1; }
+
+.evt-puce {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 6px;
+  margin-bottom: 3px;
+  border: 1px dashed #64748B;
+  border-radius: var(--r-sm, 6px);
+  background: repeating-linear-gradient(
+    135deg, rgba(100, 116, 139, .07) 0 5px, transparent 5px 10px);
+  color: #475569;
+  font-size: 10px;
+  font-weight: 700;
+  overflow: hidden;
+
+  .evt-titre { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+}
+
+.evt-bloc {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 9px 11px;
+  margin-bottom: 8px;
+  border: 1px dashed #64748B;
+  border-radius: var(--r-md);
+  background: repeating-linear-gradient(
+    135deg, rgba(100, 116, 139, .06) 0 6px, transparent 6px 12px);
+
+  &__titre {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    font-weight: 800;
+    color: #334155;
+  }
+  &__type {
+    font-size: 10px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    color: #64748B;
+  }
+  &__detail { font-size: 10.5px; font-weight: 600; color: var(--text-3); }
+  &__prive {
+    align-self: flex-start;
+    padding: 1px 6px;
+    border-radius: 999px;
+    background: var(--slate-100);
+    font-size: 9.5px;
+    font-weight: 800;
+    color: var(--text-3);
+  }
+}
+
+.evt-ligne {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px;
+  margin-bottom: 6px;
+  border: 1px dashed #64748B;
+  border-radius: var(--r-md);
+  background: repeating-linear-gradient(
+    135deg, rgba(100, 116, 139, .06) 0 6px, transparent 6px 12px);
+
+  &__corps {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    flex: 1;
+    min-width: 0;
+    strong { font-size: 12.5px; font-weight: 800; color: #334155; }
+    em { font-style: normal; font-size: 11px; font-weight: 600; color: #64748B; }
+  }
+}
+
+.evt-suppr {
+  border: 0;
+  background: transparent;
+  color: var(--text-4);
+  font-size: 12px;
+  cursor: pointer;
+  padding: 2px 4px;
+  &:hover { color: var(--danger); }
+}
+
+/* ── Repli de densité de la vue Mois (désormais la vue par défaut) ── */
+.mois-plus {
+  width: 100%;
+  margin-top: 2px;
+  padding: 2px 6px;
+  border: 0;
+  border-radius: var(--r-sm, 6px);
+  background: var(--slate-100);
+  font-size: 9.5px;
+  font-weight: 800;
+  color: var(--text-3);
+  cursor: pointer;
+  &:hover { background: var(--slate-150); color: var(--text-2); }
+}
+
+/* Raccourci vers la cadence du ressenti : le réglage vit dans les paramètres de
+   notifications mais pilote désormais un affichage du planning. */
+.filtre-lien {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 10px;
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  background: var(--surface);
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--text-3);
+  text-decoration: none;
+  &:hover { border-color: var(--copper); color: var(--copper); }
+}

@@ -69,9 +69,22 @@ export interface Rpe {
   seanceType: 'PHYSIQUE' | 'TECHNIQUE';
   date: string;
   rpe: number;
+  /** Durée RÉELLEMENT effectuée par le joueur (base du calcul de charge). */
   dureeMinutes?: number;
   charge?: number;
+  /** Plaisir ressenti 1..10 (V69, saisissable depuis V91). */
+  plaisir?: number;
   commentaire?: string;
+  /** Titre de la séance notée, résolu côté serveur. */
+  seanceTitre?: string;
+  /** Durée planifiée : un écart avec `dureeMinutes` = participation partielle. */
+  dureePrevueMinutes?: number;
+  geneZone?: string;
+  geneIntensite?: number;
+  geneMoment?: string;
+  geneTraitee?: boolean;
+  geneResolution?: 'ARCHIVEE' | 'CONVERTIE';
+  geneTraiteeLe?: string;
   createdAt?: string;
 }
 
@@ -79,8 +92,13 @@ export interface RpeRequest {
   seanceId: string;
   seanceType: 'PHYSIQUE' | 'TECHNIQUE';
   rpe: number;
+  /** Durée réellement effectuée — pré-remplie avec celle de la séance, corrigeable. */
   dureeMinutes?: number;
-  commentaire?: string;
+  plaisir?: number | null;
+  commentaire?: string | null;
+  geneZone?: string | null;
+  geneIntensite?: number | null;
+  geneMoment?: string | null;
 }
 
 export interface DocumentMedical {

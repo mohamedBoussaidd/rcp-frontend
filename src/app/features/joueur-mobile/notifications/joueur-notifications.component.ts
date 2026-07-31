@@ -8,6 +8,7 @@ const LIBELLES: Record<string, string> = {
   RAPPEL_WELLNESS: 'Rappel wellness', RAPPEL_RPE: 'Rappel RPE', RAPPEL_POIDS: 'Rappel pesée',
   RAPPEL_SEANCE: 'Rappel séance', SEANCE_MODIFIEE: 'Séance modifiée', DOC_MEDICAL: 'Document médical',
   GENE_SUIVI: 'Suivi de gêne', MESSAGE_STAFF: 'Message du staff',
+  EVENEMENT_EXTRASPORTIF: 'Événement du club',
 };
 
 const AIDES: Record<string, string> = {
@@ -19,6 +20,7 @@ const AIDES: Record<string, string> = {
   DOC_MEDICAL: 'Tu es prévenu quand un nouveau document médical te concerne.',
   GENE_SUIVI: 'Le suivi par le staff d\'une gêne que tu as signalée.',
   MESSAGE_STAFF: 'Les messages que le staff t\'envoie.',
+  EVENEMENT_EXTRASPORTIF: 'Tu es prévenu quand un événement du club te concerne nommément (réunion, déplacement, rendez-vous).',
 };
 
 /** Préférences de notifications du joueur (PWA) + activation du push de l'appareil. */

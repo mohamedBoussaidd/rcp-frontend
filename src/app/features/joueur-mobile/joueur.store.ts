@@ -283,8 +283,23 @@ export class JoueurStore {
     );
   }
 
-  saisirRpe(seanceId: string, intensite: number, dureeMinutes?: number): Observable<Rpe> {
-    const req: RpeRequest = { seanceId, seanceType: 'PHYSIQUE', rpe: intensite, dureeMinutes };
+  /**
+   * Enregistre le questionnaire post-séance. `dureeMinutes` est la durée RÉELLEMENT
+   * effectuée (pré-remplie avec celle de la séance, corrigée si le joueur est sorti
+   * plus tôt) : c'est elle qui fait la charge. Plaisir, commentaire et gêne sont
+   * optionnels — la séance reste notable en 2 gestes.
+   */
+  saisirRpe(seanceId: string, intensite: number, dureeMinutes?: number,
+            extra?: { plaisir?: number | null; commentaire?: string | null; gene?: GeneForm | null }): Observable<Rpe> {
+    const gene = extra?.gene ?? null;
+    const req: RpeRequest = {
+      seanceId, seanceType: 'PHYSIQUE', rpe: intensite, dureeMinutes,
+      plaisir: extra?.plaisir ?? null,
+      commentaire: extra?.commentaire ?? null,
+      geneZone: gene ? gene.zone : null,
+      geneIntensite: gene ? gene.intensite : null,
+      geneMoment: gene ? gene.moment : null,
+    };
     return this.api.saisirRpe(req).pipe(
       tap(r => this.rpe.update(list => [r, ...list.filter(x => x.seanceId !== r.seanceId)])),
       catchError(err => {
@@ -322,6 +337,11 @@ export class JoueurStore {
       rpe: req.rpe,
       dureeMinutes: req.dureeMinutes,
       charge: req.dureeMinutes ? req.rpe * req.dureeMinutes : undefined,
+      plaisir: req.plaisir ?? undefined,
+      commentaire: req.commentaire ?? undefined,
+      geneZone: req.geneZone ?? undefined,
+      geneIntensite: req.geneIntensite ?? undefined,
+      geneMoment: req.geneMoment ?? undefined,
     };
   }
 

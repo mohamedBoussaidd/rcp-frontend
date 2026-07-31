@@ -30,9 +30,10 @@
       @if (ciblesOuvert) {
         <mat-card-content>
           <p class="groupe-desc">
-            Distance cible, dont haute intensité (&gt;19 km/h) et intensité (1–5) par type de séance.
-            Ces valeurs pré-remplissent automatiquement le formulaire quand on choisit le type, et restent
-            modifiables séance par séance. Propres à votre club.
+            Distance cible, dont haute intensité (&gt;19 km/h), intensité (1–5) et couleur du calendrier,
+            par type de séance. Ces valeurs pré-remplissent automatiquement le formulaire quand on choisit
+            le type, et restent modifiables séance par séance. <strong>Propres à votre club</strong> —
+            elles ne changent rien pour les autres clubs.
           </p>
 
           <div class="cibles-table">
@@ -41,20 +42,68 @@
               <span>Distance (m)</span>
               <span>Dont HI (m)</span>
               <span>Intensité</span>
+              <span>Couleur</span>
               <span></span>
             </div>
             @for (type of typesSeance; track type.id) {
               <div class="cible-row">
-                <span class="cible-type">{{ type.libelle }}</span>
-                <input type="number" class="param-input" min="0" step="100" [(ngModel)]="type.objectifDistanceM" />
-                <input type="number" class="param-input" min="0" step="100" [(ngModel)]="type.objectifDistanceHauteIntensiteM" />
+                <span class="cible-type">
+                  <span class="cible-pastille" [style.background]="type.couleur || '#6366f1'"></span>
+                  {{ type.libelle }}
+                  <!-- Un type sans GPS ne se voit demander aucune distance : c'est le profil qui
+                       le décide, on l'affiche donc à côté du nom pour éviter la surprise. -->
+                  @if (type.profil && type.profil !== 'TERRAIN') {
+                    <em class="cible-profil">{{ profilLabel(type.profil) }}</em>
+                  }
+                </span>
+                @if (type.profil === 'TERRAIN' || !type.profil) {
+                  <input type="number" class="param-input" min="0" step="100" [(ngModel)]="type.objectifDistanceM" />
+                  <input type="number" class="param-input" min="0" step="100" [(ngModel)]="type.objectifDistanceHauteIntensiteM" />
+                } @else {
+                  <span class="cible-na" title="Ce type ne produit pas de déplacement mesuré">—</span>
+                  <span class="cible-na" title="Ce type ne produit pas de déplacement mesuré">—</span>
+                }
                 <input type="number" class="param-input" min="1" max="5" step="1" [(ngModel)]="type.objectifIntensite" />
+                <input type="color" class="cible-couleur" [ngModel]="type.couleur || '#6366f1'"
+                       (ngModelChange)="type.couleur = $event"
+                       title="Couleur de ce type dans VOTRE calendrier" />
                 <button class="btn-save btn-save--sm" (click)="sauvegarderCible(type)" [disabled]="cibleSaving === type.id">
                   {{ cibleSaving === type.id ? '…' : 'Enregistrer' }}
                 </button>
               </div>
             }
           </div>
+
+          <!-- ── Nature des types : catalogue GLOBAL, donc SUPER_ADMIN uniquement ──
+               La couleur, elle, est passée par club (colonne ci-dessus) : quatre rôles par
+               club détiennent typeseances:write, exposer un réglage global à ce niveau
+               aurait laissé un entraîneur modifier tous les clubs de la plateforme. -->
+          @if (peutEditerTypes) {
+            <div class="apparence-bloc">
+              <p class="groupe-desc apparence-desc">
+                <strong>Nature des types</strong> — ce que l'application attend d'une séance :
+                une séance de terrain a une distance cible, une séance de musculation n'en a
+                jamais. ⚠ Le catalogue des types est <strong>partagé par toute la plateforme</strong> :
+                ce réglage vaut pour <strong>tous les clubs</strong>, il est réservé au super-admin.
+              </p>
+              <div class="apparence-table">
+                @for (type of typesSeance; track type.id) {
+                  <div class="apparence-row">
+                    <span class="cible-type">{{ type.libelle }}</span>
+                    <select class="param-input apparence-profil" [(ngModel)]="type.profil">
+                      @for (p of PROFILS; track p.val) {
+                        <option [value]="p.val">{{ p.label }}</option>
+                      }
+                    </select>
+                    <button class="btn-save btn-save--sm" (click)="sauvegarderApparence(type)"
+                            [disabled]="apparenceSaving === type.id">
+                      {{ apparenceSaving === type.id ? '…' : 'Enregistrer' }}
+                    </button>
+                  </div>
+                }
+              </div>
+            </div>
+          }
         </mat-card-content>
       }
     </mat-card>

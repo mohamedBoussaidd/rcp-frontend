@@ -1,0 +1,223 @@
+/* Dialog « événement extrasportif ». Couleur volontairement neutre (ardoise) : c'est
+   la FORME et l'icône qui distinguent ces événements des séances, pas une teinte vive. */
+
+.ev-dialog {
+  display: flex;
+  flex-direction: column;
+  max-height: 88vh;
+}
+
+.ev-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 18px 22px 14px;
+  border-bottom: 1px solid var(--border);
+
+  h2 { margin: 0; font-size: 16px; font-weight: 800; color: var(--text); }
+}
+
+.ev-close {
+  border: 0;
+  background: transparent;
+  font-size: 17px;
+  color: var(--text-3);
+  cursor: pointer;
+  &:hover { color: var(--text); }
+}
+
+.ev-body {
+  padding: 18px 22px;
+  overflow-y: auto;
+}
+
+.ev-field {
+  margin-bottom: 15px;
+
+  label {
+    display: block;
+    margin-bottom: 6px;
+    font-size: 10.5px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    color: var(--text-4);
+    em { font-style: normal; text-transform: none; letter-spacing: 0; opacity: .75; }
+  }
+
+  input[type="text"], input[type="date"], input[type="time"], textarea {
+    width: 100%;
+    padding: 9px 12px;
+    border: 1px solid var(--border-strong);
+    border-radius: var(--r-md);
+    background: var(--surface);
+    font-family: inherit;
+    font-size: 13px;
+    color: var(--text);
+  }
+  textarea { resize: vertical; }
+}
+
+.ev-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+
+/* ── Types : grille d'icônes ── */
+.ev-types {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(112px, 1fr));
+  gap: 7px;
+}
+
+.ev-type {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 9px 10px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-md);
+  background: var(--surface);
+  cursor: pointer;
+  text-align: left;
+
+  &__ic { font-size: 16px; line-height: 1; }
+  &__lbl { font-size: 11.5px; font-weight: 700; color: var(--text-2); }
+
+  &.is-active {
+    border-color: var(--slate-400);
+    background: var(--slate-50);
+    box-shadow: inset 0 0 0 1px var(--slate-400);
+  }
+}
+
+/* ── Ciblage nominatif ── */
+.ev-cibles-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  label { margin-bottom: 0; }
+}
+
+.ev-cibles-etat {
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--text-3);
+}
+
+.ev-mini {
+  margin-left: 7px;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--copper);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.ev-search { margin-bottom: 8px; }
+
+.ev-liste {
+  max-height: 168px;
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  padding: 5px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.ev-personne {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 7px 9px;
+  border: 0;
+  border-radius: var(--r-sm, 6px);
+  background: transparent;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text-2);
+  text-align: left;
+  cursor: pointer;
+
+  &__check {
+    width: 17px; height: 17px;
+    display: grid; place-items: center;
+    border: 1.5px solid var(--border-strong);
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 800;
+    color: #fff;
+  }
+
+  &:hover { background: var(--slate-25); }
+  &.is-active {
+    background: var(--slate-50);
+    color: var(--text);
+    .ev-personne__check { background: var(--slate-400); border-color: var(--slate-400); }
+  }
+}
+
+.ev-vide {
+  padding: 14px;
+  text-align: center;
+  font-size: 12px;
+  color: var(--text-4);
+}
+
+.ev-check {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text-2);
+  cursor: pointer;
+}
+
+.ev-erreur {
+  margin-top: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--danger);
+  border-radius: var(--r-md);
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--danger);
+}
+
+.ev-foot {
+  display: flex;
+  justify-content: flex-end;
+  gap: 9px;
+  padding: 14px 22px 18px;
+  border-top: 1px solid var(--border);
+}
+
+.ev-btn {
+  padding: 9px 17px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-md);
+  background: var(--surface);
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--text-2);
+  cursor: pointer;
+
+  &--primary {
+    background: var(--copper);
+    border-color: var(--copper);
+    color: #fff;
+    &:disabled { opacity: .45; cursor: not-allowed; }
+  }
+}
+
+@media (max-width: 620px) {
+  .ev-row { grid-template-columns: 1fr; }
+}
