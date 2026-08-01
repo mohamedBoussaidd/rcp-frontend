@@ -3,6 +3,10 @@
     <div class="derives__head">
       <h3 class="derives__titre">
         Dérives &amp; surveillance
+        <app-info-hint titre="Dérives de l'effectif"
+                       [texte]="aideTexte"
+                       [lien]="peutVoirMethodologie ? '/methodologie' : null"
+                       ancre="derives" />
         @if (note()?.source === 'IA') { <app-ia-badge label="IA" /> }
       </h3>
       @if (derives()) {
@@ -32,7 +36,10 @@
                     <span class="derax__tag derax__tag--up">▲ {{ a.nb_hausse }} en hausse</span>
                     <span class="derax__noms">
                       @for (j of a.hausse; track j.joueur_id) {
-                        <span class="derax__chip">{{ j.nom }} +{{ j.drift_pct | number:'1.0-0' }}%</span>
+                        <span class="derax__chip" [title]="composition(a, j) || ''">
+                          {{ j.nom }} +{{ j.drift_pct | number:'1.0-0' }}%
+                          @if (composition(a, j); as c) { <em class="derax__compo">{{ c }}</em> }
+                        </span>
                       }
                     </span>
                   </div>
@@ -42,11 +49,22 @@
                     <span class="derax__tag derax__tag--down">▼ {{ a.nb_baisse }} en baisse</span>
                     <span class="derax__noms">
                       @for (j of a.baisse; track j.joueur_id) {
-                        <span class="derax__chip">{{ j.nom }} {{ j.drift_pct | number:'1.0-0' }}%</span>
+                        <span class="derax__chip" [title]="composition(a, j) || ''">
+                          {{ j.nom }} {{ j.drift_pct | number:'1.0-0' }}%
+                          @if (composition(a, j); as c) { <em class="derax__compo">{{ c }}</em> }
+                        </span>
                       }
                     </span>
                   </div>
                 }
+              }
+
+              <!-- « Écarté » n'est pas « stable » : un joueur sans historique comparable ne doit
+                   jamais passer pour un joueur sans rien à signaler. -->
+              @if (ecartes(a) > 0) {
+                <div class="derax__ecartes">
+                  {{ ecartes(a) }} joueur{{ ecartes(a) > 1 ? 's' : '' }} non comparé{{ ecartes(a) > 1 ? 's' : '' }} — historique insuffisant sur cet axe
+                </div>
               }
             </div>
           }

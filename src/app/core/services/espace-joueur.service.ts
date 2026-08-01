@@ -13,6 +13,18 @@ export interface MaDeclaration {
   note?: string;
 }
 
+/** Une de mes séances passées : ce que j'ai fait, et ce qui a été mesuré si je portais un capteur. */
+export interface MaSeanceGps {
+  seanceId: string;
+  date: string;
+  typeCode: string | null;
+  typeLibelle: string | null;
+  /** Présence par exception : sans déclaration, le joueur est réputé PRESENT. */
+  statutPresence: StatutPresence;
+  /** `null` = aucune mesure sur cette séance (pas de capteur ce jour-là). */
+  gps: GpsPoint | null;
+}
+
 export interface MaPesee {
   date: string;
   poids: number;
@@ -83,7 +95,7 @@ export interface Rpe {
   geneIntensite?: number;
   geneMoment?: string;
   geneTraitee?: boolean;
-  geneResolution?: 'ARCHIVEE' | 'CONVERTIE';
+  geneResolution?: 'ARCHIVEE' | 'CONVERTIE' | 'MENAGEE';
   geneTraiteeLe?: string;
   createdAt?: string;
 }
@@ -207,6 +219,15 @@ export class EspaceJoueurService {
 
   getGps(): Observable<GpsPoint[]> {
     return this.http.get<GpsPoint[]>(`${this.base}/gps`);
+  }
+
+  /**
+   * Mes séances passées (12 mois) avec mon GPS quand il existe, et mon statut d'appel sinon.
+   * Différent de {@link getGps} qui part des mesures : ici une séance sans capteur reste dans la
+   * liste, avec la raison — un trou inexpliqué se lit comme un bug de l'application.
+   */
+  getHistoriqueSeances(): Observable<MaSeanceGps[]> {
+    return this.http.get<MaSeanceGps[]>(`${this.base}/historique-seances`);
   }
 
   /** Séances de mon équipe (lecture seule). Avec période : vue calendrier. */

@@ -4,7 +4,11 @@
 
 /* ── Répartition d'appel du jour (card Disponibles) ── */
 .kpi__appel {
-  display: flex; flex-wrap: wrap; gap: 4px 6px; margin-top: 6px;
+  display: flex; flex-direction: column; gap: 4px; margin-top: 6px;
+}
+/* Une séance = une ligne ; les segments s'y enroulent si la card est étroite. */
+.appel-ligne {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px;
 }
 .appel-seg {
   font-size: 11px; font-weight: 700; padding: 1px 7px; border-radius: 999px;
@@ -12,6 +16,14 @@
   &--no { background: #ef444418; color: #dc2626; }
   &--ex { background: #6366f118; color: #6366f1; }
   &--rt { background: #f59e0b18; color: #d97706; }
+  // Mêmes teintes que la feuille de présence : adapté = bleu, soin = violet. Ils ne s'opposent
+  // pas au couple présent/absent, ils le nuancent — d'où des couleurs hors de cet axe.
+  &--ad { background: #0ea5e918; color: #0284c7; }
+  &--so { background: #a855f718; color: #9333ea; }
+  // Rappel du jour couvert quand ce n'est pas aujourd'hui : neutre, c'est un contexte, pas un statut.
+  &--jour { background: var(--surface-2); color: var(--text-3); text-transform: capitalize; }
+  // Heure de la séance en tête de ligne (uniquement si le jour en compte plusieurs) : repère, pas statut.
+  &--h { background: var(--surface-2); color: var(--text-2); font-variant-numeric: tabular-nums; }
 }
 
 /* ── Assiduité dans le panneau joueur (onglet Performances) ── */

@@ -2,9 +2,12 @@
 <div class="histo-tabs pwa-rise">
   <button type="button" class="histo-tab" [class.is-active]="tab() === 'bienetre'" (click)="setTab('bienetre')">Bien-être</button>
   <button type="button" class="histo-tab" [class.is-active]="tab() === 'charge'" (click)="setTab('charge')">Charge / RPE</button>
+  <button type="button" class="histo-tab" [class.is-active]="tab() === 'gps'" (click)="setTab('gps')">GPS</button>
 </div>
 
-@if (joursRemplis() === 0 && chargeMax() === 0) {
+<!-- L'état vide ne parle que du ressenti et du RPE : un joueur peut n'avoir rien saisi et avoir
+     malgré tout des séances mesurées, l'onglet GPS ne doit donc jamais tomber dedans. -->
+@if (tab() !== 'gps' && joursRemplis() === 0 && chargeMax() === 0) {
   <div class="histo-empty pwa-rise">
     <div class="histo-empty__ic">
       <svg viewBox="0 0 24 24" fill="none" stroke="var(--text-4)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m7 14 3-4 3 3 4-6"/></svg>
@@ -107,6 +110,90 @@
           <div class="histo-stat__val">{{ chargeMax() }}<small>UA</small></div>
         </div>
       </div>
+    </div>
+  }
+
+  <!-- ════════ GPS ════════ -->
+  @if (tab() === 'gps') {
+    <div class="histo-pane pwa-rise">
+      @if (store.gpsIndisponible()) {
+        <div class="histo-empty">
+          <div class="histo-empty__t">Suivi GPS non activé</div>
+          <div class="histo-empty__s">Ton club n'utilise pas le suivi GPS.</div>
+        </div>
+      } @else if (!store.gpsSeances().length) {
+        <div class="histo-empty">
+          <div class="histo-empty__t">Aucune séance</div>
+          <div class="histo-empty__s">Tes séances mesurées apparaîtront ici.</div>
+        </div>
+      } @else {
+        @if (vmaxRecord() > 0) {
+          <div class="pwa-card histo-stat gps-record">
+            <div class="histo-stat__lab">Ton record de vitesse</div>
+            <div class="histo-stat__val">{{ vmaxRecord() | number:'1.1-1' }}<small>km/h</small></div>
+          </div>
+        }
+
+        <div class="gps-list">
+          @for (s of store.gpsSeances(); track s.seanceId) {
+            <section class="pwa-card gps-item" [class.is-vide]="!s.gps" (click)="toggleGps(s.seanceId)">
+              <div class="gps-item__head">
+                <div class="gps-item__when">
+                  <span class="gps-item__date">{{ s.date | date:'EEE d MMM':'':'fr' }}</span>
+                  <span class="gps-item__type">{{ s.typeLibelle || 'Séance' }}</span>
+                </div>
+                <div class="gps-item__val">
+                  @if (s.gps) {
+                    <span class="gps-item__dist">{{ m(s.gps.distanceTotaleM) }} m</span>
+                    @if (ecartMoyenne(s); as e) {
+                      <span class="gps-item__ecart" [class.is-up]="e > 0" [class.is-down]="e < 0">
+                        {{ e > 0 ? '+' : '' }}{{ e }}%
+                      </span>
+                    }
+                  } @else {
+                    <span class="gps-item__raison">{{ raisonSansGps(s) }}</span>
+                  }
+                </div>
+              </div>
+              @if (mentionStatut(s); as mention) {
+                <div class="gps-item__mention">{{ mention }}</div>
+              }
+
+              <!-- Détail : ses chiffres bruts. Les seuils sont CUMULÉS (les mètres > 24 km/h sont
+                   aussi comptés dans > 15), d'où le « > » dans chaque libellé. -->
+              @if (gpsOuvert() === s.seanceId && s.gps) {
+                <div class="gps-detail">
+                  <div class="gps-detail__grid">
+                    <div><span class="k">Durée</span><span class="v">{{ s.gps.dureeMinutes ?? '—' }} min</span></div>
+                    <div><span class="k">Par minute</span><span class="v">{{ s.gps.ratioDistanceMin ? (s.gps.ratioDistanceMin | number:'1.0-0') + ' m/min' : '—' }}</span></div>
+                    <div><span class="k">&gt; 15 km/h</span><span class="v">{{ m(s.gps.distance15kmhM) }} m</span></div>
+                    <div><span class="k">&gt; 19 km/h</span><span class="v">{{ m(s.gps.distance19kmhM) }} m</span></div>
+                    <div><span class="k">&gt; 24 km/h</span><span class="v">{{ m(s.gps.distanceSprint24kmhM) }} m</span></div>
+                    <div><span class="k">&gt; 28 km/h</span><span class="v">{{ m(s.gps.distanceSprint28kmhM) }} m</span></div>
+                    <div><span class="k">Sprints</span><span class="v">{{ s.gps.nbSprints24kmh ?? '—' }}</span></div>
+                    <div>
+                      <span class="k">Vitesse max</span>
+                      <span class="v">{{ s.gps.vitesseMaxKmh ? (s.gps.vitesseMaxKmh | number:'1.1-1') + ' km/h' : '—' }}
+                        @if (estRecordVitesse(s)) { <span class="gps-badge">record</span> }
+                      </span>
+                    </div>
+                    @if (s.gps.nbAccelerations !== null) {
+                      <div><span class="k">Accélérations</span><span class="v">{{ s.gps.nbAccelerations }}</span></div>
+                    }
+                    @if (s.gps.nbFreinages !== null) {
+                      <div><span class="k">Freinages</span><span class="v">{{ s.gps.nbFreinages }}</span></div>
+                    }
+                  </div>
+                  <p class="gps-detail__note">
+                    Les distances par seuil s'emboîtent : tes mètres à plus de 24 km/h sont aussi
+                    comptés dans « &gt; 19 » et « &gt; 15 ».
+                  </p>
+                </div>
+              }
+            </section>
+          }
+        </div>
+      }
     </div>
   }
 }

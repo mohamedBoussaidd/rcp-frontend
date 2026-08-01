@@ -1,7 +1,10 @@
 .pd-wrap {
   display: flex;
   flex-direction: column;
-  width: 640px;
+  // 640px suffisaient à 4 statuts. La ligne joueur en porte 6 depuis les aménagements
+  // (Présent · Retard · Adapté · Soin · Excusé · Absent) ET affiche la consigne du médical
+  // sous le nom : en dessous de ~900px, le nom se tronque et les boutons s'écrasent.
+  width: 900px;
   max-width: 95vw;
   max-height: 85vh;
   background: var(--surface);
@@ -110,6 +113,21 @@
     .pd-kpi__val {
       color: #f59e0b;
     }
+  }
+
+  // Aménagements : teintes distinctes du couple présent/absent, parce qu'ils ne s'y opposent pas.
+  &--adapte {
+    border-color: #0ea5e940;
+    background: #0ea5e910;
+
+    .pd-kpi__val { color: #0ea5e9; }
+  }
+
+  &--soin {
+    border-color: #a855f740;
+    background: #a855f710;
+
+    .pd-kpi__val { color: #a855f7; }
   }
 
   &--excuse {
@@ -296,6 +314,18 @@
     background: #f59e0b20;
     border-color: #f59e0b;
     color: #f59e0b;
+  }
+
+  &--adapte.is-active {
+    background: #0ea5e920;
+    border-color: #0ea5e9;
+    color: #0ea5e9;
+  }
+
+  &--soin.is-active {
+    background: #a855f720;
+    border-color: #a855f7;
+    color: #a855f7;
   }
 
   &--excuse.is-active {

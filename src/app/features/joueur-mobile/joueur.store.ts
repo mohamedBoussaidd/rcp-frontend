@@ -1,7 +1,7 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
 import {
   EspaceJoueurService, Wellness, Rpe, WellnessRequest, RpeRequest,
-  MaPesee, RtpEtape, DocumentMedical, MaDeclaration,
+  MaPesee, RtpEtape, DocumentMedical, MaDeclaration, MaSeanceGps,
 } from '@core/services/espace-joueur.service';
 import { Joueur } from '@core/services/joueur.service';
 import { Conseil } from '@core/services/conseil.service';
@@ -68,6 +68,12 @@ export class JoueurStore {
 
   /** Cache des étapes RTP par blessure (chargées à la demande). */
   private rtpCache = signal<Record<string, RtpEtape[]>>({});
+
+  // ── Historique GPS (onglet dédié) ──
+  readonly gpsSeances = signal<MaSeanceGps[]>([]);
+  /** Le club n'a pas le module GPS (403) → l'onglet s'efface au lieu d'afficher une liste vide. */
+  readonly gpsIndisponible = signal(false);
+  private gpsCharge = false;
 
   private chargement = false;
 
@@ -174,6 +180,20 @@ export class JoueurStore {
     this.blessures()
       .filter(b => b.statut !== 'RETABLI')
       .sort((a, b) => (b.dateBlessure ?? '').localeCompare(a.dateBlessure ?? ''))[0] ?? null);
+
+  /**
+   * Charge l'historique GPS — à la DEMANDE, pas dans `ensureLoaded()` : c'est la plus grosse
+   * réponse de l'espace joueur (12 mois de séances) pour un onglet que tout le monde n'ouvre pas,
+   * et elle renvoie 403 quand le club n'a pas le module GPS.
+   */
+  chargerHistoriqueGps(): void {
+    if (this.gpsCharge) return;
+    this.gpsCharge = true;
+    this.api.getHistoriqueSeances().subscribe({
+      next: d => this.gpsSeances.set(d),
+      error: () => this.gpsIndisponible.set(true),
+    });
+  }
 
   etapesRtp(blessureId: string): RtpEtape[] { return this.rtpCache()[blessureId] ?? []; }
 

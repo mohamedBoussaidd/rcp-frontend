@@ -1,7 +1,7 @@
 <div class="page-head" style="padding:24px 24px 0;margin-bottom:0">
   <div>
     <h1 class="page-head__title">Méthodologie scientifique</h1>
-    <p class="page-head__sub">Bases des scores de fatigue et de risque</p>
+    <p class="page-head__sub">Bases des scores de fatigue et de risque, et des lectures d'effectif</p>
   </div>
 </div>
 
@@ -13,7 +13,26 @@
       affichés dans l'application. Chaque signal est paramétrable depuis la page <strong>Paramètres</strong>
       pour être ajusté à votre groupe de joueurs et à votre niveau de championnat.
     </p>
+    <p>
+      Deux familles à ne pas confondre. Les <strong>scores</strong> jugent un joueur à un instant donné,
+      avec des seuils issus de la littérature. Les <strong>lectures d'effectif</strong> ne jugent rien :
+      elles disent dans quel sens le groupe se déplace.
+    </p>
   </div>
+
+  <!-- Sommaire ancré : donne la navigation d'onglets sans en payer le prix. Des onglets
+       masqueraient les cartes, et une ancre vers un contenu masqué ne défile pas — or ces `id`
+       sont les cibles des bulles « Voir la méthodologie » de toute l'application. -->
+  <nav class="methodo-sommaire" aria-label="Sommaire">
+    <a [routerLink]="[]" fragment="acwr">Surcharge aiguë (ACWR)</a>
+    <a [routerLink]="[]" fragment="monotonie">Monotonie</a>
+    <a [routerLink]="[]" fragment="fatigue">Score de fatigue</a>
+    <a [routerLink]="[]" fragment="risque">Score de risque</a>
+    <a [routerLink]="[]" fragment="derives">Dérives de l'effectif</a>
+    <a [routerLink]="[]" fragment="presence-amenagee">Présence aménagée</a>
+  </nav>
+
+  <h2 class="methodo-famille">Les scores</h2>
 
   <!-- ─── Signal 1 ─── -->
   <!-- Les `id` servent de cibles aux bulles d'aide des indicateurs (voir aides-indicateurs.ts) :
@@ -444,6 +463,142 @@
       </div>
       <div class="param-link">
         Paramètres associés : <em>Objectifs GPS par poste</em> · <em>Correcteurs météo et température</em> · <em>Correction surpoids</em>
+      </div>
+    </mat-card-content>
+  </mat-card>
+
+  <h2 class="methodo-famille">Les lectures d'effectif</h2>
+
+  <!-- ─── Dérives ─── -->
+  <mat-card id="derives" class="methodo-card signal-derive">
+    <mat-card-header>
+      <div class="signal-badge sd">D</div>
+      <mat-card-title>Dérives de l'effectif — Tendance sur 4 semaines</mat-card-title>
+    </mat-card-header>
+    <mat-card-content>
+      <div class="methodo-grid">
+        <div>
+          <h4>À quelle question ça répond</h4>
+          <p>
+            <strong>« Où va l'effectif depuis un mois ? »</strong> Les dérives ne jugent aucun joueur et
+            ne portent aucun seuil de danger : elles indiquent le <strong>sens</strong> dans lequel le
+            groupe se déplace, et sur quel axe.
+          </p>
+          <h4>Ce que ce n'est pas : un ratio de charge</h4>
+          <p>
+            C'est la confusion la plus fréquente avec l'ACWR. Les deux ne se remplacent pas, et surtout
+            chacun est aveugle à ce que l'autre voit :
+          </p>
+          <div class="sub-signals">
+            <div class="sub-signal"><span class="sub-badge">ACWR</span><span>Compare un joueur à SON passé proche (7 j vs 4 sem.) pour dire « trop / pas assez ».</span></div>
+            <div class="sub-signal"><span class="sub-badge">Dérive</span><span>Compare deux périodes de l'effectif (14 j vs 14 j) pour dire dans quel sens ça bouge.</span></div>
+          </div>
+          <p>
+            Un joueur qui monte de 26 à 32 km par semaine par paliers de 8 % garde un ACWR autour de 1,1
+            en permanence — la charge chronique suit l'aiguë, le ratio ne bouge pas et n'alerte jamais.
+            La dérive, elle, affiche +20 %. À l'inverse, un pic isolé après un mois calme fait exploser
+            l'ACWR alors qu'il se dilue dans une fenêtre de 14 jours côté dérive.
+          </p>
+          <h4>Les trois axes</h4>
+          <div class="sub-signals">
+            <div class="sub-signal"><span class="sub-badge">Vol.</span><span>Distance totale parcourue sur la fenêtre.</span></div>
+            <div class="sub-signal"><span class="sub-badge">Int.</span><span>PART de ce volume courue au-dessus de 19 km/h.</span></div>
+            <div class="sub-signal"><span class="sub-badge">Ress.</span><span>Ressenti composite déclaré (hausse = fatigue qui monte).</span></div>
+          </div>
+        </div>
+        <div>
+          <h4>Comment c'est calculé</h4>
+          <div class="formula-block">
+            <span class="formula-line">Dérive = (récent − référence) / référence × 100</span>
+            <span class="formula-line">récent     = les 14 derniers jours</span>
+            <span class="formula-line">référence  = les 14 jours précédents</span>
+            <span class="formula-line">Part HI    = mètres &gt; 19 km/h / distance totale</span>
+          </div>
+          <p>
+            L'axe intensité raisonne en <strong>part du volume</strong>, et non en mètres bruts. En mètres
+            bruts il ne faisait que répéter l'axe volume : quand un joueur court plus, ses mètres à haute
+            intensité montent mécaniquement avec le reste. En part, il répond à une question distincte —
+            <em>le contenu devient-il plus dur ?</em>
+          </p>
+          <h4>Comment lire les deux axes ensemble</h4>
+          <div class="formula-block">
+            <span class="formula-line">Volume ↑  ·  part stable → on en fait plus, même contenu</span>
+            <span class="formula-line">Volume =  ·  part ↑      → même quantité, séances plus dures</span>
+            <span class="formula-line">Volume ↑  ·  part ↑      → plus ET plus dur : le vrai signal</span>
+          </div>
+          <h4>Garde-fous</h4>
+          <p>
+            Un joueur n'est comparé que s'il a assez de séances dans <strong>chacune</strong> des deux
+            fenêtres, et une référence au-dessus d'un plancher absolu. Sans ces règles, un joueur revenu
+            de blessure — une seule séance de reprise en référence, quelques dizaines de mètres à haute
+            intensité — ressortait à plusieurs centaines de pourcent. Ce chiffre ne mesurait rien d'autre
+            qu'un dénominateur minuscule.
+          </p>
+          <p>
+            Les joueurs ainsi écartés sont <strong>comptés et annoncés</strong> sous chaque axe, jamais
+            masqués en silence : « non comparé » n'est pas « stable ».
+          </p>
+        </div>
+      </div>
+      <div class="param-link">
+        Paramètres associés : <em>Dérives &amp; surveillance</em>
+      </div>
+    </mat-card-content>
+  </mat-card>
+
+  <!-- ─── Présence aménagée ─── -->
+  <mat-card id="presence-amenagee" class="methodo-card signal-derive">
+    <mat-card-header>
+      <div class="signal-badge sd">A</div>
+      <mat-card-title>Présence aménagée — Adapté et Au soin</mat-card-title>
+    </mat-card-header>
+    <mat-card-content>
+      <div class="methodo-grid">
+        <div>
+          <h4>Deux statuts, deux réalités</h4>
+          <div class="sub-signals">
+            <div class="sub-signal"><span class="sub-badge">Adapté</span><span>A participé, en charge allégée (gêne, fatigue, reprise progressive).</span></div>
+            <div class="sub-signal"><span class="sub-badge">Au soin</span><span>Présent au club, mais pas à l'entraînement.</span></div>
+          </div>
+          <h4>Ce que ça change dans l'assiduité</h4>
+          <p>
+            <strong>Adapté compte comme une présence.</strong> Le pénaliser reviendrait à sanctionner
+            un joueur pour une décision prise <em>par</em> le staff.
+          </p>
+          <p>
+            <strong>Au soin sort du décompte</strong>, comme un blessé : ni au numérateur, ni au
+            dénominateur. Ce n'est pas une absence, et l'enregistrer comme « excusé » aurait effacé
+            le motif médical.
+          </p>
+          <p>
+            Les séances où un joueur était blessé sont également retirées de son dénominateur. Sans
+            cette règle, un joueur arrêté trois mois affichait 100 % d'assiduité sur sa fiche — aucune
+            ligne de présence n'étant écrite pour lui — alors que les écrans d'équipe l'excluaient déjà.
+          </p>
+        </div>
+        <div>
+          <h4>Ce que ça change dans les indicateurs</h4>
+          <p>
+            Une séance <strong>adaptée est exclue de la baseline</strong> qui sert à calculer la
+            distance attendue du joueur. Sinon on abaisserait sa norme avec les séances où on l'a
+            volontairement ménagé, et son premier retour à la normale ressortirait en surcharge.
+          </p>
+          <h4>Qui pose le statut</h4>
+          <div class="formula-block">
+            <span class="formula-line">Médical    → déclare sur une PÉRIODE + consigne, le staff est notifié</span>
+            <span class="formula-line">Prépa / entraîneur → posent le statut depuis l'appel</span>
+            <span class="formula-line">Joueur (PWA)      → ne peut poser ni l'un ni l'autre</span>
+          </div>
+          <p>
+            Seul le sens médical → staff déclenche une notification : quand l'entraîneur pose le
+            statut lui-même, il est déjà devant sa feuille d'appel.
+          </p>
+          <p>
+            La consigne saisie par le médical est une <strong>consigne terrain</strong> lue par tout
+            le staff notifié (« pas de sprint », « éviter les appuis ») — le détail clinique reste
+            dans le dossier médical, qui a ses propres droits d'accès.
+          </p>
+        </div>
       </div>
     </mat-card-content>
   </mat-card>

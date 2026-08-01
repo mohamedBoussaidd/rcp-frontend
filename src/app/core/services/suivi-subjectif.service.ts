@@ -2,6 +2,13 @@ import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
 
+/**
+ * Issues possibles d'une gêne, quelle que soit sa source (ressenti du matin ou après-séance) :
+ * ARCHIVEE (rien à faire), CONVERTIE (devient une blessure), MENAGEE (le joueur est aménagé sur
+ * ses prochaines séances — seule issue qui redescend sur le terrain).
+ */
+export type ResolutionGene = 'ARCHIVEE' | 'CONVERTIE' | 'MENAGEE';
+
 export interface Wellness {
   id: string;
   joueurId: string;
@@ -20,7 +27,7 @@ export interface Wellness {
   geneMoment?: string;
   geneTraitee?: boolean;
   /** Type de résolution une fois traitée : ARCHIVEE | CONVERTIE. */
-  geneResolution?: 'ARCHIVEE' | 'CONVERTIE';
+  geneResolution?: ResolutionGene;
   geneTraiteeLe?: string;
 }
 
@@ -46,7 +53,7 @@ export interface Rpe {
   geneIntensite?: number;
   geneMoment?: string;
   geneTraitee?: boolean;
-  geneResolution?: 'ARCHIVEE' | 'CONVERTIE';
+  geneResolution?: ResolutionGene;
   geneTraiteeLe?: string;
 }
 
@@ -72,7 +79,7 @@ export class SuiviSubjectifService {
    * Marque la gêne d'une saisie comme traitée (staff médical / préparateur).
    * `resolution` = ARCHIVEE (archivage) ou CONVERTIE (convertie en blessure).
    */
-  traiterGene(wellnessId: string, resolution: 'ARCHIVEE' | 'CONVERTIE' = 'ARCHIVEE'): Observable<Wellness> {
+  traiterGene(wellnessId: string, resolution: ResolutionGene = 'ARCHIVEE'): Observable<Wellness> {
     const params = new HttpParams().set('resolution', resolution);
     return this.http.patch<Wellness>(`/api/wellness/${wellnessId}/gene-traitee`, {}, { params });
   }
@@ -87,7 +94,7 @@ export class SuiviSubjectifService {
    * naître de deux sources, le staff doit pouvoir solder l'une comme l'autre — sans ça une
    * gêne d'entraînement resterait éternellement active dans les alertes.
    */
-  traiterGeneRpe(rpeId: string, resolution: 'ARCHIVEE' | 'CONVERTIE' = 'ARCHIVEE'): Observable<Rpe> {
+  traiterGeneRpe(rpeId: string, resolution: ResolutionGene = 'ARCHIVEE'): Observable<Rpe> {
     const params = new HttpParams().set('resolution', resolution);
     return this.http.patch<Rpe>(`/api/rpe/${rpeId}/gene-traitee`, {}, { params });
   }

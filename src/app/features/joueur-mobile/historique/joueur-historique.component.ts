@@ -1,25 +1,99 @@
 import { Component, computed, inject, signal } from '@angular/core';
-import { DecimalPipe } from '@angular/common';
+import { DatePipe, DecimalPipe } from '@angular/common';
 import { JoueurStore } from '../joueur.store';
+import { MaSeanceGps } from '@core/services/espace-joueur.service';
 
 /**
  * Historique perso du joueur (lecture) — refonte « Claude Design ».
  * Onglet « Bien-être » : série Hooper 7 j + moyennes sommeil/fatigue.
  * Onglet « Charge / RPE » : charge sRPE par jour + charge cumulée.
+ * Onglet « GPS » : ses séances mesurées, comparées à LUI-MÊME uniquement.
  */
 @Component({
   selector: 'app-joueur-historique',
   standalone: true,
   templateUrl: './joueur-historique.component.html',
   styleUrl: './joueur-historique.component.scss',
-  imports: [DecimalPipe],
+  imports: [DecimalPipe, DatePipe],
 })
 export class JoueurHistoriqueComponent {
 
   store = inject(JoueurStore);
 
-  readonly tab = signal<'bienetre' | 'charge'>('bienetre');
-  setTab(t: 'bienetre' | 'charge'): void { this.tab.set(t); }
+  readonly tab = signal<'bienetre' | 'charge' | 'gps'>('bienetre');
+  setTab(t: 'bienetre' | 'charge' | 'gps'): void {
+    this.tab.set(t);
+    if (t === 'gps') this.store.chargerHistoriqueGps();   // chargement paresseux
+  }
+
+  // ──────────────────────────── Onglet GPS ────────────────────────────
+
+  /** Séance dépliée (une seule à la fois : l'écran est un téléphone). */
+  readonly gpsOuvert = signal<string | null>(null);
+  toggleGps(id: string): void { this.gpsOuvert.update(v => (v === id ? null : id)); }
+
+  /** Record personnel de vitesse, toutes séances confondues. */
+  readonly vmaxRecord = computed(() =>
+    Math.max(0, ...this.store.gpsSeances().map(s => s.gps?.vitesseMaxKmh ?? 0)));
+
+  /**
+   * Moyenne de distance PAR TYPE de séance, sur ses propres séances mesurées.
+   *
+   * <p>C'est le seul point de comparaison offert au joueur : lui-même. Ni ses coéquipiers, ni le
+   * barème de poste du staff — ces lectures-là appartiennent au préparateur, qui les commente.</p>
+   */
+  private readonly refParType = computed(() => {
+    const acc = new Map<string, { somme: number; n: number }>();
+    for (const s of this.store.gpsSeances()) {
+      const d = s.gps?.distanceTotaleM;
+      if (d == null || !s.typeCode) continue;
+      const e = acc.get(s.typeCode) ?? { somme: 0, n: 0 };
+      acc.set(s.typeCode, { somme: e.somme + d, n: e.n + 1 });
+    }
+    return acc;
+  });
+
+  /**
+   * Écart de distance à sa propre moyenne sur ce type de séance, en %.
+   * `null` sous 3 séances de référence : un écart calculé sur un seul précédent ne veut rien dire.
+   */
+  ecartMoyenne(s: MaSeanceGps): number | null {
+    const d = s.gps?.distanceTotaleM;
+    const ref = s.typeCode ? this.refParType().get(s.typeCode) : undefined;
+    if (d == null || !ref || ref.n < 3) return null;
+    const moy = ref.somme / ref.n;
+    if (!moy) return null;
+    return Math.round((d - moy) / moy * 100);
+  }
+
+  estRecordVitesse(s: MaSeanceGps): boolean {
+    const v = s.gps?.vitesseMaxKmh;
+    return v != null && v > 0 && v === this.vmaxRecord();
+  }
+
+  /** Pourquoi cette séance n'a pas de chiffres — un trou inexpliqué se lit comme un bug. */
+  raisonSansGps(s: MaSeanceGps): string {
+    switch (s.statutPresence) {
+      case 'ABSENT': return 'absent';
+      case 'EXCUSE': return 'excusé';
+      case 'SOIN':   return 'au soin';
+      default:       return 'pas de capteur';
+    }
+  }
+
+  /** Mention de contexte affichée même quand la séance a des données (ex. séance adaptée). */
+  mentionStatut(s: MaSeanceGps): string {
+    switch (s.statutPresence) {
+      case 'ADAPTE': return 'séance adaptée';
+      case 'RETARD': return 'arrivé en retard';
+      default:       return '';
+    }
+  }
+
+  /** Mètres entiers ; jamais de km, pour ne pas écraser un sprint de 11 m en « 0,01 km ». */
+  m(v: number | null | undefined): string {
+    return v == null ? '—' : Math.round(v).toLocaleString('fr-FR');
+  }
 
   readonly serie = computed(() => this.store.serie7j());
 

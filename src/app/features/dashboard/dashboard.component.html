@@ -70,12 +70,26 @@
               <span class="badge badge--ok">Aucun blessé</span>
             }
           </div>
-          @if (appelDuJour) {
+          @if (lignesAppel.length) {
             <div class="kpi__appel">
-              <span class="appel-seg appel-seg--ok">{{ presentsAujourdhui }} présents</span>
-              @if (absentsAujourdhui > 0) { <span class="appel-seg appel-seg--no">{{ absentsAujourdhui }} absent{{ absentsAujourdhui > 1 ? 's' : '' }}</span> }
-              @if (excusesAujourdhui > 0) { <span class="appel-seg appel-seg--ex">{{ excusesAujourdhui }} excusé{{ excusesAujourdhui > 1 ? 's' : '' }}</span> }
-              @if (retardsAujourdhui > 0) { <span class="appel-seg appel-seg--rt">{{ retardsAujourdhui }} en retard</span> }
+              <!-- Le jour n'est rappelé que si les compteurs ne portent PAS sur aujourd'hui,
+                   sinon « 18 présents » se lirait comme un état constaté alors qu'il est prévu. -->
+              @if (appelRefDate) {
+                <span class="appel-seg appel-seg--jour">{{ appelRefDate === demain ? 'demain' : (appelRefDate | date:'EEE d MMM':'':'fr') }}</span>
+              }
+              <!-- Une ligne par séance : voir `lignesAppel`, un cumul compterait deux fois les
+                   joueurs présents matin ET soir. -->
+              @for (l of lignesAppel; track l.id) {
+                <div class="appel-ligne">
+                  @if (l.label) { <span class="appel-seg appel-seg--h">{{ l.label }}</span> }
+                  <span class="appel-seg appel-seg--ok">{{ l.r.presents }} présents</span>
+                  @if (l.r.adaptes > 0) { <span class="appel-seg appel-seg--ad" title="Participent en charge allégée (déclaration médicale). Comptés dans les présents.">{{ l.r.adaptes }} adapté{{ l.r.adaptes > 1 ? 's' : '' }}</span> }
+                  @if (l.r.soins > 0) { <span class="appel-seg appel-seg--so" title="Au club mais pas à l'entraînement. Hors décompte, comme un blessé.">{{ l.r.soins }} au soin</span> }
+                  @if (l.r.absents > 0) { <span class="appel-seg appel-seg--no">{{ l.r.absents }} absent{{ l.r.absents > 1 ? 's' : '' }}</span> }
+                  @if (l.r.excuses > 0) { <span class="appel-seg appel-seg--ex">{{ l.r.excuses }} excusé{{ l.r.excuses > 1 ? 's' : '' }}</span> }
+                  @if (l.r.retards > 0) { <span class="appel-seg appel-seg--rt">{{ l.r.retards }} en retard</span> }
+                </div>
+              }
             </div>
           }
         </div>

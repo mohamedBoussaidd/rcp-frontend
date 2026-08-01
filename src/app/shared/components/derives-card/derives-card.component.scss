@@ -100,9 +100,28 @@
   }
 
   &__chip {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 5px;
     font-size: 0.76rem;
     background: var(--surface-2, rgba(127, 127, 127, 0.12));
     border-radius: 999px;
     padding: 2px 8px;
+  }
+
+  // Composition du pourcentage (« 6,1 → 7,9 % ») : discrète, mais c'est elle qui rend
+  // le chiffre interprétable.
+  &__compo {
+    font-style: normal;
+    font-size: 0.72rem;
+    opacity: 0.62;
+    white-space: nowrap;
+  }
+
+  &__ecartes {
+    margin-top: 6px;
+    font-size: 0.74rem;
+    opacity: 0.6;
+    font-style: italic;
   }
 }

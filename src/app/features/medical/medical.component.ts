@@ -6,10 +6,11 @@ import { FormsModule } from '@angular/forms';
 import { DatePipe, LowerCasePipe } from '@angular/common';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { Blessure, BlessureRequest, BlessureService, QualificationAdministrative, StatutBlessure } from '@core/services/blessure.service';
+import { SeanceService } from '@core/services/seance.service';
 import { BlessureNote, RtpEtape, StatutEtape, BlessureSuiviService } from '@core/services/blessure-suivi.service';
 import { ProtocoleModele, ProtocoleModeleEtape, ProtocoleModeleRequest, ProtocoleModeleService } from '@core/services/protocole-modele.service';
 import { DocumentMedical, DocumentMedicalService } from '@core/services/document-medical.service';
-import { Wellness, Rpe, SuiviSubjectifService } from '@core/services/suivi-subjectif.service';
+import { Wellness, Rpe, ResolutionGene, SuiviSubjectifService } from '@core/services/suivi-subjectif.service';
 import { PredictionService, ResumeJoueur } from '@core/services/prediction.service';
 import { couleurTheme } from '@core/services/theme.service';
 import { Joueur, JoueurService } from '@core/services/joueur.service';
@@ -33,7 +34,7 @@ interface GeneUnifiee {
   geneIntensite?: number;
   geneMoment?: string;
   geneTraitee: boolean;
-  geneResolution?: 'ARCHIVEE' | 'CONVERTIE';
+  geneResolution?: ResolutionGene;
   geneTraiteeLe?: string;
   /** Titre de la séance concernée (source RPE), null pour une gêne du ressenti quotidien. */
   contexte: string | null;
@@ -395,7 +396,11 @@ export class MedicalComponent implements OnInit {
   }
 
   momentGeneLabel(v?: string): string   { return v ? (this.MOMENTS_GENE[v] ?? v) : ''; }
-  resolutionGeneLabel(r?: string): string { return r === 'CONVERTIE' ? 'Convertie en blessure' : 'Archivée'; }
+  resolutionGeneLabel(r?: string): string {
+    if (r === 'CONVERTIE') return 'Convertie en blessure';
+    if (r === 'MENAGEE')   return 'Joueur ménagé';
+    return 'Archivée';
+  }
 
   get peutTraiterGene(): boolean      { return this.auth.canTraiterGene(); }
   get peutVoirHistoriqueGenes(): boolean { return this.auth.canTraiterGene(); }
@@ -426,6 +431,39 @@ export class MedicalComponent implements OnInit {
       error: ()  => this.snack.open('Action impossible', 'Fermer', { duration: 3000 }),
     });
   }
+  /**
+   * 3ᵉ issue d'une gêne, à côté d'« archiver » et « convertir en blessure » : le joueur est
+   * MÉNAGÉ. C'est la seule qui agit sur le terrain — elle pose le statut sur les séances de la
+   * période et pousse une notification au staff avec la consigne. Sans elle, le médical constatait
+   * une gêne sans aucun moyen d'en faire découler quoi que ce soit côté entraînement.
+   */
+  menagerGene(g: GeneUnifiee, statut: 'ADAPTE' | 'SOIN'): void {
+    const quoi = statut === 'ADAPTE' ? 'en séance adaptée' : 'au soin';
+    // La consigne part à TOUT le staff : le libellé oriente vers l'opérationnel, pas le clinique.
+    const consigne = prompt(`Consigne pour le staff (ex. « pas de sprint », « éviter les appuis ») —
+le joueur sera marqué ${quoi} sur sa prochaine séance.`, g.geneZone ? `Gêne ${g.geneZone}` : '');
+    if (consigne === null) return;
+
+    this.seanceService.declarerAmenagement(g.joueurId, statut, consigne || undefined).subscribe({
+      next: res => {
+        // La gêne est close en MENAGEE : elle a produit une décision, ce n'est pas un archivage.
+        const obs: Observable<Wellness | Rpe> = g.source === 'RPE'
+          ? this.suiviService.traiterGeneRpe(g.id, 'MENAGEE')
+          : this.suiviService.traiterGene(g.id, 'MENAGEE');
+        obs.subscribe({
+          next: maj => this.majGene(g, maj),
+          error: ()  => this.snack.open('Aménagement posé, mais la gêne n\'a pas pu être clôturée.', 'Fermer', { duration: 5000 }),
+        });
+        const n = res.seancesMarquees;
+        this.snack.open(n > 0
+            ? `${n} séance${n > 1 ? 's' : ''} marquée${n > 1 ? 's' : ''} · staff notifié`
+            : 'Aucune séance à marquer sur la période.',
+          'Fermer', { duration: 4000 });
+      },
+      error: e => this.snack.open(e?.error?.message || 'Aménagement impossible', 'Fermer', { duration: 4000 }),
+    });
+  }
+
   convertirGeneEnBlessure(g: GeneUnifiee): void {
     if (!g.geneZone) return;
     this.editingId.set(null);
@@ -480,6 +518,7 @@ export class MedicalComponent implements OnInit {
   private protocoleService = inject(ProtocoleModeleService);
   private predictionService = inject(PredictionService);
   private joueurService = inject(JoueurService);
+  private seanceService = inject(SeanceService);
   private snack = inject(MatSnackBar);
   auth = inject(AuthService);
 

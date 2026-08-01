@@ -23,20 +23,37 @@ export class PresenceDialogComponent implements OnInit {
   loading = true;
   saving = new Set<string>();
 
-  readonly statuts: { val: StatutPresence; label: string; icon: string }[] = [
-    { val: 'PRESENT', label: 'Présent',  icon: 'check_circle'    },
-    { val: 'RETARD',  label: 'Retard',   icon: 'schedule'        },
-    { val: 'EXCUSE',  label: 'Excusé',   icon: 'info'            },
-    { val: 'ABSENT',  label: 'Absent',   icon: 'cancel'          },
+  /**
+   * `aide` alimente l'infobulle du bouton : « adapté » et « au soin » se ressemblent au premier
+   * coup d'œil alors qu'ils ne se comptent pas pareil en assiduité — sans explication, le staff
+   * choisira au hasard.
+   */
+  readonly statuts: { val: StatutPresence; label: string; icon: string; aide: string }[] = [
+    { val: 'PRESENT', label: 'Présent',  icon: 'check_circle',
+      aide: 'A fait la séance normalement.' },
+    { val: 'ADAPTE',  label: 'Adapté',   icon: 'tune',
+      aide: 'A participé, mais en charge allégée (gêne, fatigue, reprise). Compte comme une présence, et la séance est exclue de sa distance attendue.' },
+    { val: 'SOIN',    label: 'Au soin',  icon: 'healing',
+      aide: 'Présent au club mais pas à l\'entraînement. Ni présent ni absent : il sort du décompte, comme un blessé.' },
+    { val: 'RETARD',  label: 'Retard',   icon: 'schedule',
+      aide: 'Arrivé après le début de la séance.' },
+    { val: 'EXCUSE',  label: 'Excusé',   icon: 'info',
+      aide: 'Absent avec un motif accepté par le staff.' },
+    { val: 'ABSENT',  label: 'Absent',   icon: 'cancel',
+      aide: 'Absent sans motif accepté. Seul statut qui pèse vraiment sur son assiduité.' },
   ];
 
   get seance(): Seance { return this.data.seance; }
 
   // Les blessés (dérivés du médical) sont comptés à part et exclus des présents.
-  get nbPresents():  number { return this.lignes.filter(l => !l.blesse && l.statut === 'PRESENT').length; }
+  // Un joueur ADAPTÉ reste un présent : le compter ailleurs ferait chuter le taux d'assiduité
+  // pour une décision prise PAR le staff.
+  get nbPresents():  number { return this.lignes.filter(l => !l.blesse && (l.statut === 'PRESENT' || l.statut === 'ADAPTE')).length; }
   get nbAbsents():   number { return this.lignes.filter(l => !l.blesse && l.statut === 'ABSENT').length;  }
   get nbExcuses():   number { return this.lignes.filter(l => !l.blesse && l.statut === 'EXCUSE').length;  }
   get nbRetards():   number { return this.lignes.filter(l => !l.blesse && l.statut === 'RETARD').length;  }
+  get nbAdaptes():   number { return this.lignes.filter(l => !l.blesse && l.statut === 'ADAPTE').length;  }
+  get nbSoins():     number { return this.lignes.filter(l => !l.blesse && l.statut === 'SOIN').length;    }
   get nbBlesses():   number { return this.lignes.filter(l => l.blesse).length;                           }
   get nbNonRens():   number { return this.lignes.filter(l => !l.statut).length;                          }
 

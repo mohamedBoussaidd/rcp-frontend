@@ -109,14 +109,21 @@
       <div class="card vs-table-card">
         <div class="card__header">
           <h3 class="card__title">Performances joueurs</h3>
-          <div class="vs-legende">
-            <span class="badge badge--bad">Sous norme</span>
-            <span class="badge badge--ok">Dans norme</span>
-            <span class="badge badge--info">Sur norme</span>
-            <span class="muted">· clic = détail</span>
+          <div class="vs-onglets">
+            <button [class.is-active]="ongletTable() === 'analyse'" (click)="ongletTable.set('analyse')">Analyse</button>
+            <button [class.is-active]="ongletTable() === 'brut'" (click)="ongletTable.set('brut')">Données brutes</button>
           </div>
+          @if (ongletTable() === 'analyse') {
+            <div class="vs-legende">
+              <span class="badge badge--bad">Sous norme</span>
+              <span class="badge badge--ok">Dans norme</span>
+              <span class="badge badge--info">Sur norme</span>
+              <span class="muted">· clic = détail</span>
+            </div>
+          }
         </div>
 
+        @if (ongletTable() === 'analyse') {
         <div class="vs-table">
           <div class="vs-row vs-row--head">
             <span class="c-joueur">Joueur</span>
@@ -131,7 +138,13 @@
 
           @for (l of lignesFiltrees(); track l.joueur_id) {
             <div class="vs-row vs-row--data" [class]="statutClass(l.statut)" (click)="toggle(l.joueur_id)">
-              <span class="c-joueur"><strong>{{ l.prenom[0] }}. {{ l.nom }}</strong></span>
+              <span class="c-joueur"><strong>{{ l.prenom[0] }}. {{ l.nom }}</strong>
+                <!-- Déclaré non participant, mais mesuré : deux lectures aussi probables (erreur
+                     d'appel / mauvais nom apparié à l'import). On montre, on ne tranche pas. -->
+                @if (l.contradiction) {
+                  <span class="badge badge--bad" title="L'appel le dit {{ statutAppelLibelle(l.statut_appel) }}, mais des données GPS lui sont rattachées sur cette séance. Soit l'appel est erroné, soit l'import a apparié le mauvais nom.">⚠ {{ statutAppelLibelle(l.statut_appel) }}</span>
+                }
+              </span>
               <span class="c-poste"><span class="badge badge--neutral">{{ l.poste || '—' }}</span></span>
               <span class="c-num">{{ l.distance_reelle ? (l.distance_reelle | number:'1.0-0') : '—' }}</span>
               @if (metriquesClub.estActive('VITESSE_MAX')) {
@@ -140,7 +153,11 @@
               @if (metriquesClub.estActive('NB_SPRINTS')) {
                 <span class="c-num">{{ l.nb_sprints ?? '—' }}</span>
               }
-              @if (chargeDispo()) { <span class="c-num">{{ l.charge_ua ?? '—' }}</span> }
+              @if (chargeDispo()) {
+                <span class="c-num">{{ l.charge_ua ?? '—' }}@if (l.charge_source === 'RPE') {
+                  <sup class="src-rpe" title="Charge déduite du questionnaire post-séance (RPE × durée), faute de capteur.">sRPE</sup>
+                }</span>
+              }
               @if (zonesDispo()) {
                 <span class="c-zones">
                   <span class="zbar" [title]="'Total ' + (l.zones_total_m | number:'1.0-0') + ' m'">
@@ -153,7 +170,13 @@
                 </span>
               }
               <span class="c-statut">
-                <span class="badge" [class]="statutBadgeClass(l.statut)">{{ statutLibelle(l.statut) }}</span>
+                <!-- Sans mesure, « Pas de baseline » désignerait la mauvaise cause : le joueur
+                     n'a pas d'historique manquant, il n'a simplement pas porté de capteur. -->
+                @if (l.sans_capteur) {
+                  <span class="badge badge--neutral" title="Présent à l'appel, sans donnée GPS sur cette séance. Sa charge peut venir du questionnaire post-séance.">Sans capteur</span>
+                } @else {
+                  <span class="badge" [class]="statutBadgeClass(l.statut)">{{ statutLibelle(l.statut) }}</span>
+                }
                 <span class="chevron" [class.open]="estDeplie(l.joueur_id)">⌄</span>
               </span>
             </div>
@@ -202,11 +225,12 @@
                     </div>
                   }
                 </div>
-                <!-- Détail des zones de vitesse (km par bande) -->
+                <!-- Détail des zones de vitesse : BANDES exclusives (15-19, 19-24…), pas des
+                     cumuls. En mètres sous 1 km, sinon un sprint de 11 m s'affiche « 0,01 km ». -->
                 @if (zonesDispo()) {
                   <div class="vs-detail__zones">
                     @for (z of ZONES(); track z.key; let i = $index) {
-                      <span class="zchip"><i [style.background]="z.couleur"></i>{{ z.court }} {{ (l.zones[i] / 1000) | number:'1.2-2' }} km</span>
+                      <span class="zchip"><i [style.background]="z.couleur"></i>{{ z.court }} {{ distanceLisible(l.zones[i]) }}</span>
                     }
                   </div>
                 }
@@ -214,6 +238,98 @@
             }
           }
         </div>
+        }
+
+        <!-- ══ Onglet « Données brutes » : la mesure telle qu'elle est stockée, une ligne par
+             joueur. Complète la fiche joueur, qui montre l'axe inverse (un joueur, ses séances).
+             Aucun appel réseau de plus : ces valeurs sont déjà chargées pour le donut. ══ -->
+        @if (ongletTable() === 'brut') {
+        <p class="vs-brut__note">
+          Valeurs <strong>cumulées</strong> telles qu'importées : les mètres parcourus à plus de
+          28 km/h sont aussi comptés dans <em>&gt; 24</em>, <em>&gt; 19</em> et <em>&gt; 15</em>.
+          Le donut et les pastilles de l'onglet Analyse montrent les mêmes mètres découpés en
+          <strong>bandes</strong> (15-19, 19-24…), donc sans recouvrement — d'où deux chiffres
+          différents pour un même seuil.
+        </p>
+        <div class="vs-brut__scroll">
+          <table class="brut-table">
+            <thead>
+              <tr>
+                <th>Joueur</th>
+                <th>Poste</th>
+                <th class="r">Durée</th>
+                <th class="r">Dist. totale</th>
+                @if (metriquesClub.estActive('DISTANCE_Z15')) { <th class="r" title="Total des mètres parcourus au-dessus de 15 km/h, sprints compris.">&gt; 15 km/h</th> }
+                @if (metriquesClub.estActive('DISTANCE_Z19')) { <th class="r" title="Total des mètres au-dessus de 19 km/h. Inclus dans la colonne &gt; 15 km/h.">&gt; 19 km/h</th> }
+                @if (metriquesClub.estActive('DISTANCE_Z24')) { <th class="r" title="Total des mètres au-dessus de 24 km/h. Inclus dans les colonnes précédentes.">&gt; 24 km/h</th> }
+                @if (metriquesClub.estActive('DISTANCE_Z28')) { <th class="r" title="Total des mètres au-dessus de 28 km/h. Inclus dans toutes les colonnes précédentes.">&gt; 28 km/h</th> }
+                @if (metriquesClub.estActive('NB_SPRINTS')) { <th class="r">Sprints</th> }
+                @if (metriquesClub.estActive('VITESSE_MAX')) { <th class="r">V max</th> }
+                @if (metriquesClub.estActive('NB_ACCELERATIONS')) { <th class="r">Accél.</th> }
+                @if (metriquesClub.estActive('NB_FREINAGES')) { <th class="r">Freinages</th> }
+                <th class="r">Ratio</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (l of lignesFiltrees(); track l.joueur_id) {
+                <tr [class.is-vide]="l.cumuls[0] === null">
+                  <td class="nom">{{ l.prenom[0] }}. {{ l.nom }}
+                    @if (l.sans_capteur) { <span class="brut-tag" title="Présent à l'appel, sans capteur : aucune mesure sur cette séance.">sans capteur</span> }
+                  </td>
+                  <td>{{ l.poste || '—' }}</td>
+                  <td class="r">{{ l.duree_minutes ?? '—' }}</td>
+                  <td class="r strong">{{ m(l.cumuls[0]) }}</td>
+                  @if (metriquesClub.estActive('DISTANCE_Z15')) { <td class="r">{{ m(l.cumuls[1]) }}</td> }
+                  @if (metriquesClub.estActive('DISTANCE_Z19')) { <td class="r">{{ m(l.cumuls[2]) }}</td> }
+                  @if (metriquesClub.estActive('DISTANCE_Z24')) { <td class="r">{{ m(l.cumuls[3]) }}</td> }
+                  @if (metriquesClub.estActive('DISTANCE_Z28')) { <td class="r">{{ m(l.cumuls[4]) }}</td> }
+                  @if (metriquesClub.estActive('NB_SPRINTS')) { <td class="r">{{ l.nb_sprints ?? '—' }}</td> }
+                  @if (metriquesClub.estActive('VITESSE_MAX')) { <td class="r">{{ l.vitesse_max ? (l.vitesse_max | number:'1.1-1') : '—' }}</td> }
+                  @if (metriquesClub.estActive('NB_ACCELERATIONS')) { <td class="r">{{ l.nb_accelerations ?? '—' }}</td> }
+                  @if (metriquesClub.estActive('NB_FREINAGES')) { <td class="r">{{ l.nb_freinages ?? '—' }}</td> }
+                  <td class="r">{{ l.ratio_reel ? (l.ratio_reel | number:'1.1-1') : '—' }}</td>
+                </tr>
+              }
+            </tbody>
+            <!-- Total et moyenne sur les joueurs MESURÉS uniquement (cf. agregatsBruts) : compter
+                 les présents sans capteur ferait chuter la moyenne sans qu'ils aient moins couru. -->
+            @if (agregatsBruts().n > 0) {
+              <tfoot>
+                <tr>
+                  <th class="nom">Total</th>
+                  <th [attr.title]="agregatsBruts().n + ' joueur(s) mesuré(s)'">{{ agregatsBruts().n }} mes.</th>
+                  <th class="r">{{ agregatsBruts().totaux.duree }}</th>
+                  <th class="r">{{ m(agregatsBruts().totaux.c[0]) }}</th>
+                  @if (metriquesClub.estActive('DISTANCE_Z15')) { <th class="r">{{ m(agregatsBruts().totaux.c[1]) }}</th> }
+                  @if (metriquesClub.estActive('DISTANCE_Z19')) { <th class="r">{{ m(agregatsBruts().totaux.c[2]) }}</th> }
+                  @if (metriquesClub.estActive('DISTANCE_Z24')) { <th class="r">{{ m(agregatsBruts().totaux.c[3]) }}</th> }
+                  @if (metriquesClub.estActive('DISTANCE_Z28')) { <th class="r">{{ m(agregatsBruts().totaux.c[4]) }}</th> }
+                  @if (metriquesClub.estActive('NB_SPRINTS')) { <th class="r">{{ agregatsBruts().totaux.sprints }}</th> }
+                  @if (metriquesClub.estActive('VITESSE_MAX')) { <th class="r" title="Meilleure vitesse de l'effectif (une somme n'aurait pas de sens).">{{ agregatsBruts().totaux.vmax | number:'1.1-1' }}</th> }
+                  @if (metriquesClub.estActive('NB_ACCELERATIONS')) { <th class="r">{{ agregatsBruts().totaux.accel }}</th> }
+                  @if (metriquesClub.estActive('NB_FREINAGES')) { <th class="r">{{ agregatsBruts().totaux.frein }}</th> }
+                  <th class="r">—</th>
+                </tr>
+                <tr>
+                  <th class="nom">Moyenne</th>
+                  <th></th>
+                  <th class="r">{{ agregatsBruts().moyennes.duree | number:'1.0-0' }}</th>
+                  <th class="r">{{ m(agregatsBruts().moyennes.c[0]) }}</th>
+                  @if (metriquesClub.estActive('DISTANCE_Z15')) { <th class="r">{{ m(agregatsBruts().moyennes.c[1]) }}</th> }
+                  @if (metriquesClub.estActive('DISTANCE_Z19')) { <th class="r">{{ m(agregatsBruts().moyennes.c[2]) }}</th> }
+                  @if (metriquesClub.estActive('DISTANCE_Z24')) { <th class="r">{{ m(agregatsBruts().moyennes.c[3]) }}</th> }
+                  @if (metriquesClub.estActive('DISTANCE_Z28')) { <th class="r">{{ m(agregatsBruts().moyennes.c[4]) }}</th> }
+                  @if (metriquesClub.estActive('NB_SPRINTS')) { <th class="r">{{ agregatsBruts().moyennes.sprints | number:'1.1-1' }}</th> }
+                  @if (metriquesClub.estActive('VITESSE_MAX')) { <th class="r">{{ agregatsBruts().moyennes.vmax | number:'1.1-1' }}</th> }
+                  @if (metriquesClub.estActive('NB_ACCELERATIONS')) { <th class="r">{{ agregatsBruts().moyennes.accel | number:'1.1-1' }}</th> }
+                  @if (metriquesClub.estActive('NB_FREINAGES')) { <th class="r">{{ agregatsBruts().moyennes.frein | number:'1.1-1' }}</th> }
+                  <th class="r">{{ agregatsBruts().moyennes.ratio | number:'1.1-1' }}</th>
+                </tr>
+              </tfoot>
+            }
+          </table>
+        </div>
+        }
       </div>
 
       <!-- ── Colonne droite : heatmap (placeholder) + donut zones ── -->

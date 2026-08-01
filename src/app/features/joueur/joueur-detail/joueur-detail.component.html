@@ -304,6 +304,45 @@
                       </div>
                     </div>
 
+                    <!-- Marqueur neuromusculaire et gêne déclarée : deux signaux qui PÈSENT dans le
+                         classement « à surveiller » du dashboard préparateur mais que la fiche ne
+                         rendait nulle part. On cliquait sur une alerte pour tomber sur une page qui
+                         semblait la contredire. -->
+                    @if (marqueurNeuro || geneAlerte) {
+                      <div class="pf-signaux">
+                        @if (marqueurNeuro; as m) {
+                          <div class="pf-signal" [class.is-probable]="m.niveau === 'PROBABLE'">
+                            <mat-icon>bolt</mat-icon>
+                            <div class="pf-signal__body">
+                              <div class="pf-signal__titre">
+                                Marqueur neuromusculaire — {{ m.niveau === 'PROBABLE' ? 'probable' : 'possible' }}
+                              </div>
+                              <div class="pf-signal__txt">{{ m.message }}</div>
+                            </div>
+                          </div>
+                        }
+                        @if (geneAlerte; as g) {
+                          <div class="pf-signal is-gene">
+                            <mat-icon>warning</mat-icon>
+                            <div class="pf-signal__body">
+                              <div class="pf-signal__titre">
+                                Gêne déclarée non traitée — {{ g.zone }}
+                                @if (g.intensite != null) { <span class="pf-badge">{{ g.intensite }}/10</span> }
+                              </div>
+                              <div class="pf-signal__txt">
+                                {{ g.date | date:'d MMM':'':'fr' }} ·
+                                @if (g.source === 'RPE') {
+                                  après séance@if (g.contexte) { «&nbsp;{{ g.contexte }}&nbsp;» }
+                                } @else {
+                                  ressenti du matin
+                                }
+                              </div>
+                            </div>
+                          </div>
+                        }
+                      </div>
+                    }
+
                     <!-- Les 3 lectures de la charge, ensemble : c'est leur ÉCART qui informe.
                          Un sélecteur de source donnerait trois vérités concurrentes. -->
                     @if (lecturesAcwr.length) {

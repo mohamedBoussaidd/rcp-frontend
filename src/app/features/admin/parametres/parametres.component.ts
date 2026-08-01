@@ -369,6 +369,33 @@ export const PARAM_META: Record<string, ParamMeta> = {
     unite: 'pts', min: 1, max: 20, step: 1, defaut: 5
   },
 
+  // ── Dérives & surveillance ──
+  derive_seuil_pct: {
+    label: 'Seuil de dérive',
+    description: 'Variation minimale entre les 14 derniers jours et les 14 précédents pour qu\'un joueur soit annoncé "en hausse" ou "en baisse" sur un axe. En dessous, il est considéré stable. Une valeur basse rend la carte bavarde, une valeur haute ne retient que les mouvements francs.',
+    unite: '%', min: 5, max: 50, step: 5, defaut: 20
+  },
+  derive_min_seances: {
+    label: 'Séances minimum par fenêtre',
+    description: 'Nombre de séances qu\'un joueur doit avoir dans CHACUNE des deux fenêtres de 14 jours pour être comparé. C\'est le garde-fou principal : sans lui, un joueur revenu de blessure avec une seule séance de référence ressortait avec des dérives à plusieurs centaines de pourcent, qui ne mesuraient qu\'un dénominateur minuscule. Les joueurs écartés sont comptés et annoncés, jamais masqués.',
+    unite: 'séances', min: 1, max: 8, step: 1, defaut: 3
+  },
+  derive_min_jours_ressenti: {
+    label: 'Jours de ressenti minimum par fenêtre',
+    description: 'Équivalent du réglage précédent pour l\'axe ressenti : nombre de questionnaires quotidiens exigés dans chaque fenêtre. Une moyenne calculée sur une seule réponse est du bruit, pas une tendance.',
+    unite: 'jours', min: 1, max: 10, step: 1, defaut: 3
+  },
+  derive_plancher_volume_m: {
+    label: 'Plancher de volume de référence',
+    description: 'Distance totale minimale sur la fenêtre de référence pour que la comparaison de volume ait un sens. En dessous, le joueur n\'a pas assez couru sur la période précédente pour que le pourcentage veuille dire quelque chose.',
+    unite: 'm', min: 500, max: 20000, step: 500, defaut: 3000
+  },
+  derive_plancher_hi_m: {
+    label: 'Plancher de haute intensité de référence',
+    description: 'Mètres minimum au-dessus de 19 km/h sur la fenêtre de référence pour que l\'axe intensité soit calculé. C\'est le réglage qui neutralise les pourcentages absurdes : quelques dizaines de mètres de référence suffisaient à produire une "hausse" spectaculaire.',
+    unite: 'm', min: 50, max: 3000, step: 50, defaut: 300
+  },
+
   // ── Météo : réglages RETIRÉS de l'écran (2026-07-30) ──
   // Les 6 clés (temp_chaleur_forte_c, temp_chaleur_moderee_c, correcteur_chaleur_forte,
   // correcteur_chaleur_moderee, correcteur_neige, correcteur_pluie) existent toujours en base
@@ -552,6 +579,13 @@ export class ParametresComponent implements OnInit {
       titre: 'Fraîcheur des données et baseline',
       description: 'Règles qui déterminent quand les données d\'un joueur sont trop anciennes pour conclure, sur quelle profondeur d\'historique se construit sa référence personnelle, et à partir de quel écart une évolution est annoncée plutôt que jugée stable.',
       cles: ['jours_inactif_max', 'baseline_recence_jours', 'tendance_seuil_pts'],
+      expanded: false
+    },
+    {
+      id: 'derives',
+      titre: 'Dérives & surveillance',
+      description: 'Règlent la carte « Dérives & surveillance » du tableau de bord préparateur, qui compare les 14 derniers jours aux 14 précédents sur trois axes. À ne pas confondre avec l\'ACWR : l\'ACWR dit si un joueur en fait trop cette semaine, la dérive dit dans quel sens l\'effectif se déplace depuis un mois. Les trois derniers réglages écartent les joueurs dont l\'historique est trop mince pour être comparé.',
+      cles: ['derive_seuil_pct', 'derive_min_seances', 'derive_min_jours_ressenti', 'derive_plancher_volume_m', 'derive_plancher_hi_m'],
       expanded: false
     },
     // Le groupe « Correcteurs météo » a été retiré ici : ses 6 coefficients n'étaient lus par

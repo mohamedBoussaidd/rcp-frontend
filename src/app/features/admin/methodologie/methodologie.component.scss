@@ -37,6 +37,7 @@
 .signal-fatigue  { border-color: #6366f1; }
 .signal-risque   { border-color: #ec4899; }
 .signal-gps      { border-color: #0ea5e9; }
+.signal-derive   { border-color: #f59e0b; }
 
 .signal-badge {
   width: 40px;
@@ -59,6 +60,39 @@
 .sf { background: #6366f1; }
 .sr { background: #ec4899; }
 .sg { background: #0ea5e9; }
+.sd { background: #f59e0b; }
+
+/* Intertitres de famille : séparent les scores (jugés, avec seuils) des lectures d'effectif
+   (tendances, sans seuil de danger). */
+.methodo-famille {
+  margin: 8px 0 -8px;
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--text-1);
+  letter-spacing: -0.01em;
+}
+
+.methodo-sommaire {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+
+  a {
+    font-size: 0.82rem;
+    font-weight: 600;
+    text-decoration: none;
+    color: var(--text-2);
+    background: var(--surface-2, rgba(127, 127, 127, 0.1));
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 5px 12px;
+
+    &:hover {
+      color: var(--text-1);
+      border-color: var(--copper);
+    }
+  }
+}
 
 .methodo-grid {
   display: grid;

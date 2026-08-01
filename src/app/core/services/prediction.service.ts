@@ -155,6 +155,15 @@ export interface LigneRapport {
   // Objectif d'équipe au prorata du temps joué (tous types)
   objectif_seance_m: number | null;
   atteint_objectif_seance: boolean | null;
+  // ── Contexte d'appel : de quoi expliquer une ligne sans kilomètres (lot 4) ──
+  statut_appel: 'PRESENT' | 'RETARD' | 'ADAPTE' | 'SOIN' | 'EXCUSE' | 'ABSENT';
+  /** Présent à l'appel mais aucune donnée GPS : la ligne est vide par manque de capteur. */
+  sans_capteur: boolean;
+  /** Déclaré non participant ALORS QU'il a des données : erreur d'appel ou mauvais nom apparié. */
+  contradiction: boolean;
+  /** Charge sRPE (RPE × durée), seule charge disponible pour un joueur sans capteur. */
+  charge_rpe: number | null;
+  intensite_rpe: number | null;
 }
 
 export interface RapportSeance {
@@ -317,14 +326,27 @@ export interface Briefing {
   texte: string;
 }
 
-/** Un joueur en dérive sur un axe (variation % 14j récents vs 14j précédents). */
-export interface DeriveJoueur { joueur_id: string; nom: string; drift_pct: number; }
+/**
+ * Un joueur en dérive sur un axe (variation % 14j récents vs 14j précédents).
+ * `valeur_recente` / `valeur_reference` sont les deux valeurs comparées, dans l'unité de l'axe :
+ * un pourcentage seul n'est pas interprétable (« +30 % » de quoi, à partir de quoi ?).
+ */
+export interface DeriveJoueur {
+  joueur_id: string;
+  nom: string;
+  drift_pct: number;
+  valeur_recente?: number;
+  valeur_reference?: number;
+}
 
-/** Un axe de dérive (volume, haute intensité, ressenti) avec ses joueurs en hausse / baisse. */
+/** Un axe de dérive (volume, intensité, ressenti) avec ses joueurs en hausse / baisse. */
 export interface DeriveAxe {
   code: string;
   libelle: string;
   sens_hausse: string;   // ce que signifie une hausse sur cet axe (ex. « fatigue en hausse »)
+  unite?: string;        // 'km' | '%' | '/100' — unité de valeur_recente / valeur_reference
+  /** Joueurs écartés faute de données suffisantes (≠ stable) : comptés, jamais masqués. */
+  nb_ecartes?: number;
   nb_hausse: number;
   nb_baisse: number;
   hausse: DeriveJoueur[];
@@ -335,6 +357,10 @@ export interface DeriveAxe {
 export interface Derives {
   fenetre_jours: number;
   seuil_pct: number;
+  /** Séances exigées dans CHAQUE fenêtre pour qu'un joueur soit comparé (garde-fou). */
+  min_seances?: number;
+  /** Date de fin de fenêtre réellement utilisée (suit la date simulée). */
+  date_reference?: string;
   effectif: { nb_joueurs: number };
   axes: DeriveAxe[];
 }

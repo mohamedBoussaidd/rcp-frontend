@@ -384,19 +384,42 @@ export class DashboardComponent implements OnInit {
   /** Résumé d'appel d'une séance (pour la pastille « X/Y dispo »). */
   resumeDe(seanceId: string): ResumeAppel | undefined { return this.resumesAppel.get(seanceId); }
 
-  /** Y a-t-il un appel (entraînement) aujourd'hui dont on peut afficher la répartition ? */
-  get appelDuJour(): boolean {
-    return this.seancesAujourdhui.some(s => !s.adversaire && this.resumesAppel.has(s.id));
+  /**
+   * Séances de référence des compteurs d'appel : celles du jour, ou à défaut celles de la
+   * PROCHAINE date planifiée. Un aménagement déclaré par le médical vise « la prochaine séance » :
+   * le masquer les jours sans entraînement viderait la card de son intérêt un lendemain de match.
+   * Les matchs sont exclus (pas d'appel).
+   */
+  private get seancesAppelRef(): Seance[] {
+    const duJour = this.seancesAujourdhui.filter(s => !s.adversaire);
+    if (duJour.length) return duJour;
+    const suivantes = this.seancesAVenir.filter(s => !s.adversaire);
+    // seancesAVenir est déjà trié par date puis heure : la 1re donne la prochaine date.
+    return suivantes.length ? suivantes.filter(s => s.date === suivantes[0].date) : [];
   }
-  private cumulAujourdhui(champ: keyof ResumeAppel): number {
-    return this.seancesAujourdhui
-      .filter(s => !s.adversaire)
-      .reduce((a, s) => a + ((this.resumesAppel.get(s.id)?.[champ] as number) ?? 0), 0);
+
+  /** Date couverte par les compteurs, `null` quand c'est aujourd'hui (rien à préciser). */
+  get appelRefDate(): string | null {
+    const ref = this.seancesAppelRef[0];
+    return !ref || ref.date === this.aujourdhui ? null : ref.date;
   }
-  get presentsAujourdhui(): number { return this.cumulAujourdhui('presents'); }
-  get absentsAujourdhui():  number { return this.cumulAujourdhui('absents');  }
-  get excusesAujourdhui():  number { return this.cumulAujourdhui('excuses');  }
-  get retardsAujourdhui():  number { return this.cumulAujourdhui('retards');  }
+
+  /**
+   * Une ligne de répartition PAR SÉANCE. Cumuler deux séances du même jour donnait des chiffres
+   * ininterprétables : matin + soir compte deux fois les joueurs qui font les deux (« 50 présents »
+   * pour 25 joueurs), et deux groupes distincts n'ont pas le même effectif de référence. Le front
+   * ne peut pas trancher — `ResumeAppel` ne porte que des compteurs, jamais l'identité des joueurs.
+   * L'heure ne préfixe la ligne que s'il y a plusieurs séances : inutile de charger le cas courant.
+   */
+  get lignesAppel(): { id: string; label: string; r: ResumeAppel }[] {
+    const refs = this.seancesAppelRef.filter(s => this.resumesAppel.has(s.id));
+    const multi = refs.length > 1;
+    return refs.map(s => ({
+      id: s.id,
+      label: multi ? (s.heureDebut ? s.heureDebut.slice(0, 5) : (s.typeSeance?.libelle ?? '')) : '',
+      r: this.resumesAppel.get(s.id)!,
+    }));
+  }
 
   allerPresence(seance: Seance): void {
     this.dialog.open(PresenceDialogComponent, {

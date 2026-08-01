@@ -85,6 +85,12 @@
                   <div class="al-card__acts">
                     @if (auth.canEcrireBlessures()) {
                       <button class="al-link" (click)="convertirGeneEnBlessure(g)">+ Blessure</button>
+                      <!-- 3e issue : la seule qui redescende sur le terrain. Le joueur est marqué
+                           sur ses prochaines séances et le staff reçoit la consigne. -->
+                      <button class="al-link" (click)="menagerGene(g, 'ADAPTE')"
+                              title="Le joueur fera la séance en charge allégée. Compte comme une présence.">Ménager</button>
+                      <button class="al-link" (click)="menagerGene(g, 'SOIN')"
+                              title="Le joueur sera au soin, pas à l'entraînement. Hors décompte d'assiduité.">Au soin</button>
                     }
                   </div>
                   <button class="al-link al-link--ok" (click)="traiterGene(g)">Marquer résolue</button>

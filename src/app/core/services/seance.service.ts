@@ -329,7 +329,22 @@ export interface FicheSeanceJoueur {
 }
 
 // ── Présence ──
-export type StatutPresence = 'PRESENT' | 'ABSENT' | 'EXCUSE' | 'RETARD';
+/**
+ * ADAPTE et SOIN décrivent deux situations distinctes et ne se comptent pas pareil :
+ * ADAPTE = a participé en charge allégée (compte présent) ; SOIN = présent au club mais pas à
+ * l'entraînement (hors décompte, comme un blessé, sans être une absence).
+ * Le joueur ne peut poser ni l'un ni l'autre depuis la PWA : c'est une décision de staff.
+ */
+export type StatutPresence = 'PRESENT' | 'ABSENT' | 'EXCUSE' | 'RETARD' | 'ADAPTE' | 'SOIN';
+
+/** Ce que la déclaration d'aménagement a réellement produit (bornes retenues, séances marquées). */
+export interface ResultatAmenagement {
+  joueurId: string;
+  statut: StatutPresence;
+  du: string;
+  au: string;
+  seancesMarquees: number;
+}
 
 export interface LignePresence {
   joueurId: string;
@@ -358,6 +373,10 @@ export interface ResumeAppel {
   absents: number;
   excuses: number;
   retards: number;
+  /** Participent en charge allégée : INCLUS dans `presents` et dans `dispo`. */
+  adaptes: number;
+  /** Au club mais pas à l'entraînement : retranchés de `dispo`, comme les blessés. */
+  soins: number;
   dispo: number;
 }
 
@@ -533,6 +552,17 @@ export class SeanceService {
 
   savePresenceJoueur(seanceId: string, joueurId: string, statut: StatutPresence, note?: string): Observable<LignePresence> {
     return this.http.put<LignePresence>(`${this.base}/${seanceId}/presence/${joueurId}`, { statut, note });
+  }
+
+  /**
+   * Déclaration d'aménagement par le médical : passe un joueur en ADAPTE ou SOIN sur une PÉRIODE
+   * et pousse une notification au staff. `du`/`au` omis = la prochaine séance planifiée.
+   * `consigne` est une consigne TERRAIN, lue par tout le staff notifié — pas une note clinique.
+   */
+  declarerAmenagement(joueurId: string, statut: 'ADAPTE' | 'SOIN',
+                      consigne?: string, du?: string, au?: string): Observable<ResultatAmenagement> {
+    return this.http.post<ResultatAmenagement>(`${this.base}/presence/amenagement`,
+      { joueurId, statut, du: du ?? null, au: au ?? null, consigne: consigne ?? null });
   }
 
   saveFeuille(seanceId: string, lignes: { joueurId: string; statut: StatutPresence; note?: string }[]): Observable<FeuillePresence> {

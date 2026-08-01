@@ -21,6 +21,18 @@ import { ChargeVueComponent } from '@shared/components/charge-vue/charge-vue.com
 import { BadgeListeComponent } from '@shared/components/badge/badge-liste.component';
 import { BadgeAssignComponent } from '@shared/components/badge/badge-assign.component';
 
+/**
+ * Gêne déclarée non traitée, quelle que soit sa source. `contexte` porte le titre de la séance
+ * concernée pour une gêne d'après-séance (source RPE), et reste nul pour une gêne du matin.
+ */
+interface GeneRecente {
+  zone: string;
+  intensite: number | null;
+  date: string;
+  source: 'WELLNESS' | 'RPE';
+  contexte: string | null;
+}
+
 @Component({
   selector: 'app-joueur-detail',
   standalone: true,
@@ -516,7 +528,10 @@ export class JoueurDetailComponent implements OnInit {
   }
 
   libelleAssiduite(statut: string): string {
-    return ({ PRESENT: 'Présent', ABSENT: 'Absent', EXCUSE: 'Excusé', RETARD: 'Retard' } as Record<string, string>)[statut] ?? statut;
+    return ({
+      PRESENT: 'Présent', ABSENT: 'Absent', EXCUSE: 'Excusé', RETARD: 'Retard',
+      ADAPTE: 'Séance adaptée', SOIN: 'Au soin',
+    } as Record<string, string>)[statut] ?? statut;
   }
 
   private chargerJoueur(id: string): void {
@@ -674,16 +689,46 @@ export class JoueurDetailComponent implements OnInit {
     }));
   }
 
-  /** Gêne récente NON traitée dans la fenêtre (alerte). */
-  get geneAlerte(): { zone: string; intensite: number | null; date: string } | null {
+  /**
+   * Gêne récente NON traitée (alerte), sur les DEUX sources depuis V91 : le ressenti du matin
+   * (`wellness_quotidien`) et le questionnaire d'après-séance (`rpe_seance`). N'en lire qu'une
+   * revenait à ignorer en silence les douleurs signalées après l'entraînement — exactement l'écart
+   * corrigé dans l'écran Médical. On retient la plus récente des deux.
+   */
+  get geneAlerte(): GeneRecente | null {
     const map = new Map(this.wellnessHisto.map(w => [w.date, w]));
+    let retenue: GeneRecente | null = null;
+
+    // `serieWellness` est ordonnée du plus récent au plus ancien : la première trouvée suffit.
     for (const j of this.serieWellness) {
       const w = map.get(j.date);
       if (w?.geneZone && !w.geneTraitee) {
-        return { zone: this.joliZone(w.geneZone), intensite: w.geneIntensite ?? null, date: j.date };
+        retenue = { zone: this.joliZone(w.geneZone), intensite: w.geneIntensite ?? null,
+                    date: j.date, source: 'WELLNESS', contexte: null };
+        break;
       }
     }
-    return null;
+
+    // `rpeHisto` n'est pas garanti trié : on parcourt tout et on garde la plus récente.
+    for (const r of this.rpeHisto) {
+      if (!r.geneZone || r.geneTraitee) continue;
+      if (retenue && retenue.date >= r.date) continue;
+      retenue = { zone: this.joliZone(r.geneZone), intensite: r.geneIntensite ?? null,
+                  date: r.date, source: 'RPE', contexte: r.seanceTitre ?? null };
+    }
+    return retenue;
+  }
+
+  /**
+   * Marqueur neuromusculaire (perte de vitesse de pointe) : il PÈSE dans le classement
+   * « à surveiller » du dashboard préparateur, mais la fiche ne l'affichait nulle part. Un joueur
+   * signalé en fatigue neuromusculaire ouvrait donc une fiche muette, qui semblait le contredire.
+   * Seul le résumé d'équipe porte ce champ — `getRisque` / `getFatigue` ne le renvoient pas.
+   */
+  get marqueurNeuro(): { niveau: string; message: string } | null {
+    const r = this.resume;
+    if (!r?.sprint_niveau || !r.sprint_message) return null;
+    return { niveau: r.sprint_niveau, message: r.sprint_message };
   }
 
   /**

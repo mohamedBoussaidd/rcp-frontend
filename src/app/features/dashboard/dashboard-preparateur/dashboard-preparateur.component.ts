@@ -11,7 +11,7 @@ import {
 } from 'ng-apexcharts';
 
 import { PredictionService, ResumeJoueur, RapportSeance } from '@core/services/prediction.service';
-import { SeanceService, Seance } from '@core/services/seance.service';
+import { SeanceService, Seance, ResumeAppel } from '@core/services/seance.service';
 import { JoueurService } from '@core/services/joueur.service';
 import { SuiviSubjectifService, Wellness } from '@core/services/suivi-subjectif.service';
 import { SaisonService, Saison, PeriodeType } from '@core/services/saison.service';
@@ -94,6 +94,8 @@ export class DashboardPreparateurComponent implements OnInit {
 
   seancesAujourdhui: Seance[] = [];
   seancesAVenir: Seance[] = [];
+  /** Résumé d'appel par séance (présents/adaptés/soins…), pour la card « Disponibles ». */
+  resumesAppel = new Map<string, ResumeAppel>();
   derniereSeance: Seance | null = null;
   rapport: RapportSeance | null = null;
 
@@ -101,6 +103,11 @@ export class DashboardPreparateurComponent implements OnInit {
 
   readonly aujourdhui = (() => {
     const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  })();
+  readonly demain = (() => {
+    const d = new Date();
+    d.setDate(d.getDate() + 1);
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   })();
 
@@ -168,6 +175,38 @@ export class DashboardPreparateurComponent implements OnInit {
   get nbBlesses(): number {
     return this.joueurs.filter(j => this.statutMap.get(j.joueur_id) === 'blesse').length;
   }
+  /**
+   * Séances de référence des compteurs d'appel : celles du jour, ou à défaut celles de la
+   * PROCHAINE date planifiée — un aménagement déclaré pour demain doit rester lisible un jour
+   * sans entraînement. Matchs exclus (pas d'appel). Même règle que le dashboard entraîneur.
+   */
+  private get seancesAppelRef(): Seance[] {
+    const duJour = this.seancesAujourdhui.filter(s => !s.adversaire);
+    if (duJour.length) return duJour;
+    const suivantes = this.seancesAVenir.filter(s => !s.adversaire);
+    return suivantes.length ? suivantes.filter(s => s.date === suivantes[0].date) : [];
+  }
+  /** Date couverte par les compteurs, `null` quand c'est aujourd'hui (rien à préciser). */
+  get appelRefDate(): string | null {
+    const ref = this.seancesAppelRef[0];
+    return !ref || ref.date === this.aujourdhui ? null : ref.date;
+  }
+
+  /**
+   * Une ligne de répartition PAR SÉANCE — jamais un cumul : matin + soir compterait deux fois les
+   * joueurs qui font les deux, et deux groupes distincts n'ont pas le même effectif de référence.
+   * Même règle que le dashboard entraîneur.
+   */
+  get lignesAppel(): { id: string; label: string; r: ResumeAppel }[] {
+    const refs = this.seancesAppelRef.filter(s => this.resumesAppel.has(s.id));
+    const multi = refs.length > 1;
+    return refs.map(s => ({
+      id: s.id,
+      label: multi ? (s.heureDebut ? s.heureDebut.slice(0, 5) : (s.typeSeance?.libelle ?? '')) : '',
+      r: this.resumesAppel.get(s.id)!,
+    }));
+  }
+
   get nbRisqueEleve(): number {
     return this.joueurs.filter(j => j.niveau_risque === 'ELEVE').length;
   }
@@ -369,6 +408,7 @@ export class DashboardPreparateurComponent implements OnInit {
           .sort((a, b) => a.date.localeCompare(b.date) || (a.heureDebut ?? '').localeCompare(b.heureDebut ?? ''));
         this.seancesAujourdhui = aVenir.filter(s => s.date === this.aujourdhui);
         this.seancesAVenir = aVenir.filter(s => s.date > this.aujourdhui).slice(0, 3);
+        this.chargerResumesAppel();
 
         // Dernière séance réalisée → bilan prévu/réalisé (une séance faite aujourd'hui y bascule).
         const passees = data
@@ -382,6 +422,18 @@ export class DashboardPreparateurComponent implements OnInit {
           });
         }
       },
+      error: () => {},
+    });
+  }
+
+  /** Résumés d'appel des entraînements affichés (les matchs n'ont pas d'appel). */
+  private chargerResumesAppel(): void {
+    const ids = [...this.seancesAujourdhui, ...this.seancesAVenir]
+      .filter(s => !s.adversaire)
+      .map(s => s.id);
+    if (!ids.length) { this.resumesAppel = new Map(); return; }
+    this.seanceService.getResumes(ids).subscribe({
+      next: rs => this.resumesAppel = new Map(rs.map(r => [r.seanceId, r])),
       error: () => {},
     });
   }

@@ -9,6 +9,27 @@
   color: var(--text-3);
 }
 
+/* ── Répartition de l'appel sous la card « Disponibles » (mêmes teintes que la feuille
+      de présence et que le dashboard entraîneur : un même statut garde sa couleur partout) ── */
+.kpi__appel {
+  display: flex; flex-direction: column; gap: 4px; margin-top: 6px;
+}
+/* Une séance = une ligne ; les segments s'y enroulent si la card est étroite. */
+.appel-ligne {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px;
+}
+.appel-seg {
+  font-size: 11px; font-weight: 700; padding: 1px 7px; border-radius: 999px;
+  &--ok { background: #22c55e18; color: #16a34a; }
+  &--no { background: #ef444418; color: #dc2626; }
+  &--ex { background: #6366f118; color: #6366f1; }
+  &--rt { background: #f59e0b18; color: #d97706; }
+  &--ad { background: #0ea5e918; color: #0284c7; }
+  &--so { background: #a855f718; color: #9333ea; }
+  &--jour { background: var(--surface-2); color: var(--text-3); text-transform: capitalize; }
+  &--h { background: var(--surface-2); color: var(--text-2); font-variant-numeric: tabular-nums; }
+}
+
 /* ── Bandeau période de saison ── */
 .periode-bandeau {
   display: flex;
