@@ -194,12 +194,34 @@ export class VueSeanceComponent implements OnInit {
     return '?';
   }
 
+  /**
+   * Ordre d'affichage du bloc joueurs — commun aux onglets « Analyse » et « Données brutes »
+   * ainsi qu'à l'export CSV, qui lisent tous ce même vecteur.
+   *
+   * <p>Porteurs de capteur d'abord, non-mesurés ensuite : depuis que les présents sans capteur
+   * figurent dans la liste, le tableau pouvait s'ouvrir sur des lignes vides et laisser croire
+   * à une séance sans données. À l'intérieur du groupe mesuré, le tri par statut est conservé
+   * pour garder les joueurs sous la norme en tête ; le nom départage les ex æquo. Les
+   * non-mesurés n'ont pas de statut qui ait un sens sans distance : ils sont alphabétiques.
+   * Séance entièrement sans GPS : tout le monde tombe dans ce second groupe, donc alphabétique.
+   */
   readonly lignesFiltrees = computed<LigneVue[]>(() => {
     const g = this.groupePoste();
     const order: Record<string, number> = { SOUS_NORME: 0, SANS_BASELINE: 1, DANS_NORME: 2, SUR_NORME: 3 };
+    // Mesuré = le rapport a une distance OU les données brutes en portent une : les deux sources
+    // sont chargées séparément, l'une peut manquer sans que le joueur soit pour autant sans capteur.
+    const mesure = (l: LigneVue) => (l.distance_reelle != null || l.cumuls[0] != null) ? 0 : 1;
+    const nomComplet = (l: LigneVue) => `${l.nom ?? ''} ${l.prenom ?? ''}`.trim();
+    const parNom = (a: LigneVue, b: LigneVue) =>
+      nomComplet(a).localeCompare(nomComplet(b), 'fr', { sensitivity: 'base' });
     return this.lignes()
       .filter(l => g === 'TOUS' || this.grouper(l.poste) === g)
-      .sort((a, b) => (order[a.statut] ?? 9) - (order[b.statut] ?? 9));
+      .sort((a, b) => {
+        const groupe = mesure(a) - mesure(b);
+        if (groupe !== 0) return groupe;
+        if (mesure(a) === 1) return parNom(a, b);
+        return (order[a.statut] ?? 9) - (order[b.statut] ?? 9) || parNom(a, b);
+      });
   });
 
   // ── KPI (sur l'ensemble filtré) ─────────────────────────────────
