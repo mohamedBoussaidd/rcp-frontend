@@ -36,11 +36,21 @@
                     <app-badge-liste type="JOUEUR" [entiteId]="joueur.id" />
                   </div>
                   <app-badge-assign type="JOUEUR" [entiteId]="joueur.id" />
+                  <!--
+                    Carte d'identité du joueur : ce qui le décrit et ne bouge pas d'une semaine à
+                    l'autre. Visible sur TOUS les onglets, elle remplace l'ancien bloc « Poste & rôle »
+                    de l'onglet Profil (supprimé pour ne pas dire deux fois la même chose).
+                    Le poids en est volontairement absent : c'est une mesure datée, avec un historique
+                    et un graphe — le figer ici en ferait un chiffre qu'on ne saurait plus situer.
+                  -->
                   <div class="pf-id__meta">
                     <span class="strong">{{ POSTES[joueur.postePrincipal!] || joueur.postePrincipal || 'Poste non défini' }}</span>
-                    @if (joueur.taille)      { <span class="pf-sep"></span><span>{{ joueur.taille }} cm</span> }
-                    @if (joueur.poidsActuel) { <span class="pf-sep"></span><span>{{ joueur.poidsActuel }} kg</span> }
-                    @if (joueur.piedFort)    { <span class="pf-sep"></span><span>Pied {{ PIEDS[joueur.piedFort] || joueur.piedFort }}</span> }
+                    @if (joueur.posteSecondaire) { <span>, puis {{ POSTES[joueur.posteSecondaire] || joueur.posteSecondaire }}</span> }
+                    @if (joueur.piedFort)        { <span class="pf-sep"></span><span>Pied {{ PIEDS[joueur.piedFort] || joueur.piedFort }}</span> }
+                    @if (joueur.taille)          { <span class="pf-sep"></span><span>{{ joueur.taille }} cm</span> }
+                    @if (joueur.dateNaissance)   { <span class="pf-sep"></span><span>{{ age }}</span> }
+                    @if (joueur.profilAthletique) { <span class="pf-sep"></span><span>{{ PROFILS[joueur.profilAthletique] || joueur.profilAthletique }}</span> }
+                    @if (joueur.dateArriveeClub) { <span class="pf-sep"></span><span>Au club depuis {{ joueur.dateArriveeClub | date:'MM/yyyy' }}</span> }
                   </div>
                 </div>
               </div>
@@ -139,16 +149,10 @@
 
               <!-- Caractéristiques physiques -->
               <section class="pf-card">
-                <div class="pf-card__head"><span class="pf-card__bullet"></span><h2>Caractéristiques physiques</h2></div>
+                <!-- Âge et taille sont montés dans le hero (identité) : ne restent ici que les
+                     mesures qui évoluent et que le graphe ci-dessous met en perspective. -->
+                <div class="pf-card__head"><span class="pf-card__bullet"></span><h2>Poids &amp; composition</h2></div>
                 <div class="pf-stats">
-                  <div class="pf-stat">
-                    <div class="pf-stat__label">Âge</div>
-                    <div class="pf-stat__val">{{ age }}</div>
-                  </div>
-                  <div class="pf-stat">
-                    <div class="pf-stat__label">Taille</div>
-                    <div class="pf-stat__val">{{ joueur.taille || '—' }}<span class="pf-stat__unit">cm</span></div>
-                  </div>
                   <div class="pf-stat">
                     <div class="pf-stat__label">Poids actuel</div>
                     <div class="pf-stat__val">{{ joueur.poidsActuel ? (joueur.poidsActuel | number:'1.1-1') : '—' }}<span class="pf-stat__unit">kg</span></div>
@@ -217,22 +221,14 @@
             <!-- COLONNE DROITE -->
             <div class="pf-col">
 
-              <!-- Poste & rôle -->
+              <!--
+                Poste, pied fort, profil athlétique, statut et arrivée au club vivent désormais dans
+                le hero, visibles sur tous les onglets. Ne reste ici que le protocole de reprise, qui
+                n'a de sens qu'en cas de blessure active — la section entière disparaît sinon.
+              -->
+              @if (blessureActive) {
               <section class="pf-card">
-                <div class="pf-card__head"><span class="pf-card__bullet"></span><h2>Poste &amp; rôle</h2></div>
-                <div class="pf-rows">
-                  <div class="pf-row"><span class="pf-row__label">Poste principal</span><span class="pf-row__val">{{ POSTES[joueur.postePrincipal!] || joueur.postePrincipal || '—' }}</span></div>
-                  <div class="pf-row"><span class="pf-row__label">Poste secondaire</span><span class="pf-row__val">{{ POSTES[joueur.posteSecondaire!] || joueur.posteSecondaire || '—' }}</span></div>
-                  <div class="pf-row"><span class="pf-row__label">Profil athlétique</span><span class="pf-row__val">{{ PROFILS[joueur.profilAthletique!] || joueur.profilAthletique || '—' }}</span></div>
-                  <div class="pf-row"><span class="pf-row__label">Pied fort</span><span class="pf-row__val">{{ PIEDS[joueur.piedFort!] || '—' }}</span></div>
-                  <div class="pf-row"><span class="pf-row__label">Statut</span>
-                    <span class="pf-badge pf-badge--dot" [class]="'tone-' + statutTone"><span class="pf-dot"></span>{{ STATUTS[joueur.statut] || joueur.statut }}</span>
-                  </div>
-                  <div class="pf-row"><span class="pf-row__label">Arrivée au club</span><span class="pf-row__val">{{ joueur.dateArriveeClub ? (joueur.dateArriveeClub | date:'dd/MM/yyyy') : '—' }}</span></div>
-                </div>
-
-                <!-- Timeline reprise (si blessé) -->
-                @if (blessureActive) {
+                <div class="pf-card__head"><span class="pf-card__bullet"></span><h2>Retour à la compétition</h2></div>
                   <div class="pf-reprise">
                     <div class="pf-reprise__title">Protocole de reprise</div>
                     <div class="pf-timeline">
@@ -255,8 +251,8 @@
                       </div>
                     }
                   </div>
-                }
               </section>
+              }
 
               <!-- État actuel -->
               @if (risque || fatigue) {
@@ -479,6 +475,188 @@
         </div>
       </mat-tab>
 
+      <!-- ══ Onglet Compétition (module add-on `stats_competition`) ══
+           Ce que l'entraîneur vient chercher : temps de jeu et sa provenance, place dans le groupe,
+           polyvalence réelle, production, puis le croisement avec la charge d'entraînement. -->
+      @if (peutCompetition) {
+        <mat-tab label="Compétition">
+          <ng-template matTabContent>
+            <div class="tab-content pf">
+              @if (competitionLoading) {
+                <div class="loading">Chargement des statistiques…</div>
+              } @else if (!competition) {
+                <div class="empty-state" style="padding:24px">Statistiques indisponibles pour ce joueur.</div>
+              } @else {
+
+                <!-- Quatre blocs de synthèse deux par deux, puis l'historique en pleine largeur :
+                     seul ce dernier a besoin de toute la place (neuf colonnes de tableau). -->
+                <div class="cp-grid">
+
+                <!-- Bandeau : temps de jeu -->
+                <section class="pf-card">
+                  <div class="pf-card__head">
+                    <span class="pf-card__bullet"></span>
+                    <h2>Temps de jeu</h2>
+                    <span class="cp-periode">du {{ competition.debutPeriode | date:'dd/MM/yyyy' }} au {{ competition.finPeriode | date:'dd/MM/yyyy' }}</span>
+                  </div>
+                  <div class="pf-stats">
+                    <div class="pf-stat">
+                      <div class="pf-stat__label">Minutes jouées</div>
+                      <div class="pf-stat__val">{{ competition.tempsJeu.totalMinutes }}<span class="pf-stat__unit">min</span></div>
+                    </div>
+                    <div class="pf-stat">
+                      <div class="pf-stat__label">Moyenne par match joué</div>
+                      <div class="pf-stat__val">{{ competition.tempsJeu.moyenneParMatchJoue }}<span class="pf-stat__unit">min</span></div>
+                    </div>
+                    <div class="pf-stat">
+                      <div class="pf-stat__label">Part du temps possible</div>
+                      <div class="pf-stat__val">{{ competition.tempsJeu.partDuTempsPossiblePct }}<span class="pf-stat__unit">%</span></div>
+                    </div>
+                    <div class="pf-stat">
+                      <div class="pf-stat__label">Matchs de l'équipe</div>
+                      <div class="pf-stat__val">{{ competition.participation.matchsEquipe }}</div>
+                    </div>
+                  </div>
+                  <!-- D'où viennent ces minutes : sans cette ligne, un total nourri par le capteur
+                       passerait pour une donnée officielle. -->
+                  <p class="cp-sources">
+                    Sources : {{ competition.tempsJeu.matchsAvecTempsSaisi }} saisie(s) du staff ·
+                    {{ competition.tempsJeu.matchsAvecTempsFederation }} fédération ·
+                    {{ competition.tempsJeu.matchsAvecTempsGps }} GPS.
+                    @if (competition.tempsJeu.matchsAvecTempsGps > 0) {
+                      <em>Le GPS mesure un temps de port de capteur : il n'est retenu que pour les joueurs déclarés entrés en jeu.</em>
+                    }
+                  </p>
+                </section>
+
+                <!-- Participation -->
+                <section class="pf-card">
+                  <div class="pf-card__head"><span class="pf-card__bullet"></span><h2>Participation</h2></div>
+                  <div class="pf-stats">
+                    <div class="pf-stat">
+                      <div class="pf-stat__label">Titularisations</div>
+                      <div class="pf-stat__val">{{ competition.participation.titularisations }}</div>
+                    </div>
+                    <div class="pf-stat">
+                      <div class="pf-stat__label">Entrées en jeu</div>
+                      <div class="pf-stat__val">{{ competition.participation.entreesEnJeu }}</div>
+                    </div>
+                    <div class="pf-stat">
+                      <div class="pf-stat__label">Sur le banc sans entrer</div>
+                      <div class="pf-stat__val">{{ competition.participation.remplacantNonEntre }}</div>
+                    </div>
+                    <div class="pf-stat">
+                      <div class="pf-stat__label">Apte et non retenu</div>
+                      <div class="pf-stat__val">{{ competition.participation.disponibleNonRetenu }}</div>
+                      <span class="pf-stat__hint">matchs où il était disponible sans être dans le groupe</span>
+                    </div>
+                  </div>
+                </section>
+
+                <!-- Production & discipline -->
+                <section class="pf-card">
+                  <div class="pf-card__head"><span class="pf-card__bullet"></span><h2>Production &amp; discipline</h2></div>
+                  <div class="pf-stats">
+                    <div class="pf-stat">
+                      <div class="pf-stat__label">Buts</div>
+                      <div class="pf-stat__val">{{ competition.buts }}</div>
+                    </div>
+                    <div class="pf-stat">
+                      <div class="pf-stat__label">Passes décisives</div>
+                      <div class="pf-stat__val">{{ competition.passesDecisives }}</div>
+                    </div>
+                    <div class="pf-stat">
+                      <div class="pf-stat__label">Cartons</div>
+                      <div class="pf-stat__val">{{ competition.cartonsJaunes }}<span class="pf-stat__unit">J</span> / {{ competition.cartonsRouges }}<span class="pf-stat__unit">R</span></div>
+                    </div>
+                    <div class="pf-stat">
+                      <div class="pf-stat__label">Clean sheets</div>
+                      <div class="pf-stat__val">{{ competition.cleanSheets }}</div>
+                    </div>
+                  </div>
+                  @if (competition.postesOccupes.length) {
+                    <div class="cp-postes">
+                      <span class="cp-postes__label">Postes réellement occupés :</span>
+                      @for (p of competition.postesOccupes; track p.poste) {
+                        <span class="badge badge--neutral">{{ p.poste }} · {{ p.matchs }}</span>
+                      }
+                    </div>
+                  }
+                </section>
+
+                <!-- Charge ⇄ temps de jeu -->
+                <section class="pf-card">
+                  <div class="pf-card__head"><span class="pf-card__bullet"></span><h2>Entraînement ⇄ compétition</h2></div>
+                  <div class="pf-stats">
+                    <div class="pf-stat">
+                      <div class="pf-stat__label">Charge d'entraînement</div>
+                      <div class="pf-stat__val">{{ competition.chargeVsJeu.chargeEntrainementUa | number:'1.0-0' }}<span class="pf-stat__unit">UA</span></div>
+                      <span class="pf-stat__hint">{{ competition.chargeVsJeu.seancesPresentes }} séance(s) déclarée(s)</span>
+                    </div>
+                    <div class="pf-stat">
+                      <div class="pf-stat__label">Minutes de match</div>
+                      <div class="pf-stat__val">{{ competition.chargeVsJeu.minutesJouees }}<span class="pf-stat__unit">min</span></div>
+                    </div>
+                    @if (competition.chargeVsJeu.minutesPour1000Ua != null) {
+                      <div class="pf-stat">
+                        <div class="pf-stat__label">Minutes / 1000 UA</div>
+                        <div class="pf-stat__val">{{ competition.chargeVsJeu.minutesPour1000Ua | number:'1.0-1' }}</div>
+                      </div>
+                    }
+                  </div>
+                  <p class="cp-lecture">{{ competition.chargeVsJeu.lecture }}</p>
+                </section>
+
+                <!-- Historique -->
+                <section class="pf-card cp-grid__full">
+                  <div class="pf-card__head"><span class="pf-card__bullet"></span><h2>Match par match</h2></div>
+                  @if (!competition.matchs.length) {
+                    <div class="empty-state" style="padding:20px">Aucune convocation sur la période.</div>
+                  } @else {
+                    <div class="cp-table-wrap">
+                      <table class="cp-table">
+                        <thead>
+                          <tr>
+                            <th>Date</th><th>Adversaire</th><th>Statut</th>
+                            <th class="num">Temps</th><th>Source</th>
+                            <th class="num">B</th><th class="num">PD</th><th class="num">CJ</th><th>CR</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          @for (m of competition.matchs; track m.matchId) {
+                            <tr>
+                              <td>{{ m.date ? (m.date | date:'dd/MM/yy') : '—' }}</td>
+                              <td>
+                                {{ m.adversaire }}
+                                <span class="cp-lieu">{{ m.domicile ? 'dom.' : 'ext.' }}</span>
+                                @if (m.score) { <span class="cp-score">{{ m.score }}</span> }
+                              </td>
+                              <td><span class="badge badge--neutral">{{ libelleStatutCompo(m.statut) }}</span></td>
+                              <td class="num">{{ m.tempsJeu != null ? m.tempsJeu + '′' : '—' }}</td>
+                              <td>
+                                @if (m.sourceTempsJeu) {
+                                  <span class="cp-src cp-src--{{ m.sourceTempsJeu.toLowerCase() }}">{{ libelleSource(m.sourceTempsJeu) }}</span>
+                                } @else { — }
+                              </td>
+                              <td class="num">{{ m.buts || '' }}</td>
+                              <td class="num">{{ m.passesDecisives || '' }}</td>
+                              <td class="num">{{ m.cartonsJaunes || '' }}</td>
+                              <td>{{ m.cartonRouge ? '🟥' : '' }}</td>
+                            </tr>
+                          }
+                        </tbody>
+                      </table>
+                    </div>
+                  }
+                </section>
+
+                </div>
+              }
+            </div>
+          </ng-template>
+        </mat-tab>
+      }
+
       <!-- ══ Onglet GPS & Charge — composant réutilisable, rendu paresseux ══ -->
       <mat-tab label="GPS & Charge">
         <ng-template matTabContent>
@@ -673,6 +851,139 @@
           </div>
         </ng-template>
       </mat-tab>
+
+      <!-- ══ Onglet Fil de vie — relation entraîneur ↔ joueur (module `suivi_individuel`) ══
+           Une seule chronologie là où tout était éparpillé : médical, matchs, entretiens,
+           objectifs, notes. Les notes du staff ne sont jamais remontées au joueur. -->
+      @if (peutSuiviCoach) {
+        <mat-tab label="Fil de vie">
+          <ng-template matTabContent>
+            <div class="tab-content pf">
+              <div class="pf-grid">
+
+                <!-- COLONNE GAUCHE : la chronologie -->
+                <div class="pf-col">
+                  <section class="pf-card">
+                    <div class="pf-card__head"><span class="pf-card__bullet"></span><h2>Fil de vie</h2></div>
+                    @if (!filDeVie.length) {
+                      <div class="empty-state" style="padding:20px">Rien d'enregistré sur les 12 derniers mois.</div>
+                    } @else {
+                      <ul class="fv-list">
+                        @for (e of filDeVie; track e.date + e.titre) {
+                          <li class="fv-item fv-item--{{ e.ton }}">
+                            <span class="fv-icon"><mat-icon>{{ iconeEvenement(e.type) }}</mat-icon></span>
+                            <div class="fv-body">
+                              <div class="fv-titre">{{ e.titre }}</div>
+                              @if (e.detail) { <div class="fv-detail">{{ e.detail }}</div> }
+                            </div>
+                            <span class="fv-date">{{ e.date | date:'dd/MM/yy' }}</span>
+                          </li>
+                        }
+                      </ul>
+                    }
+                  </section>
+                </div>
+
+                <!-- COLONNE DROITE : objectifs + notes + contact -->
+                <div class="pf-col">
+
+                  <section class="pf-card">
+                    <div class="pf-card__head">
+                      <span class="pf-card__bullet"></span><h2>Objectifs individuels</h2>
+                      @if (peutSuiviCoachEcrire && !nouvelObjectif.ouvert) {
+                        <button class="btn btn--secondary btn--sm" style="margin-left:auto" (click)="nouvelObjectif.ouvert = true">+ Ajouter</button>
+                      }
+                    </div>
+
+                    @if (nouvelObjectif.ouvert) {
+                      <div class="fv-form">
+                        <input class="input" placeholder="Objectif (ex. « Gagner en jeu de tête »)" [(ngModel)]="nouvelObjectif.titre" name="objTitre">
+                        <textarea class="input" rows="2" placeholder="Précisions (facultatif)" [(ngModel)]="nouvelObjectif.description" name="objDesc"></textarea>
+                        <div class="fv-form__row">
+                          <input class="input" type="date" [(ngModel)]="nouvelObjectif.echeance" name="objEch">
+                          <button class="btn btn--primary btn--sm" [disabled]="!nouvelObjectif.titre.trim() || savingSuivi" (click)="ajouterObjectif()">Enregistrer</button>
+                          <button class="btn btn--secondary btn--sm" (click)="nouvelObjectif.ouvert = false">Annuler</button>
+                        </div>
+                      </div>
+                    }
+
+                    @if (!objectifs.length) {
+                      <div class="empty-state" style="padding:16px">Aucun objectif fixé.</div>
+                    } @else {
+                      <ul class="obj-list">
+                        @for (o of objectifs; track o.id) {
+                          <li class="obj-item" [class.is-done]="o.statut !== 'EN_COURS'">
+                            <div class="obj-main">
+                              <span class="obj-titre">{{ o.titre }}</span>
+                              <span class="badge" [class.badge--ok]="o.statut === 'ATTEINT'"
+                                    [class.badge--warn]="o.enRetard" [class.badge--neutral]="o.statut !== 'ATTEINT' && !o.enRetard">
+                                {{ libelleStatutObjectif(o.statut) }}@if (o.enRetard) { · en retard }
+                              </span>
+                            </div>
+                            @if (o.description) { <p class="obj-desc">{{ o.description }}</p> }
+                            <div class="obj-meta">
+                              @if (o.echeance) { <span>Échéance {{ o.echeance | date:'dd/MM/yyyy' }}</span> }
+                              @if (o.auteur) { <span>· fixé par {{ o.auteur }}</span> }
+                            </div>
+                            @if (peutSuiviCoachEcrire) {
+                              <div class="obj-actions">
+                                @if (o.statut !== 'ATTEINT') {
+                                  <button class="btn btn--secondary btn--sm" (click)="changerStatutObjectif(o, 'ATTEINT')">Atteint</button>
+                                }
+                                @if (o.statut === 'EN_COURS') {
+                                  <button class="btn btn--secondary btn--sm" (click)="changerStatutObjectif(o, 'ABANDONNE')">Abandonner</button>
+                                } @else {
+                                  <button class="btn btn--secondary btn--sm" (click)="changerStatutObjectif(o, 'EN_COURS')">Rouvrir</button>
+                                }
+                                <button class="btn btn--danger btn--sm" (click)="supprimerObjectif(o)">Supprimer</button>
+                              </div>
+                            }
+                          </li>
+                        }
+                      </ul>
+                    }
+                  </section>
+
+                  <section class="pf-card">
+                    <div class="pf-card__head"><span class="pf-card__bullet"></span><h2>Notes du staff</h2></div>
+                    <p class="fv-avert">Visibles du staff uniquement — jamais affichées au joueur dans son application.</p>
+                    @if (peutSuiviCoachEcrire) {
+                      <div class="fv-form">
+                        <textarea class="input" rows="2" placeholder="Observation du jour…" [(ngModel)]="nouvelleNote" name="noteTxt"></textarea>
+                        <div class="fv-form__row">
+                          <button class="btn btn--primary btn--sm" [disabled]="!nouvelleNote.trim() || savingSuivi" (click)="ajouterNote()">Ajouter la note</button>
+                        </div>
+                      </div>
+                    }
+                    @if (!notesStaff.length) {
+                      <div class="empty-state" style="padding:16px">Aucune note.</div>
+                    } @else {
+                      <ul class="note-list">
+                        @for (n of notesStaff; track n.id) {
+                          <li class="note-item">
+                            <div class="note-head">
+                              <span class="note-date">{{ n.dateNote | date:'dd/MM/yyyy' }}</span>
+                              @if (n.auteur) { <span class="note-auteur">{{ n.auteur }}</span> }
+                              @if (peutSuiviCoachEcrire) {
+                                <button class="note-del" title="Supprimer" (click)="supprimerNote(n)">✕</button>
+                              }
+                            </div>
+                            <p class="note-texte">{{ n.texte }}</p>
+                          </li>
+                        }
+                      </ul>
+                    }
+                  </section>
+
+                  <!-- Pas de bouton « écrire au joueur » ici : la messagerie scopée vit dans la PWA
+                       staff et n'expose aucune route web ciblable par joueur. Y mettre un lien
+                       aurait produit un bouton qui ne mène nulle part. -->
+                </div>
+              </div>
+            </div>
+          </ng-template>
+        </mat-tab>
+      }
 
       <!-- ══ Onglet Suivi individuel (entretiens) — gaté par entretien:read ══ -->
       @if (peutSuivi) {

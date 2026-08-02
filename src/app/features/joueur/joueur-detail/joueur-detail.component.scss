@@ -779,3 +779,101 @@
 @media (max-width: 600px) {
   .su-hrow { grid-template-columns:1fr 1fr; row-gap:6px; }
 }
+
+/* ════════════════ Onglet Compétition (module stats_competition) ════════════════ */
+/* Onglet Compétition : quatre synthèses deux par deux, l'historique en pleine largeur. */
+.cp-grid {
+  display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:22px; align-items:start;
+}
+.cp-grid__full { grid-column:1 / -1; }
+@media (max-width:1100px) { .cp-grid { grid-template-columns:1fr; } }
+
+.cp-periode { margin-left:auto; font-size:12px; font-weight:600; color:var(--text-3); }
+
+/* D'où viennent les minutes : la provenance doit rester lisible sous le total. */
+.cp-sources {
+  margin:10px 16px 14px; font-size:12px; color:var(--text-3); line-height:1.5;
+  em { display:block; margin-top:2px; font-style:italic; }
+}
+.cp-lecture { margin:10px 16px 14px; font-size:13px; color:var(--text-2, var(--text)); line-height:1.5; }
+
+.cp-postes {
+  display:flex; flex-wrap:wrap; align-items:center; gap:6px; padding:0 16px 14px;
+  &__label { font-size:12px; font-weight:700; color:var(--text-3); }
+}
+
+/* Le tableau match par match defile seul : la page ne doit jamais partir en scroll horizontal. */
+.cp-table-wrap { overflow-x:auto; padding:0 16px 14px; }
+.cp-table {
+  width:100%; border-collapse:collapse; font-size:13px;
+  th, td { padding:7px 8px; text-align:left; white-space:nowrap; border-bottom:1px solid var(--border); }
+  th { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.03em; color:var(--text-3); }
+  .num { text-align:right; }
+  tbody tr:hover { background:var(--surface-2, var(--bg-2)); }
+}
+.cp-lieu { margin-left:6px; font-size:11px; color:var(--text-3); }
+.cp-score { margin-left:6px; font-weight:700; }
+
+.cp-src {
+  display:inline-block; padding:1px 7px; border-radius:999px; font-size:11px; font-weight:700;
+  background:var(--surface-3, #eef1f6); color:var(--text-3);
+  &--saisie { background:#dcfce7; color:#15803d; }
+  &--federation { background:#dbeafe; color:#1d4ed8; }
+  &--gps { background:#fef3c7; color:#b45309; }
+}
+
+@media (max-width: 600px) {
+  .cp-periode { margin-left:0; width:100%; }
+}
+
+/* ════════════════ Onglet Fil de vie (relation coach - joueur, V98) ════════════════ */
+.fv-list { list-style:none; margin:0; padding:0 16px 14px; }
+.fv-item {
+  display:flex; align-items:flex-start; gap:10px; padding:10px 0;
+  border-bottom:1px solid var(--border);
+  &:last-child { border-bottom:none; }
+}
+.fv-icon {
+  flex:none; width:28px; height:28px; border-radius:50%; display:grid; place-items:center;
+  background:var(--surface-3, #eef1f6); color:var(--text-3);
+  mat-icon { font-size:16px; width:16px; height:16px; }
+}
+.fv-item--ok  .fv-icon { background:#dcfce7; color:#15803d; }
+.fv-item--bad .fv-icon { background:#fee2e2; color:#b91c1c; }
+.fv-item--warn .fv-icon { background:#fef3c7; color:#b45309; }
+.fv-body { flex:1; min-width:0; }
+.fv-titre { font-size:13.5px; font-weight:700; }
+.fv-detail { font-size:12px; color:var(--text-3); margin-top:2px; word-break:break-word; }
+.fv-date { flex:none; font-size:11.5px; font-weight:600; color:var(--text-3); }
+
+.fv-form {
+  display:flex; flex-direction:column; gap:8px; padding:0 16px 14px;
+  &__row { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+}
+.fv-avert { margin:0 16px 10px; font-size:12px; font-style:italic; color:var(--text-3); }
+
+.obj-list, .note-list { list-style:none; margin:0; padding:0 16px 14px; }
+.obj-item {
+  padding:10px 0; border-bottom:1px solid var(--border);
+  &:last-child { border-bottom:none; }
+  &.is-done { opacity:.62; }
+}
+.obj-main { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+.obj-titre { font-size:13.5px; font-weight:700; }
+.obj-desc { margin:4px 0 0; font-size:12.5px; color:var(--text-2, var(--text)); }
+.obj-meta { margin-top:3px; font-size:11.5px; color:var(--text-3); display:flex; gap:5px; flex-wrap:wrap; }
+.obj-actions { margin-top:7px; display:flex; gap:6px; flex-wrap:wrap; }
+
+.note-item {
+  padding:9px 0; border-bottom:1px solid var(--border);
+  &:last-child { border-bottom:none; }
+}
+.note-head { display:flex; align-items:center; gap:8px; }
+.note-date { font-size:11.5px; font-weight:700; color:var(--text-3); }
+.note-auteur { font-size:11.5px; color:var(--text-3); }
+.note-del {
+  margin-left:auto; border:none; background:none; cursor:pointer; color:var(--text-3);
+  font-size:13px; line-height:1; padding:2px 4px;
+  &:hover { color:#b91c1c; }
+}
+.note-texte { margin:3px 0 0; font-size:13px; white-space:pre-wrap; word-break:break-word; }

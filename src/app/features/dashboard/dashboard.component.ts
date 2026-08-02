@@ -58,7 +58,6 @@ export class DashboardComponent implements OnInit {
   panelResume: ResumeJoueur | null = null;
   panelStats: JoueurCompoStats | null = null;
   panelAssiduite: AssiduiteJoueur | null = null;
-  panelOnglet: 'profil' | 'gps' | 'performances' = 'profil';
   panelLoading = false;
   statsCompo: JoueurCompoStats[] = [];
   joueursComplets: Joueur[] = [];
@@ -326,7 +325,6 @@ export class DashboardComponent implements OnInit {
   ouvrirPanel(resume: ResumeJoueur): void {
     this.panelLoading = true;
     this.panelResume = resume;
-    this.panelOnglet = 'profil';
     this.panelStats = this.statsCompo.find(s => s.joueurId === resume.joueur_id) ?? null;
     this.panelAssiduite = null;
     this.joueurService.getAssiduite(resume.joueur_id).subscribe({
@@ -342,6 +340,14 @@ export class DashboardComponent implements OnInit {
   }
 
   fermerPanel(): void { this.panelJoueur = null; this.panelResume = null; this.panelAssiduite = null; }
+
+  /** Le détail vit dans la fiche joueur : le panneau n'est qu'un aperçu et passe la main. */
+  ouvrirFiche(): void {
+    const id = this.panelJoueur?.id ?? this.panelResume?.joueur_id;
+    if (!id) return;
+    this.fermerPanel();
+    this.router.navigate(['/joueurs', id]);
+  }
 
   libelleAssiduite(statut: string): string {
     return ({ PRESENT: 'Présent', ABSENT: 'Absent', EXCUSE: 'Excusé', RETARD: 'Retard' } as Record<string, string>)[statut] ?? statut;

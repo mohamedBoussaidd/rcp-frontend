@@ -191,12 +191,19 @@ export interface SectionUpdateRequest {
 
 // ── Module Match (cycle de vie avant/après, niveau équipe) ──
 
+/**
+ * Type de match. Porte le décompte des cartons : championnat et coupe se comptent séparément,
+ * un amical ne compte jamais. `competition` reste l'intitulé libre, pour l'affichage seul.
+ */
+export type TypeMatch = 'AMICAL' | 'CHAMPIONNAT' | 'COUPE';
+
 /** Carte de match (liste). */
 export interface MatchResume {
   id: string;
   adversaire: string;
   dateMatch?: string;
   competition?: string;
+  typeMatch?: TypeMatch;
   domicile: boolean;
   resultat?: string;
   score?: string;
@@ -247,6 +254,7 @@ export interface MatchDetail {
   dateMatch?: string;
   heureMatch?: string;
   competition?: string;
+  typeMatch?: TypeMatch;
   domicile: boolean;
   consignes?: string;
   lieuRdv?: string;
@@ -257,7 +265,10 @@ export interface MatchDetail {
   publieAt?: string;
   compoVisible: boolean;
   resultat?: string;
+  /** Reconstruit (« 2-0 ») à partir des deux nombres ci-dessous — jamais saisi tel quel. */
   score?: string;
+  butsPour?: number | null;
+  butsContre?: number | null;
   notesDebrief?: string;
   sessionGpsId?: string;
   profilAdverseId?: string;
@@ -272,6 +283,7 @@ export interface MatchCreateRequest {
   adversaire: string;
   dateMatch?: string | null;
   competition?: string | null;
+  typeMatch?: TypeMatch | null;
   domicile: boolean;
 }
 
@@ -280,6 +292,7 @@ export interface MatchInfosRequest {
   dateMatch?: string | null;
   heureMatch?: string | null;
   competition?: string | null;
+  typeMatch?: TypeMatch | null;
   domicile: boolean;
   consignes?: string | null;
   lieuRdv?: string | null;
@@ -288,9 +301,11 @@ export interface MatchInfosRequest {
   infosLogistiques?: string | null;
 }
 
+/** Le score n'est plus saisi : les deux nombres le reconstruisent, et fondent le clean sheet. */
 export interface MatchDebriefRequest {
   resultat?: string | null;
-  score?: string | null;
+  butsPour?: number | null;
+  butsContre?: number | null;
   notesDebrief?: string | null;
 }
 
@@ -313,6 +328,72 @@ export interface JoueurCompoStats {
   repos: number;
   suspendu: number;
   total: number;
+}
+
+/**
+ * Une ligne de feuille de match (V97). Les TROIS sources de temps de jeu arrivent séparées, plus
+ * la valeur retenue et sa provenance : l'écran doit pouvoir montrer que le capteur dit 92 et la
+ * fédération 78, jamais un chiffre unique dont on ne saurait plus d'où il vient.
+ */
+export interface FeuilleLigne {
+  joueurId: string;
+  nom?: string;
+  prenom?: string;
+  postePrincipal?: string;
+  statut: CompoStatut;
+  entreEnJeu: boolean;
+  minuteEntree?: number | null;
+  minuteSortie?: number | null;
+  tempsJeuSaisi?: number | null;
+  tempsJeuFederation?: number | null;
+  tempsJeuGps?: number | null;
+  tempsJeuRetenu?: number | null;
+  sourceTempsJeu?: 'SAISIE' | 'FEDERATION' | 'GPS' | null;
+  buts: number;
+  passesDecisives: number;
+  cartonsJaunes: number;
+  cartonRouge: boolean;
+  /** Déduit du score, jamais saisi. `null` = buts encaissés non renseignés, donc indéterminé. */
+  cleanSheet: boolean | null;
+}
+
+export interface FeuilleMatch {
+  matchId: string;
+  modifiable: boolean;
+  /** Une séance GPS est-elle liée au match ? (sinon la colonne GPS reste vide, ce n'est pas un bug) */
+  gpsLie: boolean;
+  /** Rappelés ici pour que l'écran puisse justifier une colonne clean sheet non saisissable. */
+  butsPour?: number | null;
+  butsContre?: number | null;
+  lignes: FeuilleLigne[];
+}
+
+/**
+ * État disciplinaire d'un joueur avant un match. L'application compte et alerte, la commission
+ * suspend : rien ici n'impose quoi que ce soit à la composition.
+ */
+export interface EtatSanction {
+  joueurId: string;
+  nom?: string;
+  prenom?: string;
+  avertissements: number;
+  seuil: number;
+  seuilAtteint: boolean;
+  sousLaMenace: boolean;
+  expulse: boolean;
+  dateExpulsion?: string | null;
+  dejaDeclareSuspendu: boolean;
+  libelle: string;
+}
+
+export interface SanctionsMatch {
+  matchId: string;
+  typeMatch: TypeMatch;
+  /** false sur un amical : l'écran doit dire pourquoi il n'affiche rien. */
+  comptabilise: boolean;
+  seuil: number;
+  depuis?: string | null;
+  joueurs: EtatSanction[];
 }
 
 /** Charge GPS d'un joueur issue de la session liée. */
@@ -499,6 +580,25 @@ export class TechniqueService {
   definirSuspendus(id: string, joueurIds: string[]): Observable<MatchDetail> {
     return this.http.put<MatchDetail>(`/api/matchs/${id}/suspendus`, { joueurIds });
   }
+  // ── Feuille de match (module add-on `stats_competition`) ──
+  getFeuille(id: string): Observable<FeuilleMatch> {
+    return this.http.get<FeuilleMatch>(`/api/matchs/${id}/feuille`);
+  }
+  /** Le clean sheet n'est pas envoyé : il se déduit du score côté serveur. */
+  enregistrerFeuille(id: string, lignes: {
+    joueurId: string; entreEnJeu: boolean;
+    minuteEntree?: number | null; minuteSortie?: number | null;
+    buts?: number | null; passesDecisives?: number | null; cartonsJaunes?: number | null;
+    cartonRouge: boolean;
+  }[]): Observable<FeuilleMatch> {
+    return this.http.put<FeuilleMatch>(`/api/matchs/${id}/feuille`, { lignes });
+  }
+
+  /** Cumul de cartons du groupe avant ce match. Consultatif : ne suspend personne. */
+  getSanctions(id: string): Observable<SanctionsMatch> {
+    return this.http.get<SanctionsMatch>(`/api/matchs/${id}/sanctions`);
+  }
+
   compoDernierMatch(id: string): Observable<CompoItem[]> {
     return this.http.get<CompoItem[]>(`/api/matchs/${id}/compo-dernier-match`);
   }

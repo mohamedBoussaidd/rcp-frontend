@@ -288,10 +288,14 @@
         </button>
       </div>
 
-      <div class="panel-drawer__tabs">
-        <button class="panel-tab" [class.panel-tab--active]="panelOnglet === 'profil'" (click)="panelOnglet = 'profil'">Profil</button>
-        <button class="panel-tab" [class.panel-tab--active]="panelOnglet === 'gps'" (click)="panelOnglet = 'gps'">GPS & Charge</button>
-        <button class="panel-tab" [class.panel-tab--active]="panelOnglet === 'performances'" (click)="panelOnglet = 'performances'">Performances</button>
+      <!--
+        Aperçu, et non fiche. Ce panneau portait ses propres onglets Profil / GPS & Charge /
+        Performances, qui réimplémentaient ceux de /joueurs/:id — deux rendus du même joueur, qui
+        avaient déjà divergé. Il ne montre plus que ce qui est déjà en mémoire (aucun appel
+        supplémentaire, ouverture instantanée) et renvoie vers la fiche pour tout le reste.
+      -->
+      <div class="panel-drawer__cta">
+        <button class="btn btn--primary" (click)="ouvrirFiche()">Ouvrir la fiche complète →</button>
       </div>
 
       <div class="panel-drawer__body">
@@ -302,78 +306,11 @@
 
         @if (!panelLoading && panelJoueur) {
 
-          <!-- Profil -->
-          @if (panelOnglet === 'profil') {
-            <div class="info-list">
-              <div class="info-row">
-                <mat-icon>verified_user</mat-icon>
-                <span class="info-row__label">Statut</span>
-                @let s = statutMap.get(panelJoueur.id) ?? 'actif';
-                <span class="info-row__val">
-                  <span [class]="'badge badge--statut-' + s">{{ statutLibelle(s) }}</span>
-                </span>
-              </div>
-              @if (panelJoueur.dateNaissance) {
-                <div class="info-row">
-                  <mat-icon>cake</mat-icon>
-                  <span class="info-row__label">Date de naissance</span>
-                  <span class="info-row__val">{{ panelJoueur.dateNaissance | date:'dd/MM/yyyy' }}</span>
-                </div>
-              }
-              @if (panelJoueur.taille) {
-                <div class="info-row">
-                  <mat-icon>straighten</mat-icon>
-                  <span class="info-row__label">Taille</span>
-                  <span class="info-row__val">{{ panelJoueur.taille }} cm</span>
-                </div>
-              }
-              @if (panelJoueur.poidsActuel) {
-                <div class="info-row">
-                  <mat-icon>monitor_weight</mat-icon>
-                  <span class="info-row__label">Poids actuel</span>
-                  <span class="info-row__val">{{ panelJoueur.poidsActuel }} kg</span>
-                </div>
-              }
-              @if (panelJoueur.poidsFormeCible) {
-                <div class="info-row">
-                  <mat-icon>fitness_center</mat-icon>
-                  <span class="info-row__label">Poids de forme</span>
-                  <span class="info-row__val">{{ panelJoueur.poidsFormeCible }} kg</span>
-                </div>
-              }
-              @if (panelJoueur.piedFort) {
-                <div class="info-row">
-                  <mat-icon>sports_soccer</mat-icon>
-                  <span class="info-row__label">Pied fort</span>
-                  <span class="info-row__val">{{ panelJoueur.piedFort }}</span>
-                </div>
-              }
-              @if (panelJoueur.postePrincipal) {
-                <div class="info-row">
-                  <mat-icon>place</mat-icon>
-                  <span class="info-row__label">Poste principal</span>
-                  <span class="info-row__val">{{ panelJoueur.postePrincipal }}</span>
-                </div>
-              }
-              @if (panelJoueur.posteSecondaire) {
-                <div class="info-row">
-                  <mat-icon>place</mat-icon>
-                  <span class="info-row__label">Poste secondaire</span>
-                  <span class="info-row__val">{{ panelJoueur.posteSecondaire }}</span>
-                </div>
-              }
-              @if (panelJoueur.dateArriveeClub) {
-                <div class="info-row">
-                  <mat-icon>event</mat-icon>
-                  <span class="info-row__label">Arrivée au club</span>
-                  <span class="info-row__val">{{ panelJoueur.dateArriveeClub | date:'dd/MM/yyyy' }}</span>
-                </div>
-              }
-            </div>
-          }
+          <!-- Identité, poste, physique : tout cela vit dans le hero de la fiche joueur, qui les
+               affiche sur chacun de ses onglets. Les répéter ici n'apportait rien. -->
 
-          <!-- GPS & Charge -->
-          @if (panelOnglet === 'gps' && panelResume) {
+          <!-- État du jour -->
+          @if (panelResume) {
 
             <div class="metric-card">
               <div class="metric-card__head">
@@ -466,9 +403,8 @@
             }
           }
 
-          <!-- Performances -->
-          @if (panelOnglet === 'performances') {
-            @if (panelStats) {
+          <!-- Participation & assiduité -->
+          @if (panelStats) {
               <div class="stat-grid">
                 <div class="stat-cell">
                   <mat-icon>event_available</mat-icon>
@@ -528,9 +464,8 @@
                   Voir l'historique de présence →
                 </a>
               </div>
-            } @else {
-              <div class="empty-state" style="padding:16px">Aucune séance d'entraînement comptabilisée.</div>
-            }
+          } @else {
+            <div class="empty-state" style="padding:16px">Aucune séance d'entraînement comptabilisée.</div>
           }
         }
       </div>

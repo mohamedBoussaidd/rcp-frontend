@@ -1,7 +1,7 @@
 import { Component, OnInit, HostListener, inject, ViewChild, ApplicationRef } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { MatDialog } from '@angular/material/dialog';
-import { JoueurService, Joueur, GpsPoint, AssiduiteJoueur } from '@core/services/joueur.service';
+import { JoueurService, Joueur, GpsPoint, AssiduiteJoueur, StatsCompetition } from '@core/services/joueur.service';
 import { AuthService } from '@core/services/auth.service';
 import { couleurTheme } from '@core/services/theme.service';
 import { SuiviIndividuelComponent } from '../suivi-individuel/suivi-individuel.component';
@@ -13,7 +13,9 @@ import { SuiviSubjectifService, Wellness, Rpe } from '@core/services/suivi-subje
 import { Blessure, BlessureService } from '@core/services/blessure.service';
 import { RtpEtape, BlessureSuiviService } from '@core/services/blessure-suivi.service';
 import { JoueurFormDialogComponent } from '../joueur-form-dialog/joueur-form-dialog.component';
+import { SuiviCoachService, EvenementVie, ObjectifJoueur, NoteJoueur } from '@core/services/suivi-coach.service';
 import { MatIcon } from '@angular/material/icon';
+import { FormsModule } from '@angular/forms';
 import { MatTabGroup, MatTab, MatTabContent } from '@angular/material/tabs';
 import { ChartComponent, ApexChart, ApexAxisChartSeries, ApexXAxis, ApexPlotOptions, ApexDataLabels, ApexTooltip, ApexYAxis, ApexFill, ApexStroke, ApexMarkers, ApexAnnotations, ApexLegend } from 'ng-apexcharts';
 import { DecimalPipe, DatePipe } from '@angular/common';
@@ -39,7 +41,7 @@ interface GeneRecente {
   templateUrl: './joueur-detail.component.html',
   styleUrl: './joueur-detail.component.scss',
   imports: [
-    MatIcon,
+    MatIcon, FormsModule,
     MatTabGroup, MatTab, MatTabContent,
     ChartComponent, DecimalPipe, DatePipe,
     ChargeVueComponent, RouterLink, SuiviIndividuelComponent,
@@ -61,6 +63,19 @@ export class JoueurDetailComponent implements OnInit {
 
   // ── Assiduité (présence aux entraînements, saison active) ──
   assiduite: AssiduiteJoueur | null = null;
+
+  // ── Compétition (module add-on `stats_competition`) ──
+  competition: StatsCompetition | null = null;
+  competitionLoading = false;
+
+  // ── Suivi coach : fil de vie, objectifs, notes (module `suivi_individuel`) ──
+  filDeVie: EvenementVie[] = [];
+  objectifs: ObjectifJoueur[] = [];
+  notesStaff: NoteJoueur[] = [];
+  /** Formulaire d'ajout d'objectif, replié tant qu'on ne clique pas sur « Ajouter ». */
+  nouvelObjectif = { ouvert: false, titre: '', description: '', echeance: '' };
+  nouvelleNote = '';
+  savingSuivi = false;
 
   // ── Parcours médical (blessure active + protocole de reprise) ──
   blessureActive: Blessure | null = null;
@@ -135,11 +150,44 @@ export class JoueurDetailComponent implements OnInit {
   /** Passe à true juste avant de quitter la fiche : démonte l'onglet lazy « Suivi individuel »
    *  (et son graphe) de façon anticipée pour éviter un crash ApexCharts au démontage de la route. */
   leaving = false;
-  private readonly baseTabLabels = ['Profil', 'GPS & Charge', 'Suivi subjectif'];
   /** L'onglet « Suivi individuel » (dernier) n'apparaît qu'avec la permission entretien:read. */
   get peutSuivi(): boolean { return this.auth.has('entretien:read'); }
+  /** L'onglet « Compétition » suit le module add-on `stats_competition`. */
+  get peutCompetition(): boolean { return this.auth.has('stats:read'); }
+  /** Fil de vie, objectifs et notes : rattachés au module `suivi_individuel`. */
+  get peutSuiviCoach(): boolean { return this.auth.has('suivi_coach:read'); }
+  get peutSuiviCoachEcrire(): boolean { return this.auth.has('suivi_coach:write'); }
+
+  /**
+   * Composition des onglets. Les index ne sont plus écrits en dur nulle part : « Compétition »
+   * s'insère au milieu selon une permission, ce qui décalerait silencieusement tous les deep-links.
+   * Toute cible d'onglet passe donc par {@link indexOnglet}.
+   */
   get tabLabels(): string[] {
-    return this.peutSuivi ? [...this.baseTabLabels, 'Suivi individuel'] : this.baseTabLabels;
+    const labels = ['Profil'];
+    if (this.peutCompetition) labels.push('Compétition');
+    labels.push('GPS & Charge', 'Suivi subjectif');
+    if (this.peutSuiviCoach) labels.push('Fil de vie');
+    if (this.peutSuivi) labels.push('Suivi individuel');
+    return labels;
+  }
+
+  /** Index d'un onglet par son libellé, ou 0 (Profil) s'il n'est pas visible pour cet utilisateur. */
+  private indexOnglet(label: string): number {
+    const i = this.tabLabels.indexOf(label);
+    return i >= 0 ? i : 0;
+  }
+
+  /**
+   * Onglet d'ouverture selon le métier de celui qui consulte : un entraîneur vient chercher du temps
+   * de jeu, un préparateur de la charge, un médecin du ressenti. Un deep-link `?tab=` reste prioritaire.
+   */
+  private ongletParDefaut(): number {
+    // `matchs:write` distingue celui qui compose l'équipe (entraîneur) de celui qui suit la charge
+    // (préparateur) — les deux peuvent avoir `stats:read` sans chercher la même chose en ouvrant.
+    if (this.peutCompetition && this.auth.has('matchs:write')) return this.indexOnglet('Compétition');
+    if (this.auth.has('predictions:read')) return this.indexOnglet('GPS & Charge');
+    return 0;
   }
 
   /** Bascule d'onglet via le toggle segmenté (le mat-tab-group suit selectedIndex). */
@@ -441,6 +489,7 @@ export class JoueurDetailComponent implements OnInit {
   private predictionService = inject(PredictionService);
   private peseesService = inject(PeseesService);
   private suiviService = inject(SuiviSubjectifService);
+  private suiviCoachService = inject(SuiviCoachService);
   private blessureService = inject(BlessureService);
   private blessureSuiviService = inject(BlessureSuiviService);
   private dialog = inject(MatDialog);
@@ -472,9 +521,14 @@ export class JoueurDetailComponent implements OnInit {
   onTabChange(index: number): void {
     this.activeTab = index;
     // L'onglet GPS & Charge gère son propre rendu via <app-charge-vue> (ngOnChanges).
-    if (index === 2 && this.wellnessHisto.length > 0) {
+    if (this.surOngletSubjectif && this.wellnessHisto.length > 0) {
       this.buildSuiviChart();
     }
+  }
+
+  /** Le graphe Hooper/sRPE ne se construit que si son onglet est à l'écran — et son index bouge. */
+  private get surOngletSubjectif(): boolean {
+    return this.tabLabels[this.activeTab] === 'Suivi subjectif';
   }
 
   get joueurPrecedent(): Joueur | null {
@@ -519,12 +573,129 @@ export class JoueurDetailComponent implements OnInit {
     this.route.queryParamMap.subscribe(q => {
       const tab = q.get('tab');
       if (tab === 'suivi' && this.peutSuivi) {
-        this.activeTab = this.tabLabels.length - 1;
+        this.activeTab = this.indexOnglet('Suivi individuel');
       } else if (tab === 'subjectif') {
-        this.activeTab = 2;
+        this.activeTab = this.indexOnglet('Suivi subjectif');
         if (this.wellnessHisto.length) this.buildSuiviChart();
+      } else if (tab === 'competition' && this.peutCompetition) {
+        this.activeTab = this.indexOnglet('Compétition');
+      } else if (!tab) {
+        this.activeTab = this.ongletParDefaut();
       }
     });
+  }
+
+  /**
+   * Statistiques de compétition. L'onglet peut être celui d'ouverture pour un entraîneur : on
+   * charge dès la fiche, sans attendre le clic. Une erreur laisse `competition` à null — le module
+   * peut être désactivé pour ce club, ce n'est pas une panne à signaler.
+   */
+  private chargerCompetition(id: string): void {
+    this.competition = null;
+    if (!this.peutCompetition) return;
+    this.competitionLoading = true;
+    this.joueurService.getCompetition(id).subscribe({
+      next: s => { this.competition = s; this.competitionLoading = false; },
+      error: () => { this.competition = null; this.competitionLoading = false; },
+    });
+  }
+
+  // ── Suivi coach : fil de vie, objectifs, notes ──────────────────────────
+
+  /**
+   * Le fil de vie et ses deux compléments. Comme pour la compétition, une erreur laisse les
+   * listes vides sans message : le module peut simplement être désactivé pour ce club.
+   */
+  private chargerSuiviCoach(id: string): void {
+    this.filDeVie = [];
+    this.objectifs = [];
+    this.notesStaff = [];
+    if (!this.peutSuiviCoach) return;
+    this.suiviCoachService.filDeVie(id).subscribe({
+      next: f => this.filDeVie = f.evenements,
+      error: () => this.filDeVie = [],
+    });
+    this.suiviCoachService.objectifs(id).subscribe({
+      next: o => this.objectifs = o,
+      error: () => this.objectifs = [],
+    });
+    this.suiviCoachService.notes(id).subscribe({
+      next: n => this.notesStaff = n,
+      error: () => this.notesStaff = [],
+    });
+  }
+
+  ajouterObjectif(): void {
+    const j = this.joueur;
+    if (!j || !this.nouvelObjectif.titre.trim() || this.savingSuivi) return;
+    this.savingSuivi = true;
+    this.suiviCoachService.creerObjectif(j.id, {
+      titre: this.nouvelObjectif.titre.trim(),
+      description: this.nouvelObjectif.description || null,
+      echeance: this.nouvelObjectif.echeance || null,
+    }).subscribe({
+      next: () => {
+        this.nouvelObjectif = { ouvert: false, titre: '', description: '', echeance: '' };
+        this.savingSuivi = false;
+        this.chargerSuiviCoach(j.id);
+      },
+      error: () => this.savingSuivi = false,
+    });
+  }
+
+  /** Un objectif se clôt en changeant son statut : on ne supprime pas ce qui a été fixé. */
+  changerStatutObjectif(o: ObjectifJoueur, statut: 'EN_COURS' | 'ATTEINT' | 'ABANDONNE'): void {
+    const j = this.joueur;
+    if (!j) return;
+    this.suiviCoachService.modifierObjectif(o.id, {
+      titre: o.titre, description: o.description, echeance: o.echeance, statut,
+    }).subscribe({ next: () => this.chargerSuiviCoach(j.id) });
+  }
+
+  supprimerObjectif(o: ObjectifJoueur): void {
+    const j = this.joueur;
+    if (!j || !confirm(`Supprimer l'objectif « ${o.titre} » ?`)) return;
+    this.suiviCoachService.supprimerObjectif(o.id).subscribe({ next: () => this.chargerSuiviCoach(j.id) });
+  }
+
+  ajouterNote(): void {
+    const j = this.joueur;
+    if (!j || !this.nouvelleNote.trim() || this.savingSuivi) return;
+    this.savingSuivi = true;
+    this.suiviCoachService.creerNote(j.id, { texte: this.nouvelleNote.trim() }).subscribe({
+      next: () => { this.nouvelleNote = ''; this.savingSuivi = false; this.chargerSuiviCoach(j.id); },
+      error: () => this.savingSuivi = false,
+    });
+  }
+
+  supprimerNote(n: NoteJoueur): void {
+    const j = this.joueur;
+    if (!j || !confirm('Supprimer cette note ?')) return;
+    this.suiviCoachService.supprimerNote(n.id).subscribe({ next: () => this.chargerSuiviCoach(j.id) });
+  }
+
+  /** Pictogramme du fil de vie, par type d'évènement. */
+  iconeEvenement(type: string): string {
+    return ({
+      BLESSURE: 'healing', RETOUR: 'check_circle', MATCH: 'sports_soccer',
+      ENTRETIEN: 'record_voice_over', OBJECTIF: 'flag', NOTE: 'sticky_note_2',
+    } as Record<string, string>)[type] ?? 'circle';
+  }
+
+  libelleStatutObjectif(statut: string): string {
+    return ({ EN_COURS: 'En cours', ATTEINT: 'Atteint', ABANDONNE: 'Abandonné' } as Record<string, string>)[statut] ?? statut;
+  }
+
+  libelleStatutCompo(statut: string): string {
+    return ({
+      TITULAIRE: 'Titulaire', REMPLACANT: 'Remplaçant', RESERVE: 'Réserve',
+      REPOS: 'Repos', SUSPENDU: 'Suspendu',
+    } as Record<string, string>)[statut] ?? statut;
+  }
+
+  /** D'où vient la minute affichée — le coach doit pouvoir distinguer un relevé d'une estimation. */
+  libelleSource(source: string): string {
+    return ({ SAISIE: 'Staff', FEDERATION: 'Fédération', GPS: 'GPS' } as Record<string, string>)[source] ?? source;
   }
 
   libelleAssiduite(statut: string): string {
@@ -551,6 +722,8 @@ export class JoueurDetailComponent implements OnInit {
       next: a => this.assiduite = a,
       error: () => this.assiduite = null,
     });
+    this.chargerCompetition(id);
+    this.chargerSuiviCoach(id);
 
     this.joueurService.getById(id).subscribe(j => {
       this.joueur = j;
@@ -576,11 +749,11 @@ export class JoueurDetailComponent implements OnInit {
     });
 
     this.suiviService.getWellness(id).subscribe({
-      next: d => { this.wellnessHisto = d; if (this.activeTab === 2) this.buildSuiviChart(); },
+      next: d => { this.wellnessHisto = d; if (this.surOngletSubjectif) this.buildSuiviChart(); },
       error: () => { },
     });
     this.suiviService.getRpe(id).subscribe({
-      next: d => { this.rpeHisto = d; if (this.activeTab === 2) this.buildSuiviChart(); },
+      next: d => { this.rpeHisto = d; if (this.surOngletSubjectif) this.buildSuiviChart(); },
       error: () => { },
     });
   }
@@ -760,7 +933,7 @@ export class JoueurDetailComponent implements OnInit {
 
   setFenetreWellness(n: 7 | 14): void {
     this.fenetreWellness = n;
-    if (this.activeTab === 2) this.buildSuiviChart();
+    if (this.surOngletSubjectif) this.buildSuiviChart();
   }
   joliZone(v?: string): string { return v ? v.replace(/_/g, ' ') : '—'; }
 

@@ -175,6 +175,17 @@
                     <button class="btn btn--danger btn--sm ms-editor__remove" (click)="removePlayer(sel.joueurId)">Retirer</button>
                   }
                 </div>
+                <!-- Une blessure est un fait, une suspension déduite une présomption : contrairement
+                     au repos imposé au blessé, rien ne se coche ici sans un geste du staff. -->
+                @if (alerteSanction(sel.joueurId); as e) {
+                  <div class="ms-editor__sanction ms-editor__sanction--{{ tonSanction(e) }}">
+                    <mat-icon class="i16">{{ iconeSanction(e) }}</mat-icon>
+                    <span class="ms-editor__sanction__txt">{{ e.libelle }}</span>
+                    @if (modifiable()) {
+                      <button class="btn btn--sm btn--ghost" (click)="declarerSuspendu(sel.joueurId)">Déclarer suspendu</button>
+                    }
+                  </div>
+                }
                 @if (modifiable()) {
                   <div class="ms-editor__row">
                     <label class="field ms-editor__statut">
@@ -205,6 +216,38 @@
 
           <!-- RIGHT : roster en chips groupées -->
           <section class="ms-roster">
+
+            <!-- ══ Cumul de cartons ══
+                 L'application compte, la commission suspend : ce bandeau alerte, il n'impose rien.
+                 Il ne compte que les joueurs restant à traiter — une suspension déjà déclarée
+                 disparaît d'elle-même, sinon l'alerte survivrait à sa propre prise en compte. -->
+            @if (alertesSanction().length > 0) {
+              <div class="card ms-sanctions">
+                <div class="ms-sanctions__head">
+                  <mat-icon class="i16">gavel</mat-icon>
+                  <span>{{ alertesSanction().length === 1
+                    ? '1 joueur sous le coup d’une suspension'
+                    : alertesSanction().length + ' joueurs sous le coup d’une suspension' }}</span>
+                </div>
+                @for (e of alertesSanction(); track e.joueurId) {
+                  <div class="ms-sanction ms-sanction--{{ tonSanction(e) }}">
+                    <mat-icon class="i14">{{ iconeSanction(e) }}</mat-icon>
+                    <div class="ms-sanction__txt">
+                      <b>{{ e.prenom }} {{ e.nom }}</b>
+                      <span>{{ e.libelle }}</span>
+                    </div>
+                    @if (modifiable()) {
+                      <button class="btn btn--sm btn--ghost" (click)="declarerSuspendu(e.joueurId)">Déclarer suspendu</button>
+                    }
+                  </div>
+                }
+                <p class="ms-sanctions__note">
+                  Décompte indicatif, fondé sur les feuilles de match du {{ sanctions()?.typeMatch === 'COUPE' ? 'parcours en coupe' : 'championnat' }}
+                  depuis le {{ sanctions()?.depuis | date:'dd/MM/yyyy' }}. La décision appartient à la commission.
+                </p>
+              </div>
+            }
+
             @for (g of chipGroupes(); track g.code) {
               <div class="card ms-group">
                 <div class="ms-group__head" [style.--gc]="g.color">
@@ -225,6 +268,9 @@
                         </span>
                         @if (p.consigne) { <span class="ms-chip__i" title="Consigne">✎</span> }
                         @if (estBlesse(p.joueurId)) { <span class="ms-chip__i ms-chip__i--warn" title="Blessé">⚕</span> }
+                        @if (alerteSanction(p.joueurId); as e) {
+                          <span class="ms-chip__i ms-chip__i--{{ tonSanction(e) }}" [title]="e.libelle">{{ e.expulse ? '⛔' : '⚠' }}</span>
+                        }
                       </button>
                     }
                   </div>
@@ -263,6 +309,9 @@
           <div class="card ms-block">
             <div class="ms-card__head">
               <span class="ms-card__title">Infos &amp; logistique</span>
+              @if (infosNonEnregistrees()) {
+                <span class="badge badge--warn ms-card__dirty" title="Ces champs ne sont pas encore enregistrés">● Non enregistré</span>
+              }
               @if (modifiable()) {
                 <button class="btn btn--primary btn--sm ms-card__action" [disabled]="savingInfos() || !infosBuf.adversaire.trim()" (click)="enregistrerInfos()">{{ savingInfos() ? '…' : 'Enregistrer' }}</button>
               }
@@ -281,8 +330,16 @@
                 <input class="input" type="time" [(ngModel)]="infosBuf.heureMatch" name="ihmatch" [disabled]="!modifiable()">
               </div>
               <div class="field">
+                <label class="field__label">Type de match</label>
+                <select class="input select" [(ngModel)]="infosBuf.typeMatch" name="itype" [disabled]="!modifiable()"
+                        title="Le cumul de cartons se compte par type : championnat et coupe séparément, un amical ne compte jamais.">
+                  @for (t of typesMatch; track t.code) { <option [value]="t.code">{{ t.label }}</option> }
+                </select>
+              </div>
+              <div class="field">
                 <label class="field__label">Compétition</label>
-                <input class="input" [(ngModel)]="infosBuf.competition" name="icomp" [disabled]="!modifiable()">
+                <input class="input" [(ngModel)]="infosBuf.competition" name="icomp" [disabled]="!modifiable()"
+                       placeholder="Ex. D2 groupe B, Coupe du district" title="Intitulé libre, pour l'affichage.">
               </div>
               <div class="field">
                 <label class="field__label">Lieu</label>
@@ -424,6 +481,9 @@
             <!-- Résultat -->
             <div class="card ms-block">
               <div class="ms-card__head"><span class="ms-card__title">Résultat &amp; débrief</span>
+                @if (debriefNonEnregistre()) {
+                  <span class="badge badge--warn ms-card__dirty" title="Ces champs ne sont pas encore enregistrés">● Non enregistré</span>
+                }
                 @if (modifiable()) {
                   <button class="btn btn--primary btn--sm ms-card__action" [disabled]="savingDebrief()" (click)="enregistrerDebrief()">{{ savingDebrief() ? '…' : 'Enregistrer' }}</button>
                 }
@@ -436,9 +496,19 @@
                     @for (r of resultats; track r) { <option [value]="r">{{ resultatLabel(r) }}</option> }
                   </select>
                 </div>
+                <!-- Deux nombres et non un texte « 2-1 » : sans savoir lequel est le nôtre, le
+                     clean sheet de la feuille de match ne peut pas se déduire. -->
                 <div class="field">
-                  <label class="field__label">Score</label>
-                  <input class="input" [(ngModel)]="debriefBuf.score" name="dscore" placeholder="2-1" [disabled]="!modifiable()">
+                  <label class="field__label">Buts marqués</label>
+                  <input class="input" type="number" min="0" max="99" [(ngModel)]="debriefBuf.butsPour"
+                         name="dbpour" placeholder="—" [disabled]="!modifiable()">
+                </div>
+                <div class="field">
+                  <label class="field__label">Buts encaissés</label>
+                  <input class="input" type="number" min="0" max="99" [(ngModel)]="debriefBuf.butsContre"
+                         name="dbcontre" placeholder="—" [disabled]="!modifiable()"
+                         title="À 0, tous les joueurs entrés en jeu obtiennent le clean sheet sur la feuille de match.">
+                  <span class="field__hint">À 0 → clean sheet pour tous les joueurs entrés en jeu.</span>
                 </div>
                 <div class="field span2">
                   <label class="field__label">Notes de débrief</label>
@@ -498,6 +568,114 @@
               }
             </div>
           </div>
+
+          <!-- ══ Feuille de match (module add-on `stats_competition`) ══
+               Une ligne par joueur du groupe : c'est ici que se saisit tout l'après-match, et nulle
+               part ailleurs. La fiche joueur ne fait que lire l'agrégat de ces lignes. -->
+          @if (peutStats) {
+            <div class="card ms-block ms-apres__feuille">
+              <div class="ms-card__head">
+                <span class="ms-card__title">Feuille de match</span>
+                @if (feuilleNonEnregistree()) {
+                  <span class="badge badge--warn ms-card__dirty" title="Ces saisies ne sont pas encore enregistrées">● Non enregistré</span>
+                }
+                @if (peutStatsEcrire && feuille().length > 0) {
+                  <button class="btn btn--primary btn--sm ms-card__action" [disabled]="savingFeuille()" (click)="enregistrerFeuille()">
+                    {{ savingFeuille() ? '…' : 'Enregistrer' }}
+                  </button>
+                }
+              </div>
+              <div class="ms-block__body">
+                @if (feuille().length === 0) {
+                  <p class="vide">Composez d'abord le groupe : la feuille de match reprend les joueurs convoqués.</p>
+                } @else {
+                  <div class="table-wrap">
+                    <table class="feuille-table">
+                      <thead>
+                        <tr>
+                          <th>Joueur</th><th>Statut</th>
+                          <th class="ctr" title="Le joueur a-t-il foulé la pelouse ? Un titulaire l'est d'office ; un remplaçant seulement s'il est entré.">Entré</th>
+                          <th class="num" title="Minute d'entrée sur le terrain. Vide = non renseigné.">Min. entrée</th>
+                          <th class="num" title="Minute de sortie. Vide = a terminé la rencontre.">Min. sortie</th>
+                          <th class="num" title="Temps de jeu retenu, avec sa source : saisie du staff, puis fédération, puis GPS.">Temps</th>
+                          <th class="num" title="Buts marqués">Buts</th>
+                          <th class="num" title="Passes décisives">P. déc.</th>
+                          <th class="num" title="Cartons jaunes. Deux dans le même match valent expulsion : le rouge se coche alors tout seul.">CJ</th>
+                          <th class="ctr" title="Carton rouge — expulsion directe, ou conséquence de deux avertissements.">CR</th>
+                          <th class="ctr" title="Clean sheet : match disputé sans que l'équipe encaisse. Déduit des buts encaissés du débrief, pas saisi ici.">CS</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        @for (l of feuille(); track l.joueurId) {
+                          <tr [class.is-off]="!l.entreEnJeu">
+                            <td class="nom">{{ l.prenom }} {{ l.nom }}</td>
+                            <td><span class="badge badge--neutral">{{ statutLabel(l.statut) }}</span></td>
+                            <td class="ctr">
+                              <input type="checkbox" [(ngModel)]="l.entreEnJeu" [name]="'fe' + l.joueurId" [disabled]="!peutStatsEcrire">
+                            </td>
+                            <td class="num"><input class="input input--mini" type="number" min="0" max="130" [(ngModel)]="l.minuteEntree" [name]="'fme' + l.joueurId" [disabled]="!peutStatsEcrire || !l.entreEnJeu"></td>
+                            <td class="num"><input class="input input--mini" type="number" min="0" max="130" [(ngModel)]="l.minuteSortie" [name]="'fms' + l.joueurId" [disabled]="!peutStatsEcrire || !l.entreEnJeu"></td>
+                            <td class="num">
+                              @if (l.tempsJeuRetenu != null) {
+                                {{ l.tempsJeuRetenu }}′
+                                @if (l.sourceTempsJeu) { <span class="cp-src cp-src--{{ l.sourceTempsJeu.toLowerCase() }}">{{ sourceLabel(l.sourceTempsJeu) }}</span> }
+                              } @else { — }
+                            </td>
+                            <td class="num"><input class="input input--mini" type="number" min="0" [max]="butsMaxLigne(l)"
+                                                   [(ngModel)]="l.buts" (ngModelChange)="majButs(l)"
+                                                   [name]="'fb' + l.joueurId" [disabled]="!peutStatsEcrire"
+                                                   [title]="butsMax() !== null ? 'Plafonné par le score du match.' : 'Renseignez les buts marqués dans le débrief pour plafonner la saisie.'"></td>
+                            <td class="num"><input class="input input--mini" type="number" min="0" [(ngModel)]="l.passesDecisives" [name]="'fp' + l.joueurId" [disabled]="!peutStatsEcrire"></td>
+                            <td class="num"><input class="input input--mini" type="number" min="0" max="2" [(ngModel)]="l.cartonsJaunes"
+                                                   (ngModelChange)="majCartonsJaunes(l)" [name]="'fcj' + l.joueurId" [disabled]="!peutStatsEcrire"></td>
+                            <!-- Verrouillé à deux avertissements : l'expulsion n'est pas un choix. -->
+                            <td class="ctr">
+                              <input type="checkbox" [ngModel]="rougeEffectif(l)" (ngModelChange)="l.cartonRouge = $event"
+                                     [name]="'fcr' + l.joueurId" [disabled]="!peutStatsEcrire || rougeImpose(l)"
+                                     [title]="rougeImpose(l) ? 'Deux avertissements : expulsion automatique.' : 'Expulsion directe'">
+                            </td>
+                            <!-- Déduit, donc en lecture : une case cochable ici contredirait le score. -->
+                            <td class="ctr">
+                              @if (l.cleanSheet === null) {
+                                <span class="cs-vide" title="Renseignez les buts encaissés dans le débrief pour que le clean sheet se calcule.">—</span>
+                              } @else if (l.cleanSheet) {
+                                <span class="cs-ok" title="L'équipe n'a rien encaissé et le joueur était sur le terrain.">✓</span>
+                              } @else {
+                                <span class="cs-non">·</span>
+                              }
+                            </td>
+                          </tr>
+                        }
+                      </tbody>
+                    </table>
+                  </div>
+                  @if (butsMax() !== null) {
+                    <p class="feuille-buteurs" [class.is-plein]="butsAttribues() === butsMax()">
+                      <b>{{ butsAttribues() }}/{{ butsMax() }}</b> but(s) attribué(s).
+                      @if (butsAttribues() < (butsMax() ?? 0)) {
+                        <span>Il en reste {{ (butsMax() ?? 0) - butsAttribues() }} à affecter — ou à laisser
+                        si c'est un contre son camp adverse.</span>
+                      }
+                    </p>
+                  }
+                  <p class="feuille-aide">
+                    <b>CJ</b> cartons jaunes · <b>CR</b> carton rouge · <b>CS</b> clean sheet (match sans
+                    encaisser). Le clean sheet se déduit des buts encaissés saisis dans le débrief : il ne se
+                    coche pas ici.
+                    @if (cleanSheetIndetermine()) {
+                      <em>Buts encaissés non renseignés → colonne CS indéterminée.</em>
+                    }
+                    <br>
+                    Laissez les minutes vides si vous ne les avez pas : le temps de jeu bascule alors sur la
+                    fédération, puis sur le GPS de la session liée.
+                    @if (!detail()!.sessionGpsId) { <em>Aucune session GPS n'est liée à ce match.</em> }
+                    Le GPS n'est retenu que pour les joueurs cochés « entré » — un remplaçant qui s'échauffe
+                    avec son capteur accumulerait sinon des minutes qu'il n'a pas jouées.
+                  </p>
+                }
+              </div>
+            </div>
+          }
         </div>
       }
 
@@ -564,9 +742,15 @@
             <input class="input" type="date" [(ngModel)]="createForm.dateMatch" name="date">
           </div>
           <div class="field" style="flex:1">
-            <label class="field__label">Compétition</label>
-            <input class="input" [(ngModel)]="createForm.competition" name="comp" placeholder="Championnat">
+            <label class="field__label">Type de match</label>
+            <select class="input select" [(ngModel)]="createForm.typeMatch" name="ctype">
+              @for (t of typesMatch; track t.code) { <option [value]="t.code">{{ t.label }}</option> }
+            </select>
           </div>
+        </div>
+        <div class="field">
+          <label class="field__label">Compétition <span class="field__hint">(facultatif)</span></label>
+          <input class="input" [(ngModel)]="createForm.competition" name="comp" placeholder="Ex. D2 groupe B">
         </div>
         <div class="segmented" style="align-self:flex-start;margin:0">
           <button type="button" class="segmented__btn" [class.on]="createForm.domicile" (click)="createForm.domicile = true">Domicile</button>

@@ -7,8 +7,9 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { CdkDrag, CdkDragEnd } from '@angular/cdk/drag-drop';
 import { forkJoin } from 'rxjs';
 import {
-  ChargeJoueur, CompoItem, CompoStatut, JoueurCompoStats, MatchDetail, MatchResume,
-  SchemaMatch, SessionGpsOption, Surveille, SurveilleCible, TechniqueService,
+  ChargeJoueur, CompoItem, CompoStatut, EtatSanction, FeuilleLigne, JoueurCompoStats, MatchDetail,
+  MatchResume, SanctionsMatch, SchemaMatch, SessionGpsOption, Surveille, SurveilleCible,
+  TechniqueService, TypeMatch,
 } from '@core/services/technique.service';
 import { Joueur, JoueurService } from '@core/services/joueur.service';
 import { AuthService } from '@core/services/auth.service';
@@ -50,7 +51,7 @@ export class MatchComponent implements OnInit {
   pasDEquipe = signal(false);
 
   showCreate = signal(false);
-  createForm = { adversaire: '', dateMatch: '', competition: '', domicile: true };
+  createForm = { adversaire: '', dateMatch: '', competition: '', typeMatch: 'CHAMPIONNAT' as TypeMatch, domicile: true };
   saving = signal(false);
 
   // Stats compo (apparitions par statut, sur tous les matchs de l'équipe)
@@ -63,12 +64,41 @@ export class MatchComponent implements OnInit {
   modifiable = computed(() => this.detail()?.modifiable ?? false);
 
   infosBuf = {
-    adversaire: '', dateMatch: '', heureMatch: '', competition: '', domicile: true, consignes: '',
+    adversaire: '', dateMatch: '', heureMatch: '', competition: '', typeMatch: 'CHAMPIONNAT' as TypeMatch,
+    domicile: true, consignes: '',
     lieuRdv: '', heureRdv: '', couleurMaillot: '', infosLogistiques: '',
   };
-  debriefBuf = { resultat: '', score: '', notesDebrief: '' };
+  /** Buts pour / contre plutôt qu'un score texte : eux seuls disent lequel est le nôtre. */
+  debriefBuf: { resultat: string; butsPour: number | null; butsContre: number | null; notesDebrief: string } =
+    { resultat: '', butsPour: null, butsContre: null, notesDebrief: '' };
+
+  /** Types de match proposés à la saisie ; le décompte des cartons s'appuie dessus. */
+  readonly typesMatch: { code: TypeMatch; label: string }[] = [
+    { code: 'CHAMPIONNAT', label: 'Championnat' },
+    { code: 'COUPE', label: 'Coupe' },
+    { code: 'AMICAL', label: 'Amical' },
+  ];
   savingInfos = signal(false);
   savingDebrief = signal(false);
+
+  // ── Feuille de match (module add-on `stats_competition`) ──
+  /** Toute la saisie d'après-match vit ici ; la fiche joueur ne fait qu'en lire l'agrégat. */
+  readonly peutStats = this.auth.has('stats:read');
+  readonly peutStatsEcrire = this.auth.has('stats:write');
+  feuille = signal<FeuilleLigne[]>([]);
+  /** Copie de référence, pour détecter une saisie non enregistrée sans re-interroger le serveur. */
+  private feuilleRef = '';
+  savingFeuille = signal(false);
+
+  // ── Cumul de cartons (même module) ──
+  /** L'application compte et alerte ; la commission suspend. Rien n'est imposé à la compo. */
+  sanctions = signal<SanctionsMatch | null>(null);
+  /** Index par joueur, pour poser un badge sans balayer la liste à chaque rendu. */
+  readonly sanctionParJoueur = computed(() => {
+    const map = new Map<string, EtatSanction>();
+    for (const e of this.sanctions()?.joueurs ?? []) map.set(e.joueurId, e);
+    return map;
+  });
 
   // ── Publication vers les joueurs ──
   savingPublication = signal(false);
@@ -100,6 +130,9 @@ export class MatchComponent implements OnInit {
   ];
 
   readonly titulaires = computed(() => this.compo().filter(c => c.statut === 'TITULAIRE'));
+  /** Places sur le terrain — même plafond que côté serveur. */
+  readonly TITULAIRES_MAX = 11;
+  readonly onzeAtteint = computed(() => this.titulaires().length >= this.TITULAIRES_MAX);
   /** Compo regroupée par statut (hors titulaires placés sur le terrain). */
   readonly groupes = computed(() => {
     const list = this.compo();
@@ -211,7 +244,10 @@ export class MatchComponent implements OnInit {
   basculerCreate(): void {
     this.showCreate.update(v => !v);
     if (this.showCreate()) {
-      this.createForm = { adversaire: '', dateMatch: new Date().toISOString().slice(0, 10), competition: '', domicile: true };
+      this.createForm = {
+        adversaire: '', dateMatch: new Date().toISOString().slice(0, 10),
+        competition: '', typeMatch: 'CHAMPIONNAT', domicile: true,
+      };
     }
   }
 
@@ -222,6 +258,7 @@ export class MatchComponent implements OnInit {
       adversaire: this.createForm.adversaire.trim(),
       dateMatch: this.createForm.dateMatch || null,
       competition: this.createForm.competition || null,
+      typeMatch: this.createForm.typeMatch,
       domicile: this.createForm.domicile,
     }).subscribe({
       next: m => { this.saving.set(false); this.showCreate.set(false); this.ouvrir(m.id); },
@@ -276,12 +313,150 @@ export class MatchComponent implements OnInit {
     this.suspendus.set(new Set(m.suspendus ?? []));
     this.infosBuf = {
       adversaire: m.adversaire, dateMatch: m.dateMatch ?? '', heureMatch: m.heureMatch ?? '',
-      competition: m.competition ?? '', domicile: m.domicile, consignes: m.consignes ?? '',
+      competition: m.competition ?? '', typeMatch: m.typeMatch ?? 'CHAMPIONNAT',
+      domicile: m.domicile, consignes: m.consignes ?? '',
       lieuRdv: m.lieuRdv ?? '', heureRdv: m.heureRdv ?? '',
       couleurMaillot: m.couleurMaillot ?? '', infosLogistiques: m.infosLogistiques ?? '',
     };
-    this.debriefBuf = { resultat: m.resultat ?? '', score: m.score ?? '', notesDebrief: m.notesDebrief ?? '' };
+    this.debriefBuf = {
+      resultat: m.resultat ?? '',
+      butsPour: m.butsPour ?? null, butsContre: m.butsContre ?? null,
+      notesDebrief: m.notesDebrief ?? '',
+    };
     if (m.sessionGpsId) { this.rafraichirCharge(m.id); } else { this.charge.set([]); }
+    this.chargerFeuille(m.id);
+    this.chargerSanctions(m.id);
+  }
+
+  /**
+   * Cumul de cartons du groupe. Comme la feuille de match, c'est un add-on : sans le module
+   * l'appel répond 403 et l'écran se contente de ne rien afficher.
+   */
+  private chargerSanctions(matchId: string): void {
+    this.sanctions.set(null);
+    if (!this.peutStats) return;
+    this.service.getSanctions(matchId).subscribe({
+      next: s => this.sanctions.set(s),
+      error: () => this.sanctions.set(null),
+    });
+  }
+
+  /**
+   * Le bloc « Infos & logistique » a son propre bouton Enregistrer : remplir les champs puis
+   * changer d'onglet ou fermer le match perdait la saisie sans le moindre signe. Ces deux gardes
+   * affichent un rappel tant que le buffer diverge de ce que porte le match chargé.
+   */
+  infosNonEnregistrees(): boolean {
+    const m = this.detail();
+    if (!m || !this.modifiable()) return false;
+    const b = this.infosBuf;
+    return b.adversaire !== (m.adversaire ?? '')
+      || b.dateMatch !== (m.dateMatch ?? '')
+      || this.hhmm(b.heureMatch) !== this.hhmm(m.heureMatch)
+      || b.competition !== (m.competition ?? '')
+      || b.typeMatch !== (m.typeMatch ?? 'CHAMPIONNAT')
+      || b.domicile !== m.domicile
+      || b.consignes !== (m.consignes ?? '')
+      || b.lieuRdv !== (m.lieuRdv ?? '')
+      || this.hhmm(b.heureRdv) !== this.hhmm(m.heureRdv)
+      || b.couleurMaillot !== (m.couleurMaillot ?? '')
+      || b.infosLogistiques !== (m.infosLogistiques ?? '');
+  }
+
+  debriefNonEnregistre(): boolean {
+    const m = this.detail();
+    if (!m || !this.modifiable()) return false;
+    return this.debriefBuf.resultat !== (m.resultat ?? '')
+      || (this.debriefBuf.butsPour ?? null) !== (m.butsPour ?? null)
+      || (this.debriefBuf.butsContre ?? null) !== (m.butsContre ?? null)
+      || this.debriefBuf.notesDebrief !== (m.notesDebrief ?? '');
+  }
+
+  /** Heure comparable : le serveur peut renvoyer « 18:30:00 » là où l'input porte « 18:30 ». */
+  private hhmm(v?: string | null): string { return (v ?? '').slice(0, 5); }
+
+  // ── Feuille de match ────────────────────────────────────────────────────
+
+  /**
+   * Charge la feuille du match. Le module `stats_competition` est un add-on : sans lui l'appel
+   * répond 403, et le bloc n'est de toute façon pas rendu — on ne remonte donc pas d'erreur.
+   */
+  private chargerFeuille(matchId: string): void {
+    this.feuille.set([]);
+    this.feuilleRef = '';
+    if (!this.peutStats) return;
+    this.service.getFeuille(matchId).subscribe({
+      next: f => { this.feuille.set(f.lignes); this.feuilleRef = this.empreinteFeuille(f.lignes); },
+      error: () => { this.feuille.set([]); this.feuilleRef = ''; },
+    });
+  }
+
+  enregistrerFeuille(): void {
+    const m = this.detail();
+    if (!m || !this.peutStatsEcrire) return;
+    this.savingFeuille.set(true);
+    const lignes = this.feuille().map(l => ({
+      joueurId: l.joueurId,
+      entreEnJeu: l.entreEnJeu,
+      // Un champ vidé revient à « non renseigné » et non à zéro : les autres sources doivent
+      // pouvoir reprendre la main sur ce match.
+      minuteEntree: this.minuteOuNull(l.minuteEntree),
+      minuteSortie: this.minuteOuNull(l.minuteSortie),
+      buts: l.buts ?? 0,
+      passesDecisives: l.passesDecisives ?? 0,
+      cartonsJaunes: l.cartonsJaunes ?? 0,
+      cartonRouge: this.rougeEffectif(l),
+      // Le clean sheet n'est pas envoyé : le serveur le déduit des buts encaissés.
+    }));
+    this.service.enregistrerFeuille(m.id, lignes).subscribe({
+      next: f => {
+        this.feuille.set(f.lignes);
+        this.feuilleRef = this.empreinteFeuille(f.lignes);
+        this.savingFeuille.set(false);
+        this.snack.open('Feuille de match enregistrée', 'Fermer', { duration: 2000 });
+      },
+      error: () => { this.savingFeuille.set(false); this.snack.open('Enregistrement impossible', 'Fermer', { duration: 3000 }); },
+    });
+  }
+
+  /**
+   * Deux avertissements valent expulsion. La case rouge se coche alors d'elle-même et se verrouille
+   * — en dessous, elle reste libre : un rouge direct n'a besoin d'aucun jaune.
+   */
+  rougeEffectif(l: FeuilleLigne): boolean {
+    return l.cartonRouge || (l.cartonsJaunes ?? 0) >= 2;
+  }
+
+  rougeImpose(l: FeuilleLigne): boolean {
+    return (l.cartonsJaunes ?? 0) >= 2;
+  }
+
+  /** Le second jaune coche le rouge dans la foulée, sinon la ligne mentirait jusqu'à l'enregistrement. */
+  majCartonsJaunes(l: FeuilleLigne): void {
+    if (this.rougeImpose(l)) l.cartonRouge = true;
+  }
+
+  /** Même garde que sur les autres blocs : une saisie perdue en changeant d'onglet ne se voit pas. */
+  feuilleNonEnregistree(): boolean {
+    return this.peutStatsEcrire && this.feuilleRef !== '' && this.empreinteFeuille(this.feuille()) !== this.feuilleRef;
+  }
+
+  // Le clean sheet n'entre pas dans l'empreinte : déduit du score, il change sans qu'on ait rien
+  // saisi, et signalerait alors une modification en attente qui n'existe pas.
+  private empreinteFeuille(lignes: FeuilleLigne[]): string {
+    return lignes.map(l => [
+      l.joueurId, l.entreEnJeu, l.minuteEntree ?? '', l.minuteSortie ?? '',
+      l.buts, l.passesDecisives, l.cartonsJaunes, this.rougeEffectif(l),
+    ].join('|')).join(';');
+  }
+
+  private minuteOuNull(v: number | null | undefined): number | null {
+    return v === null || v === undefined || (v as unknown as string) === '' ? null : Number(v);
+  }
+
+  /** D'où vient la minute affichée — un relevé de capteur n'est pas une donnée officielle. */
+  sourceLabel(source: string): string {
+    return ({ SAISIE: 'Staff', FEDERATION: 'Fédé', GPS: 'GPS' } as Record<string, string>)[source] ?? source;
   }
 
   fermer(): void { this.chargerListe(); }
@@ -305,6 +480,7 @@ export class MatchComponent implements OnInit {
       dateMatch: this.infosBuf.dateMatch || null,
       heureMatch: this.infosBuf.heureMatch || null,
       competition: this.infosBuf.competition || null,
+      typeMatch: this.infosBuf.typeMatch,
       domicile: this.infosBuf.domicile,
       consignes: this.infosBuf.consignes || null,
       lieuRdv: this.infosBuf.lieuRdv || null,
@@ -312,7 +488,10 @@ export class MatchComponent implements OnInit {
       couleurMaillot: this.infosBuf.couleurMaillot || null,
       infosLogistiques: this.infosBuf.infosLogistiques || null,
     }).subscribe({
-      next: maj => { this.detail.set(maj); this.savingInfos.set(false); this.snack.open('Infos enregistrées', 'Fermer', { duration: 2000 }); },
+      // appliquerDetail() et non detail.set() : le second laissait `infosBuf` sur la saisie de
+      // l'utilisateur, si bien que les champs affichaient ce qui avait été tapé et non ce que le
+      // serveur avait réellement enregistré (heure normalisée en « 18:30:00 », trim, valeur ignorée…).
+      next: maj => { this.appliquerDetail(maj); this.savingInfos.set(false); this.snack.open('Infos enregistrées', 'Fermer', { duration: 2000 }); },
       error: () => { this.savingInfos.set(false); this.snack.open('Enregistrement impossible', 'Fermer', { duration: 3000 }); },
     });
   }
@@ -550,6 +729,12 @@ export class MatchComponent implements OnInit {
   }
   changerStatut(c: CompoItem, statut: CompoStatut): void {
     if (this.estBlesse(c.joueurId) || this.estSuspendu(c.joueurId)) return;  // blessé/suspendu → statut imposé
+    // Douze maillots sur le terrain ne se voyaient qu'au compteur de l'en-tête : on refuse ici,
+    // au moment du geste, plutôt que de laisser le serveur rejeter tout l'enregistrement.
+    if (statut === 'TITULAIRE' && c.statut !== 'TITULAIRE' && this.onzeAtteint()) {
+      this.snack.open(`Déjà ${this.TITULAIRES_MAX} titulaires — libérez une place d'abord`, 'Fermer', { duration: 3000 });
+      return;
+    }
     this.compo.update(list => list.map(x => x.joueurId === c.joueurId
       ? { ...x, statut, x: statut === 'TITULAIRE' ? (x.x || 0.5) : 0, y: statut === 'TITULAIRE' ? (x.y || 0.5) : 0 }
       : x));
@@ -596,12 +781,68 @@ export class MatchComponent implements OnInit {
   enregistrerCompo(): void {
     const m = this.detail();
     if (!m) return;
+    if (!this.confirmerAlignementSanctionnes()) return;
     this.savingCompo.set(true);
     const placements = this.compo().map(c => ({ joueurId: c.joueurId, x: c.x, y: c.y, statut: c.statut, consigne: c.consigne ?? null }));
     this.service.enregistrerCompo(m.id, placements).subscribe({
       next: maj => { this.appliquerDetail(maj); this.savingCompo.set(false); this.snack.open('Compo enregistrée', 'Fermer', { duration: 2000 }); },
       error: () => { this.savingCompo.set(false); this.snack.open('Enregistrement impossible', 'Fermer', { duration: 3000 }); },
     });
+  }
+
+  // ── Cumul de cartons : badges, déclaration, garde-fou ───────────────────
+
+  /** L'état disciplinaire d'un joueur, s'il y a quelque chose à signaler. */
+  sanctionDe(joueurId: string): EtatSanction | undefined {
+    return this.sanctionParJoueur().get(joueurId);
+  }
+
+  /** Le badge ne se pose plus une fois la suspension déclarée : elle est déjà prise en compte. */
+  alerteSanction(joueurId: string): EtatSanction | undefined {
+    const e = this.sanctionDe(joueurId);
+    return e && !e.dejaDeclareSuspendu && !this.estSuspendu(joueurId) ? e : undefined;
+  }
+
+  /** Ce qu'il reste à traiter : les suspensions déjà déclarées sortent d'elles-mêmes du bandeau. */
+  readonly alertesSanction = computed(() => {
+    const suspendus = this.suspendus();
+    return (this.sanctions()?.joueurs ?? [])
+      .filter(e => !e.dejaDeclareSuspendu && !suspendus.has(e.joueurId));
+  });
+
+  tonSanction(e: EtatSanction): 'bad' | 'warn' {
+    return e.expulse || e.seuilAtteint ? 'bad' : 'warn';
+  }
+
+  iconeSanction(e: EtatSanction): string {
+    return e.expulse ? 'block' : e.seuilAtteint ? 'gavel' : 'warning';
+  }
+
+  /** Joueurs alignés (titulaires ou remplaçants) alors qu'ils sont sous le coup d'une suspension. */
+  private alignesSousSanction(): EtatSanction[] {
+    return this.compo()
+      .filter(c => c.statut === 'TITULAIRE' || c.statut === 'REMPLACANT')
+      .map(c => this.alerteSanction(c.joueurId))
+      .filter((e): e is EtatSanction => !!e && (e.expulse || e.seuilAtteint));
+  }
+
+  /**
+   * Second filet, parce qu'un badge s'ignore : au moment d'enregistrer, on nomme les joueurs
+   * concernés. Jamais bloquant — la commission peut avoir relaxé, et c'est le staff qui décide.
+   */
+  private confirmerAlignementSanctionnes(): boolean {
+    const alignes = this.alignesSousSanction();
+    if (alignes.length === 0) return true;
+    const noms = alignes.map(e => `• ${e.prenom ?? ''} ${e.nom ?? ''} — ${e.libelle}`.trim()).join('\n');
+    return confirm(
+      `${alignes.length === 1 ? 'Un joueur est aligné' : `${alignes.length} joueurs sont alignés`}`
+      + ` alors qu'ils sont sous le coup d'une suspension :\n\n${noms}\n\nEnregistrer quand même ?`);
+  }
+
+  /** Déclare la suspension suggérée : un clic, sur la case qui existait déjà. */
+  declarerSuspendu(joueurId: string): void {
+    if (this.estSuspendu(joueurId)) return;
+    this.basculerSuspendu(joueurId);
   }
 
   // ── APRÈS : débrief ──
@@ -611,12 +852,58 @@ export class MatchComponent implements OnInit {
     this.savingDebrief.set(true);
     this.service.modifierMatchDebrief(m.id, {
       resultat: this.debriefBuf.resultat || null,
-      score: this.debriefBuf.score || null,
+      butsPour: this.butOuNull(this.debriefBuf.butsPour),
+      butsContre: this.butOuNull(this.debriefBuf.butsContre),
       notesDebrief: this.debriefBuf.notesDebrief || null,
     }).subscribe({
-      next: maj => { this.detail.set(maj); this.savingDebrief.set(false); this.snack.open('Débrief enregistré', 'Fermer', { duration: 2000 }); },
+      next: maj => { this.appliquerDetail(maj); this.savingDebrief.set(false); this.snack.open('Débrief enregistré', 'Fermer', { duration: 2000 }); },
       error: () => { this.savingDebrief.set(false); this.snack.open('Enregistrement impossible', 'Fermer', { duration: 3000 }); },
     });
+  }
+
+  /** Un champ vidé vaut « non renseigné », surtout pas zéro : zéro encaissé ferait un clean sheet. */
+  private butOuNull(v: number | null | undefined): number | null {
+    if (v === null || v === undefined || (v as unknown as string) === '') return null;
+    const n = Number(v);
+    return Number.isFinite(n) && n >= 0 ? n : null;
+  }
+
+  /** Le clean sheet ne se calcule que si l'on sait combien de buts ont été encaissés. */
+  cleanSheetIndetermine(): boolean {
+    return this.detail()?.butsContre === null || this.detail()?.butsContre === undefined;
+  }
+
+  // ── Buteurs plafonnés par le score ──────────────────────────────────────
+
+  butsAttribues(): number {
+    return this.feuille().reduce((t, l) => t + (Number(l.buts) || 0), 0);
+  }
+
+  /** Le score de l'équipe, quand il est renseigné : au-delà, la saisie n'a plus de sens. */
+  butsMax(): number | null {
+    const p = this.detail()?.butsPour;
+    return p === null || p === undefined ? null : p;
+  }
+
+  /**
+   * Plafond de CE champ : ce qui reste à attribuer, plus ce que la ligne porte déjà. La somme
+   * peut rester inférieure au score — un but contre son camp adverse n'a pas de buteur chez nous.
+   */
+  butsMaxLigne(l: FeuilleLigne): number | null {
+    const max = this.butsMax();
+    if (max === null) return null;
+    return Math.max(0, max - this.butsAttribues() + (Number(l.buts) || 0));
+  }
+
+  butsDepasses(): boolean {
+    const max = this.butsMax();
+    return max !== null && this.butsAttribues() > max;
+  }
+
+  /** Ramène la saisie sous le plafond dès la frappe, plutôt qu'au refus du serveur. */
+  majButs(l: FeuilleLigne): void {
+    const plafond = this.butsMaxLigne(l);
+    if (plafond !== null && (Number(l.buts) || 0) > plafond) l.buts = plafond;
   }
 
   // ── APRÈS : session GPS ──

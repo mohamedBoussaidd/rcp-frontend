@@ -81,6 +81,58 @@ export interface AssiduiteResume {
 }
 
 /** Bilan d'assiduité d'un joueur sur la saison active (entraînements). */
+// ── Statistiques de compétition (module add-on `stats_competition`) ──
+
+/** Une rencontre vue du joueur. `tempsJeu` est la valeur RETENUE, `sourceTempsJeu` dit d'où elle vient. */
+export interface MatchJoueurStat {
+  matchId: string;
+  date?: string;
+  adversaire: string;
+  competition?: string;
+  domicile: boolean;
+  resultat?: string;
+  score?: string;
+  statut: string;
+  entreEnJeu: boolean;
+  tempsJeu?: number | null;
+  sourceTempsJeu?: 'SAISIE' | 'FEDERATION' | 'GPS' | null;
+  buts: number;
+  passesDecisives: number;
+  cartonsJaunes: number;
+  cartonRouge: boolean;
+  cleanSheet: boolean;
+  posteOccupe?: string | null;
+}
+
+export interface StatsCompetition {
+  joueurId: string;
+  nom: string;
+  prenom: string;
+  debutPeriode: string;
+  finPeriode: string;
+  participation: {
+    matchsEquipe: number; convocations: number; titularisations: number; entreesEnJeu: number;
+    remplacantNonEntre: number; reserve: number; repos: number; suspendu: number;
+    disponibleNonRetenu: number;
+  };
+  tempsJeu: {
+    totalMinutes: number; moyenneParMatchJoue: number; minutesPossibles: number;
+    partDuTempsPossiblePct: number;
+    matchsAvecTempsSaisi: number; matchsAvecTempsFederation: number; matchsAvecTempsGps: number;
+  };
+  buts: number;
+  passesDecisives: number;
+  cartonsJaunes: number;
+  cartonsRouges: number;
+  cleanSheets: number;
+  postesOccupes: { poste: string; matchs: number }[];
+  chargeVsJeu: {
+    chargeEntrainementUa: number; minutesJouees: number; seancesPresentes: number;
+    minutesPour1000Ua?: number | null; lecture: string;
+  };
+  matchs: MatchJoueurStat[];
+}
+
 export interface AssiduiteJoueur {
   joueurId: string;
   saisonId?: string;
@@ -163,6 +215,15 @@ export class JoueurService {
   /** Assiduité (résumé léger) de tout l'effectif du périmètre, pour la colonne triable. */
   getAssiduiteEquipe(): Observable<AssiduiteResume[]> {
     return this.http.get<AssiduiteResume[]>(`${this.base}/assiduite-equipe`);
+  }
+
+  /**
+   * Statistiques de compétition (onglet Compétition de la fiche). Module add-on
+   * `stats_competition` : 403 si le club ne l'a pas — l'onglet n'est alors pas affiché.
+   */
+  getCompetition(id: string, depuis?: string): Observable<StatsCompetition> {
+    const q = depuis ? `?depuis=${depuis}` : '';
+    return this.http.get<StatsCompetition>(`${this.base}/${id}/competition${q}`);
   }
 
   /** Fiche vitesse (vmax/vmoy km/h) des joueurs de l'équipe. Mise en cache (1 appel réseau). */
