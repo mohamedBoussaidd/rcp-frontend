@@ -7,12 +7,10 @@ import { FormationCustom, SchemaTactique, TechniqueService } from '@core/service
 import { Joueur, JoueurService, VitesseJoueur } from '@core/services/joueur.service';
 import { SchemaPickerDialogComponent } from '../schema-picker-dialog/schema-picker-dialog.component';
 import { MatIcon } from "@angular/material/icon";
-import {
-  TENSION_TRACE, cheminRendu, longueurChemin, pointLeLongDe, pointDansPolygone,
-} from './schema-geometrie';
+import { TENSION_TRACE, pointDansPolygone } from './schema-geometrie';
 import { FORMATIONS, COUPS_DE_PIED_ARRETES } from './schema-formations.data';
 import { SchemaTerrainRenderer } from './schema-terrain.renderer';
-import { EspaceTerrain, Terrain, espace, estTerrain } from './schema-espaces';
+import { EspaceTerrain, Terrain, espace } from './schema-espaces';
 import { SchemaEspaceDialogComponent } from '../schema-espace-dialog/schema-espace-dialog.component';
 import { AuthService } from '@core/services/auth.service';
 import { PreferencesService, PREF_ANGLE_SCHEMA, PREF_STYLE_RENDU_SCHEMA } from '@core/services/preferences.service';
@@ -24,9 +22,21 @@ import {
   RegleTactiqueDetail, RegleTactiqueResume, ReglesTactiquesService,
 } from '@core/services/regles-tactiques.service';
 import {
-  PHASES, PHASE_ADVERSE, PhaseKey, Posture, ReglesJson,
-  ciblesPhase, miroir, parseRegles, pxVersRel, relVersPx, slotIdsPourRoles, zoneDuPoint,
+  PHASES, PHASE_ADVERSE, PhaseKey, ReglesJson,
+  miroir, parseRegles, pxVersRel, slotIdsPourRoles, zoneDuPoint,
 } from '../moteur/moteur-tactique';
+import {
+  Keyframe, RAYON_LIEN, Segment, VitesseGps,
+  construireTrajectoires, dureeMaxTrajectoires, posKeyframes, posTrajectoire,
+  vitesseBallePxS, vitesseJoueurPxS,
+} from '../schema-render/schema-animation';
+import {
+  ContexteMoteur, evaluerPossession, planifierMoteur, posturePourCamp,
+} from './schema-moteur-dynamique';
+import {
+  FormeType, SchemaContenu, SchemaElement, SchemaForme, SchemaTrace, TraceType,
+  parserContenu, serialiserContenu,
+} from './schema-serialisation';
 
 /**
  * Données du dialog : éditeur de schéma générique, agnostique de la source.
@@ -43,17 +53,9 @@ export interface SchemaEditorData {
 }
 
 type Outil = 'select' | 'deplacement' | 'conduite' | 'passe' | 'tir' | 'surveiller' | 'forme' | 'supprimer';
-type TraceType = 'deplacement' | 'conduite' | 'passe' | 'tir';
-type FormeType = 'rect' | 'ellipse' | 'losange' | 'triangle';
 
-// slotId = poste du moteur tactique (posé par les formations) : le mode Dynamique pilote ce jeton.
-// rotation = orientation en degrés du visuel (absente = 0) : échelle/haie posées en diagonale…
-interface SchemaElement { id: string; type: string; couleur?: string; numero?: number; label?: string; joueurId?: string; slotId?: string; surveille?: boolean; surveilleCouleur?: string; rotation?: number; x: number; y: number; }
-// elementId = jeton/ballon qui suit le tracé ; ballId = ballon entraîné par une conduite.
-interface SchemaTrace { id: string; type: TraceType; points: number[]; elementId?: string; ballId?: string; }
-// Forme d'annotation (zone à entourer/montrer), redimensionnable et déplaçable.
-interface SchemaForme { id: string; type: FormeType; x: number; y: number; w: number; h: number; couleur: string; texte?: string; texteTaille?: number; texteCouleur?: string; }
-interface Keyframe { t: number; positions: Record<string, { x: number; y: number }>; }
+// Le modèle persisté (SchemaElement / SchemaTrace / SchemaForme + lecture défensive) vit dans
+// ./schema-serialisation : c'est le même JSON que relisent le lecteur, la biblio et les diapos.
 
 const VIOLET = '#7c3aed', JAUNE = '#eab308', ROUGE = '#ef4444';
 const BLEU = '#2563eb';
@@ -61,11 +63,8 @@ const NOIR = '#1f2937';   // jetons « Adversaire » (génériques, éditables)
 // Jokers : couleur PROPRE (et non le rouge de l'Équipe 1, indistinguable à l'œil comme à l'import photo).
 const ORANGE = '#f97316';
 
-// Brique 3 : vitesses réelles. Joueur sans donnée GPS → vitesse de course par défaut.
-const VITESSE_DEFAUT_KMH = 24;   // course modérée
-const BALLE_KMH = 60;            // une passe va plus vite qu'une course
-// Rayon (px) pour lier une flèche au jeton/ballon le plus proche de son point de départ.
-const RAYON_LIEN = 60;
+// Keyframe, RAYON_LIEN et les vitesses (VITESSE_DEFAUT_KMH / BALLE_KMH) viennent de
+// ../schema-render/schema-animation, partagé avec le lecteur (schema-viewer).
 // TENSION_TRACE est importé de ./schema-geometrie (partagé rendu + échantillonnage).
 
 @Component({
@@ -104,7 +103,7 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
   modeAnim = signal<'temps' | 'vitesse'>('temps');
   // Brique 3 : en mode vitesse, on utilise la vraie vitesse GPS (record vmax ou moyenne vmoy).
   metriqueVitesse = signal<'max' | 'moyenne'>('moyenne');
-  private vitesses = new Map<string, { vmax: number | null; vmoy: number | null }>();
+  private vitesses = new Map<string, VitesseGps>();
   keyframes = signal<Keyframe[]>([]);
   private anim?: Konva.Animation;
   // Palette dépliable
@@ -476,13 +475,10 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
   private get pxParMetre(): number {
     return this.W / espace(this.terrain()).metres;
   }
-  private kmhEnPxS(kmh: number): number { return (kmh / 3.6) * this.pxParMetre; }
-  private vitesseBallePxS(): number { return this.kmhEnPxS(BALLE_KMH); }
+
   /** Vitesse (px/s) d'un joueur : sa donnée GPS (vmax ou vmoy) sinon vitesse par défaut. */
-  private vitesseJoueurPxS(joueur?: SchemaElement): number {
-    const v = joueur?.joueurId ? this.vitesses.get(joueur.joueurId) : undefined;
-    const kmh = v ? (this.metriqueVitesse() === 'max' ? v.vmax : v.vmoy) : null;
-    return this.kmhEnPxS(kmh && kmh > 0 ? kmh : VITESSE_DEFAUT_KMH);
+  private vitesseJoueur(joueur?: SchemaElement): number {
+    return vitesseJoueurPxS(joueur, this.vitesses, this.metriqueVitesse(), this.pxParMetre);
   }
 
   /** Étiquette portée par le jeton : nom de famille (initiales seulement si vraiment trop long). */
@@ -594,6 +590,18 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
   basculerPanneau(): void {
     this.panneauOuvert.update(o => !o);
     // La grille se recompose au cycle suivant : on remesure ensuite, pas avant.
+    setTimeout(() => this.ajusterAuConteneur());
+  }
+
+  /**
+   * Barre du haut (espace, vue, angle, réglages de l'outil) : repliable elle aussi.
+   * Elle passe à la ligne quand la fenêtre rétrécit, donc elle mange d'autant plus de hauteur
+   * que l'écran est petit — c'est le plus gros gain de terrain sur un portable.
+   */
+  bandeauOuvert = signal(true);
+
+  basculerBandeau(): void {
+    this.bandeauOuvert.update(o => !o);
     setTimeout(() => this.ajusterAuConteneur());
   }
 
@@ -757,7 +765,7 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
     this.detacherForme();      // retire les poignées de l'aperçu
     this.detacherRotation();
     this.scrub(0);   // état de départ : positions cohérentes avec le début des flèches/keyframes
-    const data = {
+    const data = serialiserContenu({
       terrain: this.terrain(),
       elements: this.elements,
       traces: this.traces,
@@ -766,12 +774,12 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
       modeAnim: this.modeAnim(),
       metriqueVitesse: this.metriqueVitesse(),
       keyframes: this.keyframes(),
-    };
+    });
     // Miniature pour la grille de la bibliothèque (pixelRatio réduit = data URL légère).
     // Toujours prise à plat : à la taille d'une vignette, une vue inclinée perd la lecture
     // des placements, qui est justement ce qu'on cherche à reconnaître dans la grille.
     const apercu = this.captureVueDeDessus(0.35);
-    this.data.enregistrer(JSON.stringify(data), apercu).subscribe({
+    this.data.enregistrer(data, apercu).subscribe({
       next: () => { this.snack.open('Schéma enregistré', 'Fermer', { duration: 2000 }); this.dialogRef.close(true); },
       error: () => this.snack.open('Enregistrement impossible', 'Fermer', { duration: 3000 }),
     });
@@ -921,6 +929,26 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
     return el.type === 'joueur' && !!el.slotId && !this.traces.some(t => t.elementId === el.id);
   }
 
+  /** Contexte passé aux décisions du moteur (cf. ./schema-moteur-dynamique). */
+  private contexteMoteur(ballon: SchemaElement): ContexteMoteur {
+    return {
+      elements: this.elements,
+      ballon,
+      W: this.W,
+      H: this.H,
+      phaseNous: this.phaseMoteur(),
+      reglesNous: this.reglesNous,
+      reglesAdverse: this.reglesAdverseEffectives(),
+      estPilote: el => this.estPiloteMoteur(el as SchemaElement),
+      estAdverse: el => (el as SchemaElement).couleur === NOIR,
+      porteurManuel: this.porteurManuelId()
+        ? this.elements.find(e => e.id === this.porteurManuelId())
+        : undefined,
+      phaseAuto: this.phaseAuto(),
+      possessionNous: this.possessionNous,
+    };
+  }
+
   /** Une frame du moteur : cibles interpolées selon le ballon, déplacement aux vitesses réelles. */
   private tickMoteur(dt: number): void {
     const ballon = this.elements.find(e => e.type === 'ballon');
@@ -928,52 +956,27 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
     const bNode = this.nodesById.get(ballon.id);
     // Suit le drag OU la timeline — le nœud est en coordonnées écran, le moteur en terrain.
     if (bNode) { const s = this.versTerrain(bNode.x(), bNode.y()); ballon.x = s.x; ballon.y = s.y; }
-    const rel = pxVersRel({ x: ballon.x, y: ballon.y }, this.W, this.H);
     const tNow = performance.now() / 1000;
-    if (this.phaseAuto()) this.majPossession(ballon, tNow);
 
-    const phaseNous = this.phaseMoteur();
-    const ciblesNous = this.reglesNous ? ciblesPhase(this.reglesNous, phaseNous, rel) : null;
-    const adverses = this.reglesAdverseEffectives();
-    const ciblesAdv = adverses ? ciblesPhase(adverses, PHASE_ADVERSE[phaseNous], rel) : null;
-
-    // ── Porteur : un joueur du camp en possession vient AU ballon (le conduit) ──
-    // Manuel (clic) s'il existe encore, sinon le jeton piloté du bon camp dont la CIBLE est la
-    // plus proche du ballon (stable, pas d'oscillation entre deux joueurs).
-    const manuel = this.porteurManuelId() ? this.elements.find(e => e.id === this.porteurManuelId()) : undefined;
-    const campNousPossede = manuel ? manuel.couleur !== NOIR
-      : (this.phaseAuto() ? this.possessionNous : (phaseNous === 'OFF' || phaseNous === 'T_DO'));
-    let porteur: SchemaElement | undefined = manuel && this.estPiloteMoteur(manuel) ? manuel : undefined;
-    if (!porteur) {
-      let dMin = Infinity;
-      for (const el of this.elements) {
-        if (!this.estPiloteMoteur(el)) continue;
-        if ((el.couleur !== NOIR) !== campNousPossede) continue;
-        const c = (el.couleur === NOIR ? ciblesAdv : ciblesNous)?.[el.slotId!];
-        if (!c) continue;
-        const p = relVersPx(c, this.W, this.H);
-        const d = Math.hypot(p.x - ballon.x, p.y - ballon.y);
-        if (d < dMin) { dMin = d; porteur = el; }
-      }
+    if (this.phaseAuto()) {
+      const p = evaluerPossession(this.contexteMoteur(ballon), tNow, this.transitionJusqua);
+      this.possessionNous = p.possessionNous;
+      this.transitionJusqua = p.transitionJusqua;
+      if (p.phase) this.phaseMoteur.set(p.phase);
     }
 
+    // Décisions (porteur + cible de chaque jeton piloté) : pures, hors de ce composant.
+    const plan = planifierMoteur(this.contexteMoteur(ballon));
+
     for (const el of this.elements) {
-      if (!this.estPiloteMoteur(el)) continue;
+      const cible = plan.cibles.get(el.id) as { x: number; y: number } | undefined;
+      if (!cible) continue;
       const n = this.nodesById.get(el.id);
       if (!n || n.isDragging()) continue;   // une correction en cours ne doit pas être combattue
-      let cible: { x: number; y: number } | null = null;
-      if (porteur?.id === el.id) {
-        // Le porteur colle au ballon (léger décalage côté son propre but).
-        cible = { x: ballon.x + (el.couleur === NOIR ? 16 : -16), y: ballon.y };
-      } else {
-        const c = (el.couleur === NOIR ? ciblesAdv : ciblesNous)?.[el.slotId!];
-        if (c) cible = relVersPx(c, this.W, this.H);
-      }
-      if (!cible) continue;
       const dx = cible.x - el.x, dy = cible.y - el.y;
       const dist = Math.hypot(dx, dy);
       if (dist < 0.5) continue;
-      const pas = this.vitesseJoueurPxS(el) * dt * this.vitesse();
+      const pas = this.vitesseJoueur(el) * dt * this.vitesse();
       const r = dist <= pas ? 1 : pas / dist;
       el.x += dx * r; el.y += dy * r;
       this.placerNoeud(n, el.x, el.y);
@@ -981,6 +984,7 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
 
     // Halo du porteur (suit son jeton ; masqué s'il n'y en a pas).
     if (this.porteurRing) {
+      const porteur = plan.porteur as SchemaElement | undefined;
       if (porteur) { const p = this.versEcran(porteur.x, porteur.y); this.porteurRing.visible(true); this.porteurRing.position({ x: p.x, y: p.y }); }
       else this.porteurRing.visible(false);
     }
@@ -991,31 +995,6 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
       if (t - this.recDernierEch >= 0.5) { this.recDernierEch = t; this.capturerKeyframe(t); }
     }
     // (Konva.Animation redessine la couche à chaque frame — pas de batchDraw manuel.)
-  }
-
-  /** Possession auto : camp du porteur (jeton le plus proche du ballon) → phase, avec une
-   *  phase transitoire (T_DO / T_OD) pendant dureeTransitionS au changement de possession. */
-  private majPossession(ballon: SchemaElement, tNow: number): void {
-    let camp: boolean | null = null; let dMin = RAYON_LIEN;
-    const manuel = this.porteurManuelId() ? this.elements.find(e => e.id === this.porteurManuelId()) : undefined;
-    if (manuel) {
-      camp = manuel.couleur !== NOIR;   // le porteur désigné à la main IMPOSE la possession
-    } else {
-      for (const e of this.elements) {
-        if (e.type !== 'joueur') continue;
-        const d = Math.hypot(e.x - ballon.x, e.y - ballon.y);
-        if (d <= dMin) { dMin = d; camp = e.couleur !== NOIR; }
-      }
-    }
-    if (camp !== null && camp !== this.possessionNous) {
-      this.possessionNous = camp;
-      this.phaseMoteur.set(camp ? 'T_DO' : 'T_OD');
-      this.transitionJusqua = tNow + (this.reglesNous?.dureeTransitionS ?? 3);
-    }
-    if (this.transitionJusqua && tNow >= this.transitionJusqua) {
-      this.transitionJusqua = 0;
-      this.phaseMoteur.set(this.possessionNous ? 'OFF' : 'DEF');
-    }
   }
 
   /** Correction en mode Dynamique : si « enregistrer dans les règles » est actif, le déplacement
@@ -1036,13 +1015,10 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
     const zone = zoneDuPoint(relB.x, relB.y);
     const phase = adverse ? PHASE_ADVERSE[this.phaseMoteur()] : this.phaseMoteur();
     // Posture = positions actuelles de tous les jetons de ce camp porteurs d'un slot.
-    const posture: Posture = { ...(regles.phases[phase][zone.key] ?? {}) };
-    for (const e of this.elements) {
-      if (e.type !== 'joueur' || !e.slotId) continue;
-      if ((e.couleur === NOIR) !== adverse) continue;
-      posture[e.slotId] = pxVersRel({ x: e.x, y: e.y }, this.W, this.H);
-    }
-    regles.phases[phase][zone.key] = posture;
+    regles.phases[phase][zone.key] = posturePourCamp(
+      regles.phases[phase][zone.key], this.elements, adverse,
+      e => (e as SchemaElement).couleur === NOIR, this.W, this.H,
+    );
     this.snack.open(`Règle mise à jour — zone ${zone.h + 1}·${zone.c + 1}, phase ${phase}`, 'Fermer', { duration: 2000 });
     if (this.saveReglesTimer) clearTimeout(this.saveReglesTimer);
     this.saveReglesTimer = setTimeout(() => this.pousserRegles(), 1200);
@@ -1090,21 +1066,22 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
 
   // ══════════ Rendu ══════════
   private chargerSchema(): void {
-    if (!this.data.schemaJson) return;
-    try { this.chargerContenu(JSON.parse(this.data.schemaJson)); } catch { }
+    const c = parserContenu(this.data.schemaJson);
+    if (c) this.chargerContenu(c);
   }
 
   /** Charge le contenu d'un schéma (éléments, tracés, animation) sur le terrain courant. */
-  private chargerContenu(d: any): void {
-    (d.formes ?? []).forEach((f: SchemaForme) => { this.formes.push(f); this.dessinerForme(f); });
-    (d.elements ?? []).forEach((el: SchemaElement) => { this.elements.push(el); this.dessinerElement(el); });
+  private chargerContenu(c: SchemaContenu): void {
+    c.formes.forEach(f => { this.formes.push(f); this.dessinerForme(f); });
+    c.elements.forEach(el => { this.elements.push(el); this.dessinerElement(el); });
     if (this.styleRendu() === 'realiste') ordonnerParProfondeur(this.nodesById.values());
-    (d.traces ?? []).forEach((t: SchemaTrace) => { this.traces.push(t); this.dessinerTrace(t); });
-    if (d.modeAnim === 'temps' || d.modeAnim === 'vitesse') this.modeAnim.set(d.modeAnim);
-    if (d.metriqueVitesse === 'max' || d.metriqueVitesse === 'moyenne') this.metriqueVitesse.set(d.metriqueVitesse);
-    if (Array.isArray(d.keyframes) && d.keyframes.length) {
-      this.keyframes.set([...d.keyframes].sort((a: Keyframe, b: Keyframe) => a.t - b.t));
-      if (d.dureeSecondes) this.dureeSecondes.set(d.dureeSecondes);
+    c.traces.forEach(t => { this.traces.push(t); this.dessinerTrace(t); });
+    // Champs absents = réglages courants conservés (compat des schémas anciens).
+    if (c.modeAnim) this.modeAnim.set(c.modeAnim);
+    if (c.metriqueVitesse) this.metriqueVitesse.set(c.metriqueVitesse);
+    if (c.keyframes.length) {
+      this.keyframes.set(c.keyframes);
+      if (c.dureeSecondes) this.dureeSecondes.set(c.dureeSecondes);
     } else {
       this.resetKeyframes();
     }
@@ -1130,11 +1107,11 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
       this.traces = [];
       this.nodesById.clear();
       this.porteurRing = undefined;   // détruit avec la couche
-      try {
-        const d = JSON.parse(schema.schemaJson);
-        if (estTerrain(d.terrain)) { this.terrain.set(d.terrain); this.majCamera(); }
-        this.chargerContenu(d);
-      } catch {
+      const c = parserContenu(schema.schemaJson);
+      if (c) {
+        if (c.terrain) { this.terrain.set(c.terrain); this.majCamera(); }
+        this.chargerContenu(c);
+      } else {
         this.resetKeyframes();
       }
       this.ajusterAuConteneur();
@@ -1884,31 +1861,15 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
     this.majJoueursPlaces();   // formations / CPA / vider reconstruisent les éléments
   }
 
-  private posElement(el: SchemaElement, t: number, kfs: Keyframe[]): { x: number; y: number } {
-    const avec = kfs.filter(k => k.positions[el.id]);
-    if (avec.length === 0) return { x: el.x, y: el.y };
-    if (t <= avec[0].t) return avec[0].positions[el.id];
-    if (t >= avec[avec.length - 1].t) return avec[avec.length - 1].positions[el.id];
-    for (let i = 0; i < avec.length - 1; i++) {
-      const a = avec[i], b = avec[i + 1];
-      if (t >= a.t && t <= b.t) {
-        const r = (b.t - a.t) ? (t - a.t) / (b.t - a.t) : 0;
-        const pa = a.positions[el.id], pb = b.positions[el.id];
-        return { x: pa.x + (pb.x - pa.x) * r, y: pa.y + (pb.y - pa.y) * r };
-      }
-    }
-    return avec[avec.length - 1].positions[el.id];
-  }
-
   private appliquerPositions(t: number): void {
     const kfs = this.keyframes();
-    const traj = this.construireTrajectoires();   // id élément -> segments mobiles dans le temps
+    const traj = this.trajectoires();   // id élément -> segments mobiles dans le temps
     for (const el of this.elements) {
       // En mode Dynamique, les jetons pilotés par le moteur sont animés en direct
       // (tickMoteur) : ni les keyframes ni les tracés ne doivent les écraser.
       if (this.modeMoteur() && this.estPiloteMoteur(el)) continue;
       const legs = traj.get(el.id);
-      const p = legs ? this.posTrajectoire(legs, t) : this.posElement(el, t, kfs);
+      const p = legs ? posTrajectoire(legs, t) : posKeyframes(el, t, kfs);
       el.x = p.x; el.y = p.y;
       this.placerNoeud(this.nodesById.get(el.id), p.x, p.y);
     }
@@ -1944,161 +1905,30 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
     return best;
   }
 
-  // ── Trajectoires : chaque mobile (ballon, chaque joueur) suit SES propres flèches ──
-  // Robuste aux branches (au bout d'une conduite : le ballon part en passe ET le joueur
-  // repart en course). Minutage global : une flèche démarre quand celle qui finit à son
-  // départ se termine → le ballon "attend" que son porteur arrive avant de bouger.
-  private construireTrajectoires(): Map<string, { t0: number; t1: number; pts: number[] }[]> {
-    const res = new Map<string, { t0: number; t1: number; pts: number[] }[]>();
-    const fleches = this.traces.filter(t => t.points.length >= 4);
-    if (!fleches.length) return res;
-
-    // Le rendu Konva courbe les tracés (tension). On échantillonne la MÊME courbe pour que
-    // le jeton suive la flèche dessinée, pas la polyligne droite entre les points cliqués.
-    const rendu = new Map<string, number[]>();
-    fleches.forEach(a => rendu.set(a.id, cheminRendu(a.points)));
-
-    const debut = (a: SchemaTrace) => ({ x: a.points[0], y: a.points[1] });
-    const fin = (a: SchemaTrace) => ({ x: a.points[a.points.length - 2], y: a.points[a.points.length - 1] });
-    const estBallon = (a: SchemaTrace) => a.type === 'conduite' || a.type === 'passe' || a.type === 'tir';
-    const estJoueur = (a: SchemaTrace) => a.type === 'conduite' || a.type === 'deplacement';
-
-    // Positions de repos (t=0) FIGÉES (l'animation modifie el.x à chaque frame).
+  /**
+   * Trajectoires des mobiles — calcul PARTAGÉ avec le lecteur (schema-animation).
+   * Positions de repos = la keyframe 0 : l'animation mute `el.x/el.y` à chaque frame, s'en
+   * servir ferait changer le propriétaire d'une flèche en cours de lecture.
+   */
+  private trajectoires(): Map<string, Segment[]> {
     const kf0 = this.keyframes()[0];
-    const repos = (e: SchemaElement) => kf0?.positions[e.id] ?? { x: e.x, y: e.y };
-    const plusProche = (type: string, p: { x: number; y: number }): SchemaElement | undefined => {
-      let best: SchemaElement | undefined; let dMin = RAYON_LIEN;
-      for (const e of this.elements) {
-        if (e.type !== type) continue;
-        const rp = repos(e); const d = Math.hypot(rp.x - p.x, rp.y - p.y);
-        if (d <= dMin) { dMin = d; best = e; }
-      }
-      return best;
-    };
-
-    // Prédécesseur de même nature (joueur ou ballon) : le plus proche.
-    const predNature = (a: SchemaTrace, estType: (x: SchemaTrace) => boolean): SchemaTrace | undefined => {
-      let best: SchemaTrace | undefined; let dMin = RAYON_LIEN;
-      for (const b of fleches) {
-        if (b.id === a.id || !estType(b)) continue;
-        const d = Math.hypot(debut(a).x - fin(b).x, debut(a).y - fin(b).y);
-        if (d <= dMin) { dMin = d; best = b; }
-      }
-      return best;
-    };
-
-    // Lien EXPLICITE posé au dessin (lierTrace) : une flèche dessinée sur un jeton/ballon lui
-    // est réservée — prioritaire sur toute déduction géométrique (deux flèches proches ou qui
-    // se croisent ne se volent plus leur mobile).
-    const explicite = (a: SchemaTrace, type: 'ballon' | 'joueur'): SchemaElement | undefined => {
-      const id = type === 'joueur'
-        ? (estJoueur(a) ? a.elementId : undefined)
-        : (a.type === 'conduite' ? a.ballId : (estBallon(a) ? a.elementId : undefined));
-      return id ? this.elements.find(e => e.id === id && e.type === type) : undefined;
-    };
-
-    // Propriétaire d'une flèche : le lien explicite, sinon hérité du prédécesseur de même
-    // nature, sinon l'élément le plus proche du départ (le ballon se prend au début d'une
-    // conduite, etc.).
-    const memo = { ballon: new Map<string, SchemaElement | undefined>(), joueur: new Map<string, SchemaElement | undefined>() };
-    const owner = (a: SchemaTrace, type: 'ballon' | 'joueur', estType: (x: SchemaTrace) => boolean, vu = new Set<string>()): SchemaElement | undefined => {
-      const m = memo[type];
-      if (m.has(a.id)) return m.get(a.id);
-      const ex = explicite(a, type);
-      if (ex) { m.set(a.id, ex); return ex; }
-      if (vu.has(a.id)) return undefined;
-      vu.add(a.id);
-      const p = predNature(a, estType);
-      const r = p ? owner(p, type, estType, vu) : plusProche(type, debut(a));
-      m.set(a.id, r);
-      return r;
-    };
-
-    // Toutes les flèches qui FINISSENT au départ de a (ses "arrivants"). Les chaînes de deux
-    // joueurs DIFFÉRENTS ne se synchronisent pas entre elles (une course qui se termine près
-    // du départ de la flèche d'un autre joueur ne doit pas la retarder) — sauf remise/relais
-    // où le MÊME ballon passe de l'un à l'autre.
-    const arrivants = (a: SchemaTrace) => fleches.filter(b => {
-      if (b.id === a.id || Math.hypot(debut(a).x - fin(b).x, debut(a).y - fin(b).y) > RAYON_LIEN) return false;
-      const ja = estJoueur(a) ? owner(a, 'joueur', estJoueur) : undefined;
-      const jb = estJoueur(b) ? owner(b, 'joueur', estJoueur) : undefined;
-      if (ja && jb && ja.id !== jb.id) {
-        const ba = estBallon(a) ? owner(a, 'ballon', estBallon) : undefined;
-        const bb = estBallon(b) ? owner(b, 'ballon', estBallon) : undefined;
-        return !!ba && !!bb && ba.id === bb.id;
-      }
-      return true;
+    return construireTrajectoires({
+      elements: this.elements,
+      traces: this.traces,
+      modeAnim: this.modeAnim(),
+      dureeSecondes: this.dureeSecondes(),
+      repos: e => kf0?.positions[e.id] ?? { x: e.x, y: e.y },
+      vitesseBallePxS: () => vitesseBallePxS(this.pxParMetre),
+      vitesseJoueurPxS: j => vitesseJoueurPxS(j, this.vitesses, this.metriqueVitesse(), this.pxParMetre),
     });
-
-    // Vitesse (px/s) d'un segment. Mode vitesse : vitesse réelle du joueur (vmax/vmoy GPS)
-    // pour course/conduite, vitesse de passe pour passe/tir. Mode temps : distance brute (1),
-    // l'échelle ramène ensuite la plus longue séquence à la durée choisie.
-    const vitLeg = (a: SchemaTrace): number => {
-      if (this.modeAnim() !== 'vitesse') return 1;
-      if (a.type === 'passe' || a.type === 'tir') return this.vitesseBallePxS();
-      return this.vitesseJoueurPxS(owner(a, 'joueur', estJoueur));
-    };
-
-    // Fenêtres temporelles : une flèche démarre quand TOUS ses arrivants sont là (max)
-    // → une conduite attend le joueur ET le ballon. Durée d'un segment = longueur / vitesse.
-    const t0 = new Map<string, number>(), t1 = new Map<string, number>();
-    const enCalcul = new Set<string>();
-    const calc = (a: SchemaTrace): number => {
-      if (t1.has(a.id)) return t1.get(a.id)!;
-      if (enCalcul.has(a.id)) { t0.set(a.id, 0); t1.set(a.id, longueurChemin(rendu.get(a.id)!) / vitLeg(a)); return t1.get(a.id)!; }
-      enCalcul.add(a.id);
-      const inc = arrivants(a);
-      const dep = inc.length ? Math.max(...inc.map(calc)) : 0;
-      t0.set(a.id, dep); t1.set(a.id, dep + longueurChemin(rendu.get(a.id)!) / vitLeg(a));
-      enCalcul.delete(a.id);
-      return t1.get(a.id)!;
-    };
-    fleches.forEach(calc);
-
-    // Mode vitesse : t déjà en secondes (sc=1). Mode temps : la plus longue séquence = durée.
-    const maxT = Math.max(1, ...fleches.map(a => t1.get(a.id)!));
-    const sc = this.modeAnim() === 'vitesse' ? 1 : this.dureeSecondes() / maxT;
-
-    const pousser = (id: string, a: SchemaTrace) => {
-      const arr = res.get(id) ?? [];
-      arr.push({ t0: t0.get(a.id)! * sc, t1: t1.get(a.id)! * sc, pts: rendu.get(a.id)! });
-      res.set(id, arr);
-    };
-    for (const a of fleches) {
-      if (estJoueur(a)) { const j = owner(a, 'joueur', estJoueur); if (j) pousser(j.id, a); }
-      if (estBallon(a)) { const b = owner(a, 'ballon', estBallon); if (b) pousser(b.id, a); }
-    }
-    for (const arr of res.values()) arr.sort((x, y) => x.t0 - y.t0);
-    return res;
-  }
-
-  /** Position d'un mobile à l'instant t le long de ses segments (sinon il attend). */
-  private posTrajectoire(legs: { t0: number; t1: number; pts: number[] }[], t: number): { x: number; y: number } {
-    if (t <= legs[0].t0) return { x: legs[0].pts[0], y: legs[0].pts[1] };
-    for (let i = 0; i < legs.length; i++) {
-      const lg = legs[i];
-      if (t <= lg.t1) {
-        if (t < lg.t0) { const pv = legs[i - 1].pts; return { x: pv[pv.length - 2], y: pv[pv.length - 1] }; }
-        const r = lg.t1 > lg.t0 ? (t - lg.t0) / (lg.t1 - lg.t0) : 1;
-        return pointLeLongDe(lg.pts, Math.max(0, Math.min(1, r)));
-      }
-    }
-    const last = legs[legs.length - 1].pts;
-    return { x: last[last.length - 2], y: last[last.length - 1] };
   }
 
   /** Durée minimale (s) pour que toutes les chaînes finissent en mode vitesse. */
-  private dureeMinPourTraces(): number {
-    let max = 0;
-    for (const legs of this.construireTrajectoires().values())
-      for (const lg of legs) if (lg.t1 > max) max = lg.t1;
-    return max;
-  }
+  private dureeMinPourTraces(): number { return dureeMaxTrajectoires(this.trajectoires()); }
 
-  // Géométrie (cheminRendu, pointsTension, echQuad, echCubic, longueurChemin,
-  // pointLeLongDe) importée de ./schema-geometrie.
+  // Géométrie et minutage : partagés (./schema-geometrie et ../schema-render/schema-animation).
 
-  private aDesTracesAnimees(): boolean { return this.construireTrajectoires().size > 0; }
+  private aDesTracesAnimees(): boolean { return this.trajectoires().size > 0; }
 
   /** Keyframe au temps t (création = capture des positions actuelles). */
   private keyframeAt(t: number, create = false): Keyframe | undefined {

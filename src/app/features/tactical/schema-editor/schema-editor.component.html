@@ -56,9 +56,15 @@
 
       <button class="editor__tool" (click)="zoom(0.1)" title="Zoom +"><mat-icon>zoom_in</mat-icon></button>
       <button class="editor__tool" (click)="zoom(-0.1)" title="Zoom −"><mat-icon>zoom_out</mat-icon></button>
+      <!-- Icônes de la police Material Icons CLASSIQUE (cf. index.html) : les noms Material
+           Symbols (right_panel_close…) n'y existent pas et rendaient ce bouton invisible. -->
       <button class="editor__tool" [class.is-active]="!panneauOuvert()" (click)="basculerPanneau()"
               [title]="panneauOuvert() ? 'Replier la palette (terrain plus grand)' : 'Afficher la palette'">
-        <mat-icon>{{ panneauOuvert() ? 'right_panel_close' : 'right_panel_open' }}</mat-icon>
+        <mat-icon>{{ panneauOuvert() ? 'chevron_right' : 'chevron_left' }}</mat-icon>
+      </button>
+      <button class="editor__tool" [class.is-active]="!bandeauOuvert()" (click)="basculerBandeau()"
+              [title]="bandeauOuvert() ? 'Replier la barre du haut (terrain plus grand)' : 'Afficher la barre du haut'">
+        <mat-icon>{{ bandeauOuvert() ? 'expand_less' : 'expand_more' }}</mat-icon>
       </button>
       <button class="editor__tool" [class.is-active]="!tracesVisibles()" (click)="visibiliteTraces()"
               [title]="tracesVisibles() ? 'Masquer les tracés' : 'Afficher les tracés'">
@@ -68,6 +74,9 @@
 
     <!-- ── Terrain (Konva) ── -->
     <div class="editor__pitch">
+      <!-- Barre du haut repliable (bouton dans la toolbar) : en flex-wrap elle passe à la ligne
+           sur petit écran et vole d'autant plus de hauteur au terrain. -->
+      @if (bandeauOuvert()) {
       <div class="editor__pitch-head">
         <div class="row" style="gap:12px;flex-wrap:wrap">
           <div class="row" style="gap:6px">
@@ -213,6 +222,7 @@
           </strong></span>
         </div>
       </div>
+      }
 
       <!-- ── Contrôles du mode Dynamique (moteur tactique) ── -->
       @if (modeMoteur()) {
