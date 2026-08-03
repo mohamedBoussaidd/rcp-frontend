@@ -57,6 +57,9 @@ export class JoueurHomeComponent {
   /** Module « Licences & documents » actif pour le club → raccourci visible. */
   readonly peutDocumentsAdmin = computed(() => this.auth.hasModule('documents_admin'));
 
+  /** Module « Schémas partagés aux joueurs » actif → raccourci visible (V100). */
+  readonly peutSchemas = computed(() => this.auth.hasModule('schemas_joueur'));
+
   /** Une séance de la prochaine est-elle un match ? */
   estMatch(): boolean {
     const s = this.store.prochaineSeance();

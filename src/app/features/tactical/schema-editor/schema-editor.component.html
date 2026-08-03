@@ -54,8 +54,12 @@
 
       <div class="editor__div"></div>
 
-      <button class="editor__tool" (click)="zoom(0.1)" title="Zoom +"><mat-icon>zoom_in</mat-icon></button>
-      <button class="editor__tool" (click)="zoom(-0.1)" title="Zoom −"><mat-icon>zoom_out</mat-icon></button>
+      <button class="editor__tool" (click)="zoom(0.1)" title="Zoom + (molette vers le haut)"><mat-icon>zoom_in</mat-icon></button>
+      <button class="editor__tool" (click)="zoom(-0.1)" title="Zoom − (molette vers le bas)"><mat-icon>zoom_out</mat-icon></button>
+      <button class="editor__tool" [class.is-active]="vueZoomee()" (click)="ajusterVue()"
+              title="Ajuster : tout le terrain visible. Zoomé, maintiens Espace (ou le bouton du milieu) pour déplacer la vue.">
+        <mat-icon>crop_free</mat-icon>
+      </button>
       <!-- Icônes de la police Material Icons CLASSIQUE (cf. index.html) : les noms Material
            Symbols (right_panel_close…) n'y existent pas et rendaient ce bouton invisible. -->
       <button class="editor__tool" [class.is-active]="!panneauOuvert()" (click)="basculerPanneau()"
@@ -251,22 +255,25 @@
       <!-- ── Contrôles du mode Dynamique (moteur tactique) ── -->
       @if (modeMoteur()) {
         <div class="moteur-row">
-          <div class="row" style="gap:6px">
-            <span class="head-label">Nos règles</span>
-            <select class="moteur-select" [value]="jeuNousId()" (change)="choisirJeuNous($any($event.target).value)">
+
+          <!-- Jeux de règles : ce que le moteur applique. -->
+          <div class="moteur-bloc">
+            <span class="moteur-bloc__titre">Règles</span>
+            <select class="moteur-select" [value]="jeuNousId()" (change)="choisirJeuNous($any($event.target).value)"
+                    title="Notre jeu de règles">
               <option value="">—</option>
-              @for (j of jeuxNous(); track j.id) { <option [value]="j.id">{{ j.systeme }}</option> }
+              @for (j of jeuxNous(); track j.id) { <option [value]="j.id">Nous · {{ j.systeme }}</option> }
+            </select>
+            <select class="moteur-select" [value]="profilAdverseId()" (change)="choisirProfilAdverse($any($event.target).value)"
+                    title="Profil adverse ; « Miroir auto » retourne notre jeu">
+              <option value="">Adv. · miroir auto</option>
+              @for (j of profilsAdverses(); track j.id) { <option [value]="j.id">Adv. · {{ j.nom }}</option> }
             </select>
           </div>
-          <div class="row" style="gap:6px">
-            <span class="head-label">Adversaire</span>
-            <select class="moteur-select" [value]="profilAdverseId()" (change)="choisirProfilAdverse($any($event.target).value)">
-              <option value="">Miroir auto</option>
-              @for (j of profilsAdverses(); track j.id) { <option [value]="j.id">{{ j.nom }} ({{ j.systeme }})</option> }
-            </select>
-          </div>
-          <div class="row" style="gap:6px">
-            <span class="head-label">Phase</span>
+
+          <!-- Phase de jeu. -->
+          <div class="moteur-bloc">
+            <span class="moteur-bloc__titre">Phase</span>
             <div class="segmented">
               @for (p of phasesMoteur; track p.key) {
                 <button [class.is-active]="phaseMoteur() === p.key" [disabled]="phaseAuto()"
@@ -278,21 +285,44 @@
               <mat-icon>autorenew</mat-icon>Auto
             </button>
           </div>
-          @if (peutEcrireRegles) {
-            <button class="moteur-toggle" [class.on]="sauverDansRegles()" (click)="sauverDansRegles.set(!sauverDansRegles())"
-              title="Activé : déplacer un jeton piloté met à jour la posture de la zone (ballon) pour la phase en cours.">
-              <mat-icon>rule</mat-icon>→ règles
+
+          <!-- Ballon & porteur : le cœur du pilotage. -->
+          <div class="moteur-bloc">
+            <span class="moteur-bloc__titre">Ballon</span>
+            <span class="moteur-porteur" [class.on]="!!porteurManuelId()"
+                  title="Clic sur un jeton : 1× il vient au ballon · 2× le ballon vient à lui · 3× porteur automatique">
+              <mat-icon>{{ ballonAuPorteur() ? 'sports_soccer' : 'person_pin_circle' }}</mat-icon>
+              {{ etatPorteur() }}
+            </span>
+            @if (porteurManuelId()) {
+              <button class="moteur-toggle" (click)="libererPorteur()" title="Revenir au porteur automatique">
+                <mat-icon>close</mat-icon>Libérer
+              </button>
+            }
+          </div>
+
+          <!-- Capture & calibration. -->
+          <div class="moteur-bloc">
+            <span class="moteur-bloc__titre">Capture</span>
+            <button class="moteur-rec" [class.on]="enregistrement()" (click)="basculerRec()"
+              [title]="enregistrement() ? 'Arrêter et capturer le scénario en keyframes' : 'Enregistrer un scénario (déplace le ballon)'">
+              <span class="rec-dot"></span>{{ enregistrement() ? 'Stop' : 'REC' }}
             </button>
-          }
-          <button class="moteur-rec" [class.on]="enregistrement()" (click)="basculerRec()"
-            [title]="enregistrement() ? 'Arrêter et capturer le scénario en keyframes' : 'Enregistrer un scénario (déplace le ballon)'">
-            <span class="rec-dot"></span>{{ enregistrement() ? 'Stop' : 'REC' }}
-          </button>
+            @if (peutEcrireRegles) {
+              <button class="moteur-toggle" [class.on]="sauverDansRegles()" (click)="sauverDansRegles.set(!sauverDansRegles())"
+                title="Activé : déplacer un jeton piloté met à jour la posture de la zone (ballon) pour la phase en cours. Avec un porteur désigné en phase de possession, la posture est enregistrée POUR CE PORTEUR.">
+                <mat-icon>rule</mat-icon>→ règles
+              </button>
+            }
+          </div>
+
           <span class="moteur-aide">{{ aideMoteur() }}</span>
         </div>
       }
 
-      <div class="editor__pitch-body">
+      <!-- Molette = zoom sur le point pointé ; Espace maintenu ou bouton du milieu = déplacer
+           la vue (un glisser simple est déjà pris par le cadre/lasso de sélection). -->
+      <div class="editor__pitch-body" [class.pan-pret]="panPret()" [class.pan-actif]="panActif()">
         <div #stageContainer class="stage-host"></div>
       </div>
     </div>
@@ -456,6 +486,86 @@
         </div>
         }
       </div>
+
+      <!-- ── Groupes tactiques : la forme est DÉDUITE des membres, jamais dessinée à la main ── -->
+      <div class="pal-section">
+        <button class="pal-head" (click)="basculer('groupes')">Groupes <mat-icon>{{ ouvert() === 'groupes' ? 'expand_more' : 'chevron_right' }}</mat-icon></button>
+        @if (ouvert() === 'groupes') {
+        <div class="form-bloc">
+          <button class="form-save" [disabled]="!peutGrouper()" (click)="creerGroupe()"
+                  title="Crée un groupe avec les joueurs sélectionnés (outil Sélection : cadre ou lasso)">
+            <mat-icon>group_work</mat-icon> Grouper la sélection
+          </button>
+
+          @for (g of groupes(); track g.id) {
+          <div class="grp" [class.grp--off]="g.masque" [class.grp--cible]="estCibleVie(g)">
+            <div class="grp__head">
+              <span class="grp__pastille" [style.background]="g.couleur || '#38bdf8'"></span>
+              <button class="grp__nom" (click)="renommerGroupe(g)" title="Renommer">{{ g.nom || 'Groupe' }}</button>
+              <span class="grp__nb">{{ tailleGroupe(g) }}</span>
+              <button class="grp__ico" (click)="basculerMasqueGroupe(g)"
+                      [title]="g.masque ? 'Afficher ce groupe' : 'Masquer ce groupe'">
+                <mat-icon>{{ g.masque ? 'visibility_off' : 'visibility' }}</mat-icon>
+              </button>
+              <button class="grp__ico danger" (click)="supprimerGroupe(g.id)" title="Supprimer le groupe">
+                <mat-icon>delete_outline</mat-icon>
+              </button>
+            </div>
+
+            <div class="grp__modes segmented">
+              <button [class.is-active]="(g.rendu || 'contour') === 'contour'" (click)="definirRenduGroupe(g, 'contour')"
+                      title="CONTOUR — la surface occupée par le bloc, façon « territoire ». Pour montrer l'espace couvert, la compacité, un bloc-équipe.">Contour</button>
+              <button [class.is-active]="g.rendu === 'liaisons'" (click)="definirRenduGroupe(g, 'liaisons')"
+                      title="LIAISONS — un trait entre voisins. Pour montrer qui est relié à qui : un triangle de passe, une chaîne de couverture. Avec « Diagonales », tout le monde est relié à tout le monde.">Liaisons</button>
+              <button [class.is-active]="g.rendu === 'bande'" (click)="definirRenduGroupe(g, 'bande')"
+                      title="BANDE — un ruban qui passe par TOUS les joueurs dans l'ordre. Pour une ligne : latéraux avancés = la bande se plie en U et montre la forme réelle de la ligne.">Bande</button>
+              <button [class.is-active]="g.rendu === 'aucun'" (click)="definirRenduGroupe(g, 'aucun')"
+                      title="AUCUN — pas de forme, mais les cotes et l'encombrement restent affichés si tu les as cochés.">Aucun</button>
+            </div>
+
+            <div class="grp__opts">
+              <label><input type="checkbox" [checked]="!!g.cotes" (change)="basculerCotes(g)"> Cotes (m)</label>
+              <label><input type="checkbox" [checked]="!!g.encombrement" (change)="basculerEncombrement(g)"> Encombrement</label>
+              @if (g.rendu === 'liaisons') {
+              <label><input type="checkbox" [checked]="!!g.diagonales" (change)="basculerDiagonales(g)"> Diagonales</label>
+              }
+            </div>
+
+            <div class="grp__actions">
+              <button (click)="selectionnerGroupe(g)" title="Sélectionner ses joueurs sur le terrain">Sélectionner</button>
+              <button [disabled]="!aSelectionJoueur()" (click)="ajouterAuGroupe(g)"
+                      title="Ajouter à ce groupe le ou les joueurs sélectionnés sur le terrain">+ joueur</button>
+              <button [disabled]="!aSelectionJoueur()" (click)="retirerDuGroupe(g)"
+                      title="Retirer de ce groupe le ou les joueurs sélectionnés sur le terrain">− joueur</button>
+              <input type="color" [value]="g.couleur || '#38bdf8'"
+                     (input)="definirCouleurGroupe(g, $any($event.target).value)" title="Couleur du groupe">
+            </div>
+            <button class="grp__scene" (click)="viserVieGroupe(g)"
+                    title="Régler quand ce groupe apparaît et disparaît (bandeau sous la timeline)">
+              <mat-icon>timeline</mat-icon> Mise en scène
+            </button>
+
+            @if (groupeMixte(g)) {
+            <p class="grp__avert">Groupe mixte (deux camps) : il s'affiche, mais ne pilotera pas le moteur tactique.</p>
+            }
+          </div>
+          }
+
+          <p class="pal-aide">
+            Un groupe ne retient <b>que ses joueurs</b> : sa forme est recalculée à chaque image,
+            donc le bloc se déforme pendant l'animation.<br>
+            <b>Contour</b> = le territoire occupé (compacité, bloc-équipe).<br>
+            <b>Liaisons</b> = qui est relié à qui (triangle de passe, chaîne de couverture) ;
+            « Diagonales » relie tout le monde à tout le monde.<br>
+            <b>Bande</b> = un ruban qui passe par tous les joueurs dans l'ordre : une ligne dont
+            les latéraux sont avancés se plie en U.<br>
+            <b>Cotes</b> = l'écartement entre voisins sur une ligne, les côtés du bloc sinon.<br>
+            Sélectionne des joueurs sur le terrain puis « + joueur » / « − joueur » pour retoucher
+            un groupe sans le refaire. Un joueur peut être dans plusieurs groupes — d'où l'œil.
+          </p>
+        </div>
+        }
+      </div>
     </div>
     }
   </div>
@@ -511,13 +621,54 @@
       @for (kf of keyframes(); track kf.t) {
       <div class="tl-kf" [style.left.%]="pct(kf.t)" (click)="allerKeyframe(kf, $event)" [title]="kf.t.toFixed(1) + 's'"></div>
       }
+      <!-- Étapes-chapitres : la projection s'arrête ici pour laisser commenter. -->
+      @for (ch of chapitres(); track ch.t) {
+      <div class="tl-chap" [style.left.%]="pct(ch.t)" (click)="allerChapitre(ch, $event)"
+           [title]="'Étape ' + (ch.titre || ch.t.toFixed(1) + 's') + ' — clic : y aller'"></div>
+      }
       <div class="tl-playhead" [style.left.%]="pct(tempsCourant())"></div>
+    </div>
+
+    <!-- ── Projection : ce que la salle verra (cadrage) et quand la lecture s'arrête (étapes) ── -->
+    <div class="tl-projection">
+      <mat-icon class="tl-projection__ico">slideshow</mat-icon>
+      <b>Projection</b>
+
+      <button class="tl-btn sm" (click)="enregistrerCadrage()"
+              title="Fige la zone de terrain actuellement visible : c'est elle que montrera le diaporama. Zoome à la molette avant d'enregistrer pour resserrer sur une situation.">
+        <mat-icon>crop_free</mat-icon> Cadrer ici
+      </button>
+      @if (cadrage(); as cad) {
+        <span class="tl-projection__etat" [title]="'Zone montrée : ' + cad.w.toFixed(0) + ' × ' + cad.h.toFixed(0)">
+          cadré ×{{ zoomCadrage().toFixed(1) }}
+        </span>
+        <button class="tl-btn sm" (click)="effacerCadrage()" title="Revenir au terrain entier"><mat-icon>close</mat-icon></button>
+      } @else {
+        <span class="tl-projection__etat muet">terrain entier</span>
+      }
+
+      <span class="tl-projection__sep"></span>
+
+      <button class="tl-btn sm" (click)="ajouterChapitre()"
+              title="Pose une étape à l'instant courant : en salle, la lecture s'arrêtera ici et repartira au geste suivant.">
+        <mat-icon>add</mat-icon> Étape ici
+      </button>
+      @for (ch of chapitres(); track ch.t; let i = $index) {
+        <span class="tl-chip" [title]="ch.t.toFixed(1) + 's'">
+          <button (click)="allerChapitre(ch)">{{ i + 1 }}. {{ ch.titre || (ch.t.toFixed(1) + 's') }}</button>
+          <button class="tl-chip__x" (click)="renommerChapitre(ch)" title="Renommer"><mat-icon>edit</mat-icon></button>
+          <button class="tl-chip__x" (click)="supprimerChapitre(ch.t)" title="Supprimer"><mat-icon>close</mat-icon></button>
+        </span>
+      }
+      @if (!chapitres().length) {
+        <span class="tl-projection__etat muet">aucune étape — la lecture se déroule d'une traite</span>
+      }
     </div>
 
     <!-- ── Mise en scène de l'objet sélectionné (zone ou jeton) ── -->
     @if (cibleVie(); as cible) {
     <div class="tl-scene">
-      <mat-icon class="tl-scene__ico">{{ cible.genre === 'forme' ? 'crop_square' : 'person_pin_circle' }}</mat-icon>
+      <mat-icon class="tl-scene__ico">{{ cible.genre === 'forme' ? 'crop_square' : cible.genre === 'groupe' ? 'group_work' : 'person_pin_circle' }}</mat-icon>
       <b class="tl-scene__nom">{{ cible.nom }}</b>
 
       <span class="tl-scene__borne">

@@ -26,6 +26,9 @@ export interface JetonMoteur {
 /** Décalage (px) du porteur par rapport au ballon, côté son propre but : il le protège. */
 export const OFFSET_PORTEUR = 16;
 
+/** Vitesse (px/s) à laquelle le ballon rejoint un porteur désigné en mode « ballon à lui ». */
+export const VITESSE_PASSE = 420;
+
 export interface ContexteMoteur {
   readonly elements: readonly JetonMoteur[];
   readonly ballon: JetonMoteur;
@@ -40,6 +43,12 @@ export interface ContexteMoteur {
   estAdverse(el: JetonMoteur): boolean;
   /** Porteur désigné au clic ; absent = désignation automatique. */
   readonly porteurManuel: JetonMoteur | undefined;
+  /**
+   * `true` : c'est le BALLON qui va au porteur désigné (2e geste), au lieu du porteur qui court
+   * au ballon. Le placement de tout le monde est alors calculé sur la position du porteur —
+   * sans ça, le bloc suivrait le ballon en vol et se replacerait deux fois.
+   */
+  readonly ballonAuPorteur: boolean;
   readonly phaseAuto: boolean;
   readonly possessionNous: boolean;
 }
@@ -49,37 +58,67 @@ export interface PlanMoteur {
   porteur: JetonMoteur | undefined;
   /** Cible (px terrain) de chaque jeton piloté — les autres n'y figurent pas. */
   cibles: Map<string, PosSlot>;
+  /** Où le ballon doit se rendre (mode « le ballon vient à lui »), sinon absent. */
+  cibleBallon?: PosSlot;
 }
 
 /**
  * Où doit aller chaque jeton piloté pour la position courante du ballon.
- * Le porteur vient AU ballon ; tous les autres rejoignent la posture interpolée de leur slot.
+ *
+ * Mode normal : le porteur vient AU ballon, les autres rejoignent la posture interpolée de leur
+ * slot. Mode « ballon au porteur » : le ballon part vers le porteur et c'est la position du
+ * PORTEUR qui sert de référence à l'interpolation — donc la zone change vraiment et tout le
+ * bloc se replace, ce que la simple désignation d'un porteur ne faisait pas.
  */
 export function planifierMoteur(ctx: ContexteMoteur): PlanMoteur {
-  const rel = pxVersRel({ x: ctx.ballon.x, y: ctx.ballon.y }, ctx.W, ctx.H);
-  const ciblesNous = ctx.reglesNous ? ciblesPhase(ctx.reglesNous, ctx.phaseNous, rel) : null;
-  const ciblesAdv = ctx.reglesAdverse
-    ? ciblesPhase(ctx.reglesAdverse, PHASE_ADVERSE[ctx.phaseNous], rel)
-    : null;
+  const relBallon = pxVersRel({ x: ctx.ballon.x, y: ctx.ballon.y }, ctx.W, ctx.H);
+  // 1er jet (sans porteur connu) : sert uniquement à désigner le porteur.
+  const postures = (ref: PosSlot, porteurSlot?: string | null, porteurAdverse = false) => {
+    const nous = ctx.reglesNous
+      ? ciblesPhase(ctx.reglesNous, ctx.phaseNous, ref, porteurAdverse ? null : porteurSlot) : null;
+    const adv = ctx.reglesAdverse
+      ? ciblesPhase(ctx.reglesAdverse, PHASE_ADVERSE[ctx.phaseNous], ref, porteurAdverse ? porteurSlot : null)
+      : null;
+    return (el: JetonMoteur): Posture | null => (ctx.estAdverse(el) ? adv : nous);
+  };
 
-  const postureDe = (el: JetonMoteur): Posture | null => (ctx.estAdverse(el) ? ciblesAdv : ciblesNous);
-  const porteur = choisirPorteur(ctx, postureDe);
+  const porteur = choisirPorteur(ctx, postures(relBallon));
+
+  // 2e jet : la référence et le porteur sont connus, les postures peuvent être les bonnes.
+  const suitLePorteur = ctx.ballonAuPorteur && !!porteur;
+  const ref = suitLePorteur
+    ? pxVersRel({ x: porteur!.x, y: porteur!.y }, ctx.W, ctx.H)
+    : relBallon;
+  const postureDe = postures(ref, porteur?.slotId, !!porteur && ctx.estAdverse(porteur));
 
   const cibles = new Map<string, PosSlot>();
   for (const el of ctx.elements) {
     if (!ctx.estPilote(el)) continue;
     if (porteur?.id === el.id) {
-      // Le porteur colle au ballon, décalé côté son propre but.
-      cibles.set(el.id, {
-        x: ctx.ballon.x + (ctx.estAdverse(el) ? OFFSET_PORTEUR : -OFFSET_PORTEUR),
-        y: ctx.ballon.y,
-      });
+      cibles.set(el.id, suitLePorteur
+        // Le ballon vient à LUI : il ne bouge pas, il attend et regarde venir. C'est aussi ce
+        // qui rend la scène stable — un porteur mobile déplacerait la référence à chaque image.
+        ? { x: el.x, y: el.y }
+        // Sinon il colle au ballon, décalé côté son propre but : il le protège.
+        : {
+          x: ctx.ballon.x + (ctx.estAdverse(el) ? OFFSET_PORTEUR : -OFFSET_PORTEUR),
+          y: ctx.ballon.y,
+        });
       continue;
     }
     const c = postureDe(el)?.[el.slotId!];
     if (c) cibles.set(el.id, relVersPx(c, ctx.W, ctx.H));
   }
-  return { porteur, cibles };
+
+  const plan: PlanMoteur = { porteur, cibles };
+  if (suitLePorteur) {
+    // Le ballon se pose au pied du porteur, côté but adverse : devant lui, pas dedans.
+    plan.cibleBallon = {
+      x: porteur!.x + (ctx.estAdverse(porteur!) ? -OFFSET_PORTEUR : OFFSET_PORTEUR),
+      y: porteur!.y,
+    };
+  }
+  return plan;
 }
 
 /**

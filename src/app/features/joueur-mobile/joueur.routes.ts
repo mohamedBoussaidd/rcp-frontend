@@ -72,6 +72,11 @@ const routes: Routes = [
         loadComponent: () => import('./matchs/joueur-matchs.component').then(m => m.JoueurMatchsComponent)
       },
       {
+        // Chemin aligné sur le lien des notifications (SchemaPartageService.LIEN_JOUEUR).
+        path: 'schemas', data: { title: 'Mes schémas' },
+        loadComponent: () => import('./schemas/joueur-schemas.component').then(m => m.JoueurSchemasComponent)
+      },
+      {
         path: 'notifications', data: { title: 'Mes notifications' },
         loadComponent: () => import('./notifications/joueur-notifications.component').then(m => m.JoueurNotificationsComponent)
       },

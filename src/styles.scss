@@ -1811,6 +1811,15 @@ mat-progress-bar {
   padding: 0 !important;
 }
 
+/* Éditeur de schéma : ce dialog n'est pas une boîte de dialogue mais un plan de travail —
+   il prend l'écran. La classe est posée par le composant lui-même (addPanelClass), donc les
+   onze points d'ouverture de l'éditeur n'ont rien à savoir de leur gabarit.
+   `!important` obligatoire : MatDialog écrit width/maxWidth en style INLINE sur la pane. */
+.schema-editor-dialog {
+  max-width: 99vw !important;
+  width: 99vw !important;
+}
+
 /* Dialog clair pleine largeur (entretien, etc.) : header/footer bord à bord */
 .rcp-dialog .mat-mdc-dialog-container .mdc-dialog__surface {
   padding: 0 !important;

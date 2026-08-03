@@ -197,9 +197,26 @@ export class DiaporamaPlayerComponent implements AfterViewInit, OnDestroy {
     }
   }
 
+  /** Lecteur du schéma affiché, quand la diapo courante en est un (pour ses chapitres). */
+  @ViewChild(SchemaViewerComponent) private viewer?: SchemaViewerComponent;
+
   // ── Navigation ──
-  suivant(): void { if (this.index() < this.total() - 1) { this.index.update(i => i + 1); this.auChangement(); } }
-  precedent(): void { if (this.index() > 0) { this.index.update(i => i - 1); this.auChangement(); } }
+  /**
+   * Avance d'une ÉTAPE quand la diapo est un schéma à chapitres, et seulement une fois la
+   * dernière étape jouée passe à la diapo suivante : en salle, le même geste déroule
+   * l'action puis enchaîne, sans jamais avoir à viser un bouton.
+   */
+  suivant(): void {
+    const v = this.viewer;
+    if (v?.chapitres.length && v.aEncoreUneEtape()) { v.chapitreSuivant(); return; }
+    if (this.index() < this.total() - 1) { this.index.update(i => i + 1); this.auChangement(); }
+  }
+
+  precedent(): void {
+    const v = this.viewer;
+    if (v?.chapitres.length && v.etape > 0) { v.chapitrePrecedent(); return; }
+    if (this.index() > 0) { this.index.update(i => i - 1); this.auChangement(); }
+  }
 
   onTap(ev: MouseEvent): void {
     if (this.mode() === 'draw') return;

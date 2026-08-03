@@ -123,6 +123,36 @@ export function sousChemin(pts: number[], p: number): number[] {
   return out;
 }
 
+/**
+ * Enveloppe convexe d'un nuage de points (parcours monotone d'Andrew), rendue dans le sens
+ * horaire. `pts` et le résultat sont au format [x0,y0,x1,y1,…].
+ *
+ * Sert à deux choses très différentes : la silhouette d'un volume projeté (un cône vu sous
+ * un angle quelconque) et la forme d'un groupe de joueurs, recalculée à chaque image.
+ */
+export function enveloppeConvexe(pts: number[]): number[] {
+  const n = pts.length / 2;
+  if (n < 3) return pts.slice();
+  const p: Point[] = [];
+  for (let i = 0; i < pts.length; i += 2) p.push({ x: pts[i], y: pts[i + 1] });
+  p.sort((a, b) => (a.x - b.x) || (a.y - b.y));
+  // Produit vectoriel : ≤ 0 élimine les points alignés, l'enveloppe reste minimale.
+  const croix = (o: Point, a: Point, b: Point) => (a.x - o.x) * (b.y - o.y) - (a.y - o.y) * (b.x - o.x);
+  const demi = (source: Point[]): Point[] => {
+    const out: Point[] = [];
+    for (const q of source) {
+      while (out.length >= 2 && croix(out[out.length - 2], out[out.length - 1], q) <= 0) out.pop();
+      out.push(q);
+    }
+    out.pop();
+    return out;
+  };
+  const bas = demi(p), haut = demi([...p].reverse());
+  const out: number[] = [];
+  for (const q of [...bas, ...haut]) out.push(q.x, q.y);
+  return out.length >= 6 ? out : pts.slice();
+}
+
 /** Réduit la densité de points d'un tracé (1 point sur 2 paires conservé). */
 export function simplifierPoints(points: number[]): number[] {
   if (points.length <= 6) return points;

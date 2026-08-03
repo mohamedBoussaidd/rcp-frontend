@@ -10,9 +10,9 @@ import {
 import { SchemaTerrainRenderer } from '../schema-editor/schema-terrain.renderer';
 import { jetonChip } from '../schema-render/schema-render';
 import {
-  GRILLE_C, GRILLE_H, PHASES, PhaseKey, Posture, ReglesJson, SYSTEMES,
-  centreZone, ciblesPhase, miroir, nbZonesCalibrees, parseRegles, postureParDefaut,
-  pxVersRel, reglesVierges, relVersPx, zoneKey,
+  GRILLES, Grille, PHASES, PHASES_PORTEUR, PhaseKey, Posture, ReglesJson, SYSTEMES,
+  centreZone, ciblesPhase, grilleDe, miroir, nbZones, nbZonesCalibrees, parseRegles,
+  parseZoneKey, postureParDefaut, pxVersRel, reglesVierges, relVersPx, reprojeterGrille, zoneKey,
 } from '../moteur/moteur-tactique';
 
 /**
@@ -107,26 +107,59 @@ import {
             @for (p of phases; track p.key) {
               <button class="cal-phase" [class.on]="phase() === p.key" (click)="changerPhase(p.key)" [title]="p.label">
                 <span>{{ p.court }}</span>
-                <b>{{ compte(p.key) }}/12</b>
+                <b>{{ compte(p.key) }}/{{ total() }}</b>
               </button>
             }
           </div>
 
+          <!-- Posture propre à un porteur : le bloc ne coulisse pas pareil selon qui a le ballon. -->
+          @if (porteurPossible()) {
+            <div class="cal-side__titre">Porteur du ballon</div>
+            <select class="input cal-select" [ngModel]="porteurSlot()" (ngModelChange)="changerPorteur($event)" name="porteur">
+              <option value="">Tout porteur (posture de zone)</option>
+              @for (s of regles?.slots ?? []; track s.id) {
+                <option [value]="s.id">{{ s.id }} — quand c'est lui qui a le ballon</option>
+              }
+            </select>
+            <p class="cal-aide">
+              @if (porteurSlot()) {
+                Tu calibres la variante <b>{{ porteurSlot() }} porteur</b>. Les zones non calibrées pour lui
+                retombent automatiquement sur la posture de zone : inutile de tout refaire.
+              } @else {
+                Posture de référence, appliquée quel que soit le porteur. Choisis un joueur pour affiner
+                les situations où c'est <b>lui</b> qui a le ballon (organisation offensive et récupération).
+              }
+            </p>
+          }
+
           <div class="cal-side__titre">Zone du ballon <span class="cal-hint">(terrain dans notre sens)</span></div>
           <div class="cal-grid">
-            @for (c of couloirs; track c) {
+            @for (c of couloirs(); track c) {
               <div class="cal-grid__row">
-                @for (h of hauteurs; track h) {
+                @for (h of hauteurs(); track h) {
                   <button class="cal-cell"
                           [class.done]="estCalibree(h, c)"
+                          [class.herite]="!estCalibree(h, c) && estHeritee(h, c)"
                           [class.on]="zone().h === h && zone().c === c"
                           (click)="choisirZone(h, c)"
-                          [title]="'Zone ' + (h + 1) + '·' + (c + 1) + (estCalibree(h, c) ? ' — calibrée' : '')"></button>
+                          [title]="'Zone ' + (h + 1) + '·' + (c + 1) + (estCalibree(h, c) ? ' — calibrée' : estHeritee(h, c) ? ' — héritée de la posture de zone' : '')"></button>
                 }
               </div>
             }
           </div>
-          <p class="cal-aide">Zone verte = posture calibrée. Clique une zone puis place les jetons : chaque déplacement enregistre la posture.</p>
+          <p class="cal-aide">
+            Zone verte = posture calibrée. Clique une zone puis place les jetons : chaque déplacement enregistre la posture.
+            @if (porteurSlot()) { Zone bleutée = héritée de la posture de zone. }
+          </p>
+
+          @if (peutEcrire) {
+            <div class="cal-side__titre">Découpage du terrain</div>
+            <select class="input cal-select" [ngModel]="cleGrille()" (ngModelChange)="changerGrille($event)" name="grille">
+              @for (g of grilles; track g.label) { <option [value]="g.grille.h + 'x' + g.grille.c">{{ g.label }}</option> }
+            </select>
+            <p class="cal-aide">Plus fin = plus précis, mais plus de postures à poser. Les postures déjà calibrées sont
+              <b>reportées</b> sur le nouveau découpage (deux zones qui fusionnent ne gardent que la première).</p>
+          }
 
           @if (peutEcrire) {
             <div class="cal-side__titre">Actions sur la zone</div>
@@ -140,7 +173,7 @@ import {
               <div class="cal-inline">
                 <select class="input cal-select sm" [(ngModel)]="zoneSource" name="zsrc">
                   <option value="" disabled>Copier depuis…</option>
-                  @for (z of zonesCalibrees(); track z) { <option [value]="z">Zone {{ +z[1] + 1 }}·{{ +z[2] + 1 }}</option> }
+                  @for (z of zonesCalibrees(); track z) { <option [value]="z">{{ libelleZone(z) }}</option> }
                 </select>
                 <button class="btn btn--secondary btn--sm" [disabled]="!zoneSource || testMode()" (click)="copierDepuis()">OK</button>
               </div>
@@ -206,6 +239,7 @@ import {
     .cal-grid__row { display: flex; gap: 5px; }
     .cal-cell { flex: 1; aspect-ratio: 1.4; border-radius: 6px; border: 1px solid rgba(148,163,184,.35); background: rgba(148,163,184,.12); cursor: pointer; }
     .cal-cell.done { background: rgba(34,197,94,.4); border-color: rgba(34,197,94,.7); }
+    .cal-cell.herite { background: rgba(56,189,248,.18); border-color: rgba(56,189,248,.45); border-style: dashed; }
     .cal-cell.on { outline: 2px solid #fde047; outline-offset: 1px; }
     .cal-actions { display: flex; flex-direction: column; gap: 7px; }
     .cal-inline { display: flex; gap: 6px; align-items: center; }
@@ -226,8 +260,10 @@ export class ReglesCalibrationComponent implements AfterViewInit, OnDestroy {
   readonly peutEcrire = this.auth.has('regles_tactiques:write');
   readonly phases = PHASES;
   readonly systemes = SYSTEMES;
-  readonly hauteurs = Array.from({ length: GRILLE_H }, (_, i) => i);
-  readonly couloirs = Array.from({ length: GRILLE_C }, (_, i) => i);
+  readonly grilles = GRILLES;
+  /** Axes de la grille courante (signaux : la grille est réglable par jeu de règles). */
+  hauteurs = signal<number[]>([]);
+  couloirs = signal<number[]>([]);
 
   jeux = signal<RegleTactiqueResume[]>([]);
   jeuActif = signal<RegleTactiqueDetail | null>(null);
@@ -235,6 +271,8 @@ export class ReglesCalibrationComponent implements AfterViewInit, OnDestroy {
 
   phase = signal<PhaseKey>('OFF');
   zone = signal<{ h: number; c: number }>({ h: 1, c: 1 });
+  /** Porteur pour lequel on calibre ('' = posture de zone, valable pour tout porteur). */
+  porteurSlot = signal<string>('');
   testMode = signal(false);
   saving = signal(false);
   savedAt = signal<number | null>(null);
@@ -298,6 +336,10 @@ export class ReglesCalibrationComponent implements AfterViewInit, OnDestroy {
         this.jeuActif.set(d);
         this.regles = parseRegles(d.reglesJson) ?? reglesVierges(d.systeme);
         this.testMode.set(false);
+        this.porteurSlot.set('');
+        this.majAxes();
+        const g = grilleDe(this.regles);
+        this.zone.set({ h: Math.min(this.zone().h, g.h - 1), c: Math.min(this.zone().c, g.c - 1) });
         this.version.update(v => v + 1);
         // (Re)construit la scène après le rendu du conteneur.
         setTimeout(() => { this.initStage(); this.chargerZone(); });
@@ -361,17 +403,44 @@ export class ReglesCalibrationComponent implements AfterViewInit, OnDestroy {
   }
 
   // ── Phase / zones ──
+  /** Grille du jeu courant (`version()` lue : elle change quand le découpage est modifié). */
+  grille(): Grille { this.version(); return grilleDe(this.regles); }
+  total(): number { return nbZones(this.grille()); }
+  cleGrille(): string { const g = this.grille(); return `${g.h}x${g.c}`; }
+
+  /** Le porteur n'entre en jeu qu'en possession — en défense, la zone du ballon suffit. */
+  porteurPossible(): boolean { return PHASES_PORTEUR.includes(this.phase()); }
+  /** Porteur effectivement pris en compte pour la phase affichée. */
+  private porteurActif(): string { return this.porteurPossible() ? this.porteurSlot() : ''; }
+  private cle(h: number, c: number): string { return zoneKey(h, c, this.porteurActif() || undefined); }
+
   compte(p: PhaseKey): number {
     this.version();
-    return this.regles ? nbZonesCalibrees(this.regles, p) : 0;
+    if (!this.regles) return 0;
+    const porteur = PHASES_PORTEUR.includes(p) ? this.porteurSlot() : '';
+    return nbZonesCalibrees(this.regles, p, porteur || undefined);
   }
   estCalibree(h: number, c: number): boolean {
     this.version();
-    return !!this.regles?.phases[this.phase()]?.[zoneKey(h, c)];
+    return !!this.regles?.phases[this.phase()]?.[this.cle(h, c)];
+  }
+  /** Zone non calibrée pour ce porteur, mais qui hérite d'une posture de zone. */
+  estHeritee(h: number, c: number): boolean {
+    this.version();
+    return !!this.porteurActif() && !!this.regles?.phases[this.phase()]?.[zoneKey(h, c)];
   }
   zonesCalibrees(): string[] {
     this.version();
-    return this.regles ? Object.keys(this.regles.phases[this.phase()] ?? {}).sort() : [];
+    if (!this.regles) return [];
+    const porteur = this.porteurActif();
+    return Object.keys(this.regles.phases[this.phase()] ?? {})
+      .filter(k => (parseZoneKey(k)?.porteur ?? '') === porteur)
+      .sort();
+  }
+  /** Libellé « Zone h·c » d'une clé, pour les listes déroulantes. */
+  libelleZone(key: string): string {
+    const z = parseZoneKey(key);
+    return z ? `Zone ${z.h + 1}·${z.c + 1}` : key;
   }
 
   changerPhase(p: PhaseKey): void {
@@ -379,6 +448,37 @@ export class ReglesCalibrationComponent implements AfterViewInit, OnDestroy {
     this.zoneSource = '';
     if (this.testMode()) this.majTest();
     else this.chargerZone();
+  }
+
+  changerPorteur(slot: string): void {
+    this.porteurSlot.set(slot);
+    this.zoneSource = '';
+    this.version.update(v => v + 1);
+    if (this.testMode()) this.majTest();
+    else this.chargerZone();
+  }
+
+  /** Change le découpage du terrain en REPORTANT les postures déjà posées. */
+  changerGrille(cle: string): void {
+    if (!this.regles || !this.peutEcrire) return;
+    const cible = this.grilles.find(g => `${g.grille.h}x${g.grille.c}` === cle)?.grille;
+    if (!cible) return;
+    const src = grilleDe(this.regles);
+    if (src.h === cible.h && src.c === cible.c) return;
+    this.regles = reprojeterGrille(this.regles, cible);
+    this.majAxes();
+    // La zone active peut ne plus exister dans le nouveau découpage.
+    this.zone.set({ h: Math.min(this.zone().h, cible.h - 1), c: Math.min(this.zone().c, cible.c - 1) });
+    this.version.update(v => v + 1);
+    this.chargerZone();
+    this.sauverDebounce();
+    this.snack.open(`Découpage : ${cible.h} × ${cible.c} — postures reportées`, 'Fermer', { duration: 2600 });
+  }
+
+  private majAxes(): void {
+    const g = grilleDe(this.regles);
+    this.hauteurs.set(Array.from({ length: g.h }, (_, i) => i));
+    this.couloirs.set(Array.from({ length: g.c }, (_, i) => i));
   }
 
   choisirZone(h: number, c: number): void {
@@ -392,11 +492,10 @@ export class ReglesCalibrationComponent implements AfterViewInit, OnDestroy {
    *  pour un profil ADVERSAIRE : tout est affiché dans NOTRE sens, il défend le but de droite). */
   private postureAffichee(): Posture {
     const r = this.regles!;
-    const key = zoneKey(this.zone().h, this.zone().c);
-    const existante = r.phases[this.phase()]?.[key];
+    const existante = r.phases[this.phase()]?.[this.cle(this.zone().h, this.zone().c)];
     if (existante) return existante;
-    const centre = centreZone(this.zone().h, this.zone().c);
-    const interpolee = ciblesPhase(r, this.phase(), centre);
+    const centre = centreZone(this.zone().h, this.zone().c, grilleDe(r));
+    const interpolee = ciblesPhase(r, this.phase(), centre, this.porteurActif() || undefined);
     if (interpolee) return interpolee;
     const def = postureParDefaut(r.systeme);
     if (this.jeuActif()?.type !== 'ADVERSAIRE') return def;
@@ -413,7 +512,7 @@ export class ReglesCalibrationComponent implements AfterViewInit, OnDestroy {
     }
     // Ballon repère au centre de la zone active.
     if (this.balle) {
-      const px = relVersPx(centreZone(this.zone().h, this.zone().c), this.W, this.H);
+      const px = relVersPx(centreZone(this.zone().h, this.zone().c, grilleDe(this.regles)), this.W, this.H);
       this.balle.position(px);
     }
     this.dessinerGrille();
@@ -429,7 +528,7 @@ export class ReglesCalibrationComponent implements AfterViewInit, OnDestroy {
 
   calibrerZone(): void {
     if (!this.regles || !this.peutEcrire) return;
-    this.regles.phases[this.phase()][zoneKey(this.zone().h, this.zone().c)] = this.captureTokens();
+    this.regles.phases[this.phase()][this.cle(this.zone().h, this.zone().c)] = this.captureTokens();
     this.version.update(v => v + 1);
     this.dessinerGrille();
     this.sauverDebounce();
@@ -437,7 +536,7 @@ export class ReglesCalibrationComponent implements AfterViewInit, OnDestroy {
 
   viderZone(): void {
     if (!this.regles) return;
-    delete this.regles.phases[this.phase()][zoneKey(this.zone().h, this.zone().c)];
+    delete this.regles.phases[this.phase()][this.cle(this.zone().h, this.zone().c)];
     this.version.update(v => v + 1);
     this.chargerZone();
     this.sauverDebounce();
@@ -446,13 +545,14 @@ export class ReglesCalibrationComponent implements AfterViewInit, OnDestroy {
   symetrie(): void {
     if (!this.regles) return;
     const { h, c } = this.zone();
+    const g = grilleDe(this.regles);
     const flip: Posture = {};
     Object.entries(this.captureTokens()).forEach(([id, p]) => { flip[id] = { x: p.x, y: 1 - p.y }; });
-    this.regles.phases[this.phase()][zoneKey(h, GRILLE_C - 1 - c)] = flip;
+    this.regles.phases[this.phase()][this.cle(h, g.c - 1 - c)] = flip;
     this.version.update(v => v + 1);
     this.dessinerGrille();
     this.sauverDebounce();
-    this.snack.open(`Posture recopiée en zone ${h + 1}·${GRILLE_C - c}`, 'Fermer', { duration: 2200 });
+    this.snack.open(`Posture recopiée en zone ${h + 1}·${g.c - c}`, 'Fermer', { duration: 2200 });
   }
 
   copierDepuis(): void {
@@ -469,8 +569,11 @@ export class ReglesCalibrationComponent implements AfterViewInit, OnDestroy {
 
   recopierVersPhase(): void {
     if (!this.regles || !this.phaseCible) return;
-    const key = zoneKey(this.zone().h, this.zone().c);
-    this.regles.phases[this.phaseCible as PhaseKey][key] = this.captureTokens();
+    // La variante « porteur » ne se recopie que vers une phase qui la comprend.
+    const cible = this.phaseCible as PhaseKey;
+    const porteur = PHASES_PORTEUR.includes(cible) ? this.porteurActif() : '';
+    const key = zoneKey(this.zone().h, this.zone().c, porteur || undefined);
+    this.regles.phases[cible][key] = this.captureTokens();
     this.version.update(v => v + 1);
     this.sauverDebounce();
     this.snack.open('Posture recopiée dans la phase cible', 'Fermer', { duration: 2200 });
@@ -480,7 +583,8 @@ export class ReglesCalibrationComponent implements AfterViewInit, OnDestroy {
   // ── Test (interpolation en direct) ──
   basculerTest(): void {
     const actif = !this.testMode();
-    if (actif && this.regles && nbZonesCalibrees(this.regles, this.phase()) === 0) {
+    if (actif && this.regles && nbZonesCalibrees(this.regles, this.phase()) === 0
+        && nbZonesCalibrees(this.regles, this.phase(), this.porteurActif() || undefined) === 0) {
       this.snack.open('Calibre au moins une zone de cette phase avant de tester', 'Fermer', { duration: 3000 });
       return;
     }
@@ -494,7 +598,7 @@ export class ReglesCalibrationComponent implements AfterViewInit, OnDestroy {
   private majTest(): void {
     if (!this.regles || !this.balle) return;
     const rel = pxVersRel({ x: this.balle.x(), y: this.balle.y() }, this.W, this.H);
-    const cibles = ciblesPhase(this.regles, this.phase(), rel);
+    const cibles = ciblesPhase(this.regles, this.phase(), rel, this.porteurActif() || undefined);
     if (!cibles) return;
     for (const [id, p] of Object.entries(cibles)) {
       const g = this.tokens.get(id);
@@ -558,16 +662,17 @@ export class ReglesCalibrationComponent implements AfterViewInit, OnDestroy {
     this.ajuster();
   }
 
-  /** Grille 4×3 en surimpression + surbrillance de la zone active + zones calibrées
+  /** Grille de zones en surimpression + surbrillance de la zone active + zones calibrées
    *  + flèche du sens d'attaque du jeu sélectionné (tout est affiché dans NOTRE sens). */
   private dessinerGrille(): void {
     const gl = this.gridLayer;
     if (!gl || !this.regles) return;
     gl.destroyChildren();
-    const m = 24, w = (this.W - 2 * m) / GRILLE_H, h = (this.H - 2 * m) / GRILLE_C;
-    for (let zh = 0; zh < GRILLE_H; zh++) {
-      for (let zc = 0; zc < GRILLE_C; zc++) {
-        const calibree = !!this.regles.phases[this.phase()]?.[zoneKey(zh, zc)];
+    const g = grilleDe(this.regles);
+    const m = 24, w = (this.W - 2 * m) / g.h, h = (this.H - 2 * m) / g.c;
+    for (let zh = 0; zh < g.h; zh++) {
+      for (let zc = 0; zc < g.c; zc++) {
+        const calibree = !!this.regles.phases[this.phase()]?.[this.cle(zh, zc)];
         const active = this.zone().h === zh && this.zone().c === zc && !this.testMode();
         gl.add(new Konva.Rect({
           x: m + zh * w, y: m + zc * h, width: w, height: h,

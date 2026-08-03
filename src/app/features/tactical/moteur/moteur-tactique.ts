@@ -26,16 +26,31 @@ export interface ReglesJson {
   version: 1;
   systeme: string;
   slots: SlotDef[];
-  /** phase → (clé de zone `z{h}{c}` → posture). Seules les zones calibrées sont présentes. */
+  /**
+   * phase → (clé de zone → posture). Seules les zones calibrées sont présentes.
+   * Clé = `z{h}{c}`, éventuellement suffixée `@{slotId}` : posture propre à un PORTEUR
+   * (cf. {@link PHASES_PORTEUR}).
+   */
   phases: Record<PhaseKey, Record<string, Posture>>;
   ajustements?: Ajustement[];
   dureeTransitionS?: number;
+  /** Découpage du terrain. Absent = 4×3, la grille historique — aucun schéma ne bouge. */
+  grille?: Grille;
 }
 
+/** Découpage du terrain en zones de ballon : `h` hauteurs × `c` couloirs. */
+export interface Grille { h: number; c: number; }
+
 // ── Constantes ──
-/** Grille de zones de ballon : 4 hauteurs (vers le but adverse) × 3 couloirs. */
+/** Grille de zones de ballon par défaut : 4 hauteurs (vers le but adverse) × 3 couloirs. */
 export const GRILLE_H = 4;
 export const GRILLE_C = 3;
+export const GRILLE_DEFAUT: Grille = { h: GRILLE_H, c: GRILLE_C };
+/** Découpages proposés à la calibration. Un axe reste à 1 chiffre (cf. {@link parseZoneKey}). */
+export const GRILLES: { grille: Grille; label: string }[] = [
+  { grille: { h: 4, c: 3 }, label: '12 zones (4 × 3)' },
+  { grille: { h: 6, c: 4 }, label: '24 zones (6 × 4)' },
+];
 /** Écart-type du noyau gaussien d'interpolation, en « zones » (0.4 ≈ la posture calibrée
  *  domine à ~96 % quand le ballon est au centre de sa zone). */
 export const SIGMA_MOTEUR = 0.4;
@@ -57,19 +72,42 @@ export const PHASE_ADVERSE: Record<PhaseKey, PhaseKey> = {
 
 export const SYSTEMES: string[] = FORMATIONS.map(f => f.nom);
 
+/**
+ * Phases où l'identité du PORTEUR change le placement : quand c'est le latéral droit qui a le
+ * ballon, le bloc ne coulisse pas comme quand c'est le milieu. En organisation défensive, la
+ * zone du ballon suffit (décision user) — on ne réagit pas au porteur adverse nommément.
+ */
+export const PHASES_PORTEUR: readonly PhaseKey[] = ['OFF', 'T_DO'];
+
 // ── Zones ──
-export function zoneKey(h: number, c: number): string { return `z${h}${c}`; }
+/** Grille effective d'un jeu de règles (absente = grille historique 4×3). */
+export function grilleDe(regles: ReglesJson | null | undefined): Grille {
+  const g = regles?.grille;
+  return g && g.h > 0 && g.c > 0 ? g : GRILLE_DEFAUT;
+}
+
+/** Clé d'une zone, éventuellement propre à un porteur. */
+export function zoneKey(h: number, c: number, porteur?: string | null): string {
+  return `z${h}${c}${porteur ? '@' + porteur : ''}`;
+}
+
+/** Lecture d'une clé de zone. ⚠ Un axe tient sur UN chiffre : 10 rangs maximum. */
+const RE_ZONE = /^z(\d)(\d)(?:@(.+))?$/;
+export function parseZoneKey(key: string): { h: number; c: number; porteur?: string } | null {
+  const m = RE_ZONE.exec(key);
+  return m ? { h: +m[1], c: +m[2], porteur: m[3] } : null;
+}
 
 /** Zone contenant un point relatif (clampé au terrain). */
-export function zoneDuPoint(x: number, y: number): { h: number; c: number; key: string } {
-  const h = Math.min(GRILLE_H - 1, Math.max(0, Math.floor(x * GRILLE_H)));
-  const c = Math.min(GRILLE_C - 1, Math.max(0, Math.floor(y * GRILLE_C)));
+export function zoneDuPoint(x: number, y: number, g: Grille = GRILLE_DEFAUT): { h: number; c: number; key: string } {
+  const h = Math.min(g.h - 1, Math.max(0, Math.floor(x * g.h)));
+  const c = Math.min(g.c - 1, Math.max(0, Math.floor(y * g.c)));
   return { h, c, key: zoneKey(h, c) };
 }
 
 /** Centre (relatif) d'une zone. */
-export function centreZone(h: number, c: number): PosSlot {
-  return { x: (h + 0.5) / GRILLE_H, y: (c + 0.5) / GRILLE_C };
+export function centreZone(h: number, c: number, g: Grille = GRILLE_DEFAUT): PosSlot {
+  return { x: (h + 0.5) / g.h, y: (c + 0.5) / g.c };
 }
 
 // ── Slots ──
@@ -121,18 +159,57 @@ export function reglesVierges(systeme: string): ReglesJson {
 const clamp01 = (v: number) => Math.min(0.98, Math.max(0.02, v));
 
 /**
+ * Postures RETENUES pour une phase, indexées par zone nue : la version propre au porteur quand
+ * elle a été calibrée, la posture de zone sinon.
+ *
+ * C'est ce repli qui rend la calibration par porteur indolore : on n'affine que les situations
+ * qui le méritent (le ballon au latéral droit), tout le reste continue de marcher.
+ */
+export function posturesEffectives(
+  regles: ReglesJson, phase: PhaseKey, porteurSlot?: string | null,
+): Map<string, Posture> {
+  const brut = Object.entries(regles.phases[phase] ?? {});
+  const avecPorteur = !!porteurSlot && PHASES_PORTEUR.includes(phase);
+  const res = new Map<string, Posture>();
+  for (const [key, posture] of brut) {          // 1er passage : les postures de zone
+    const z = parseZoneKey(key);
+    if (z && !z.porteur) res.set(zoneKey(z.h, z.c), posture);
+  }
+  if (!res.size) {
+    // Aucune posture de zone : le coach n'a calibré QUE des variantes de porteur. Plutôt que de
+    // ne rien piloter — le défaut qu'on cherche justement à corriger — on s'en sert de base.
+    for (const [key, posture] of brut) {
+      const z = parseZoneKey(key);
+      if (z && !res.has(zoneKey(z.h, z.c))) res.set(zoneKey(z.h, z.c), posture);
+    }
+  }
+  if (avecPorteur) {
+    for (const [key, posture] of brut) {        // dernier mot au porteur demandé
+      const z = parseZoneKey(key);
+      if (z?.porteur === porteurSlot) res.set(zoneKey(z.h, z.c), posture);
+    }
+  }
+  return res;
+}
+
+/**
  * Cibles de TOUS les slots pour une phase et une position de ballon : moyenne des postures
  * calibrées pondérée par un noyau gaussien sur la distance ballon↔centre de zone (distance
  * normalisée en zones). null si la phase n'a aucune zone calibrée.
+ *
+ * `porteurSlot` (optionnel) sélectionne les postures propres à ce porteur là où elles existent.
  */
-export function ciblesPhase(regles: ReglesJson, phase: PhaseKey, ballon: PosSlot): Posture | null {
-  const zones = Object.entries(regles.phases[phase] ?? {});
+export function ciblesPhase(
+  regles: ReglesJson, phase: PhaseKey, ballon: PosSlot, porteurSlot?: string | null,
+): Posture | null {
+  const g = grilleDe(regles);
+  const zones = [...posturesEffectives(regles, phase, porteurSlot)];
   if (!zones.length) return null;
   const poids = zones.map(([key]) => {
-    const h = +key[1], c = +key[2];
-    const centre = centreZone(h, c);
-    const dx = (ballon.x - centre.x) * GRILLE_H;   // distance en « zones »
-    const dy = (ballon.y - centre.y) * GRILLE_C;
+    const z = parseZoneKey(key)!;
+    const centre = centreZone(z.h, z.c, g);
+    const dx = (ballon.x - centre.x) * g.h;   // distance en « zones »
+    const dy = (ballon.y - centre.y) * g.c;
     return Math.exp(-(dx * dx + dy * dy) / (2 * SIGMA_MOTEUR * SIGMA_MOTEUR));
   });
   const cibles: Posture = {};
@@ -153,9 +230,40 @@ export function ciblesPhase(regles: ReglesJson, phase: PhaseKey, ballon: PosSlot
   return cibles;
 }
 
-/** Nombre de zones calibrées d'une phase. */
-export function nbZonesCalibrees(regles: ReglesJson, phase: PhaseKey): number {
-  return Object.keys(regles.phases[phase] ?? {}).length;
+/** Nombre de zones calibrées d'une phase, pour un porteur donné (sinon : postures de zone). */
+export function nbZonesCalibrees(regles: ReglesJson, phase: PhaseKey, porteurSlot?: string | null): number {
+  const avecPorteur = !!porteurSlot && PHASES_PORTEUR.includes(phase);
+  let n = 0;
+  for (const key of Object.keys(regles.phases[phase] ?? {})) {
+    const z = parseZoneKey(key);
+    if (z && (avecPorteur ? z.porteur === porteurSlot : !z.porteur)) n++;
+  }
+  return n;
+}
+
+/** Nombre total de zones d'une grille. */
+export function nbZones(g: Grille): number { return g.h * g.c; }
+
+/**
+ * Change le découpage du terrain SANS perdre les postures : chaque clé est relue par le centre
+ * de son ancienne zone, puis réécrite sur la nouvelle grille. Deux anciennes zones peuvent
+ * tomber dans la même nouvelle : la première gagne (aller vers plus fin ne perd jamais rien,
+ * aller vers plus grossier fusionne — c'est le prix, et il est annoncé dans l'UI).
+ */
+export function reprojeterGrille(regles: ReglesJson, cible: Grille): ReglesJson {
+  const src = grilleDe(regles);
+  const phases = { OFF: {}, DEF: {}, T_OD: {}, T_DO: {} } as ReglesJson['phases'];
+  (Object.keys(phases) as PhaseKey[]).forEach(ph => {
+    for (const [key, posture] of Object.entries(regles.phases[ph] ?? {})) {
+      const z = parseZoneKey(key);
+      if (!z) continue;
+      const centre = centreZone(z.h, z.c, src);
+      const nz = zoneDuPoint(centre.x, centre.y, cible);
+      const nk = zoneKey(nz.h, nz.c, z.porteur);
+      if (!phases[ph][nk]) phases[ph][nk] = posture;
+    }
+  });
+  return { ...regles, phases, grille: { ...cible } };
 }
 
 // ── Miroir adverse ──
@@ -165,15 +273,18 @@ export function nbZonesCalibrees(regles: ReglesJson, phase: PhaseKey): number {
  * Les ajustements sont retournés avec.
  */
 export function miroir(regles: ReglesJson): ReglesJson {
+  const g = grilleDe(regles);
   const flip = (p: Posture): Posture =>
     Object.fromEntries(Object.entries(p).map(([id, pos]) => [id, { x: 1 - pos.x, y: 1 - pos.y }]));
   const phases = { OFF: {}, DEF: {}, T_OD: {}, T_DO: {} } as ReglesJson['phases'];
   (Object.keys(regles.phases) as PhaseKey[]).forEach(ph => {
     const cible = PHASE_ADVERSE[ph];
     phases[cible] = Object.fromEntries(
-      Object.entries(regles.phases[ph]).map(([zone, posture]) => {
-        const h = +zone[1], c = +zone[2];
-        return [zoneKey(GRILLE_H - 1 - h, GRILLE_C - 1 - c), flip(posture)];
+      Object.entries(regles.phases[ph]).flatMap(([zone, posture]) => {
+        const z = parseZoneKey(zone);
+        if (!z) return [];
+        // Le porteur reste le même slot : c'est l'équipe qui est retournée, pas le système.
+        return [[zoneKey(g.h - 1 - z.h, g.c - 1 - z.c, z.porteur), flip(posture)] as const];
       }));
   });
   return {
@@ -205,6 +316,10 @@ export function parseRegles(json: string | null | undefined): ReglesJson | null 
     const d = JSON.parse(json);
     if (!d || !Array.isArray(d.slots) || !d.phases) return null;
     d.phases = { OFF: {}, DEF: {}, T_OD: {}, T_DO: {}, ...d.phases };
+    // Grille douteuse (relecture d'un JSON écrit ailleurs) = grille historique.
+    if (!d.grille || !(d.grille.h > 0) || !(d.grille.c > 0) || d.grille.h > 9 || d.grille.c > 9) {
+      delete d.grille;
+    }
     return d as ReglesJson;
   } catch { return null; }
 }

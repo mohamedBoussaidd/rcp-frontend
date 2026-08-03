@@ -366,6 +366,76 @@ export function posTrajectoire(legs: Segment[], t: number): Point {
   return { x: last[last.length - 2], y: last[last.length - 1] };
 }
 
+/**
+ * Distance parcourue le long d'une trajectoire depuis son début, en unités terrain.
+ *
+ * Symétrique de {@link posTrajectoire} : une FONCTION de t, jamais un cumul image par image.
+ * C'est ce qui permet de faire rouler le ballon sans que reculer la timeline, sauter à un
+ * instant ou changer de vitesse ne dérègle son orientation.
+ */
+export function distanceParcourue(legs: Segment[], t: number): number {
+  let d = 0;
+  for (const lg of legs) {
+    if (t <= lg.t0) break;
+    const L = longueurChemin(lg.pts);
+    if (t >= lg.t1) { d += L; continue; }
+    const r = lg.t1 > lg.t0 ? (t - lg.t0) / (lg.t1 - lg.t0) : 1;
+    d += L * Math.max(0, Math.min(1, r));
+    break;
+  }
+  return d;
+}
+
+/**
+ * Distance parcourue depuis le début d'après les KEYFRAMES — pendant de
+ * {@link distanceParcourue} pour les éléments qui n'ont pas de flèche.
+ */
+export function distanceKeyframes(el: ElementAnime, t: number, keyframes: readonly Keyframe[]): number {
+  const avec = keyframes.filter(k => k.positions[el.id]);
+  let d = 0;
+  for (let i = 0; i < avec.length - 1; i++) {
+    const a = avec[i], b = avec[i + 1];
+    if (t <= a.t) break;
+    const pa = a.positions[el.id], pb = b.positions[el.id];
+    const L = Math.hypot(pb.x - pa.x, pb.y - pa.y);
+    if (t >= b.t) { d += L; continue; }
+    d += L * (b.t > a.t ? (t - a.t) / (b.t - a.t) : 1);
+    break;
+  }
+  return d;
+}
+
+/**
+ * Joueurs en train de frapper à l'instant t, avec l'intensité du geste (0→1).
+ *
+ * Une flèche de passe ou de tir est liée au BALLON, jamais au tireur : on retrouve donc
+ * celui-ci comme le joueur le plus proche du point de départ, et seulement s'il est à portée
+ * de frappe — sinon un ballon lancé au milieu du terrain ferait armer un joueur à 30 m.
+ */
+export function frappes(traces: readonly TraceAnimee[], fenetres: Map<string, FenetreTrace>,
+                        joueurs: readonly { id: string; x: number; y: number }[],
+                        t: number, duree = 0.35, portee = 45): Map<string, number> {
+  const out = new Map<string, number>();
+  for (const tr of traces) {
+    if (tr.type !== 'passe' && tr.type !== 'tir') continue;
+    const f = fenetres.get(tr.id);
+    if (!f) continue;
+    const ecart = Math.abs(t - f.t0);
+    if (ecart > duree) continue;
+    const x = tr.points[0], y = tr.points[1];
+    let best: string | undefined, dMin = portee;
+    for (const j of joueurs) {
+      const d = Math.hypot(j.x - x, j.y - y);
+      if (d <= dMin) { dMin = d; best = j.id; }
+    }
+    if (!best) continue;
+    // Montée puis retombée du geste autour de l'instant du départ du ballon.
+    const intensite = 1 - ecart / duree;
+    out.set(best, Math.max(out.get(best) ?? 0, intensite));
+  }
+  return out;
+}
+
 /** Position d'un élément à l'instant t d'après les keyframes (interpolation linéaire). */
 export function posKeyframes(el: ElementAnime, t: number, keyframes: readonly Keyframe[]): Point {
   const avec = keyframes.filter(k => k.positions[el.id]);

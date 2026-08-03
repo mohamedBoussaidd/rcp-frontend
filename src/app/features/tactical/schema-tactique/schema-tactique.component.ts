@@ -8,6 +8,7 @@ import { AuthService } from '@core/services/auth.service';
 import { SchemaEditorComponent } from '../schema-editor/schema-editor.component';
 import { SchemaMeta, SchemaMetaDialogComponent } from '../schema-meta-dialog/schema-meta-dialog.component';
 import { ExercicePickerDialogComponent } from '../exercice-picker-dialog/exercice-picker-dialog.component';
+import { SchemaPartageDialogComponent } from '../schema-partage-dialog/schema-partage-dialog.component';
 
 /** Carte enrichie : schéma + infos d'animation dérivées de son JSON. */
 interface SchemaCarte extends SchemaTactique { animee: boolean; frames: number; }
@@ -33,6 +34,21 @@ export class SchemaTactiqueComponent implements OnInit {
 
   /** Peut créer/dupliquer un schéma (permission d'écriture). */
   canEcrire(): boolean { return this.auth.has('schemas:write'); }
+
+  /** Peut diffuser un schéma aux joueurs (module `schemas_joueur` + permission dédiée). */
+  canPartager(): boolean { return this.auth.has('schemas:partager'); }
+
+  /**
+   * Ouvre le partage aux joueurs. Un schéma FOURNI (global) est partageable aussi : le club ne
+   * le possède pas, mais rien n'empêche de le montrer à ses joueurs.
+   */
+  partager(s: SchemaTactique, ev: Event): void {
+    ev.stopPropagation();
+    this.dialog.open(SchemaPartageDialogComponent, {
+      data: { schemaId: s.id, nom: s.nom },
+      autoFocus: false,
+    });
+  }
 
   /** Seul le super-admin pose des schémas FOURNIS (contenu commun à tous les clubs). */
   estSuperAdmin(): boolean { return this.auth.currentUser()?.role === 'SUPER_ADMIN'; }

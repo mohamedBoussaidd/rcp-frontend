@@ -15,7 +15,8 @@ import { SchemaEspaceDialogComponent } from '../schema-espace-dialog/schema-espa
 import { AuthService } from '@core/services/auth.service';
 import { PreferencesService, PREF_ANGLE_SCHEMA, PREF_STYLE_RENDU_SCHEMA } from '@core/services/preferences.service';
 import {
-  StyleRendu, centreVisuel, dessinerContenuForme, dessinerCorpsElement, ordonnerParProfondeur,
+  FOULEE, StyleRendu, animerJoueur, centreVisuel, dessinerContenuForme, dessinerCorpsElement,
+  estVolumeProjete, ordonnerParProfondeur, orienterBallon, orienterJoueur,
 } from '../schema-render/schema-render';
 import {
   Camera, CAMERA_DESSUS, INCLINAISON_MAX, ParamsCamera, PRESETS_CAMERA, estInclinee,
@@ -24,20 +25,22 @@ import {
   RegleTactiqueDetail, RegleTactiqueResume, ReglesTactiquesService,
 } from '@core/services/regles-tactiques.service';
 import {
-  PHASES, PHASE_ADVERSE, PhaseKey, ReglesJson,
-  miroir, parseRegles, pxVersRel, slotIdsPourRoles, zoneDuPoint,
+  PHASES, PHASES_PORTEUR, PHASE_ADVERSE, PhaseKey, ReglesJson,
+  grilleDe, miroir, parseRegles, pxVersRel, slotIdsPourRoles, zoneDuPoint, zoneKey,
 } from '../moteur/moteur-tactique';
 import {
   AncreTrace, BorneVie, Keyframe, Minutage, ModeTraces, RAYON_LIEN, Segment, Vie, VitesseGps,
-  aUneVie, dureeMaxTrajectoires, etatTrace, minuter, opaciteVie, posKeyframes, posTrajectoire,
-  resoudreBorne, vitesseBallePxS, vitesseJoueurPxS,
+  aUneVie, distanceKeyframes, distanceParcourue, dureeMaxTrajectoires, etatTrace, frappes,
+  minuter, opaciteVie, posKeyframes, posTrajectoire, resoudreBorne, vitesseBallePxS,
+  vitesseJoueurPxS,
 } from '../schema-render/schema-animation';
 import {
-  ContexteMoteur, evaluerPossession, planifierMoteur, posturePourCamp,
+  ContexteMoteur, VITESSE_PASSE, evaluerPossession, planifierMoteur, posturePourCamp,
 } from './schema-moteur-dynamique';
+import { COULEUR_GROUPE, dessinerGroupes } from '../schema-render/schema-groupes';
 import {
-  FormeType, SchemaContenu, SchemaElement, SchemaForme, SchemaTrace, TraceType, TraitForme,
-  parserContenu, serialiserContenu,
+  Cadrage, Chapitre, FormeType, MAX_CHAPITRES, RenduGroupe, SchemaContenu, SchemaElement,
+  SchemaForme, SchemaGroupe, SchemaTrace, TraceType, TraitForme, parserContenu, serialiserContenu,
 } from './schema-serialisation';
 
 /**
@@ -139,6 +142,9 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
     { type: 'plot', couleur: BLEU, label: 'Plot bleu' },
     { type: 'coupelle', couleur: '#f59e0b', label: 'Coupelle' },
     { type: 'but', couleur: '#ffffff', label: 'Mini-but' },
+    // Cage réglementaire (7,32 m) posable n'importe où : entraînement de finition sur un
+    // demi-terrain, but ajouté au milieu, opposition sur deux vraies cages…
+    { type: 'but_mobile', couleur: '#ffffff', label: 'But mobile' },
     { type: 'cerceau', couleur: '#f97316', label: 'Cerceau' },
     { type: 'mannequin', couleur: '#64748b', label: 'Mannequin' },
     { type: 'echelle', couleur: JAUNE, label: 'Échelle de rythme' },
@@ -191,7 +197,12 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
   private transitionJusqua = 0;                  // fin de la phase transitoire (s, horloge perf)
   /** Porteur désigné à la main (clic sur un jeton en mode Dynamique) ; null = porteur auto. */
   porteurManuelId = signal<string | null>(null);
+  /** 2e clic sur le porteur : le BALLON vient à lui (au lieu de lui qui court au ballon). */
+  ballonAuPorteur = signal(false);
   private porteurRing?: Konva.Circle;            // halo jaune qui suit le porteur du ballon
+  /** Distance parcourue par chaque jeton depuis l'entrée en Dynamique : foulée et roulement.
+   *  Ici le cumul est légitime — le mode est en temps réel, il ne se rembobine pas. */
+  private distMoteur = new Map<string, number>();
   private recDebut = 0;                          // départ du REC (s, horloge perf)
   private recDernierEch = 0;                     // dernier échantillon keyframe (s)
   private saveReglesTimer: ReturnType<typeof setTimeout> | null = null;
@@ -382,7 +393,24 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
       this.placerNoeud(this.nodesById.get(el.id), sol.x, sol.y);
     });
     if (this.styleRendu() === 'realiste') ordonnerParProfondeur(this.nodesById.values());
+    // Changement d'angle (ou capture à plat) : les groupes se reprojettent aussi, et les
+    // joueurs se réorientent — un sprite neuf repart de face, et un nouvel angle de caméra
+    // change de toute façon le côté sous lequel on les voit.
+    this.rafraichirGroupes();
+    this.orienterJoueurs(this.tempsCourant(), this.minutage());
     this.layer.draw();
+  }
+
+  /**
+   * Reconstruit UN élément à sa position courante. Indispensable aux volumes projetés : leur
+   * forme dépend de l'endroit du terrain où ils se trouvent, déplacer le groupe ne ferait
+   * que promener la déformation calculée au point de départ.
+   */
+  private redessinerElement(el: SchemaElement): void {
+    this.nodesById.get(el.id)?.destroy();
+    this.nodesById.delete(el.id);
+    this.dessinerElement(el);
+    this.placerNoeud(this.nodesById.get(el.id), el.x, el.y);
   }
 
   /** Place un nœud d'après des coordonnées TERRAIN (position écran + taille de profondeur). */
@@ -413,6 +441,10 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
   constructor() {
     const data = inject<SchemaEditorData>(MAT_DIALOG_DATA);
     this.data = data;
+    // Gabarit du dialog posé ICI et non par les appelants : l'éditeur est ouvert depuis onze
+    // endroits (biblio, exercices, match, plan de jeu, diaporama, admin…), qui passaient tous
+    // le même 95vw. Le composant sait mieux qu'eux la place dont il a besoin.
+    this.dialogRef.addPanelClass('schema-editor-dialog');
     if (this.data.schemaJson) {
       try { const d = JSON.parse(this.data.schemaJson); if (d.terrain) this.terrain.set(d.terrain); } catch { }
     }
@@ -434,6 +466,7 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
     this.layer = new Konva.Layer();
     this.stage.add(this.fieldLayer);
     this.stage.add(this.layer);
+    this.creerCoucheGroupes();   // sous tout le reste
     // Transformer (poignées) pour redimensionner la forme d'annotation sélectionnée.
     this.trForme = new Konva.Transformer({ rotateEnabled: false, ignoreStroke: true, padding: 4 });
     this.layer.add(this.trForme);
@@ -448,19 +481,26 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
     this.chargerVitesses();
     this.chargerJeuxMoteur();
     if (this.keyframes().length === 0) this.resetKeyframes();
-    this.onFs = () => { this.estPleinEcran.set(!!document.fullscreenElement); setTimeout(() => this.ajusterAuConteneur(), 60); };
+    // Entrer ou sortir du plein écran change toute la zone : on repart du cadrage automatique.
+    this.onFs = () => { this.estPleinEcran.set(!!document.fullscreenElement); setTimeout(() => this.ajusterVue(), 60); };
     document.addEventListener('fullscreenchange', this.onFs);
     // Met le terrain à l'échelle du conteneur (tout visible, sans scroll) + suit les redimensionnements.
     window.addEventListener('resize', this.onResize);
+    this.brancherVue();
     setTimeout(() => this.ajusterAuConteneur(), 0);
   }
 
   private onFs?: () => void;
   private readonly onResize = () => this.ajusterAuConteneur();
 
-  /** Ajuste l'échelle de la scène pour que tout le terrain tienne dans la zone d'affichage. */
+  /**
+   * Ajuste l'échelle de la scène pour que tout le terrain tienne dans la zone d'affichage.
+   * Sans effet si l'utilisateur a zoomé lui-même : son cadrage lui appartient, seul
+   * « ajuster » (ou un changement d'espace) le lui reprend.
+   */
   private ajusterAuConteneur(): void {
-    const body = this.containerRef.nativeElement.closest('.editor__pitch-body') as HTMLElement | null;
+    if (this.zoomManuel) return;
+    const body = this.zoneAffichage();
     if (!body) return;
     const dispoW = body.clientWidth - 10, dispoH = body.clientHeight - 10;   // marge de respiration
     if (dispoW <= 0 || dispoH <= 0) return;
@@ -604,6 +644,7 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
     }
     if (this.onFs) document.removeEventListener('fullscreenchange', this.onFs);
     window.removeEventListener('resize', this.onResize);
+    this.detacherVue?.();   // molette, déplacement, barre d'Espace
     if (document.fullscreenElement) document.exitFullscreen().catch(() => { });
     this.stage?.destroy();
   }
@@ -643,9 +684,11 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
   changerTerrain(t: Terrain): void {
     this.terrain.set(t);
     // Les dimensions changent : la scène, la caméra et son cadrage se refont dessus.
+    // Un zoom manuel hérité de l'espace précédent n'aurait plus de sens : on repart d'un
+    // terrain entièrement visible.
     this.stage.width(this.W); this.stage.height(this.H);
     this.majCamera();
-    this.ajusterAuConteneur();
+    this.ajusterVue();
   }
 
   choisirOutil(o: Outil): void {
@@ -790,9 +833,358 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
     this.service.supprimerFormation(f.id).subscribe({ next: () => this.chargerFormations(), error: () => { } });
   }
 
-  // ── Zoom ── (manuel, par-dessus l'ajustement auto au conteneur)
+  // ══════════ Zoom & déplacement de la vue ══════════
+  // Le modèle reste en coordonnées terrain : l'échelle ne vit que dans `stage.scale()` (elle
+  // bouge déjà à chaque redimensionnement) et `pxParMetre` s'appuie sur le W du MODÈLE. Zoomer
+  // n'a donc aucun effet sur les données enregistrées.
+
+  // ══════════ Mise en scène de projection (cadrage + chapitres) ══════════
+  /** Zone de terrain montrée en projection (null = tout le terrain, comme avant). */
+  cadrage = signal<Cadrage | undefined>(undefined);
+  /** Étapes de lecture, triées par temps croissant. */
+  chapitres = signal<Chapitre[]>([]);
+
+  /**
+   * Fige le cadrage courant de l'éditeur : la zone de terrain RÉELLEMENT visible devient
+   * celle que verra la salle. Le coach zoome et se déplace comme il en a l'habitude, puis
+   * enregistre — il n'y a pas de réglage séparé à comprendre.
+   */
+  enregistrerCadrage(): void {
+    const zone = this.zoneAffichage(), host = this.containerRef.nativeElement;
+    if (!zone) return;
+    const r = host.getBoundingClientRect(), z = zone.getBoundingClientRect(), e = this.echelle();
+    const x = Math.max(0, (z.left - r.left) / e), y = Math.max(0, (z.top - r.top) / e);
+    const w = Math.min(this.W - x, z.width / e), h = Math.min(this.H - y, z.height / e);
+    if (w < 20 || h < 20) return;
+    this.cadrage.set({ x, y, w, h });
+    this.snack.open(
+      w >= this.W - 1 && h >= this.H - 1
+        ? 'Cadrage enregistré : tout le terrain (zoome avant d\'enregistrer pour resserrer)'
+        : 'Cadrage enregistré — la projection montrera cette zone',
+      'Fermer', { duration: 3000 });
+  }
+
+  /** Facteur d'agrandissement du cadrage, tel que le lecteur l'appliquera. */
+  zoomCadrage(): number {
+    const c = this.cadrage();
+    return c ? Math.max(1, Math.min(4, Math.min(this.W / c.w, this.H / c.h))) : 1;
+  }
+
+  effacerCadrage(): void {
+    this.cadrage.set(undefined);
+    this.snack.open('Cadrage effacé : la projection montrera tout le terrain', 'Fermer', { duration: 2400 });
+  }
+
+  /** Pose une étape à l'instant courant de la timeline. */
+  ajouterChapitre(): void {
+    const t = Math.round(this.tempsCourant() * 100) / 100;
+    const cs = this.chapitres();
+    if (cs.length >= MAX_CHAPITRES) {
+      this.snack.open(`Maximum ${MAX_CHAPITRES} étapes`, 'Fermer', { duration: 2500 });
+      return;
+    }
+    if (cs.some(c => Math.abs(c.t - t) < 0.05)) {
+      this.snack.open('Une étape existe déjà à cet instant', 'Fermer', { duration: 2500 });
+      return;
+    }
+    this.chapitres.set([...cs, { t }].sort((a, b) => a.t - b.t));
+  }
+
+  supprimerChapitre(t: number): void {
+    this.chapitres.set(this.chapitres().filter(c => c.t !== t));
+  }
+
+  renommerChapitre(c: Chapitre): void {
+    const titre = prompt('Titre de l\'étape ?', c.titre ?? '');
+    if (titre === null) return;
+    this.chapitres.set(this.chapitres().map(x =>
+      x.t === c.t ? { ...x, titre: titre.trim() || undefined } : x));
+  }
+
+  /** Va à l'instant d'une étape (clic sur son repère). */
+  allerChapitre(c: Chapitre, ev?: Event): void {
+    ev?.stopPropagation();
+    this.scrub(c.t);
+  }
+
+  /** Vrai dès que l'utilisateur a zoomé lui-même : un redimensionnement de fenêtre ne doit
+   *  plus lui reprendre son cadrage (avant, tout `resize` réajustait d'office). */
+  private zoomManuel = false;
+  /** Barre d'Espace maintenue : prêt à déplacer la vue. */
+  panPret = signal(false);
+  /** Déplacement en cours (glissement). */
+  panActif = signal(false);
+
+  /** Zoom par les boutons : centré sur le milieu de la zone visible. */
   zoom(delta: number): void {
-    this.appliquerEchelle(Math.min(3, Math.max(0.2, this.echelle() + delta)));
+    const r = this.zoneAffichage()?.getBoundingClientRect();
+    this.zoomerVers(Math.min(3, Math.max(0.2, this.echelle() + delta)),
+      r && r.left + r.width / 2, r && r.top + r.height / 2);
+  }
+
+  /** Revient au cadrage automatique : tout le terrain visible, sans défilement. */
+  ajusterVue(): void {
+    this.zoomManuel = false;
+    this.ajusterAuConteneur();
+  }
+
+  /** Un zoom manuel est actif : le bouton « ajuster » n'a d'intérêt que dans ce cas. */
+  vueZoomee(): boolean { return this.zoomManuel; }
+
+  private zoneAffichage(): HTMLElement | null {
+    return this.containerRef.nativeElement.closest('.editor__pitch-body') as HTMLElement | null;
+  }
+
+  /**
+   * Applique une échelle en gardant FIXE le point de terrain situé sous (cx, cy).
+   * Le stage n'est jamais déplacé — il est centré par son conteneur — c'est donc le
+   * DÉFILEMENT du conteneur qui compense. Quand le terrain tient en entier il n'y a pas de
+   * défilement possible : le zoom reste alors centré, ce qui est le comportement attendu.
+   */
+  private zoomerVers(s: number, cx?: number, cy?: number): void {
+    this.zoomManuel = true;
+    const zone = this.zoneAffichage(), host = this.containerRef.nativeElement;
+    if (!zone || cx === undefined || cy === undefined) { this.appliquerEchelle(s); return; }
+    const avant = host.getBoundingClientRect(), ech = this.echelle();
+    const tx = (cx - avant.left) / ech, ty = (cy - avant.top) / ech;
+    this.appliquerEchelle(s);
+    const apres = host.getBoundingClientRect();   // lu après reflow : la taille vient de changer
+    zone.scrollLeft += apres.left + tx * s - cx;
+    zone.scrollTop += apres.top + ty * s - cy;
+  }
+
+  private detacherVue?: () => void;
+
+  /**
+   * Molette = zoom sur le point pointé ; Espace maintenu ou bouton du milieu = déplacement.
+   * Un glisser simple ne peut PAS servir au déplacement : il est déjà pris par le cadre et
+   * le lasso de sélection.
+   */
+  private brancherVue(): void {
+    const zone = this.zoneAffichage();
+    if (!zone) return;
+
+    const onWheel = (ev: WheelEvent) => {
+      if (ev.ctrlKey) return;                 // laissé au zoom du navigateur
+      ev.preventDefault();
+      const f = ev.deltaY < 0 ? 1.12 : 1 / 1.12;
+      this.zoomerVers(Math.min(3, Math.max(0.2, this.echelle() * f)), ev.clientX, ev.clientY);
+    };
+
+    // Écoute en CAPTURE, sinon Konva reçoit le mousedown avant nous et démarre une
+    // sélection au lieu d'un déplacement.
+    const onDown = (ev: MouseEvent) => {
+      if (!this.panPret() && ev.button !== 1) return;
+      ev.preventDefault();       // le bouton du milieu déclencherait l'autoscroll du navigateur
+      ev.stopPropagation();
+      this.panActif.set(true);
+      const x0 = ev.clientX, y0 = ev.clientY, sl = zone.scrollLeft, st = zone.scrollTop;
+      const move = (m: MouseEvent) => {
+        zone.scrollLeft = sl - (m.clientX - x0);
+        zone.scrollTop = st - (m.clientY - y0);
+      };
+      const up = () => {
+        this.panActif.set(false);
+        window.removeEventListener('mousemove', move);
+        window.removeEventListener('mouseup', up);
+      };
+      window.addEventListener('mousemove', move);
+      window.addEventListener('mouseup', up);
+    };
+
+    // L'Espace ne doit pas être volé à un champ de saisie (titre, texte d'une forme…).
+    const enSaisie = () => {
+      const a = document.activeElement as HTMLElement | null;
+      return !!a && (a.tagName === 'INPUT' || a.tagName === 'TEXTAREA' || a.isContentEditable);
+    };
+    const onKeyDown = (ev: KeyboardEvent) => {
+      if (ev.code !== 'Space' || enSaisie() || this.panPret()) return;
+      ev.preventDefault();       // sinon la page défile ou le bouton focus se déclenche
+      this.panPret.set(true);
+    };
+    const onKeyUp = (ev: KeyboardEvent) => { if (ev.code === 'Space') this.panPret.set(false); };
+    // Alt-Tab avec la barre enfoncée : sans ça, la touche resterait « collée ».
+    const onBlur = () => { this.panPret.set(false); };
+
+    zone.addEventListener('wheel', onWheel, { passive: false });
+    zone.addEventListener('mousedown', onDown, true);
+    document.addEventListener('keydown', onKeyDown);
+    document.addEventListener('keyup', onKeyUp);
+    window.addEventListener('blur', onBlur);
+    this.detacherVue = () => {
+      zone.removeEventListener('wheel', onWheel);
+      zone.removeEventListener('mousedown', onDown, true);
+      document.removeEventListener('keydown', onKeyDown);
+      document.removeEventListener('keyup', onKeyUp);
+      window.removeEventListener('blur', onBlur);
+    };
+  }
+
+  // ══════════ Groupes tactiques ══════════
+  // Un groupe ne retient QUE ses membres : sa forme est l'enveloppe de leurs positions,
+  // recalculée à chaque image (cf. schema-groupes). C'est ce qui le fait se déformer
+  // pendant l'animation, et ce qui interdit qu'il se désynchronise des jetons.
+
+  groupes = signal<SchemaGroupe[]>([]);
+  /** Conteneur Konva des groupes, maintenu SOUS les jetons, les flèches et les zones. */
+  private groupesNode?: Konva.Group;
+
+  private creerCoucheGroupes(): void {
+    this.groupesNode = new Konva.Group({ name: 'groupes', listening: false });
+    this.layer.add(this.groupesNode);
+    this.groupesNode.moveToBottom();
+  }
+
+  /** Jetons actuellement sélectionnés — les seuls candidats à un groupe. */
+  private jetonsSelectionnes(): string[] {
+    return [...this.selection].filter(id => this.elements.some(e => e.id === id && e.type === 'joueur'));
+  }
+
+  peutGrouper(): boolean { return this.jetonsSelectionnes().length >= 2; }
+
+  /** Un seul joueur sélectionné suffit pour l'ajouter à un groupe ou l'en retirer. */
+  aSelectionJoueur(): boolean { return this.jetonsSelectionnes().length > 0; }
+
+  /** Crée un groupe à partir de la sélection (cadre ou lasso, déjà en place). */
+  creerGroupe(): void {
+    const membres = this.jetonsSelectionnes();
+    if (membres.length < 2) {
+      this.snack.open('Sélectionne au moins 2 joueurs (outil Sélection, cadre ou lasso)', 'Fermer', { duration: 3000 });
+      return;
+    }
+    this.groupes.update(l => [...l, {
+      id: this.uid(), membres, nom: `Groupe ${l.length + 1}`, couleur: COULEUR_GROUPE,
+    }]);
+    this.rafraichirGroupes();
+  }
+
+  supprimerGroupe(id: string): void {
+    this.groupes.update(l => l.filter(g => g.id !== id));
+    this.rafraichirGroupes();
+  }
+
+  /** Ajoute au groupe les joueurs sélectionnés, sans toucher aux membres déjà présents. */
+  ajouterAuGroupe(g: SchemaGroupe): void {
+    const sel = this.jetonsSelectionnes();
+    if (!sel.length) {
+      this.snack.open('Sélectionne d\'abord un ou plusieurs joueurs sur le terrain', 'Fermer', { duration: 3000 });
+      return;
+    }
+    const membres = [...new Set([...g.membres, ...sel])];
+    if (membres.length === g.membres.length) {
+      this.snack.open('Ces joueurs sont déjà dans le groupe', 'Fermer', { duration: 2500 });
+      return;
+    }
+    this.majGroupe(g.id, { membres });
+  }
+
+  /** Retire du groupe les joueurs sélectionnés — un groupe garde au minimum 2 membres. */
+  retirerDuGroupe(g: SchemaGroupe): void {
+    const sel = new Set(this.jetonsSelectionnes());
+    if (!sel.size) {
+      this.snack.open('Sélectionne d\'abord le ou les joueurs à retirer', 'Fermer', { duration: 3000 });
+      return;
+    }
+    const membres = g.membres.filter(m => !sel.has(m));
+    if (membres.length === g.membres.length) {
+      this.snack.open('Aucun des joueurs sélectionnés n\'appartient à ce groupe', 'Fermer', { duration: 3000 });
+      return;
+    }
+    if (membres.length < 2) {
+      this.snack.open('Un groupe garde au moins 2 joueurs — supprime-le plutôt', 'Fermer', { duration: 3500 });
+      return;
+    }
+    this.majGroupe(g.id, { membres });
+  }
+
+  /** Sélectionne sur le terrain les membres d'un groupe (pour les déplacer ensemble). */
+  selectionnerGroupe(g: SchemaGroupe): void {
+    this.choisirOutil('select');
+    this.definirSelection(g.membres.filter(id => this.elements.some(e => e.id === id)));
+    this.layer.batchDraw();
+  }
+
+  majGroupe(id: string, patch: Partial<SchemaGroupe>): void {
+    this.groupes.update(l => l.map(g => (g.id === id ? { ...g, ...patch } : g)));
+    this.rafraichirGroupes();
+  }
+
+  basculerMasqueGroupe(g: SchemaGroupe): void { this.majGroupe(g.id, { masque: !g.masque || undefined }); }
+  basculerCotes(g: SchemaGroupe): void { this.majGroupe(g.id, { cotes: !g.cotes || undefined }); }
+  basculerEncombrement(g: SchemaGroupe): void { this.majGroupe(g.id, { encombrement: !g.encombrement || undefined }); }
+  basculerDiagonales(g: SchemaGroupe): void { this.majGroupe(g.id, { diagonales: !g.diagonales || undefined }); }
+  definirRenduGroupe(g: SchemaGroupe, rendu: string): void { this.majGroupe(g.id, { rendu: rendu as RenduGroupe }); }
+  definirCouleurGroupe(g: SchemaGroupe, couleur: string): void { this.majGroupe(g.id, { couleur }); }
+
+  renommerGroupe(g: SchemaGroupe): void {
+    const nom = prompt('Nom du groupe ?', g.nom ?? '');
+    if (nom !== null) this.majGroupe(g.id, { nom: nom.trim() || undefined });
+  }
+
+  /** Effectif d'un groupe, membres disparus exclus. */
+  tailleGroupe(g: SchemaGroupe): number {
+    return g.membres.filter(id => this.elements.some(e => e.id === id)).length;
+  }
+
+  /**
+   * Groupe à cheval sur les deux camps : autorisé (montrer un duel, un bloc contre un bloc)
+   * mais il ne pourra pas piloter le moteur tactique, dont les postes sont par équipe.
+   */
+  groupeMixte(g: SchemaGroupe): boolean {
+    const couleurs = new Set(g.membres
+      .map(id => this.elements.find(e => e.id === id)?.couleur)
+      .filter(Boolean)
+      .map(c => (c === NOIR ? 'eux' : 'nous')));
+    return couleurs.size > 1;
+  }
+
+  /** Retire un élément supprimé de tous les groupes (et dissout ceux qui tombent sous 2). */
+  private retirerDesGroupes(elementId: string): void {
+    if (!this.groupes().some(g => g.membres.includes(elementId))) return;
+    this.groupes.update(l => l
+      .map(g => (g.membres.includes(elementId)
+        ? { ...g, membres: g.membres.filter(m => m !== elementId) } : g))
+      .filter(g => g.membres.length >= 2));
+    this.rafraichirGroupes();
+  }
+
+  /**
+   * Redessin hors animation (création, réglage, glisser d'un jeton). Le minutage n'est
+   * recalculé que si un groupe porte une fenêtre d'apparition : `minutage()` redéveloppe
+   * toutes les courbes, ce serait cher à chaque image d'un glisser.
+   */
+  private rafraichirGroupes(): void {
+    if (!this.groupesNode) return;
+    const avecVie = this.groupes().some(g => aUneVie(g.vie));
+    this.dessinerGroupesScene(this.tempsCourant(), avecVie ? this.minutage() : undefined);
+    this.layer.batchDraw();
+  }
+
+  /** (Re)dessine les groupes à l'instant t. Reconstruction complète : ils n'ont aucun état. */
+  private dessinerGroupesScene(t: number, m?: Minutage): void {
+    if (!this.groupesNode) return;
+    // Schéma sans groupe (le cas de tous ceux d'avant) : rien à reconstruire à chaque image.
+    if (!this.groupes().length && !this.groupesNode.hasChildren()) return;
+    dessinerGroupes(this.groupesNode, this.groupes(), {
+      position: id => {
+        const n = this.nodesById.get(id);
+        // La position est lue sur le NŒUD, pas sur le modèle : pendant un glisser, seul le
+        // nœud est à jour (le modèle n'est écrit qu'au relâchement), et c'est justement là
+        // qu'on veut voir le bloc se déformer sous la souris.
+        if (n) return n.visible() ? this.versTerrain(n.x(), n.y()) : undefined;
+        const el = this.elements.find(e => e.id === id);
+        return el ? { x: el.x, y: el.y } : undefined;
+      },
+      projeter: pts => this.tracePoints(pts),
+      pxParMetre: this.pxParMetre,
+      opacite: id => {
+        const g = this.groupes().find(x => x.id === id);
+        if (!m || !g || !aUneVie(g.vie)) return 1;
+        const o = opaciteVie(g.vie, m.fenetres, t);
+        return o === 0 && !this.enLecture() ? OPACITE_FANTOME : o;
+      },
+    });
+    this.groupesNode.moveToBottom();
   }
 
   // ── Sauvegarde ──
@@ -806,11 +1198,15 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
       elements: this.elements,
       traces: this.traces,
       formes: this.formes,
+      groupes: this.groupes(),
       dureeSecondes: this.dureeSecondes(),
       modeAnim: this.modeAnim(),
       metriqueVitesse: this.metriqueVitesse(),
       modeTraces: this.modeTraces(),
+      vitesseLecture: this.vitesse(),
       keyframes: this.keyframes(),
+      cadrage: this.cadrage(),
+      chapitres: this.chapitres().length ? this.chapitres() : undefined,
     });
     // Miniature pour la grille de la bibliothèque (pixelRatio réduit = data URL légère).
     // Toujours prise à plat : à la taille d'une vignette, une vue inclinée perd la lecture
@@ -836,13 +1232,15 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
   viderTerrain(): void {
     if (this.elements.length === 0 && this.traces.length === 0 && this.formes.length === 0) return;
     if (!confirm('Vider tout le terrain ? (joueurs, équipement, tracés et formes)')) return;
-    this.layer.destroyChildren();   // détruit aussi le transformer → on le recrée
+    this.layer.destroyChildren();   // détruit aussi le transformer et la couche des groupes
     this.elements = [];
     this.traces = [];
     this.formes = [];
+    this.groupes.set([]);
     this.nodesById.clear();
     this.formeNodes.clear();
     this.selection.clear();
+    this.creerCoucheGroupes();
     this.trForme = new Konva.Transformer({ rotateEnabled: false, ignoreStroke: true, padding: 4 });
     this.layer.add(this.trForme);
     this.creerTransformerRotation();
@@ -976,6 +1374,8 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
     this.moteurAnim = undefined;
     if (this.enregistrement()) this.arreterRec(false);
     this.porteurManuelId.set(null);
+    this.ballonAuPorteur.set(false);
+    this.distMoteur.clear();
     this.porteurRing?.visible(false);
     this.modeMoteur.set(false);
   }
@@ -983,9 +1383,27 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
   /** Message d'aide contextuel du bandeau Dynamique. */
   aideMoteur(): string {
     if (this.enregistrement()) return 'REC en cours — joue ton scénario au ballon, puis Stop pour le capturer en keyframes.';
-    if (this.sauverDansRegles()) return 'Corrections actives : déplacer un jeton réécrit la posture de la zone du ballon (phase en cours).';
+    if (this.sauverDansRegles()) {
+      return this.porteurManuelId() && PHASES_PORTEUR.includes(this.phaseMoteur())
+        ? 'Corrections actives : déplacer un jeton enregistre la posture de cette zone POUR CE PORTEUR.'
+        : 'Corrections actives : déplacer un jeton réécrit la posture de la zone du ballon (phase en cours).';
+    }
+    if (this.ballonAuPorteur()) return 'Le ballon rejoint le porteur désigné : la zone change, donc tout le bloc se replace autour de lui.';
     if (this.phaseAuto()) return 'Auto : la phase suit la possession — le ballon reste piloté par toi. Clic sur un jeton = porteur imposé.';
-    return 'Glisse le ballon : le bloc suit à vitesse réelle et un porteur vient au ballon. Clic sur un jeton = porteur manuel ; les flèches priment sur le moteur.';
+    return 'Glisse le ballon : le bloc suit à vitesse réelle. Clic sur un jeton = il vient au ballon, reclique = le ballon vient à lui. Les flèches priment sur le moteur.';
+  }
+
+  /** Résumé du porteur affiché dans le bandeau. */
+  etatPorteur(): string {
+    const el = this.elements.find(e => e.id === this.porteurManuelId());
+    if (!el) return 'Porteur auto';
+    const qui = el.label ?? (el.numero ? '#' + el.numero : null) ?? el.slotId ?? 'jeton';
+    return this.ballonAuPorteur() ? `Le ballon va à ${qui}` : `${qui} vient au ballon`;
+  }
+
+  libererPorteur(): void {
+    this.porteurManuelId.set(null);
+    this.ballonAuPorteur.set(false);
   }
 
   /** Jeton piloté par le moteur : porteur d'un slot ET sans flèche dessinée (les flèches priment). */
@@ -1008,6 +1426,7 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
       porteurManuel: this.porteurManuelId()
         ? this.elements.find(e => e.id === this.porteurManuelId())
         : undefined,
+      ballonAuPorteur: this.ballonAuPorteur(),
       phaseAuto: this.phaseAuto(),
       possessionNous: this.possessionNous,
     };
@@ -1031,6 +1450,7 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
 
     // Décisions (porteur + cible de chaque jeton piloté) : pures, hors de ce composant.
     const plan = planifierMoteur(this.contexteMoteur(ballon));
+    const style = this.styleRendu();
 
     for (const el of this.elements) {
       const cible = plan.cibles.get(el.id) as { x: number; y: number } | undefined;
@@ -1039,11 +1459,32 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
       if (!n || n.isDragging()) continue;   // une correction en cours ne doit pas être combattue
       const dx = cible.x - el.x, dy = cible.y - el.y;
       const dist = Math.hypot(dx, dy);
-      if (dist < 0.5) continue;
+      if (dist < 0.5) {
+        // Arrivé : il s'arrête. Le porteur, lui, fixe son ballon plutôt que le vide.
+        this.figerJoueur(n, el, style, plan.porteur?.id === el.id ? ballon : undefined);
+        continue;
+      }
       const pas = this.vitesseJoueur(el) * dt * this.vitesse();
       const r = dist <= pas ? 1 : pas / dist;
       el.x += dx * r; el.y += dy * r;
       this.placerNoeud(n, el.x, el.y);
+      this.vivreJoueur(n, el, style, dx, dy, dist * r);
+    }
+
+    // Le ballon rejoint le porteur désigné (mode « le ballon vient à lui ») : il roule vers lui
+    // à vitesse de passe, et c'est SON arrivée qui a déjà fait coulisser le bloc.
+    if (plan.cibleBallon && bNode && !bNode.isDragging()) {
+      const dx = plan.cibleBallon.x - ballon.x, dy = plan.cibleBallon.y - ballon.y;
+      const dist = Math.hypot(dx, dy);
+      if (dist > 0.5) {
+        const pas = VITESSE_PASSE * dt * this.vitesse();
+        const r = dist <= pas ? 1 : pas / dist;
+        ballon.x += dx * r; ballon.y += dy * r;
+        this.placerNoeud(bNode, ballon.x, ballon.y);
+        const parcourue = (this.distMoteur.get(ballon.id) ?? 0) + dist * r;
+        this.distMoteur.set(ballon.id, parcourue);
+        orienterBallon(bNode, parcourue);
+      }
     }
 
     // Halo du porteur (suit son jeton ; masqué s'il n'y en a pas).
@@ -1076,14 +1517,23 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
     const ballon = this.elements.find(e => e.type === 'ballon');
     if (!ballon) return;
     const relB = pxVersRel({ x: ballon.x, y: ballon.y }, this.W, this.H);
-    const zone = zoneDuPoint(relB.x, relB.y);
+    const zone = zoneDuPoint(relB.x, relB.y, grilleDe(regles));
     const phase = adverse ? PHASE_ADVERSE[this.phaseMoteur()] : this.phaseMoteur();
-    // Posture = positions actuelles de tous les jetons de ce camp porteurs d'un slot.
-    regles.phases[phase][zone.key] = posturePourCamp(
-      regles.phases[phase][zone.key], this.elements, adverse,
+    // Un porteur DÉSIGNÉ à la main, dans une phase de possession, affine la posture pour lui
+    // seul (clé `…@slot`) : c'est ainsi qu'on calibre « quand c'est le latéral qui a le ballon ».
+    const porteur = this.elements.find(e => e.id === this.porteurManuelId());
+    const porteurSlot = porteur?.slotId && (porteur.couleur === NOIR) === adverse
+      && PHASES_PORTEUR.includes(phase) ? porteur.slotId : undefined;
+    const key = zoneKey(zone.h, zone.c, porteurSlot);
+    // Posture = positions actuelles de tous les jetons de ce camp porteurs d'un slot ; une
+    // posture de porteur toute neuve part de la posture de zone plutôt que de rien.
+    regles.phases[phase][key] = posturePourCamp(
+      regles.phases[phase][key] ?? regles.phases[phase][zone.key], this.elements, adverse,
       e => (e as SchemaElement).couleur === NOIR, this.W, this.H,
     );
-    this.snack.open(`Règle mise à jour — zone ${zone.h + 1}·${zone.c + 1}, phase ${phase}`, 'Fermer', { duration: 2000 });
+    this.snack.open(
+      `Règle mise à jour — zone ${zone.h + 1}·${zone.c + 1}, phase ${phase}`
+      + (porteurSlot ? ` — porteur ${porteurSlot}` : ''), 'Fermer', { duration: 2000 });
     if (this.saveReglesTimer) clearTimeout(this.saveReglesTimer);
     this.saveReglesTimer = setTimeout(() => this.pousserRegles(), 1200);
   }
@@ -1138,12 +1588,16 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
   private chargerContenu(c: SchemaContenu): void {
     c.formes.forEach(f => { this.formes.push(f); this.dessinerForme(f); });
     c.elements.forEach(el => { this.elements.push(el); this.dessinerElement(el); });
+    this.groupes.set(c.groupes);   // vide pour tout schéma antérieur aux groupes
     if (this.styleRendu() === 'realiste') ordonnerParProfondeur(this.nodesById.values());
     c.traces.forEach(t => { this.traces.push(t); this.dessinerTrace(t); });
     // Champs absents = réglages courants conservés (compat des schémas anciens).
     if (c.modeAnim) this.modeAnim.set(c.modeAnim);
     if (c.metriqueVitesse) this.metriqueVitesse.set(c.metriqueVitesse);
     if (c.modeTraces) this.modeTraces.set(c.modeTraces);
+    if (c.vitesseLecture) this.vitesse.set(c.vitesseLecture);
+    if (c.cadrage) this.cadrage.set(c.cadrage);
+    if (c.chapitres) this.chapitres.set(c.chapitres);
     if (c.keyframes.length) {
       this.keyframes.set(c.keyframes);
       if (c.dureeSecondes) this.dureeSecondes.set(c.dureeSecondes);
@@ -1180,7 +1634,7 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
       } else {
         this.resetKeyframes();
       }
-      this.ajusterAuConteneur();
+      this.ajusterVue();   // schéma importé = espace potentiellement différent, on recadre
       this.snack.open(`Schéma « ${schema.nom} » importé`, 'Fermer', { duration: 2000 });
     });
   }
@@ -1207,7 +1661,9 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
       g.add(new Konva.Circle({ y: hy, radius: 22, stroke: c, strokeWidth: 3 }));
     }
     // Visuel de base : module de rendu partagé (tableau = formes historiques, réaliste = sprites).
-    dessinerCorpsElement(g, el, style);
+    // En vue inclinée, le matériel est projeté en volume : il lui faut la caméra et sa
+    // position AU SOL (le groupe, lui, porte déjà des coordonnées d'écran).
+    dessinerCorpsElement(g, el, style, this.camera ? { cam: this.camera, x: el.x, y: el.y } : null);
 
     // Badge d'alerte « à surveiller » (au-dessus du jeton, coin haut-droit).
     if (el.surveille) {
@@ -1252,6 +1708,8 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
       });
       this.layer.batchDraw();
     });
+    // Le jeton bouge, son bloc le suit : c'est tout l'intérêt d'une forme déduite.
+    g.on('dragmove.groupes', () => { if (this.groupes().length) this.rafraichirGroupes(); });
     g.on('dragend', () => {
       const sol = this.versTerrain(g.x(), g.y());
       if (this.modeMoteur()) {
@@ -1272,16 +1730,38 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
       if (this.selection.has(el.id) && this.selection.size > 1) { this.selection.forEach(maj); }
       else { maj(el.id); }
       this.dragBase.clear();
+      // Un volume projeté n'a pas la même forme partout sur le terrain : il se refait à
+      // l'arrivée (le sien, et ceux qu'un déplacement de groupe a emmenés avec lui).
+      if (this.camera && this.styleRendu() === 'realiste') {
+        const bouges = this.selection.has(el.id) && this.selection.size > 1 ? [...this.selection] : [el.id];
+        bouges.forEach(id => {
+          const e = this.elements.find(x => x.id === id);
+          if (e && estVolumeProjete(e.type)) this.redessinerElement(e);
+        });
+      }
       // La profondeur a changé : on rétablit l'ordre de superposition 2.5D.
       if (this.styleRendu() === 'realiste') { ordonnerParProfondeur(this.nodesById.values()); this.layer.draw(); }
     });
     g.on('click tap', () => {
       if (this.modeMoteur()) {
-        // Mode Dynamique : le clic désigne / libère le porteur manuel (pas d'édition).
+        // Mode Dynamique : le clic cycle sur 3 états (pas d'édition).
+        //   1er clic  = ce jeton porte le ballon → il court le chercher (comportement d'origine)
+        //   2e clic   = le BALLON vient à lui → la zone change, tout le bloc se replace
+        //   3e clic   = porteur automatique
         if (el.type === 'joueur' && el.slotId) {
-          const deja = this.porteurManuelId() === el.id;
-          this.porteurManuelId.set(deja ? null : el.id);
-          this.snack.open(deja ? 'Porteur automatique' : `Porteur : ${el.label ?? el.numero ?? el.slotId}`, 'Fermer', { duration: 1600 });
+          const qui = el.label ?? el.numero ?? el.slotId;
+          if (this.porteurManuelId() !== el.id) {
+            this.porteurManuelId.set(el.id);
+            this.ballonAuPorteur.set(false);
+            this.snack.open(`Porteur : ${qui} — il vient au ballon (reclique : le ballon vient à lui)`, 'Fermer', { duration: 2600 });
+          } else if (!this.ballonAuPorteur()) {
+            this.ballonAuPorteur.set(true);
+            this.snack.open(`Le ballon vient à ${qui} — le bloc se replace autour de lui`, 'Fermer', { duration: 2600 });
+          } else {
+            this.porteurManuelId.set(null);
+            this.ballonAuPorteur.set(false);
+            this.snack.open('Porteur automatique', 'Fermer', { duration: 1600 });
+          }
         }
         return;
       }
@@ -1289,6 +1769,7 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
       if (o === 'supprimer') {
         this.elements = this.elements.filter(e => e.id !== el.id);
         this.nodesById.delete(el.id);
+        this.retirerDesGroupes(el.id);
         this.keyframes.update(ks => { ks.forEach(k => delete k.positions[el.id]); return [...ks]; });
         this.traces.forEach(t => { if (t.elementId === el.id) t.elementId = undefined; if (t.ballId === el.id) t.ballId = undefined; });
         if (this.porteurManuelId() === el.id) this.porteurManuelId.set(null);
@@ -1973,12 +2454,102 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
       const legs = m.mobiles.get(el.id);
       const p = legs ? posTrajectoire(legs, t) : posKeyframes(el, t, kfs);
       el.x = p.x; el.y = p.y;
-      this.placerNoeud(this.nodesById.get(el.id), p.x, p.y);
+      const n = this.nodesById.get(el.id);
+      this.placerNoeud(n, p.x, p.y);
+      // Le ballon roule : angle déduit de la distance déjà parcourue, donc juste aussi bien
+      // en marche arrière ou après un saut dans la timeline. Une passe étant plus rapide
+      // qu'une conduite, il tourne plus vite — sans rien coder de plus.
+      if (n && el.type === 'ballon' && legs) orienterBallon(n, distanceParcourue(legs, t));
     }
+    this.orienterJoueurs(t, m);
     this.appliquerScene(t, m);
     // En 2.5D, l'ordre de superposition dépend de la profondeur : il change à chaque frame.
     if (this.camera) ordonnerParProfondeur(this.nodesById.values());
     this.layer.batchDraw();
+  }
+
+  /** Écart de temps (s) servant à lire la TANGENTE d'une trajectoire : où va le joueur. */
+  private static readonly DELTA_DIR = 0.15;
+
+  /** Dernière direction connue par joueur : un joueur à l'arrêt garde son dernier regard
+   *  au lieu de repartir de face à chaque pause. Survit à la reconstruction des sprites. */
+  private dirJoueur = new Map<string, number>();
+
+  /**
+   * Oriente chaque joueur dans le sens de sa course. La direction est LUE À NOUVEAU à
+   * chaque instant (position en t et en t+δ) et jamais accumulée : reculer la timeline
+   * réoriente donc correctement, comme pour le roulement du ballon.
+   */
+  private orienterJoueurs(t: number, m: Minutage): void {
+    const style = this.styleRendu();
+    if (style !== 'realiste') return;
+    const kfs = this.keyframes(), d = SchemaEditorComponent.DELTA_DIR;
+    const joueurs = this.elements.filter(e => e.type === 'joueur');
+    // Qui frappe à cet instant : une flèche de passe part du BALLON, le tireur est le joueur
+    // le plus proche de son point de départ.
+    const gestes = frappes(this.traces, m.fenetres, joueurs, t);
+    for (const el of joueurs) {
+      const n = this.nodesById.get(el.id);
+      if (!n) continue;
+      const legs = m.mobiles.get(el.id);
+      const a = legs ? posTrajectoire(legs, t) : posKeyframes(el, t, kfs);
+      const b = legs ? posTrajectoire(legs, t + d) : posKeyframes(el, t + d, kfs);
+      orienterJoueur(n, {
+        el, style, cam: this.camera, x: a.x, y: a.y,
+        dir: this.directionCourse(el.id, a, b),
+      });
+      // Foulée calée sur la DISTANCE parcourue : pas de patinage, et reculer la timeline
+      // ramène exactement la même position de jambes (même principe que le ballon).
+      const parcourue = legs ? distanceParcourue(legs, t) : distanceKeyframes(el, t, kfs);
+      const bouge = Math.hypot(b.x - a.x, b.y - a.y) > 0.6;
+      animerJoueur(n, {
+        style,
+        phase: bouge ? (parcourue / FOULEE) * Math.PI * 2 : null,
+        frappe: gestes.get(el.id) ?? 0,
+      });
+    }
+  }
+
+  /**
+   * Mode Dynamique : un jeton qui avance regarde où il va et court.
+   *
+   * ⚠ Ici la foulée est CUMULÉE (et non relue comme dans `orienterJoueurs`) : le moteur produit
+   * un flux temps réel, sans timeline à rembobiner, donc rien ne peut dériver.
+   */
+  private vivreJoueur(n: Konva.Group, el: SchemaElement, style: StyleRendu,
+                      dx: number, dy: number, avance: number): void {
+    if (el.type !== 'joueur' || style !== 'realiste') return;
+    const dir = Math.atan2(dy, dx);
+    this.dirJoueur.set(el.id, dir);
+    const parcourue = (this.distMoteur.get(el.id) ?? 0) + avance;
+    this.distMoteur.set(el.id, parcourue);
+    orienterJoueur(n, { el, style, cam: this.camera, x: el.x, y: el.y, dir });
+    animerJoueur(n, { style, phase: (parcourue / FOULEE) * Math.PI * 2 });
+  }
+
+  /** Jeton arrivé à destination : il se fige, en gardant son dernier regard — ou en fixant
+   *  un point donné (le ballon, pour le porteur). */
+  private figerJoueur(n: Konva.Group, el: SchemaElement, style: StyleRendu,
+                      regard?: { x: number; y: number }): void {
+    if (el.type !== 'joueur' || style !== 'realiste') return;
+    let dir = this.dirJoueur.get(el.id) ?? null;
+    if (regard && Math.hypot(regard.x - el.x, regard.y - el.y) > 1) {
+      dir = Math.atan2(regard.y - el.y, regard.x - el.x);
+      this.dirJoueur.set(el.id, dir);
+    }
+    orienterJoueur(n, { el, style, cam: this.camera, x: el.x, y: el.y, dir });
+    animerJoueur(n, { style, phase: null });
+  }
+
+  /** Direction du déplacement, ou la dernière connue si le joueur est immobile. */
+  private directionCourse(id: string, a: { x: number; y: number }, b: { x: number; y: number }): number | null {
+    const dx = b.x - a.x, dy = b.y - a.y;
+    if (Math.hypot(dx, dy) > 0.6) {
+      const dir = Math.atan2(dy, dx);
+      this.dirJoueur.set(id, dir);
+      return dir;
+    }
+    return this.dirJoueur.get(id) ?? null;
   }
 
   /**
@@ -2001,6 +2572,8 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
     };
     for (const f of this.formes) poser(this.formeNodes.get(f.id), f.vie);
     for (const el of this.elements) poser(this.nodesById.get(el.id), el.vie);
+    // Après les visibilités : les groupes ne comptent que les membres réellement en scène.
+    this.dessinerGroupesScene(t, m);
   }
 
   // ══════════ Brique 2 : flèche = route suivie ══════════
@@ -2169,12 +2742,29 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
    * n'a de sens que pour une cible unique — sur une sélection multiple, on ne saurait pas quoi
    * afficher sur la timeline.
    */
-  cibleVie = signal<{ id: string; genre: 'forme' | 'element'; nom: string } | null>(null);
+  cibleVie = signal<{ id: string; genre: 'forme' | 'element' | 'groupe'; nom: string } | null>(null);
 
-  private modeleVie(): SchemaForme | SchemaElement | undefined {
+  private modeleVie(): SchemaForme | SchemaElement | SchemaGroupe | undefined {
     const c = this.cibleVie();
     if (!c) return undefined;
-    return c.genre === 'forme' ? this.formes.find(f => f.id === c.id) : this.elements.find(e => e.id === c.id);
+    if (c.genre === 'forme') return this.formes.find(f => f.id === c.id);
+    if (c.genre === 'groupe') return this.groupes().find(g => g.id === c.id);
+    return this.elements.find(e => e.id === c.id);
+  }
+
+  /**
+   * Vise un GROUPE dans le bandeau de mise en scène : un bloc peut apparaître au moment où
+   * l'action le concerne et s'effacer ensuite, exactement comme une zone ou un jeton.
+   */
+  viserVieGroupe(g: SchemaGroupe): void {
+    this.clearSelection();   // remet cibleVie à null : l'ordre compte
+    this.cibleVie.set({ id: g.id, genre: 'groupe', nom: g.nom || 'Groupe' });
+  }
+
+  /** Le groupe actuellement visé par le bandeau de mise en scène (surlignage dans la liste). */
+  estCibleVie(g: SchemaGroupe): boolean {
+    const c = this.cibleVie();
+    return !!c && c.genre === 'groupe' && c.id === g.id;
   }
 
   /** Vrai si la cible porte une fenêtre (sinon elle est visible d'un bout à l'autre). */
@@ -2198,6 +2788,8 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
     if (!m) return;
     const v = maj({ ...(m.vie ?? {}) });
     m.vie = v.debut === undefined && v.fin === undefined ? undefined : v;
+    // Les groupes vivent dans un signal : muter l'objet ne suffit pas à le notifier.
+    if (this.cibleVie()?.genre === 'groupe') this.groupes.update(l => [...l]);
     this.appliquerScene(this.tempsCourant());
     this.layer.batchDraw();
   }

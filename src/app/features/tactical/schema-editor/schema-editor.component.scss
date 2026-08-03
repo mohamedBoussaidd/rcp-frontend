@@ -20,13 +20,15 @@
   display: flex;
   flex-direction: column;
   /* Le terrain se met à l'échelle pour tenir : chaque pixel rendu ici est un pixel de
-     terrain en plus, d'où une hauteur poussée au maximum et un padding serré. */
-  height: 96vh;
+     terrain en plus, d'où une hauteur poussée au maximum et un padding serré.
+     C'est la HAUTEUR qui bride l'échelle (min(dispoW/W, dispoH/H)) : chaque pixel gagné
+     ici élargit AUSSI le terrain. 99vh et non 100 pour garder l'ombre du dialog visible. */
+  height: 99vh;
   box-sizing: border-box;
   overflow: hidden;      /* pas de scrollbar : tout (en-tête + terrain + timeline) tient dans la hauteur */
   background: var(--bg);
   color: var(--text);
-  padding: 10px;
+  padding: 6px;
   &:fullscreen {
     height: 100vh;
     width: 100vw;
@@ -373,7 +375,7 @@
 }
 
 .editor__pitch-head {
-  padding: 12px 16px;
+  padding: 8px 16px;
   border-bottom: 1px solid var(--border);
   display: flex;
   align-items: center;
@@ -390,6 +392,37 @@
   flex-wrap: wrap;
   gap: 14px;
   background: rgba(124, 58, 237, 0.06);
+}
+
+/* Le bandeau était « éparpillé » : chaque réglage vit maintenant dans un bloc titré. */
+.moteur-bloc {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px 3px 8px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+}
+
+.moteur-bloc__titre {
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  opacity: 0.55;
+}
+
+.moteur-porteur {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.8rem;
+  opacity: 0.7;
+
+  mat-icon { font-size: 17px; width: 17px; height: 17px; }
+
+  &.on { opacity: 1; color: #fde047; font-weight: 600; }
 }
 
 .moteur-select {
@@ -458,14 +491,31 @@
   min-height: 0;
   overflow: auto;
   display: flex;
-  align-items: center;
-  justify-content: center;
+  /* Centrage par `margin: auto` sur l'enfant et NON par align/justify-content : avec
+     `justify-content: center`, un enfant plus grand que son conteneur voit son débord
+     GAUCHE devenir inatteignable au défilement — ce qui rendrait la moitié du terrain
+     zoomé inaccessible. */
+}
+
+/* Déplacement de la vue : Konva pose un `cursor` en style INLINE sur son conteneur (main
+   au survol d'un jeton…), qui l'emporterait sur une règle posée sur le parent — d'où le
+   sélecteur descendant et le !important. */
+.editor__pitch-body.pan-pret,
+.editor__pitch-body.pan-pret * {
+  cursor: grab !important;
+}
+
+.editor__pitch-body.pan-actif,
+.editor__pitch-body.pan-actif * {
+  cursor: grabbing !important;
 }
 
 .stage-host {
   box-shadow: 0 8px 30px rgba(0, 0, 0, .25);
   border-radius: 8px;
   overflow: hidden;
+  margin: auto;     /* centrage compatible avec le défilement (cf. .editor__pitch-body) */
+  flex-shrink: 0;   /* zoomé, le stage déborde et défile : il ne doit pas être compressé */
 }
 
 /* ── Panneau droit (palette) ── */
@@ -606,6 +656,182 @@
   line-height: 1.5;
 }
 
+/* ── Groupes tactiques ── */
+.grp {
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  padding: 7px;
+  margin-top: 8px;
+  background: var(--surface-2);
+
+  &--off {
+    opacity: 0.55;
+  }
+
+  /* Groupe visé par le bandeau de mise en scène (sous la timeline). */
+  &--cible {
+    border-color: #38bdf8;
+    box-shadow: 0 0 0 1px #38bdf855;
+  }
+}
+
+.grp__scene {
+  width: 100%;
+  margin-top: 6px;
+  padding: 4px;
+  border-radius: var(--r-sm);
+  border: 1px solid #38bdf855;
+  background: transparent;
+  color: #38bdf8;
+  font-family: inherit;
+  font-size: 0.7rem;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+
+  mat-icon {
+    font-size: 14px;
+    width: 14px;
+    height: 14px;
+  }
+
+  &:hover {
+    background: #38bdf815;
+  }
+}
+
+.grp__head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.grp__pastille {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.grp__nom {
+  flex: 1;
+  min-width: 0;
+  text-align: left;
+  background: none;
+  border: none;
+  color: var(--text);
+  font-family: inherit;
+  font-size: 0.79rem;
+  font-weight: 600;
+  cursor: text;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.grp__nb {
+  font-size: 0.68rem;
+  color: var(--text-3);
+  background: var(--surface-3);
+  border-radius: 8px;
+  padding: 1px 6px;
+}
+
+.grp__ico {
+  background: none;
+  border: none;
+  color: var(--text-3);
+  cursor: pointer;
+  padding: 2px;
+  display: inline-flex;
+
+  mat-icon {
+    font-size: 16px;
+    width: 16px;
+    height: 16px;
+  }
+
+  &:hover {
+    color: var(--text);
+  }
+
+  &.danger:hover {
+    color: var(--bad);
+  }
+}
+
+.grp__modes {
+  margin-top: 6px;
+
+  button {
+    font-size: 0.68rem;
+    padding: 3px 5px;
+  }
+}
+
+.grp__opts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  margin-top: 6px;
+  font-size: 0.7rem;
+  color: var(--text-2);
+
+  label {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    cursor: pointer;
+  }
+}
+
+.grp__actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+
+  button {
+    flex: 1;
+    padding: 4px;
+    border-radius: var(--r-sm);
+    border: 1px solid var(--border-strong);
+    background: var(--surface);
+    color: var(--text-2);
+    font-family: inherit;
+    font-size: 0.7rem;
+    cursor: pointer;
+
+    &:hover:not(:disabled) {
+      background: var(--surface-3);
+    }
+
+    &:disabled {
+      opacity: 0.45;
+      cursor: default;
+    }
+  }
+
+  input[type='color'] {
+    width: 26px;
+    height: 24px;
+    padding: 0;
+    border: 1px solid var(--border-strong);
+    border-radius: var(--r-sm);
+    background: none;
+    cursor: pointer;
+  }
+}
+
+.grp__avert {
+  margin: 6px 0 0;
+  font-size: 0.68rem;
+  color: var(--warn-700, #b45309);
+  line-height: 1.4;
+}
+
 /* Formations / CPA */
 .form-bloc {
   padding: 8px 2px;
@@ -739,11 +965,13 @@
   }
 }
 
-/* ── Timeline ── */
+/* ── Timeline ──
+   Compacte volontairement : cette bande est en concurrence directe avec le terrain pour
+   la hauteur, et c'est la hauteur qui décide de la taille du terrain. */
 .timeline-band {
   flex-shrink: 0;
-  margin-top: 12px;
-  padding: 10px 14px;
+  margin-top: 7px;
+  padding: 6px 12px;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--r-xl);
@@ -754,7 +982,7 @@
   align-items: center;
   gap: 8px;
   flex-wrap: wrap;
-  margin-bottom: 9px;
+  margin-bottom: 6px;
 }
 
 .tl-btn {
@@ -863,7 +1091,7 @@
 
 .tl-bar {
   position: relative;
-  height: 18px;
+  height: 15px;
   border-radius: 9px;
   background: var(--surface-3);
   border: 1px solid var(--border);
@@ -908,6 +1136,86 @@
   z-index: 3;
 }
 
+/* ── Étapes-chapitres : là où la projection s'arrête pour laisser commenter ── */
+.tl-chap {
+  position: absolute;
+  top: -4px;
+  bottom: -4px;
+  width: 3px;
+  background: #f59e0b;
+  border-radius: 2px;
+  transform: translateX(-50%);
+  cursor: pointer;
+  z-index: 2;
+
+  &:hover { width: 5px; }
+}
+
+/* ── Rangée « Projection » : cadrage + étapes ── */
+.tl-projection {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px solid var(--border);
+  font-size: .8rem;
+
+  &__ico {
+    font-size: 18px;
+    width: 18px;
+    height: 18px;
+    color: #f59e0b;
+  }
+
+  &__etat {
+    font-size: .74rem;
+    color: var(--text-3);
+
+    &.muet { opacity: .6; font-style: italic; }
+  }
+
+  &__sep {
+    width: 1px;
+    height: 18px;
+    background: var(--border);
+    margin: 0 2px;
+  }
+}
+
+.tl-chip {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid rgba(245, 158, 11, .5);
+  background: rgba(245, 158, 11, .12);
+  border-radius: 999px;
+  overflow: hidden;
+
+  button {
+    border: 0;
+    background: transparent;
+    color: inherit;
+    font-family: inherit;
+    font-size: .74rem;
+    padding: 3px 8px;
+    cursor: pointer;
+    max-width: 150px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  &__x {
+    padding: 3px 5px !important;
+    opacity: .65;
+
+    mat-icon { font-size: 14px; width: 14px; height: 14px; }
+
+    &:hover { opacity: 1; }
+  }
+}
+
 /* ── Mise en scène : fenêtre d'apparition de l'objet sélectionné ── */
 .tl-vie {
   position: absolute;
@@ -926,8 +1234,8 @@
   align-items: center;
   gap: 8px;
   flex-wrap: wrap;
-  margin-top: 9px;
-  padding-top: 9px;
+  margin-top: 6px;
+  padding-top: 6px;
   border-top: 1px solid var(--border);
 
   &__ico {

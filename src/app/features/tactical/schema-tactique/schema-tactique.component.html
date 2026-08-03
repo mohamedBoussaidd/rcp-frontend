@@ -103,6 +103,12 @@
               (click)="ouvrir(s)">
         <mat-icon>edit</mat-icon>
       </button>
+      @if (canPartager()) {
+        <button class="btn btn--ghost btn--icon btn--sm" title="Partager aux joueurs"
+                (click)="partager(s, $event)">
+          <mat-icon>share</mat-icon>
+        </button>
+      }
       @if (s.modifiable) {
         <button class="btn btn--ghost btn--icon btn--sm" title="Renommer / catégorie"
                 (click)="renommer(s, $event)">

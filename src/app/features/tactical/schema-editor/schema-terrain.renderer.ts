@@ -1,6 +1,9 @@
 import { Injectable } from '@angular/core';
 import Konva from 'konva';
 import { Camera, CAMERA_PRESENTATION } from '../schema-render/schema-camera';
+import {
+  CAGE_HAUTEUR, CAGE_PROFONDEUR, angleCage, dessinerCage, projecteurEcran,
+} from '../schema-render/schema-volumes';
 import { MARGE, Marquage, Terrain, marquages } from './schema-espaces';
 
 export type { Terrain } from './schema-espaces';
@@ -10,9 +13,6 @@ export type { Terrain } from './schema-espaces';
 const EPAISSEUR_DALLE = 22;
 const TERRE_CLAIRE = '#4B3728';
 const TERRE_SOMBRE = '#33241A';
-/** Cage réglementaire : 2,44 m de haut, ~2 m de profondeur de filet. */
-const CAGE_HAUTEUR = 24;
-const CAGE_PROFONDEUR = 18;
 const DRAPEAU_HAUTEUR = 26;
 /** Échantillonnage des arcs : un cercle projeté devient une conique, approchée en polyligne. */
 const SEGMENTS_ARC = 48;
@@ -138,55 +138,17 @@ export class SchemaTerrainRenderer {
   }
 
   /**
-   * Cage en volume : montants, barre, retour de filet et maillage. Repère local
-   * (u le long de la ligne de but, v vers l'extérieur, z l'altitude) projeté vers le
-   * monde selon l'axe de la ligne de but et le sens du débord.
+   * Cage d'un marquage. La géométrie elle-même vit dans schema-volumes : c'est désormais
+   * la MÊME cage que celle d'un but posé sur le terrain, d'où la fin de l'écart de qualité
+   * entre les deux. Ici on ne fait que convertir l'axe et le sens du débord en orientation.
    */
   private cage(layer: Konva.Layer, cam: Camera, c: Extract<Marquage, { k: 'cage' }>): void {
-    const L = c.demi, Ht = CAGE_HAUTEUR * (c.demi < 30 ? 0.8 : 1), Pf = CAGE_PROFONDEUR;
-    const p = (u: number, v: number, z: number) => c.axe === 'x'
-      ? cam.projeter(c.x + v * c.sens, c.y + u, z)
-      : cam.projeter(c.x + u, c.y + v * c.sens, z);
-    const trait = (a: [number, number, number], b: [number, number, number], w: number, op = 1) => {
-      const pa = p(...a), pb = p(...b);
-      layer.add(new Konva.Line({ points: [pa.x, pa.y, pb.x, pb.y], stroke: '#F8FAFC', strokeWidth: w, opacity: op, lineCap: 'round' }));
-    };
-    const panneau = (coins: [number, number, number][]) => {
-      const plat: number[] = [];
-      for (const q of coins) { const r = p(...q); plat.push(r.x, r.y); }
-      layer.add(new Konva.Line({ points: plat, closed: true, fill: '#E2E8F0', opacity: 0.12 }));
-    };
-
-    // Filet : voile translucide (le « fond » de la cage) puis maillage.
-    panneau([[-L, Pf, 0], [L, Pf, 0], [L, Pf, Ht], [-L, Pf, Ht]]);
-    panneau([[-L, 0, 0], [-L, Pf, 0], [-L, Pf, Ht], [-L, 0, Ht]]);
-    panneau([[L, 0, 0], [L, Pf, 0], [L, Pf, Ht], [L, 0, Ht]]);
-    const MAILLE = 9;
-    for (let u = -L; u <= L + 0.01; u += MAILLE) {
-      trait([u, Pf, 0], [u, Pf, Ht], 0.6, 0.5);
-      trait([u, 0, Ht], [u, Pf, Ht], 0.6, 0.4);
-    }
-    for (let z = 0; z <= Ht + 0.01; z += MAILLE) {
-      trait([-L, Pf, z], [L, Pf, z], 0.6, 0.5);
-      trait([-L, 0, z], [-L, Pf, z], 0.6, 0.4);
-      trait([L, 0, z], [L, Pf, z], 0.6, 0.4);
-    }
-    for (let v = 0; v <= Pf + 0.01; v += MAILLE) {
-      trait([-L, v, 0], [-L, v, Ht], 0.6, 0.4);
-      trait([L, v, 0], [L, v, Ht], 0.6, 0.4);
-      trait([-L, v, Ht], [L, v, Ht], 0.6, 0.35);
-    }
-    // Structure : cadre arrière plus fin, montants et barre du premier plan bien marqués.
-    trait([-L, Pf, 0], [-L, Pf, Ht], 1.6, 0.85);
-    trait([L, Pf, 0], [L, Pf, Ht], 1.6, 0.85);
-    trait([-L, Pf, Ht], [L, Pf, Ht], 1.6, 0.85);
-    trait([-L, 0, Ht], [-L, Pf, Ht], 1.6, 0.85);
-    trait([L, 0, Ht], [L, Pf, Ht], 1.6, 0.85);
-    trait([-L, 0, 0], [-L, Pf, 0], 1.4, 0.7);
-    trait([L, 0, 0], [L, Pf, 0], 1.4, 0.7);
-    trait([-L, 0, 0], [-L, 0, Ht], 3.2);
-    trait([L, 0, 0], [L, 0, Ht], 3.2);
-    trait([-L, 0, Ht], [L, 0, Ht], 3.2);
+    dessinerCage(layer, projecteurEcran(cam, c.x, c.y, angleCage(c.axe, c.sens)), {
+      demi: c.demi,
+      // Les petites cages (jeu réduit) sont proportionnellement moins hautes.
+      hauteur: CAGE_HAUTEUR * (c.demi < 30 ? 0.8 : 1),
+      profondeur: CAGE_PROFONDEUR,
+    });
   }
 
   /** Drapeau de corner : hampe + fanion, posé sur le point de corner. */
