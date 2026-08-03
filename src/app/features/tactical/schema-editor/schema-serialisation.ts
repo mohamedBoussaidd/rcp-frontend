@@ -1,4 +1,4 @@
-import { Keyframe, MetriqueVitesse, ModeAnim } from '../schema-render/schema-animation';
+import { BorneVie, Keyframe, MetriqueVitesse, ModeAnim, ModeTraces, Vie } from '../schema-render/schema-animation';
 import { Terrain, estTerrain } from './schema-espaces';
 
 /**
@@ -11,7 +11,8 @@ import { Terrain, estTerrain } from './schema-espaces';
  */
 
 export type TraceType = 'deplacement' | 'conduite' | 'passe' | 'tir';
-export type FormeType = 'rect' | 'ellipse' | 'losange' | 'triangle';
+export type FormeType = 'rect' | 'ellipse' | 'losange' | 'triangle' | 'ligne';
+export type TraitForme = 'plein' | 'pointille';
 
 /**
  * Jeton, ballon ou matériel posé sur le terrain.
@@ -19,6 +20,7 @@ export type FormeType = 'rect' | 'ellipse' | 'losange' | 'triangle';
  * - `slotId`   : poste du moteur tactique (posé par les formations) — le mode Dynamique
  *                ne pilote que les jetons qui en portent un.
  * - `rotation` : orientation en degrés du visuel (absente = 0) — échelle/haie en diagonale…
+ * - `vie`      : fenêtre d'apparition (absente = présent d'un bout à l'autre).
  */
 export interface SchemaElement {
   id: string;
@@ -31,6 +33,7 @@ export interface SchemaElement {
   surveille?: boolean;
   surveilleCouleur?: string;
   rotation?: number;
+  vie?: Vie;
   x: number;
   y: number;
 }
@@ -44,7 +47,15 @@ export interface SchemaTrace {
   ballId?: string;
 }
 
-/** Forme d'annotation (zone à entourer / à montrer), redimensionnable et déplaçable. */
+/**
+ * Forme d'annotation (zone à entourer / à montrer), redimensionnable et déplaçable.
+ *
+ * Le type `ligne` est un simple segment inscrit dans la même boîte (x, y, w, h) que les
+ * autres formes — il hérite ainsi du déplacement, du redimensionnement, de la projection en
+ * vue inclinée et de la fenêtre d'apparition, sans géométrie parallèle. Comme la boîte est
+ * normalisée au tracé (coin haut-gauche + dimensions positives), `montante` est indispensable
+ * pour distinguer une diagonale « ↗ » d'une « ↘ ».
+ */
 export interface SchemaForme {
   id: string;
   type: FormeType;
@@ -53,9 +64,17 @@ export interface SchemaForme {
   w: number;
   h: number;
   couleur: string;
+  /** Ligne uniquement : le segment va du coin bas-gauche au coin haut-droit. */
+  montante?: boolean;
+  /** Absent = trait plein, comme toutes les formes d'avant. */
+  trait?: TraitForme;
+  /** Épaisseur du trait en px (absente = 3, l'épaisseur historique des zones). */
+  epaisseur?: number;
   texte?: string;
   texteTaille?: number;
   texteCouleur?: string;
+  /** Fenêtre d'apparition pendant l'animation (absente = affichée en permanence). */
+  vie?: Vie;
 }
 
 /**
@@ -73,25 +92,55 @@ export interface SchemaContenu {
   dureeSecondes?: number;
   modeAnim?: ModeAnim;
   metriqueVitesse?: MetriqueVitesse;
+  modeTraces?: ModeTraces;
 }
 
 const tableau = <T>(v: unknown): T[] => (Array.isArray(v) ? v as T[] : []);
+
+/** Borne de fenêtre relue défensivement : instant fixe, ancre sur une flèche, ou rien. */
+function borneVie(v: unknown): BorneVie | undefined {
+  if (typeof v === 'number' && Number.isFinite(v) && v >= 0) return v;
+  if (v && typeof v === 'object') {
+    const o = v as Record<string, unknown>;
+    if (typeof o['trace'] === 'string' && (o['bord'] === 'debut' || o['bord'] === 'fin')) {
+      return { trace: o['trace'], bord: o['bord'] };
+    }
+  }
+  return undefined;
+}
+
+/** `undefined` dès qu'aucune borne n'est exploitable : l'objet reste alors visible en continu. */
+export function normaliserVie(v: unknown): Vie | undefined {
+  if (!v || typeof v !== 'object') return undefined;
+  const o = v as Record<string, unknown>;
+  const debut = borneVie(o['debut']), fin = borneVie(o['fin']);
+  return debut === undefined && fin === undefined ? undefined : { debut, fin };
+}
+
+/** Objet porteur d'une fenêtre, nettoyé de la sienne si elle est illisible. */
+const avecVie = <T extends { vie?: Vie }>(x: T): T => {
+  const vie = normaliserVie((x as { vie?: unknown }).vie);
+  return vie ? { ...x, vie } : { ...x, vie: undefined };
+};
 
 /** Lecture défensive d'un contenu de schéma déjà désérialisé. */
 export function normaliserContenu(d: unknown): SchemaContenu {
   const o = (d ?? {}) as Record<string, unknown>;
   const modeAnim = o['modeAnim'];
   const metrique = o['metriqueVitesse'];
+  const modeTraces = o['modeTraces'];
   const duree = o['dureeSecondes'];
   return {
     terrain: estTerrain(o['terrain']) ? o['terrain'] as Terrain : undefined,
-    elements: tableau<SchemaElement>(o['elements']),
+    elements: tableau<SchemaElement>(o['elements']).map(avecVie),
     traces: tableau<SchemaTrace>(o['traces']),
-    formes: tableau<SchemaForme>(o['formes']),
+    formes: tableau<SchemaForme>(o['formes']).map(avecVie),
     keyframes: tableau<Keyframe>(o['keyframes']).slice().sort((a, b) => a.t - b.t),
     dureeSecondes: typeof duree === 'number' && duree > 0 ? duree : undefined,
     modeAnim: modeAnim === 'temps' || modeAnim === 'vitesse' ? modeAnim : undefined,
     metriqueVitesse: metrique === 'max' || metrique === 'moyenne' ? metrique : undefined,
+    modeTraces: modeTraces === 'toujours' || modeTraces === 'action' || modeTraces === 'aucun'
+      ? modeTraces : undefined,
   };
 }
 
@@ -110,6 +159,7 @@ export interface ContenuAEnregistrer {
   dureeSecondes: number;
   modeAnim: ModeAnim;
   metriqueVitesse: MetriqueVitesse;
+  modeTraces: ModeTraces;
   keyframes: Keyframe[];
 }
 

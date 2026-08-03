@@ -66,9 +66,11 @@
               [title]="bandeauOuvert() ? 'Replier la barre du haut (terrain plus grand)' : 'Afficher la barre du haut'">
         <mat-icon>{{ bandeauOuvert() ? 'expand_less' : 'expand_more' }}</mat-icon>
       </button>
-      <button class="editor__tool" [class.is-active]="!tracesVisibles()" (click)="visibiliteTraces()"
-              [title]="tracesVisibles() ? 'Masquer les tracés' : 'Afficher les tracés'">
-        <mat-icon>{{ tracesVisibles() ? 'visibility' : 'visibility_off' }}</mat-icon>
+      <!-- Affichage des flèches : tout le tracé → au fil de l'action → aucune. Réglage du
+           SCHÉMA (enregistré), donc rejoué à l'identique en diaporama. -->
+      <button class="editor__tool" [class.is-active]="modeTraces() !== 'toujours'" (click)="cyclerModeTraces()"
+              [title]="libelleModeTraces()">
+        <mat-icon>{{ iconeModeTraces() }}</mat-icon>
       </button>
     </div>
 
@@ -179,8 +181,27 @@
                 <button [class.is-active]="formeType() === 'ellipse'" (click)="choisirForme('ellipse')">Cercle</button>
                 <button [class.is-active]="formeType() === 'triangle'" (click)="choisirForme('triangle')">Triangle</button>
                 <button [class.is-active]="formeType() === 'losange'" (click)="choisirForme('losange')">Losange</button>
+                <button [class.is-active]="formeType() === 'ligne'" (click)="choisirForme('ligne')"
+                        title="Tracer un trait droit (blanc par défaut)">Ligne</button>
               </div>
             </div>
+            <!-- Réglages propres au trait : le texte n'a pas de sens dans une ligne. -->
+            @if (estLigne()) {
+            <div class="vdiv"></div>
+            <div class="row" style="gap:6px">
+              <span class="head-label">Trait</span>
+              <div class="segmented">
+                <button [class.is-active]="traitLigne() === 'plein'" (click)="traitLigne.set('plein')">Plein</button>
+                <button [class.is-active]="traitLigne() === 'pointille'" (click)="traitLigne.set('pointille')">Pointillé</button>
+              </div>
+              <div class="segmented">
+                @for (e of epaisseursLigne; track e) {
+                <button [class.is-active]="epaisseurLigne() === e" (click)="epaisseurLigne.set(e)"
+                        [title]="e + ' px'">{{ e === 2 ? 'S' : e === 4 ? 'M' : 'L' }}</button>
+                }
+              </div>
+            </div>
+            } @else {
             <div class="vdiv"></div>
             <div class="row" style="gap:6px">
               <span class="head-label">Texte</span>
@@ -195,13 +216,16 @@
                   (click)="couleurTexteAnnot.set(c.val)"></button>
               }
             </div>
+            }
           }
           @if (outil() === 'forme' || outil() === 'surveiller') {
             <div class="vdiv"></div>
             <div class="row" style="gap:6px">
               <span class="head-label">Couleur</span>
+              <!-- Une seule palette, mais deux mémoires : les lignes gardent leur couleur
+                   (blanche par défaut) sans écraser celle des zones. -->
               @for (c of palette; track c.val) {
-                <button class="swatch" [class.is-active]="couleurAnnot() === c.val"
+                <button class="swatch" [class.is-active]="couleurActive() === c.val"
                   [style.background]="c.val" [title]="c.nom" (click)="choisirCouleur(c.val)"></button>
               }
             </div>
@@ -478,10 +502,62 @@
 
     <div class="tl-bar" (click)="scrubBarre($event)">
       <div class="tl-fill" [style.width.%]="pct(tempsCourant())"></div>
+      <!-- Barre de vie de l'objet sélectionné : quand il entre en scène et quand il en sort. -->
+      @if (cibleVie() && cibleAUneVie()) {
+      <div class="tl-vie" [style.left.%]="pct(vieDebut())"
+           [style.width.%]="pct(vieFin()) - pct(vieDebut())"
+           [title]="cibleVie()!.nom + ' : ' + vieDebut().toFixed(1) + 's → ' + vieFin().toFixed(1) + 's'"></div>
+      }
       @for (kf of keyframes(); track kf.t) {
       <div class="tl-kf" [style.left.%]="pct(kf.t)" (click)="allerKeyframe(kf, $event)" [title]="kf.t.toFixed(1) + 's'"></div>
       }
       <div class="tl-playhead" [style.left.%]="pct(tempsCourant())"></div>
     </div>
+
+    <!-- ── Mise en scène de l'objet sélectionné (zone ou jeton) ── -->
+    @if (cibleVie(); as cible) {
+    <div class="tl-scene">
+      <mat-icon class="tl-scene__ico">{{ cible.genre === 'forme' ? 'crop_square' : 'person_pin_circle' }}</mat-icon>
+      <b class="tl-scene__nom">{{ cible.nom }}</b>
+
+      <span class="tl-scene__borne">
+        <button class="tl-btn sm" (click)="poserBorneVie('debut')" title="Apparaît au temps courant">
+          <mat-icon>visibility</mat-icon> Apparaît ici
+        </button>
+        <select class="tl-scene__ancre" [value]="valeurAncre('debut')"
+                (change)="choisirAncre('debut', $any($event.target).value)"
+                title="Lier l'apparition à une flèche : la borne suit le minutage">
+          <option value="">à {{ vieDebut().toFixed(1) }}s</option>
+          @for (a of ancresPossibles(); track a.id) {
+          <option [value]="a.id + '|debut'">↦ départ {{ a.libelle }}</option>
+          <option [value]="a.id + '|fin'">↦ fin {{ a.libelle }}</option>
+          }
+        </select>
+      </span>
+
+      <span class="tl-scene__borne">
+        <button class="tl-btn sm" (click)="poserBorneVie('fin')" title="Disparaît au temps courant">
+          <mat-icon>visibility_off</mat-icon> Disparaît ici
+        </button>
+        <select class="tl-scene__ancre" [value]="valeurAncre('fin')"
+                (change)="choisirAncre('fin', $any($event.target).value)"
+                title="Lier la disparition à une flèche : la borne suit le minutage">
+          <option value="">à {{ vieFin().toFixed(1) }}s</option>
+          @for (a of ancresPossibles(); track a.id) {
+          <option [value]="a.id + '|debut'">↦ départ {{ a.libelle }}</option>
+          <option [value]="a.id + '|fin'">↦ fin {{ a.libelle }}</option>
+          }
+        </select>
+      </span>
+
+      @if (cibleAUneVie()) {
+      <button class="tl-btn sm danger" (click)="effacerVie()" title="Visible du début à la fin">
+        <mat-icon>refresh</mat-icon> Toujours visible
+      </button>
+      } @else {
+      <span class="tl-scene__aide">visible d'un bout à l'autre</span>
+      }
+    </div>
+    }
   </div>
 </div>

@@ -5,23 +5,24 @@ import { PreferencesService, PREF_ANGLE_SCHEMA, PREF_STYLE_RENDU_SCHEMA } from '
 import { SchemaTerrainRenderer } from '../schema-editor/schema-terrain.renderer';
 import { Terrain, espace } from '../schema-editor/schema-espaces';
 import {
-  StyleRendu, dessinerCorpsElement, ordonnerParProfondeur,
+  FormeRendue, StyleRendu, dessinerContenuForme, dessinerCorpsElement, ordonnerParProfondeur,
 } from '../schema-render/schema-render';
 import {
   Camera, CAMERA_PRESENTATION, INCLINAISON_MAX, ParamsCamera, PRESETS_CAMERA,
 } from '../schema-render/schema-camera';
 import {
-  Keyframe, MetriqueVitesse, ModeAnim, Segment, VitesseGps,
-  construireTrajectoires, dureeMaxTrajectoires, posKeyframes, posTrajectoire,
+  Keyframe, MetriqueVitesse, Minutage, ModeAnim, ModeTraces, Segment, Vie, VitesseGps,
+  aUneVie, dureeMaxTrajectoires, etatTrace, minuter, opaciteVie, posKeyframes, posTrajectoire,
   vitesseBallePxS, vitesseJoueurPxS,
 } from '../schema-render/schema-animation';
 // Tension de la spline Konva : MÊME constante que l'éditeur (rendu + échantillonnage de
 // trajectoire). Elle était redéclarée ici à 0,8 alors que l'éditeur est à 0,5 — un jeton ne
 // suivait donc pas la même courbe en projection qu'au dessin.
-import { TENSION_TRACE } from '../schema-editor/schema-geometrie';
+import { TENSION_TRACE, sousChemin } from '../schema-editor/schema-geometrie';
 
-interface SchemaElement { id: string; type: string; couleur?: string; numero?: number; label?: string; joueurId?: string; rotation?: number; x: number; y: number; }
+interface SchemaElement { id: string; type: string; couleur?: string; numero?: number; label?: string; joueurId?: string; rotation?: number; vie?: Vie; x: number; y: number; }
 interface SchemaTrace { id: string; type: string; points: number[]; elementId?: string; ballId?: string; }
+interface SchemaForme extends FormeRendue { id: string; vie?: Vie; }
 
 /** Rendu en lecture seule d'un schéma tactique (terrain + éléments + tracés) + lecture animée.
  *  Styles partagés avec l'éditeur (schema-render) : tableau / réaliste, et en mode
@@ -142,12 +143,16 @@ export class SchemaViewerComponent implements AfterViewInit, OnChanges, OnDestro
   private pret = false;
 
   private nodesById = new Map<string, Konva.Group>();
+  private traceNodes = new Map<string, Konva.Group>();
+  private formeNodes = new Map<string, Konva.Group>();
   private elements: SchemaElement[] = [];
   private traces: SchemaTrace[] = [];
+  private formes: SchemaForme[] = [];
   private keyframes: Keyframe[] = [];
   private dureeSecondes = 10;
   private modeAnim: ModeAnim = 'temps';
   private metriqueVitesse: MetriqueVitesse = 'moyenne';
+  private modeTraces: ModeTraces = 'toujours';
   private terrain: Terrain = 'complet';
   private W = 1040;
   private vitesses = new Map<string, VitesseGps>();
@@ -217,7 +222,14 @@ export class SchemaViewerComponent implements AfterViewInit, OnChanges, OnDestro
       if (n) this.placerNode(el.id, avant ? avant.deprojeter(n.x(), n.y()) : { x: n.x(), y: n.y() });
     });
     this.couche.find('.trace').forEach(n => n.destroy());
+    this.traceNodes.clear();
     this.traces.forEach(t => this.dessinerTrace(this.couche!, t));
+    // Les zones sont décrites en absolu une fois projetées : elles se reconstruisent au
+    // nouvel angle, en gardant leur nœud (et donc leur état de scène).
+    this.formes.forEach(f => {
+      const g = this.formeNodes.get(f.id);
+      if (g) dessinerContenuForme(g, f, this.camera);
+    });
     if (this.styleRendu() === 'realiste') ordonnerParProfondeur(this.nodesById.values());
     this.fond.draw(); this.couche.draw();
   }
@@ -259,10 +271,14 @@ export class SchemaViewerComponent implements AfterViewInit, OnChanges, OnDestro
   private rendre(): void {
     this.anim?.stop(); this.anim = undefined; this.enLecture = false;
     this.stage?.destroy();
-    this.nodesById.clear();
-    this.elements = []; this.traces = []; this.keyframes = []; this.animable = false;
+    this.nodesById.clear(); this.traceNodes.clear(); this.formeNodes.clear();
+    this.elements = []; this.traces = []; this.formes = []; this.keyframes = []; this.animable = false;
     if (!this.schemaJson) return;
-    let data: { terrain: string; elements: SchemaElement[]; traces: SchemaTrace[]; keyframes?: Keyframe[]; dureeSecondes?: number; modeAnim?: 'temps' | 'vitesse'; metriqueVitesse?: 'max' | 'moyenne' };
+    let data: {
+      terrain: string; elements: SchemaElement[]; traces: SchemaTrace[]; formes?: SchemaForme[];
+      keyframes?: Keyframe[]; dureeSecondes?: number; modeAnim?: 'temps' | 'vitesse';
+      metriqueVitesse?: 'max' | 'moyenne'; modeTraces?: ModeTraces;
+    };
     try { data = JSON.parse(this.schemaJson); } catch { return; }
 
     // Espace inconnu (schéma plus récent que ce front) : repli sur le terrain complet.
@@ -288,6 +304,9 @@ export class SchemaViewerComponent implements AfterViewInit, OnChanges, OnDestro
     }
     this.elements = data.elements ?? [];
     this.traces = data.traces ?? [];
+    this.formes = data.formes ?? [];
+    // Les zones passent SOUS les jetons et les flèches, comme dans l'éditeur.
+    this.formes.forEach(f => this.dessinerForme(couche, f));
     this.elements.forEach(el => this.dessinerElement(couche, el));
     this.traces.forEach(t => this.dessinerTrace(couche, t));
     if (this.styleRendu() === 'realiste') ordonnerParProfondeur(this.nodesById.values());
@@ -301,6 +320,10 @@ export class SchemaViewerComponent implements AfterViewInit, OnChanges, OnDestro
     // dans l'éditeur.
     this.modeAnim = data.modeAnim === 'vitesse' ? 'vitesse' : 'temps';
     this.metriqueVitesse = data.metriqueVitesse === 'max' ? 'max' : 'moyenne';
+    // Mise en scène voulue par l'auteur du schéma ; absente sur tout schéma d'avant, d'où le
+    // repli sur l'affichage permanent des flèches.
+    this.modeTraces = data.modeTraces === 'action' || data.modeTraces === 'aucun' ? data.modeTraces : 'toujours';
+    if (this.modeTraces === 'aucun') this.appliquerScene(0, this.minutage());
     this.animable = this.keyframes.length > 1 || this.trajectoires().size > 0;
   }
 
@@ -326,16 +349,68 @@ export class SchemaViewerComponent implements AfterViewInit, OnChanges, OnDestro
     this.anim.start();
   }
 
-  private pause(): void { this.anim?.stop(); this.anim = undefined; this.enLecture = false; }
+  private pause(): void {
+    this.anim?.stop(); this.anim = undefined; this.enLecture = false;
+    // Animation terminée : on revient à l'image complète du schéma. Un lecteur à l'arrêt est
+    // une illustration, pas la dernière image d'une mise en scène.
+    this.afficherTout();
+  }
 
   private appliquerPositions(t: number): void {
-    const traj = this.trajectoires();
+    const m = this.minutage();
     this.elements.forEach(el => {
-      const legs = traj.get(el.id);
+      const legs = m.mobiles.get(el.id);
       const p = legs ? posTrajectoire(legs, t) : posKeyframes(el, t, this.keyframes);
       this.placerNode(el.id, p);
     });
+    this.appliquerScene(t, m);
     if (this.styleRendu() === 'realiste') ordonnerParProfondeur(this.nodesById.values());
+  }
+
+  /**
+   * Mise en scène à l'instant t : flèches selon le mode du schéma, zones et jetons selon leur
+   * fenêtre. Même règle que l'éditeur, à une différence près : en projection, ce qui n'est pas
+   * en scène est ABSENT (l'éditeur l'estompe pour qu'il reste attrapable).
+   */
+  private appliquerScene(t: number, m: Minutage): void {
+    this.traces.forEach(tr => {
+      const grp = this.traceNodes.get(tr.id);
+      if (!grp) return;
+      const et = etatTrace(m.fenetres.get(tr.id), t, this.modeTraces);
+      grp.visible(et.opacite > 0.01);
+      grp.opacity(et.opacite);
+      if (!grp.visible()) return;
+      const ligne = grp.findOne<Konva.Line>('.ligne');
+      if (!ligne) return;
+      const bout = grp.findOne<Konva.Circle>('.bout');
+      if (et.fraction >= 1) {
+        ligne.points(this.projeterPoints(tr.points));
+        ligne.tension(TENSION_TRACE);
+        bout?.visible(true);
+      } else {
+        // Chemin déjà développé : on le tronque et on annule la tension (le recourber une
+        // seconde fois écarterait la flèche du mobile qui la suit).
+        ligne.points(this.projeterPoints(sousChemin(m.chemins.get(tr.id) ?? tr.points, et.fraction)));
+        ligne.tension(0);
+        bout?.visible(false);
+      }
+    });
+    const poser = (n: Konva.Node | undefined, vie: Vie | undefined) => {
+      if (!n) return;
+      const o = aUneVie(vie) ? opaciteVie(vie, m.fenetres, t) : 1;
+      n.visible(o > 0.01);
+      n.opacity(o);
+    };
+    this.formes.forEach(f => poser(this.formeNodes.get(f.id), f.vie));
+    this.elements.forEach(el => poser(this.nodesById.get(el.id), el.vie));
+  }
+
+  /** Tout à l'écran (hors mode « aucune flèche », qui est un choix de l'auteur). */
+  private afficherTout(): void {
+    this.traceNodes.forEach(g => { g.visible(this.modeTraces !== 'aucun'); g.opacity(1); });
+    this.formeNodes.forEach(g => { g.visible(true); g.opacity(1); });
+    this.nodesById.forEach(g => { g.visible(true); g.opacity(1); });
+    this.couche?.batchDraw();
   }
 
   /** Positionne un jeton : coordonnées vue-de-dessus, projetées (+ échelle) en perspective. */
@@ -357,8 +432,8 @@ export class SchemaViewerComponent implements AfterViewInit, OnChanges, OnDestro
    * Le lecteur ne mute jamais `el.x/el.y` (il ne déplace que les nœuds Konva) : les positions
    * de repos sont donc directement celles des éléments.
    */
-  private trajectoires(): Map<string, Segment[]> {
-    return construireTrajectoires({
+  private minutage(): Minutage {
+    return minuter({
       elements: this.elements,
       traces: this.traces,
       modeAnim: this.modeAnim,
@@ -367,6 +442,13 @@ export class SchemaViewerComponent implements AfterViewInit, OnChanges, OnDestro
       vitesseBallePxS: () => vitesseBallePxS(this.pxParMetre),
       vitesseJoueurPxS: j => vitesseJoueurPxS(j, this.vitesses, this.metriqueVitesse, this.pxParMetre),
     });
+  }
+
+  private trajectoires(): Map<string, Segment[]> { return this.minutage().mobiles; }
+
+  /** Points d'un tracé ramenés à l'écran (identité hors perspective). */
+  private projeterPoints(pts: number[]): number[] {
+    return this.camera ? this.camera.projeterPolyligne(pts) : pts;
   }
 
   private get pxParMetre(): number { return this.W / espace(this.terrain).metres; }
@@ -386,25 +468,40 @@ export class SchemaViewerComponent implements AfterViewInit, OnChanges, OnDestro
     this.placerNode(el.id, { x: el.x, y: el.y });
   }
 
+  /**
+   * Une flèche = un GROUPE nommé `trace`, contenant la ligne (`ligne`) et, pour un tir, son
+   * point d'impact (`bout`). Le groupe permet de piloter la flèche entière — apparition,
+   * effacement, tracé progressif — sans retrouver ses morceaux un par un.
+   */
   private dessinerTrace(layer: Konva.Layer, t: SchemaTrace): void {
-    //decommentez pour  enleve les fleches dans le visuel
-    // t = { ...t, points: [], elementId: undefined, ballId: undefined };
     const couleur = '#fde047';
+    const grp = new Konva.Group({ name: 'trace' });
     // Les tracés gardent leur rendu dans les deux styles ; en perspective, seuls les
     // points sont projetés (le style de flèche reste identique).
-    const pts = this.camera ? this.camera.projeterPolyligne(t.points) : t.points;
-    const base = { points: pts, name: 'trace', stroke: couleur, strokeWidth: 3, tension: TENSION_TRACE, lineCap: 'round' as const, lineJoin: 'round' as const };
+    const pts = this.projeterPoints(t.points);
+    const base = { name: 'ligne', points: pts, stroke: couleur, strokeWidth: 3, tension: TENSION_TRACE, lineCap: 'round' as const, lineJoin: 'round' as const };
     if (t.type === 'deplacement') {
-      layer.add(new Konva.Arrow({ ...base, dash: [11, 7], fill: couleur, pointerLength: 11, pointerWidth: 11 }));
+      grp.add(new Konva.Arrow({ ...base, dash: [11, 7], fill: couleur, pointerLength: 11, pointerWidth: 11 }));
     } else if (t.type === 'passe') {
-      layer.add(new Konva.Arrow({ ...base, fill: couleur, pointerLength: 12, pointerWidth: 12 }));
+      grp.add(new Konva.Arrow({ ...base, fill: couleur, pointerLength: 12, pointerWidth: 12 }));
     } else if (t.type === 'conduite') {
-      layer.add(new Konva.Line({ ...base }));
+      grp.add(new Konva.Line({ ...base }));
     } else {
-      layer.add(new Konva.Line({ ...base }));
+      grp.add(new Konva.Line({ ...base }));
       const n = pts.length;
-      layer.add(new Konva.Circle({ x: pts[n - 2], y: pts[n - 1], radius: 6, fill: couleur, name: 'trace' }));
+      grp.add(new Konva.Circle({ name: 'bout', x: pts[n - 2], y: pts[n - 1], radius: 6, fill: couleur }));
     }
+    grp.visible(this.modeTraces !== 'aucun');
+    this.traceNodes.set(t.id, grp);
+    layer.add(grp);
+  }
+
+  /** Zone d'annotation : rendu PARTAGÉ avec l'éditeur (schema-render). */
+  private dessinerForme(layer: Konva.Layer, f: SchemaForme): void {
+    const g = new Konva.Group({ listening: false });
+    dessinerContenuForme(g, f, this.camera);
+    this.formeNodes.set(f.id, g);
+    layer.add(g);
   }
 
 }

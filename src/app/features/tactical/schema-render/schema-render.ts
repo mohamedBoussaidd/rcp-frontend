@@ -391,6 +391,114 @@ function corpsRealiste(g: Konva.Group, el: ElementRendu, hors: Konva.Group): voi
   }
 }
 
+// ═══════════════════ Formes d'annotation (zones, textes) ═══════════════════
+
+/**
+ * Sous-ensemble d'une zone d'annotation nécessaire au rendu (cf. `SchemaForme`).
+ * `type` : rect | ellipse | losange | triangle | ligne.
+ */
+export interface FormeRendue {
+  type: string;
+  x: number; y: number; w: number; h: number;
+  couleur: string;
+  /** Ligne : segment du coin bas-gauche au coin haut-droit plutôt que l'inverse. */
+  montante?: boolean;
+  /** 'pointille' = tirets ; absent ou 'plein' = trait continu. */
+  trait?: string;
+  epaisseur?: number;
+  texte?: string;
+  texteTaille?: number;
+  texteCouleur?: string;
+}
+
+/** Épaisseur de trait par défaut : celle de toutes les zones dessinées avant ce réglage. */
+const EPAISSEUR_FORME = 3;
+
+const epaisseur = (f: FormeRendue) => f.epaisseur ?? EPAISSEUR_FORME;
+/** Tirets proportionnels à l'épaisseur : un pointillé fin reste lisible, un gros ne bave pas. */
+const tirets = (f: FormeRendue) => f.trait === 'pointille' ? [epaisseur(f) * 3, epaisseur(f) * 2.2] : undefined;
+/** Une ligne est un trait, pas une surface : rien à remplir, rien à refermer. */
+export const estLigne = (f: FormeRendue) => f.type === 'ligne';
+
+/**
+ * Contour d'une zone en coordonnées LOCALES (0..w, 0..h). Une seule géométrie sert aux
+ * deux rendus : formes Konva à plat, polygone projeté en vue inclinée.
+ */
+export function contourForme(f: FormeRendue): number[] {
+  if (f.type === 'ligne') return f.montante ? [0, f.h, f.w, 0] : [0, 0, f.w, f.h];
+  if (f.type === 'rect') return [0, 0, f.w, 0, f.w, f.h, 0, f.h];
+  if (f.type === 'triangle') return [f.w / 2, 0, f.w, f.h, 0, f.h];
+  if (f.type === 'losange') return [f.w / 2, 0, f.w, f.h / 2, f.w / 2, f.h, 0, f.h / 2];
+  const pts: number[] = [];   // ellipse échantillonnée (une ellipse projetée reste une conique)
+  for (let i = 0; i < 48; i++) {
+    const a = (i / 48) * Math.PI * 2;
+    pts.push(f.w / 2 * (1 + Math.cos(a)), f.h / 2 * (1 + Math.sin(a)));
+  }
+  return pts;
+}
+
+function formeShape(f: FormeRendue): Konva.Shape {
+  const fill = f.couleur + '22', stroke = f.couleur;
+  const strokeWidth = epaisseur(f), dash = tirets(f);
+  if (f.type === 'ligne') {
+    return new Konva.Line({
+      points: contourForme(f), stroke, strokeWidth, dash, lineCap: 'round',
+      // Un trait fin est presque impossible à viser : on élargit sa zone de clic sans
+      // toucher à son épaisseur visible.
+      hitStrokeWidth: Math.max(16, strokeWidth + 12),
+    });
+  }
+  if (f.type === 'rect') return new Konva.Rect({ width: f.w, height: f.h, fill, stroke, strokeWidth, dash });
+  if (f.type === 'ellipse') return new Konva.Ellipse({ x: f.w / 2, y: f.h / 2, radiusX: f.w / 2, radiusY: f.h / 2, fill, stroke, strokeWidth, dash });
+  if (f.type === 'triangle') return new Konva.Line({ points: [f.w / 2, 0, f.w, f.h, 0, f.h], closed: true, fill, stroke, strokeWidth, dash });
+  return new Konva.Line({ points: [f.w / 2, 0, f.w, f.h / 2, f.w / 2, f.h, 0, f.h / 2], closed: true, fill, stroke, strokeWidth, dash });
+}
+
+/**
+ * (Re)construit le contenu d'une zone : sa géométrie et son texte centré éventuel.
+ * PARTAGÉ éditeur ↔ lecteur : le lecteur ne dessinait aucune zone, un schéma projeté en
+ * diaporama perdait donc toutes ses annotations.
+ */
+export function dessinerContenuForme(g: Konva.Group, f: FormeRendue, cam?: Camera | null): void {
+  g.destroyChildren();
+  const fill = f.couleur + '22', stroke = f.couleur;
+  if (cam) {
+    // Plan incliné : la zone devient un polygone projeté, décrit en absolu — un groupe
+    // positionné plus une forme locale ne suffirait pas, la projection n'est pas affine.
+    const loc = contourForme(f), abs: number[] = [];
+    for (let i = 0; i < loc.length; i += 2) abs.push(f.x + loc[i], f.y + loc[i + 1]);
+    g.position({ x: 0, y: 0 });
+    g.add(new Konva.Line({
+      points: cam.projeterPolyligne(abs),
+      closed: !estLigne(f), fill: estLigne(f) ? undefined : fill,
+      stroke, strokeWidth: epaisseur(f), dash: tirets(f),
+      lineCap: 'round', hitStrokeWidth: estLigne(f) ? Math.max(16, epaisseur(f) + 12) : undefined,
+    }));
+    if (f.texte && !estLigne(f)) {
+      const c = cam.projeter(f.x + f.w / 2, f.y + f.h / 2);
+      const t = new Konva.Text({
+        text: f.texte, align: 'center', wrap: 'none',
+        fontSize: (f.texteTaille ?? 20) * c.echelle, fontStyle: 'bold',
+        fill: f.texteCouleur || f.couleur, listening: false,
+      });
+      t.position({ x: c.x - t.width() / 2, y: c.y - t.height() / 2 });
+      g.add(t);
+    }
+    return;
+  }
+  g.position({ x: f.x, y: f.y });
+  g.add(formeShape(f));
+  // Pas de texte dans un trait : on n'écrit pas au milieu d'une ligne.
+  if (f.texte && !estLigne(f)) {
+    g.add(new Konva.Text({
+      text: f.texte, width: f.w, height: f.h,
+      align: 'center', verticalAlign: 'middle', wrap: 'word', padding: 4,
+      fontSize: f.texteTaille ?? 20, fontStyle: 'bold',
+      fill: f.texteCouleur || f.couleur, listening: false,
+    }));
+  }
+}
+
 // ═══════════════════ Perspective (mode présentation / diaporama) ═══════════════════
 
 /**

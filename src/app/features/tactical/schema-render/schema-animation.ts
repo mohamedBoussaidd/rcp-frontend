@@ -58,6 +58,35 @@ export interface VitesseGps {
 export type ModeAnim = 'temps' | 'vitesse';
 export type MetriqueVitesse = 'max' | 'moyenne';
 
+// ── Mise en scène : QUAND chaque chose est visible ──
+
+/**
+ * Affichage des flèches :
+ *  · 'toujours' — tout le tracé en permanence (comportement historique, défaut) ;
+ *  · 'action'   — chaque flèche se dessine au passage de son mobile puis s'efface ;
+ *  · 'aucun'    — aucune flèche (on ne montre que le mouvement).
+ */
+export type ModeTraces = 'toujours' | 'action' | 'aucun';
+
+/** Instants (s) où une flèche est parcourue par son mobile. */
+export interface FenetreTrace { t0: number; t1: number; }
+
+/**
+ * Borne d'une fenêtre de visibilité : un instant fixe, ou l'ancrage à une flèche.
+ * L'ancre survit aux changements de durée et de mode d'animation — le minutage est
+ * recalculé, la borne suit ; un nombre en secondes, lui, reste où il est.
+ */
+export interface AncreTrace { trace: string; bord: 'debut' | 'fin'; }
+export type BorneVie = number | AncreTrace;
+
+/** Fenêtre de visibilité d'une forme ou d'un jeton. Bornes absentes = présent d'un bout à l'autre. */
+export interface Vie { debut?: BorneVie; fin?: BorneVie; }
+
+/** Effacement d'une flèche après la fin de son action (s). */
+export const FONDU_TRACE = 0.4;
+/** Entrée et sortie d'une forme ou d'un jeton (s). */
+export const FONDU_VIE = 0.25;
+
 // ── Constantes ──
 /** Joueur sans donnée GPS : course modérée. */
 export const VITESSE_DEFAUT_KMH = 24;
@@ -109,14 +138,33 @@ export interface SourceAnimation {
 }
 
 /**
+ * Tout ce que le minutage produit, en un seul calcul :
+ *  · `mobiles`  — id d'élément → ses segments ordonnés dans le temps (qui va où, quand) ;
+ *  · `fenetres` — id de flèche → quand elle est parcourue (mise en scène, ancres) ;
+ *  · `chemins`  — id de flèche → sa courbe développée (tracé progressif).
+ * Les trois sortaient déjà du même calcul ; seule la première était rendue.
+ */
+export interface Minutage {
+  mobiles: Map<string, Segment[]>;
+  fenetres: Map<string, FenetreTrace>;
+  chemins: Map<string, number[]>;
+}
+
+/**
  * Trajectoires de tous les mobiles : id d'élément → segments ordonnés dans le temps.
  * Robuste aux branches (au bout d'une conduite, le ballon part en passe ET le joueur repart
  * en course).
  */
 export function construireTrajectoires(src: SourceAnimation): Map<string, Segment[]> {
+  return minuter(src).mobiles;
+}
+
+/** Minutage complet (cf. `Minutage`). */
+export function minuter(src: SourceAnimation): Minutage {
   const res = new Map<string, Segment[]>();
+  const fenetres = new Map<string, FenetreTrace>();
   const fleches = src.traces.filter(t => t.points.length >= 4);
-  if (!fleches.length) return res;
+  if (!fleches.length) return { mobiles: res, fenetres, chemins: new Map() };
 
   // Le rendu Konva courbe les tracés (tension). On échantillonne la MÊME courbe pour que le
   // jeton suive la flèche dessinée, pas la polyligne droite entre les points cliqués.
@@ -241,11 +289,66 @@ export function construireTrajectoires(src: SourceAnimation): Map<string, Segmen
     res.set(id, arr);
   };
   for (const a of fleches) {
+    fenetres.set(a.id, { t0: t0.get(a.id)! * sc, t1: t1.get(a.id)! * sc });
     if (estJoueur(a)) { const j = owner(a, 'joueur', estJoueur); if (j) pousser(j.id, a); }
     if (estBallon(a)) { const b = owner(a, 'ballon', estBallon); if (b) pousser(b.id, a); }
   }
   for (const arr of res.values()) arr.sort((x, y) => x.t0 - y.t0);
-  return res;
+  return { mobiles: res, fenetres, chemins: rendu };
+}
+
+// ── Résolution de la mise en scène ──
+
+/** Instant (s) d'une borne : la valeur si elle est fixe, sinon le bord de la flèche ancrée. */
+export function resoudreBorne(
+  b: BorneVie | undefined,
+  fenetres: Map<string, FenetreTrace>,
+  defaut: number,
+): number {
+  if (typeof b === 'number') return b;
+  const f = b ? fenetres.get(b.trace) : undefined;
+  if (!f) return defaut;             // ancre orpheline (flèche supprimée) : borne neutre
+  return b!.bord === 'fin' ? f.t1 : f.t0;
+}
+
+/** Fenêtre en secondes. Fin absente = jamais retiré, y compris si la durée s'allonge. */
+export function resoudreVie(vie: Vie | undefined, fenetres: Map<string, FenetreTrace>): FenetreTrace {
+  return {
+    t0: resoudreBorne(vie?.debut, fenetres, 0),
+    t1: resoudreBorne(vie?.fin, fenetres, Number.POSITIVE_INFINITY),
+  };
+}
+
+/** Vrai si l'objet porte une contrainte de temps (sinon : toujours là, aucun calcul). */
+export function aUneVie(vie: Vie | undefined): boolean {
+  return !!vie && (vie.debut !== undefined || vie.fin !== undefined);
+}
+
+/** Opacité d'une forme ou d'un jeton à l'instant t (0 = absent), fondus compris. */
+export function opaciteVie(vie: Vie | undefined, fenetres: Map<string, FenetreTrace>, t: number): number {
+  if (!aUneVie(vie)) return 1;
+  const { t0, t1 } = resoudreVie(vie, fenetres);
+  if (t < t0 || t > t1 + FONDU_VIE) return 0;
+  if (t < t0 + FONDU_VIE) return (t - t0) / FONDU_VIE;
+  if (t > t1) return 1 - (t - t1) / FONDU_VIE;
+  return 1;
+}
+
+/** Ce qu'il faut afficher d'une flèche à l'instant t : `fraction` = part déjà tracée. */
+export interface EtatTrace { opacite: number; fraction: number; }
+
+export function etatTrace(f: FenetreTrace | undefined, t: number, mode: ModeTraces): EtatTrace {
+  if (mode === 'aucun') return { opacite: 0, fraction: 1 };
+  // Flèche sans minutage (rattachée à aucun mobile) : elle n'a pas d'action à suivre, on la
+  // laisse au tableau plutôt que de la faire disparaître sans raison.
+  if (mode === 'toujours' || !f) return { opacite: 1, fraction: 1 };
+  if (t < f.t0) return { opacite: 0, fraction: 0 };
+  if (t <= f.t1) {
+    const d = f.t1 - f.t0;
+    return { opacite: 1, fraction: d > 0 ? (t - f.t0) / d : 1 };
+  }
+  if (t <= f.t1 + FONDU_TRACE) return { opacite: 1 - (t - f.t1) / FONDU_TRACE, fraction: 1 };
+  return { opacite: 0, fraction: 1 };
 }
 
 /** Position d'un mobile à l'instant t le long de ses segments (entre deux segments : il attend). */

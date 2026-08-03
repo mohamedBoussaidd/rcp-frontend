@@ -908,6 +908,67 @@
   z-index: 3;
 }
 
+/* ── Mise en scène : fenêtre d'apparition de l'objet sélectionné ── */
+.tl-vie {
+  position: absolute;
+  top: 3px;
+  bottom: 3px;
+  min-width: 3px;
+  border-radius: 5px;
+  background: rgba(56, 189, 248, .45);
+  border: 1px solid #38bdf8;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.tl-scene {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 9px;
+  padding-top: 9px;
+  border-top: 1px solid var(--border);
+
+  &__ico {
+    font-size: 18px;
+    width: 18px;
+    height: 18px;
+    color: #38bdf8;
+  }
+
+  &__nom {
+    font-size: .82rem;
+    max-width: 180px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  &__borne {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  &__ancre {
+    height: 32px;
+    max-width: 170px;
+    padding: 0 6px;
+    border-radius: var(--r-md);
+    border: 1px solid var(--border-strong);
+    background: var(--surface);
+    color: inherit;
+    font: inherit;
+    font-size: .78rem;
+  }
+
+  &__aide {
+    font-size: .76rem;
+    opacity: .6;
+  }
+}
+
 @media (max-width: 980px) {
   .editor {
     grid-template-columns: 1fr;

@@ -7,14 +7,16 @@ import { FormationCustom, SchemaTactique, TechniqueService } from '@core/service
 import { Joueur, JoueurService, VitesseJoueur } from '@core/services/joueur.service';
 import { SchemaPickerDialogComponent } from '../schema-picker-dialog/schema-picker-dialog.component';
 import { MatIcon } from "@angular/material/icon";
-import { TENSION_TRACE, pointDansPolygone } from './schema-geometrie';
+import { TENSION_TRACE, pointDansPolygone, sousChemin } from './schema-geometrie';
 import { FORMATIONS, COUPS_DE_PIED_ARRETES } from './schema-formations.data';
 import { SchemaTerrainRenderer } from './schema-terrain.renderer';
 import { EspaceTerrain, Terrain, espace } from './schema-espaces';
 import { SchemaEspaceDialogComponent } from '../schema-espace-dialog/schema-espace-dialog.component';
 import { AuthService } from '@core/services/auth.service';
 import { PreferencesService, PREF_ANGLE_SCHEMA, PREF_STYLE_RENDU_SCHEMA } from '@core/services/preferences.service';
-import { StyleRendu, centreVisuel, dessinerCorpsElement, ordonnerParProfondeur } from '../schema-render/schema-render';
+import {
+  StyleRendu, centreVisuel, dessinerContenuForme, dessinerCorpsElement, ordonnerParProfondeur,
+} from '../schema-render/schema-render';
 import {
   Camera, CAMERA_DESSUS, INCLINAISON_MAX, ParamsCamera, PRESETS_CAMERA, estInclinee,
 } from '../schema-render/schema-camera';
@@ -26,15 +28,15 @@ import {
   miroir, parseRegles, pxVersRel, slotIdsPourRoles, zoneDuPoint,
 } from '../moteur/moteur-tactique';
 import {
-  Keyframe, RAYON_LIEN, Segment, VitesseGps,
-  construireTrajectoires, dureeMaxTrajectoires, posKeyframes, posTrajectoire,
-  vitesseBallePxS, vitesseJoueurPxS,
+  AncreTrace, BorneVie, Keyframe, Minutage, ModeTraces, RAYON_LIEN, Segment, Vie, VitesseGps,
+  aUneVie, dureeMaxTrajectoires, etatTrace, minuter, opaciteVie, posKeyframes, posTrajectoire,
+  resoudreBorne, vitesseBallePxS, vitesseJoueurPxS,
 } from '../schema-render/schema-animation';
 import {
   ContexteMoteur, evaluerPossession, planifierMoteur, posturePourCamp,
 } from './schema-moteur-dynamique';
 import {
-  FormeType, SchemaContenu, SchemaElement, SchemaForme, SchemaTrace, TraceType,
+  FormeType, SchemaContenu, SchemaElement, SchemaForme, SchemaTrace, TraceType, TraitForme,
   parserContenu, serialiserContenu,
 } from './schema-serialisation';
 
@@ -53,6 +55,13 @@ export interface SchemaEditorData {
 }
 
 type Outil = 'select' | 'deplacement' | 'conduite' | 'passe' | 'tir' | 'surveiller' | 'forme' | 'supprimer';
+
+/**
+ * Opacité des objets absents à l'instant courant, HORS lecture. Une zone qui n'apparaît qu'à
+ * 4 s doit rester attrapable quand la timeline est au début : on l'estompe, on ne la retire
+ * pas. En lecture, elle est réellement absente.
+ */
+const OPACITE_FANTOME = 0.22;
 
 // Le modèle persisté (SchemaElement / SchemaTrace / SchemaForme + lecture défensive) vit dans
 // ./schema-serialisation : c'est le même JSON que relisent le lecteur, la biblio et les diapos.
@@ -85,7 +94,12 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
   get titre(): string { return this.data.titre; }
 
   // utiliser pour le trace en cours : points, type, élément lié (jeton/ballon), etc. ; mis à jour au fur et à mesure du dessin. utilise pour activer et desactiver le trace du dessin 
-  tracesVisibles = signal(true);
+  /**
+   * Affichage des flèches : tout le tracé (défaut historique), au fil de l'action (chaque
+   * flèche se dessine au passage de son mobile puis s'efface), ou aucune.
+   * Persisté avec le schéma : le diaporama rejoue la mise en scène voulue.
+   */
+  modeTraces = signal<ModeTraces>('toujours');
 
   terrain = signal<Terrain>('complet');
   outil = signal<Outil>('select');
@@ -152,6 +166,8 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
   private elements: SchemaElement[] = [];
   private traces: SchemaTrace[] = [];
   private nodesById = new Map<string, Konva.Group>();
+  /** Groupe Konva de chaque flèche, pour piloter son état image par image. */
+  private traceNodes = new Map<string, Konva.Group>();
 
   // ── Moteur tactique (mode Dynamique) ──
   // Statique = éditeur classique. Dynamique = les jetons porteurs d'un slot (posés par une
@@ -189,8 +205,16 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
     { nom: 'Rouge', val: '#ef4444' },
     { nom: 'Jaune', val: '#eab308' },
     { nom: 'Bleu', val: '#2563eb' },
+    { nom: 'Blanc', val: '#ffffff' },
+    { nom: 'Noir', val: '#1f2937' },
   ];
   couleurAnnot = signal<string>('#ef4444');
+  /** Les lignes ont leur propre couleur — blanche par défaut, comme un marquage au sol. */
+  couleurLigne = signal<string>('#ffffff');
+  traitLigne = signal<TraitForme>('plein');
+  /** Épaisseurs proposées (px) : fine / moyenne / épaisse. */
+  readonly epaisseursLigne = [2, 4, 8];
+  epaisseurLigne = signal<number>(4);
   texteTaille = signal<number>(20);   // taille du texte écrit dans une forme (S=14 / M=20 / L=30)
   couleurTexteAnnot = signal<string>('#ffffff');
   readonly paletteTexte = [
@@ -309,6 +333,7 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
     this.redessinerElements(avant);
     this.redessinerTraces();
     this.redessinerFormes();
+    this.appliquerScene(this.tempsCourant());   // les jetons recréés reprennent leur état de scène
   }
 
   /** Reprojette les zones d'annotation et rétablit leur déplaçabilité selon l'angle. */
@@ -376,7 +401,9 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
   /** Reconstruit tous les tracés au nouvel angle. */
   private redessinerTraces(): void {
     this.layer.find('.trace').forEach(n => n.destroy());
+    this.traceNodes.clear();
     this.traces.forEach(t => this.dessinerTrace(t));
+    this.appliquerScene(this.tempsCourant());   // les nœuds sont neufs : ils reprennent l'instant courant
     this.layer.draw();
   }
 
@@ -627,7 +654,16 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
     if (o !== 'select' && o !== 'forme') this.detacherForme();
   }
   choisirForme(t: FormeType): void { this.formeType.set(t); this.outil.set('forme'); }
-  choisirCouleur(c: string): void { this.couleurAnnot.set(c); }
+
+  /** Couleur pilotée par la palette : celle des lignes quand l'outil Ligne est actif. */
+  couleurActive(): string {
+    return this.outil() === 'forme' && this.formeType() === 'ligne' ? this.couleurLigne() : this.couleurAnnot();
+  }
+  choisirCouleur(c: string): void {
+    if (this.outil() === 'forme' && this.formeType() === 'ligne') this.couleurLigne.set(c);
+    else this.couleurAnnot.set(c);
+  }
+  estLigne(): boolean { return this.formeType() === 'ligne'; }
 
   // ── Ajout d'éléments ──
   ajouterJoueur(couleur: string, numero: number): void {
@@ -773,6 +809,7 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
       dureeSecondes: this.dureeSecondes(),
       modeAnim: this.modeAnim(),
       metriqueVitesse: this.metriqueVitesse(),
+      modeTraces: this.modeTraces(),
       keyframes: this.keyframes(),
     });
     // Miniature pour la grille de la bibliothèque (pixelRatio réduit = data URL légère).
@@ -819,13 +856,13 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
   /** Rend la scène à plat le temps d'une capture, puis rétablit l'angle courant. */
   private captureVueDeDessus(pixelRatio: number): string {
     const cam = this.camera;
-    if (!cam) return this.stage.toDataURL({ pixelRatio });
+    if (!cam) return this.imagePleine(() => this.stage.toDataURL({ pixelRatio }));
     this.camera = null;
     this.dessinerTerrain();
     this.redessinerElements(cam);      // les nœuds étaient projetés par `cam` : on déprojette
     this.redessinerTraces();
     this.redessinerFormes();
-    const url = this.stage.toDataURL({ pixelRatio });
+    const url = this.imagePleine(() => this.stage.toDataURL({ pixelRatio }));
     this.camera = cam;
     this.dessinerTerrain();
     this.redessinerElements(null);     // les nœuds sont à plat : on reprojette
@@ -834,9 +871,36 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
     return url;
   }
 
+  /**
+   * Capture avec TOUT affiché : une vignette de bibliothèque est la carte d'identité du
+   * schéma, elle ne doit pas dépendre de l'instant où la timeline se trouvait — sans quoi une
+   * zone qui n'apparaît qu'à 3 s y sortirait à demi effacée.
+   */
+  private imagePleine(prendre: () => string): string {
+    const avecFleches = this.modeTraces() !== 'aucun';   // « aucune flèche » reste un choix d'auteur
+    for (const tr of this.traces) {
+      const grp = this.traceNodes.get(tr.id);
+      if (!grp) continue;
+      grp.visible(avecFleches);
+      grp.findOne<Konva.Line>('.ghost')?.visible(false);
+      const ligne = grp.findOne<Konva.Line>('.ligne');
+      if (ligne) {
+        ligne.visible(true); ligne.opacity(1);
+        ligne.points(this.tracePoints(tr.points)); ligne.tension(TENSION_TRACE);
+      }
+      grp.findOne<Konva.Circle>('.bout')?.visible(true);
+    }
+    [...this.formeNodes.values(), ...this.nodesById.values()].forEach(n => { n.visible(true); n.opacity(1); });
+    this.layer.draw();
+    const url = prendre();
+    this.appliquerScene(this.tempsCourant());   // retour à l'instant où l'on était
+    this.layer.draw();
+    return url;
+  }
+
   /** Export PNG déclenché par l'utilisateur : garde l'angle qu'il a choisi à l'écran. */
   capture(): void {
-    const url = this.stage.toDataURL({ pixelRatio: 2 });
+    const url = this.imagePleine(() => this.stage.toDataURL({ pixelRatio: 2 }));
     const a = document.createElement('a');
     a.href = url; a.download = `schema-${this.data.titre}.png`; a.click();
   }
@@ -1079,6 +1143,7 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
     // Champs absents = réglages courants conservés (compat des schémas anciens).
     if (c.modeAnim) this.modeAnim.set(c.modeAnim);
     if (c.metriqueVitesse) this.metriqueVitesse.set(c.metriqueVitesse);
+    if (c.modeTraces) this.modeTraces.set(c.modeTraces);
     if (c.keyframes.length) {
       this.keyframes.set(c.keyframes);
       if (c.dureeSecondes) this.dureeSecondes.set(c.dureeSecondes);
@@ -1086,6 +1151,7 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
       this.resetKeyframes();
     }
     this.majJoueursPlaces();
+    this.appliquerScene(this.tempsCourant());
     this.layer.draw();
   }
 
@@ -1279,7 +1345,16 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
     const grp = new Konva.Group();
     const couleur = '#fde047';
     const pts = this.tracePoints(t.points);
-    const base = { points: pts, stroke: couleur, strokeWidth: 3, tension: TENSION_TRACE, lineCap: 'round' as const, lineJoin: 'round' as const };
+    // `ligne` est nommée : c'est elle qu'on raccourcit quand la flèche se dessine au fil de
+    // l'action. `bout` (impact du tir) n'apparaît qu'une fois le tracé complet.
+    const base = { name: 'ligne', points: pts, stroke: couleur, strokeWidth: 3, tension: TENSION_TRACE, lineCap: 'round' as const, lineJoin: 'round' as const };
+    // Repère d'édition : le tracé complet, en pâle, sous la flèche. Hors lecture et en mode
+    // « au fil de l'action », c'est lui qui reste attrapable — sans quoi une flèche qui ne
+    // se joue qu'à 4 s deviendrait insélectionnable dès que la timeline est ailleurs.
+    grp.add(new Konva.Line({
+      name: 'ghost', points: pts, stroke: couleur, strokeWidth: 3, tension: TENSION_TRACE,
+      lineCap: 'round', lineJoin: 'round', opacity: OPACITE_FANTOME, visible: false,
+    }));
     if (t.type === 'deplacement') {
       grp.add(new Konva.Arrow({ ...base, dash: [11, 7], fill: couleur, pointerLength: 11, pointerWidth: 11 }));
     } else if (t.type === 'passe') {
@@ -1289,21 +1364,61 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
     } else { // tir
       grp.add(new Konva.Line({ ...base }));
       const n = pts.length;
-      grp.add(new Konva.Circle({ x: pts[n - 2], y: pts[n - 1], radius: 6, fill: couleur }));
+      grp.add(new Konva.Circle({ name: 'bout', x: pts[n - 2], y: pts[n - 1], radius: 6, fill: couleur }));
     }
     grp.on('click tap', () => {
       if (this.outil() === 'supprimer') {
         this.traces = this.traces.filter(x => x.id !== t.id);
+        this.traceNodes.delete(t.id);
         grp.destroy(); this.layer.draw();
       }
     });
     grp.name('trace');
-
-    grp.visible(this.tracesVisibles());
+    this.traceNodes.set(t.id, grp);
+    grp.visible(this.modeTraces() !== 'aucun');   // état réel posé juste après, par appliquerScene
 
     this.layer.add(grp);
     this.remonterElements();   // les jetons/joueurs restent visuellement au-dessus des tracés
     return grp;
+  }
+
+  /**
+   * État d'une flèche à l'instant `temps` : visible ou non, et jusqu'où elle est tracée.
+   *
+   * Hors lecture, ce qui n'est pas encore (ou plus) à l'écran reste affiché en FANTÔME :
+   * sinon une flèche ou une zone qui n'existe qu'à 4 s deviendrait impossible à sélectionner
+   * et à modifier une fois l'animation revenue au début.
+   */
+  private appliquerEtatTrace(t: SchemaTrace, grp: Konva.Group, m: Minutage, temps: number): void {
+    const mode = this.modeTraces();
+    if (mode === 'aucun') { grp.visible(false); return; }   // masquage explicite : pas de repère
+    grp.visible(true);
+    const et = etatTrace(m.fenetres.get(t.id), temps, mode);
+    const ligne = grp.findOne<Konva.Line>('.ligne');
+    const ghost = grp.findOne<Konva.Line>('.ghost');
+    const bout = grp.findOne<Konva.Circle>('.bout');
+
+    // Hors lecture, le repère pâle prend le relais dès que la flèche n'est pas pleinement là.
+    const repere = !this.enLecture() && et.opacite < 1;
+    if (ghost) {
+      ghost.visible(repere);
+      if (repere) { ghost.points(this.tracePoints(t.points)); ghost.tension(TENSION_TRACE); }
+    }
+    if (!ligne) return;
+
+    ligne.opacity(et.opacite);
+    ligne.visible(et.opacite > 0.01 && et.fraction > 0);
+    bout?.visible(et.fraction >= 1 && et.opacite > 0.01);
+    if (!ligne.visible()) return;
+    if (et.fraction >= 1) {
+      ligne.points(this.tracePoints(t.points));
+      ligne.tension(TENSION_TRACE);
+    } else {
+      // Le chemin développé EST la courbe rendue : on le tronque et on annule la tension,
+      // la recourber une seconde fois écarterait la flèche du jeton qui la suit.
+      ligne.points(this.tracePoints(sousChemin(m.chemins.get(t.id) ?? t.points, et.fraction)));
+      ligne.tension(0);
+    }
   }
 
 
@@ -1327,10 +1442,18 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
     this.selection = new Set(ids);
     this.detacherForme();
     this.majSurbrillance();
-    // Un seul jeton sélectionné → poignée d'orientation (échelle en diagonale, cage de biais…).
-    if (ids.length === 1) this.attacherRotation(ids[0]); else this.detacherRotation();
+    // Un seul jeton sélectionné → poignée d'orientation (échelle en diagonale, cage de biais…)
+    // et barre d'apparition sur la timeline.
+    if (ids.length === 1) {
+      this.attacherRotation(ids[0]);
+      const el = this.elements.find(e => e.id === ids[0]);
+      if (el) this.cibleVie.set({ id: el.id, genre: 'element', nom: el.label || el.type });
+    } else {
+      this.detacherRotation();
+    }
   }
   private clearSelection(): void {
+    this.cibleVie.set(null);
     this.detacherRotation();
     if (this.selection.size) { this.selection.clear(); this.majSurbrillance(); }
   }
@@ -1400,64 +1523,12 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
   }
 
   // ══════════ Formes d'annotation ══════════
-  private formeShape(f: SchemaForme): Konva.Shape {
-    const fill = f.couleur + '22', stroke = f.couleur;
-    if (f.type === 'rect') return new Konva.Rect({ width: f.w, height: f.h, fill, stroke, strokeWidth: 3 });
-    if (f.type === 'ellipse') return new Konva.Ellipse({ x: f.w / 2, y: f.h / 2, radiusX: f.w / 2, radiusY: f.h / 2, fill, stroke, strokeWidth: 3 });
-    if (f.type === 'triangle') return new Konva.Line({ points: [f.w / 2, 0, f.w, f.h, 0, f.h], closed: true, fill, stroke, strokeWidth: 3 });
-    return new Konva.Line({ points: [f.w / 2, 0, f.w, f.h / 2, f.w / 2, f.h, 0, f.h / 2], closed: true, fill, stroke, strokeWidth: 3 });
-  }
-
-  /**
-   * Contour d'une zone en coordonnées LOCALES (0..w, 0..h). Une seule géométrie sert aux
-   * deux rendus : formes Konva à plat, polygone projeté en vue inclinée.
-   */
-  private contourForme(f: SchemaForme): number[] {
-    if (f.type === 'rect') return [0, 0, f.w, 0, f.w, f.h, 0, f.h];
-    if (f.type === 'triangle') return [f.w / 2, 0, f.w, f.h, 0, f.h];
-    if (f.type === 'losange') return [f.w / 2, 0, f.w, f.h / 2, f.w / 2, f.h, 0, f.h / 2];
-    const pts: number[] = [];   // ellipse échantillonnée (une ellipse projetée reste une conique)
-    for (let i = 0; i < 48; i++) {
-      const a = (i / 48) * Math.PI * 2;
-      pts.push(f.w / 2 * (1 + Math.cos(a)), f.h / 2 * (1 + Math.sin(a)));
-    }
-    return pts;
-  }
+  // Géométrie et rendu : partagés avec le lecteur (schema-render.contourForme /
+  // dessinerContenuForme) — le diaporama ne dessinait aucune zone avant ce partage.
 
   /** (Re)construit le contenu d'une forme : la géométrie + le texte centré éventuel. */
   private dessinerContenuForme(g: Konva.Group, f: SchemaForme): void {
-    g.destroyChildren();
-    const fill = f.couleur + '22', stroke = f.couleur;
-    if (this.camera) {
-      // Plan incliné : la zone devient un polygone projeté, décrit en absolu — un groupe
-      // positionné plus une forme locale ne suffirait pas, la projection n'est pas affine.
-      const loc = this.contourForme(f), abs: number[] = [];
-      for (let i = 0; i < loc.length; i += 2) abs.push(f.x + loc[i], f.y + loc[i + 1]);
-      g.position({ x: 0, y: 0 });
-      g.add(new Konva.Line({ points: this.camera.projeterPolyligne(abs), closed: true, fill, stroke, strokeWidth: 3 }));
-      if (f.texte) {
-        const c = this.camera.projeter(f.x + f.w / 2, f.y + f.h / 2);
-        const t = new Konva.Text({
-          text: f.texte, align: 'center', wrap: 'none',
-          fontSize: (f.texteTaille ?? 20) * c.echelle, fontStyle: 'bold',
-          fill: f.texteCouleur || f.couleur, listening: false,
-        });
-        t.position({ x: c.x - t.width() / 2, y: c.y - t.height() / 2 });
-        g.add(t);
-      }
-      return;
-    }
-    g.position({ x: f.x, y: f.y });
-    g.add(this.formeShape(f));
-    if (f.texte) {
-      const t = new Konva.Text({
-        text: f.texte, width: f.w, height: f.h,
-        align: 'center', verticalAlign: 'middle', wrap: 'word', padding: 4,
-        fontSize: f.texteTaille ?? 20, fontStyle: 'bold',
-        fill: f.texteCouleur || f.couleur, listening: false,
-      });
-      g.add(t);
-    }
+    dessinerContenuForme(g, f, this.camera);
   }
 
   private dessinerForme(f: SchemaForme): Konva.Group {
@@ -1486,8 +1557,11 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
     });
     // Le Transformer agit par mise à l'échelle : on la « cuit » dans w/h au relâcher.
     g.on('transformend', () => {
-      f.w = Math.max(12, f.w * g.scaleX());
-      f.h = Math.max(12, f.h * g.scaleY());
+      // Une ligne droite (horizontale ou verticale) a une dimension nulle : lui imposer le
+      // minimum des zones la rendrait bancale au premier redimensionnement.
+      const mini = f.type === 'ligne' ? 0 : 12;
+      f.w = Math.max(mini, f.w * g.scaleX());
+      f.h = Math.max(mini, f.h * g.scaleY());
       f.x = g.x(); f.y = g.y();
       g.scale({ x: 1, y: 1 });
       this.dessinerContenuForme(g, f);
@@ -1501,6 +1575,7 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
 
   private selectionnerForme(g: Konva.Group, f: SchemaForme): void {
     this.clearSelection();
+    this.cibleVie.set({ id: f.id, genre: 'forme', nom: f.texte || LIBELLE_FORME[f.type] || 'Zone' });
     if (this.camera) {
       // Le Transformer redimensionne via un rectangle englobant : sur un polygone projeté,
       // ses poignées ne correspondraient à rien. Le panneau d'édition reste accessible.
@@ -1514,6 +1589,7 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
     this.afficherPanneauZone(f, g);
   }
   private detacherForme(): void {
+    if (this.cibleVie()?.genre === 'forme') this.cibleVie.set(null);
     this.fermerPanneauZone();
     if (this.trForme && this.trForme.nodes().length) { this.trForme.nodes([]); this.layer.batchDraw(); }
   }
@@ -1579,9 +1655,14 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
     this.snack.open(`${points.length} élément(s) posé(s)`, 'Fermer', { duration: 1800 });
   }
 
-  /** Sommets de la forme (points cardinaux pour l'ellipse). */
+  /** Sommets de la forme (points cardinaux pour l'ellipse, extrémités pour une ligne). */
   private sommetsZone(f: SchemaForme): { x: number; y: number }[] {
     const { x, y, w, h } = f;
+    if (f.type === 'ligne') {
+      return f.montante
+        ? [{ x, y: y + h }, { x: x + w, y }]
+        : [{ x, y }, { x: x + w, y: y + h }];
+    }
     if (f.type === 'triangle') return [{ x: x + w / 2, y }, { x: x + w, y: y + h }, { x, y: y + h }];
     if (f.type === 'losange' || f.type === 'ellipse') {
       return [{ x: x + w / 2, y }, { x: x + w, y: y + h / 2 }, { x: x + w / 2, y: y + h }, { x, y: y + h / 2 }];
@@ -1593,6 +1674,17 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
   private contourZone(f: SchemaForme): { x: number; y: number }[] {
     const ESPACEMENT = 55, MIN = 4, MAX = 24;
     const nombre = (perimetre: number) => Math.min(MAX, Math.max(MIN, Math.round(perimetre / ESPACEMENT)));
+
+    // Une ligne n'a pas de pourtour à faire le tour : on jalonne le segment, extrémités
+    // comprises (un couloir de plots le long du trait).
+    if (f.type === 'ligne') {
+      const [a, b] = this.sommetsZone(f);
+      const n = nombre(Math.hypot(b.x - a.x, b.y - a.y));
+      return Array.from({ length: n }, (_, i) => {
+        const t = n > 1 ? i / (n - 1) : 0;
+        return { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t };
+      });
+    }
 
     if (f.type === 'ellipse') {
       const rx = f.w / 2, ry = f.h / 2;
@@ -1700,7 +1792,12 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
         const p = this.pointeurSol();
         if (!p) return;
         this.formeStart = { x: p.x, y: p.y };
-        const f: SchemaForme = { id: this.uid(), type: this.formeType(), x: p.x, y: p.y, w: 1, h: 1, couleur: this.couleurAnnot() };
+        const ligne = this.formeType() === 'ligne';
+        const f: SchemaForme = {
+          id: this.uid(), type: this.formeType(), x: p.x, y: p.y, w: 1, h: 1,
+          couleur: ligne ? this.couleurLigne() : this.couleurAnnot(),
+          ...(ligne ? { trait: this.traitLigne(), epaisseur: this.epaisseurLigne(), montante: false } : {}),
+        };
         this.formeEnCoursModel = f;
         this.formeEnCours = this.dessinerForme(f);
         this.remonterElements();
@@ -1741,6 +1838,8 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
         const f = this.formeEnCoursModel, x0 = this.formeStart.x, y0 = this.formeStart.y;
         f.x = Math.min(x0, p.x); f.y = Math.min(y0, p.y);
         f.w = Math.max(1, Math.abs(p.x - x0)); f.h = Math.max(1, Math.abs(p.y - y0));
+        // La boîte est normalisée : seul ce drapeau distingue une diagonale « ↗ » d'une « ↘ ».
+        if (f.type === 'ligne') f.montante = (p.x - x0) * (p.y - y0) < 0;
         this.dessinerContenuForme(this.formeEnCours, f);
         this.layer.batchDraw();
         return;
@@ -1788,7 +1887,10 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
       // Fin de tracé d'une forme
       if (this.formeEnCours && this.formeEnCoursModel) {
         const f = this.formeEnCoursModel;
-        if (f.w < 12 || f.h < 12) { this.formeEnCours.destroy(); this.formeNodes.delete(f.id); }
+        // Une ligne horizontale a une hauteur nulle : c'est sa LONGUEUR qui dit si le geste
+        // était un tracé ou un simple clic.
+        const troppetit = f.type === 'ligne' ? Math.hypot(f.w, f.h) < 12 : (f.w < 12 || f.h < 12);
+        if (troppetit) { this.formeEnCours.destroy(); this.formeNodes.delete(f.id); }
         else { this.formes.push(f); this.selectionnerForme(this.formeEnCours, f); }
         this.formeEnCours = null; this.formeEnCoursModel = null; this.formeStart = null;
         this.remonterElements();
@@ -1863,19 +1965,42 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
 
   private appliquerPositions(t: number): void {
     const kfs = this.keyframes();
-    const traj = this.trajectoires();   // id élément -> segments mobiles dans le temps
+    const m = this.minutage();          // positions des mobiles + minutage des flèches
     for (const el of this.elements) {
       // En mode Dynamique, les jetons pilotés par le moteur sont animés en direct
       // (tickMoteur) : ni les keyframes ni les tracés ne doivent les écraser.
       if (this.modeMoteur() && this.estPiloteMoteur(el)) continue;
-      const legs = traj.get(el.id);
+      const legs = m.mobiles.get(el.id);
       const p = legs ? posTrajectoire(legs, t) : posKeyframes(el, t, kfs);
       el.x = p.x; el.y = p.y;
       this.placerNoeud(this.nodesById.get(el.id), p.x, p.y);
     }
+    this.appliquerScene(t, m);
     // En 2.5D, l'ordre de superposition dépend de la profondeur : il change à chaque frame.
     if (this.camera) ordonnerParProfondeur(this.nodesById.values());
     this.layer.batchDraw();
+  }
+
+  /**
+   * Qui est visible à l'instant t : flèches selon le mode d'affichage, zones et jetons selon
+   * leur fenêtre d'apparition. Sans réglage, tout est visible — un schéma d'avant ce lot se
+   * comporte donc exactement comme avant.
+   */
+  private appliquerScene(t: number, m: Minutage = this.minutage()): void {
+    for (const tr of this.traces) {
+      const grp = this.traceNodes.get(tr.id);
+      if (grp) this.appliquerEtatTrace(tr, grp, m, t);
+    }
+    const poser = (n: Konva.Node | undefined, vie: Vie | undefined) => {
+      if (!n) return;
+      if (!aUneVie(vie)) { n.visible(true); n.opacity(1); return; }
+      const o = opaciteVie(vie, m.fenetres, t);
+      const op = o === 0 && !this.enLecture() ? OPACITE_FANTOME : o;
+      n.visible(op > 0.01);
+      n.opacity(op);
+    };
+    for (const f of this.formes) poser(this.formeNodes.get(f.id), f.vie);
+    for (const el of this.elements) poser(this.nodesById.get(el.id), el.vie);
   }
 
   // ══════════ Brique 2 : flèche = route suivie ══════════
@@ -1910,9 +2035,9 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
    * Positions de repos = la keyframe 0 : l'animation mute `el.x/el.y` à chaque frame, s'en
    * servir ferait changer le propriétaire d'une flèche en cours de lecture.
    */
-  private trajectoires(): Map<string, Segment[]> {
+  private minutage(): Minutage {
     const kf0 = this.keyframes()[0];
-    return construireTrajectoires({
+    return minuter({
       elements: this.elements,
       traces: this.traces,
       modeAnim: this.modeAnim(),
@@ -1922,6 +2047,8 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
       vitesseJoueurPxS: j => vitesseJoueurPxS(j, this.vitesses, this.metriqueVitesse(), this.pxParMetre),
     });
   }
+
+  private trajectoires(): Map<string, Segment[]> { return this.minutage().mobiles; }
 
   /** Durée minimale (s) pour que toutes les chaînes finissent en mode vitesse. */
   private dureeMinPourTraces(): number { return dureeMaxTrajectoires(this.trajectoires()); }
@@ -1975,8 +2102,6 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
   // ── Lecture ──
   basculerLecture(): void { this.enLecture() ? this.pause() : this.play(); }
   private play(): void {
-    this.tracesVisibles.set(false);
-    this.updateTracesVisibility();
     if (this.keyframes().length < 2 && !this.aDesTracesAnimees()) {
       this.snack.open('Trace une flèche depuis un joueur, ou ajoute 2 keyframes', 'Fermer', { duration: 2800 });
       return;
@@ -1987,7 +2112,10 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
       if (min > this.dureeSecondes()) this.dureeSecondes.set(Math.ceil(min));
     }
     if (this.tempsCourant() >= this.dureeSecondes()) this.tempsCourant.set(0);
+    // Le drapeau passe AVANT la première image : c'est lui qui fait tomber les fantômes
+    // d'édition et ne laisse que ce qui est réellement en scène.
     this.enLecture.set(true);
+    this.appliquerScene(this.tempsCourant());
     let last = performance.now();
     this.anim = new Konva.Animation(() => {
       const now = performance.now();
@@ -2003,22 +2131,118 @@ export class SchemaEditorComponent implements AfterViewInit, OnDestroy {
     this.anim.start();
   }
   private pause(): void {
-    this.tracesVisibles.set(this.tracesVisibles()); this.updateTracesVisibility();
     this.anim?.stop(); this.anim = undefined; this.enLecture.set(false);
+    this.appliquerScene(this.tempsCourant());   // retour à l'édition : les absents redeviennent fantômes
+    this.layer.batchDraw();
   }
 
   private uid(): string { return Math.random().toString(36).slice(2, 10); }
-  // Affiche ou masque tous les tracés selon l'état de la palette (case à cocher). Les éléments restent visibles.
-  private updateTracesVisibility(): void {
-    this.layer.find('.trace').forEach((node: any) => {
-      node.visible(this.tracesVisibles());
-    });
+
+  // ══════════ Affichage des flèches ══════════
+
+  /** Fait tourner le mode d'affichage des flèches : tout → au fil de l'action → aucune. */
+  cyclerModeTraces(): void {
+    const suite: Record<ModeTraces, ModeTraces> = { toujours: 'action', action: 'aucun', aucun: 'toujours' };
+    this.modeTraces.update(m => suite[m]);
+    this.appliquerScene(this.tempsCourant());
     this.layer.batchDraw();
   }
-  // ══════════ Palette : afficher/masquer les tracés (sans les supprimer) ══════════
-   visibiliteTraces(): void {
-    this.tracesVisibles.update(v => !v);
-    this.updateTracesVisibility();
+
+  /** Icônes prises dans Material Icons CLASSIQUE (cf. index.html) : `gesture` et `timeline`
+   *  y figurent, un nom Material Symbols rendrait un bouton vide. */
+  iconeModeTraces(): string {
+    const m = this.modeTraces();
+    return m === 'toujours' ? 'timeline' : m === 'action' ? 'gesture' : 'visibility_off';
+  }
+
+  libelleModeTraces(): string {
+    const m = this.modeTraces();
+    return m === 'toujours' ? 'Flèches : tout le tracé'
+      : m === 'action' ? "Flèches : au fil de l'action (chacune se dessine puis s'efface)"
+        : 'Flèches : aucune';
+  }
+
+  // ══════════ Fenêtre d'apparition (mise en scène) ══════════
+
+  /**
+   * Objet dont on règle l'apparition : la zone ou le jeton sélectionné, seul. Une barre de vie
+   * n'a de sens que pour une cible unique — sur une sélection multiple, on ne saurait pas quoi
+   * afficher sur la timeline.
+   */
+  cibleVie = signal<{ id: string; genre: 'forme' | 'element'; nom: string } | null>(null);
+
+  private modeleVie(): SchemaForme | SchemaElement | undefined {
+    const c = this.cibleVie();
+    if (!c) return undefined;
+    return c.genre === 'forme' ? this.formes.find(f => f.id === c.id) : this.elements.find(e => e.id === c.id);
+  }
+
+  /** Vrai si la cible porte une fenêtre (sinon elle est visible d'un bout à l'autre). */
+  cibleAUneVie(): boolean { return aUneVie(this.modeleVie()?.vie); }
+
+  /** Bornes de la cible RÉSOLUES en secondes (une ancre suit la flèche à laquelle elle est liée). */
+  vieDebut(): number { return resoudreBorne(this.modeleVie()?.vie?.debut, this.minutage().fenetres, 0); }
+  vieFin(): number {
+    const f = resoudreBorne(this.modeleVie()?.vie?.fin, this.minutage().fenetres, this.dureeSecondes());
+    return Math.min(f, this.dureeSecondes());
+  }
+
+  /** Vrai si la borne est ancrée à une flèche plutôt qu'à un instant fixe. */
+  vieAncree(bord: 'debut' | 'fin'): boolean {
+    const b = this.modeleVie()?.vie?.[bord];
+    return !!b && typeof b === 'object';
+  }
+
+  private majVie(maj: (v: Vie) => Vie): void {
+    const m = this.modeleVie();
+    if (!m) return;
+    const v = maj({ ...(m.vie ?? {}) });
+    m.vie = v.debut === undefined && v.fin === undefined ? undefined : v;
+    this.appliquerScene(this.tempsCourant());
+    this.layer.batchDraw();
+  }
+
+  /** « Apparaît ici » / « Disparaît ici » : fige la borne au temps courant. */
+  poserBorneVie(bord: 'debut' | 'fin'): void {
+    const t = Math.round(this.tempsCourant() * 10) / 10;
+    this.majVie(v => ({ ...v, [bord]: t }));
+  }
+
+  /** Ancre la borne au départ ou à la fin d'une flèche : elle suivra le minutage. */
+  ancrerBorneVie(bord: 'debut' | 'fin', ancre: AncreTrace | null): void {
+    this.majVie(v => ({ ...v, [bord]: ancre ?? undefined }));
+  }
+
+  /** Retire toute contrainte : la cible redevient visible du début à la fin. */
+  effacerVie(): void { this.majVie(() => ({})); }
+
+  /** Flèches proposables comme ancre, dans l'ordre où elles sont jouées. */
+  ancresPossibles(): { id: string; libelle: string; t0: number; t1: number }[] {
+    const fen = this.minutage().fenetres;
+    return this.traces
+      .filter(t => fen.has(t.id))
+      .map((t, i) => ({ id: t.id, libelle: `${LIBELLE_TRACE[t.type] ?? t.type} ${i + 1}`, ...fen.get(t.id)! }))
+      .sort((a, b) => a.t0 - b.t0);
+  }
+
+  /** Valeur du menu d'ancrage d'une borne : '' = instant fixe. */
+  valeurAncre(bord: 'debut' | 'fin'): string {
+    const b = this.modeleVie()?.vie?.[bord];
+    return b && typeof b === 'object' ? `${b.trace}|${b.bord}` : '';
+  }
+
+  choisirAncre(bord: 'debut' | 'fin', valeur: string): void {
+    if (!valeur) { this.poserBorneVie(bord); return; }   // retour à un instant fixe : le temps courant
+    const [trace, cote] = valeur.split('|');
+    this.ancrerBorneVie(bord, { trace, bord: cote === 'fin' ? 'fin' : 'debut' });
   }
 }
+
+const LIBELLE_TRACE: Record<string, string> = {
+  deplacement: 'Course', conduite: 'Conduite', passe: 'Passe', tir: 'Tir',
+};
+
+const LIBELLE_FORME: Record<string, string> = {
+  rect: 'Rectangle', ellipse: 'Ovale', losange: 'Losange', triangle: 'Triangle',
+};
 

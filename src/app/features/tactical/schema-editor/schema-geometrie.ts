@@ -98,6 +98,31 @@ export function pointLeLongDe(pts: number[], p: number): Point {
   return { x: pts[pts.length - 2], y: pts[pts.length - 1] };
 }
 
+/**
+ * Portion INITIALE d'une polyligne, de son départ jusqu'à la fraction p (0→1) de sa longueur.
+ * Sert au tracé progressif : la flèche se dessine au rythme du mobile qui la parcourt.
+ *
+ * À appliquer au chemin déjà développé (`cheminRendu`) et à dessiner avec une tension NULLE :
+ * cette polyligne dense EST la courbe, la recourber une seconde fois la déformerait.
+ */
+export function sousChemin(pts: number[], p: number): number[] {
+  if (pts.length < 4 || p >= 1) return pts;
+  const cible = Math.max(0, p) * longueurChemin(pts);
+  const out = [pts[0], pts[1]];
+  let acc = 0;
+  for (let i = 2; i < pts.length; i += 2) {
+    const seg = Math.hypot(pts[i] - pts[i - 2], pts[i + 1] - pts[i - 1]);
+    if (acc + seg >= cible) {
+      const r = seg ? (cible - acc) / seg : 0;
+      out.push(pts[i - 2] + (pts[i] - pts[i - 2]) * r, pts[i - 1] + (pts[i + 1] - pts[i - 1]) * r);
+      return out;
+    }
+    out.push(pts[i], pts[i + 1]);
+    acc += seg;
+  }
+  return out;
+}
+
 /** Réduit la densité de points d'un tracé (1 point sur 2 paires conservé). */
 export function simplifierPoints(points: number[]): number[] {
   if (points.length <= 6) return points;
