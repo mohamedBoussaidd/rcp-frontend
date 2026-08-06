@@ -29,6 +29,11 @@ type Etape = 1 | 2 | 3 | 4;
  * et depuis une période de la saison pour aller droit à l'étape 3 sur celle-là. Le référentiel et
  * les modèles sont des biens du CLUB, pas d'une période — les enfermer dans l'écran Saison les
  * rendrait introuvables.
+ *
+ * <p>La bande <b>Habituel / Attendu / Retenu</b> sous la timeline n'est pas décorative : ces trois
+ * mots portent tout l'écran, et l'assistant est justement l'endroit où on les rencontre pour la
+ * première fois. La laisser à l'écran en permanence coûte 30 px et évite d'avoir à les redéfinir
+ * dans chaque paragraphe.
  */
 @Component({
   selector: 'app-objectifs-assistant',
@@ -37,309 +42,411 @@ type Etape = 1 | 2 | 3 | 4;
             ModeleObjectifEditeurComponent, ObjectifPeriodeEditeurComponent,
             BilanPeriodeComponent],
   template: `
-    <div class="overlay" (click)="fermerSiFond($event)">
-      <div class="modale" role="dialog" aria-modal="true">
+    <div class="oa-overlay" (click)="fermerSiFond($event)">
+      <div class="oa-modale" role="dialog" aria-modal="true">
 
-        <header class="modale__head">
-          <div>
-            <h2 class="modale__titre">Configuration des objectifs de performance</h2>
-            <p class="modale__sub">Se règle une fois par saison. Vous pouvez revenir à n'importe quelle étape.</p>
+        <header class="oa-head">
+          <div class="oa-head__txt">
+            <div class="oa-head__ligne">
+              <h2 class="oa-head__titre">Objectifs de performance</h2>
+              <span class="oa-head__kicker">assistant de configuration</span>
+            </div>
+            <p class="oa-head__sub">
+              On y règle l'<strong>Attendu</strong> et le <strong>Retenu</strong>.
+              Le suivi hebdomadaire se lit ailleurs.
+            </p>
           </div>
-          <button class="ic" title="Fermer" (click)="fermer.emit()"><mat-icon>close</mat-icon></button>
+
+          <!-- Rien à valider à la fin : le seul retour d'écriture est cette pastille. -->
+          <span class="oa-save" [class.oa-save--busy]="enregistrement()">
+            <span class="oa-save__dot"></span>
+            {{ enregistrement() ? 'Enregistrement…' : 'Tout est enregistré' }}
+          </span>
+
+          <span class="oa-ctx">
+            @if (equipeNomCourant(); as e) { <strong>{{ e }}</strong> }
+            @if (equipeNomCourant() && saisonNom()) { <span class="oa-ctx__sep">·</span> }
+            @if (saisonNom(); as s) { <span class="num">{{ s }}</span> }
+          </span>
+
+          <button class="oa-ic" title="Fermer" (click)="fermer.emit()"><mat-icon>close</mat-icon></button>
         </header>
 
         <!-- Timeline navigable : chaque pastille est un bouton, dans les deux sens. -->
-        <nav class="timeline">
+        <nav class="oa-timeline">
           @for (e of etapes; track e.n) {
-            <button class="pas" [class.pas--on]="etape() === e.n" [class.pas--ok]="estFaite(e.n)"
-                    (click)="aller(e.n)">
-              <span class="pas__rond">
+            <button class="oa-pas" [class.oa-pas--on]="etape() === e.n"
+                    [class.oa-pas--ok]="estFaite(e.n)" (click)="aller(e.n)">
+              <span class="oa-pas__rond">
                 @if (estFaite(e.n) && etape() !== e.n) { <mat-icon>check</mat-icon> } @else { {{ e.n }} }
               </span>
-              <span class="pas__lib">
+              <span class="oa-pas__lib">
                 <strong>{{ e.titre }}</strong>
                 <small>{{ etatCourt(e.n) }}</small>
               </span>
             </button>
-            @if (!$last) { <span class="trait" [class.trait--ok]="estFaite(e.n)"></span> }
+            @if (!$last) { <span class="oa-trait" [class.oa-trait--ok]="estFaite(e.n)"></span> }
           }
         </nav>
 
-        <div class="modale__corps">
+        <!-- Les trois notions : le vocabulaire imposé, toujours à l'écran. -->
+        <div class="oa-lex">
+          <span class="oa-lex__t">Les trois notions</span>
+          <span class="oa-lex__i"><i class="oa-dot oa-dot--hab"></i><b>Habituel</b> ce que ce joueur fait d'ordinaire</span>
+          <span class="oa-lex__i"><i class="oa-dot oa-dot--att"></i><b>Attendu</b> ce que fait normalement son poste à ce niveau</span>
+          <span class="oa-lex__i"><i class="oa-dot oa-dot--ret"></i><b>Retenu</b> ce que le club décide pour la semaine</span>
+        </div>
+
+        <div class="oa-corps">
 
           <!-- ─────────── Étape 1 : référentiel ─────────── -->
           @if (etape() === 1) {
-            <h3 class="etape__titre">
-              Choisir le référentiel <app-info-bulle [texte]="aide.referentiel" />
-            </h3>
-            <p class="etape__aide">
-              Le référentiel dit ce qui est <strong>normal</strong> pour un poste, à un niveau donné.
-              Il est fourni : adoptez-le tel quel, ou dupliquez-en une copie que vous adaptez. Une
-              équipe sans référentiel n'affichera simplement pas de colonne « Attendu ».
-            </p>
+            <section class="oa-e1">
+              <div class="oa-e1__main">
+                <div class="oa-intro">
+                  <h3 class="oa-titre">
+                    Quel référentiel sert de repère ? <app-info-bulle [texte]="aide.referentiel" />
+                  </h3>
+                  <p class="oa-aide">
+                    Le référentiel dit ce qu'un joueur de tel poste fait normalement à votre niveau
+                    de jeu : c'est lui qui remplit la colonne <strong>Attendu</strong>. La plateforme
+                    le publie, vous l'adoptez. Une équipe première et une U19 ne jouent pas au même
+                    niveau : chaque équipe peut donc adopter le sien.
+                  </p>
+                </div>
 
-            <div class="deux-col">
-              <div>
-                <table class="tbl">
-                  <thead><tr>
-                    <th>Portée <app-info-bulle [texte]="aide.adoptionEquipe" /></th>
-                    <th>Référentiel</th>
-                    <th class="num">Version <app-info-bulle [texte]="aide.versionEpinglee" /></th>
-                  </tr></thead>
-                  <tbody>
-                    <tr class="tr--defaut">
-                      <td class="nom">Tout le club <small>par défaut</small></td>
-                      <td>
-                        <select [ngModel]="referentielDe(null)" (ngModelChange)="adopter(null, $event)">
-                          <option [ngValue]="null">— aucun —</option>
+                <div class="oa-bloc">
+                  <div class="oa-bloc__head">
+                    <h4 class="oa-bloc__titre">Adoptions</h4>
+                    <span class="oa-bloc__hint">une ligne pour tout le club, puis une par équipe</span>
+                    <span class="oa-bloc__compte num">
+                      {{ adoptions().length }} / {{ equipes().length + 1 }}
+                    </span>
+                  </div>
+
+                  <div class="oa-ligne oa-ligne--defaut">
+                    <div class="oa-ligne__nom">
+                      <strong>Tout le club</strong>
+                      <small>valeur par défaut <app-info-bulle [texte]="aide.adoptionEquipe" /></small>
+                    </div>
+                    <div class="oa-ligne__act">
+                      <select class="oa-select" [ngModel]="referentielDe(null)"
+                              (ngModelChange)="adopter(null, $event)">
+                        <option [ngValue]="null">— aucune adoption —</option>
+                        @for (r of adoptables(); track r.id) {
+                          <option [ngValue]="r.id">{{ r.nom }}{{ r.plateforme ? '' : ' (copie club)' }}</option>
+                        }
+                      </select>
+                      <span class="oa-ver num">{{ versionDe(null) }}
+                        <app-info-bulle [texte]="aide.versionEpinglee" /></span>
+                      @if (adoptionDe(null); as a) {
+                        @if (a.versionDisponibleId) {
+                          <button class="badge badge--info oa-maj-btn" (click)="voirEcart(a)">
+                            <mat-icon>arrow_upward</mat-icon> {{ a.versionDisponibleNom }}
+                          </button>
+                        }
+                      } @else {
+                        <span class="badge badge--warn">pas d'Attendu</span>
+                      }
+                    </div>
+                  </div>
+
+                  @for (e of equipes(); track e.id) {
+                    <div class="oa-ligne">
+                      <div class="oa-ligne__nom">
+                        <strong>{{ e.nom }}</strong>
+                        <small>{{ adoptionDe(e.id) ? 'adoption propre' : 'suit le club' }}</small>
+                      </div>
+                      <div class="oa-ligne__act">
+                        <select class="oa-select" [ngModel]="referentielDe(e.id)"
+                                (ngModelChange)="adopter(e.id, $event)">
+                          <option [ngValue]="null">— suit le club —</option>
                           @for (r of adoptables(); track r.id) {
                             <option [ngValue]="r.id">{{ r.nom }}{{ r.plateforme ? '' : ' (copie club)' }}</option>
                           }
                         </select>
-                      </td>
-                      <td class="num">
-                        {{ versionDe(null) }}
-                        @if (adoptionDe(null)?.versionDisponibleId) { <mat-icon class="up" title="Nouvelle version disponible">arrow_upward</mat-icon> }
-                      </td>
-                    </tr>
-                    @for (e of equipes(); track e.id) {
-                      <tr>
-                        <td class="nom">{{ e.nom }}</td>
-                        <td>
-                          <select [ngModel]="referentielDe(e.id)" (ngModelChange)="adopter(e.id, $event)">
-                            <option [ngValue]="null">— suit le club —</option>
-                            @for (r of adoptables(); track r.id) {
-                              <option [ngValue]="r.id">{{ r.nom }}{{ r.plateforme ? '' : ' (copie club)' }}</option>
-                            }
-                          </select>
-                        </td>
-                        <td class="num">
-                          {{ versionDe(e.id) }}
-                          @if (adoptionDe(e.id)?.versionDisponibleId) { <mat-icon class="up" title="Nouvelle version disponible">arrow_upward</mat-icon> }
-                        </td>
-                      </tr>
-                    } @empty {
-                      <tr><td colspan="3" class="vide">Aucune équipe accessible dans votre périmètre.</td></tr>
-                    }
-                  </tbody>
-                </table>
+                        <span class="oa-ver num">{{ versionDe(e.id) }}</span>
+                        @if (adoptionDe(e.id); as a) {
+                          @if (a.versionDisponibleId) {
+                            <button class="badge badge--info oa-maj-btn" (click)="voirEcart(a)">
+                              <mat-icon>arrow_upward</mat-icon> {{ a.versionDisponibleNom }}
+                            </button>
+                          }
+                        }
+                      </div>
+                    </div>
+                  } @empty {
+                    <div class="oa-ligne"><p class="oa-vide">Aucune équipe accessible dans votre périmètre.</p></div>
+                  }
+                </div>
 
-                @for (a of adoptionsAvecMaj(); track a.id) {
-                  <div class="maj">
-                    <mat-icon>update</mat-icon>
-                    <span><strong>{{ a.equipeNom }}</strong> est en v{{ a.version }}.
-                      <strong>{{ a.versionDisponibleNom }}</strong> est disponible — vos valeurs ne
-                      bougeront pas tant que vous n'aurez pas migré.</span>
-                    <button class="btn btn--sm" (click)="voirEcart(a)">Changements</button>
-                    <button class="btn btn--sm btn--primary" (click)="migrer(a)">Migrer</button>
+                @if (adoptionsAvecMaj().length > 0) {
+                  <div class="oa-updates">
+                    <div class="oa-updates__head">
+                      <h4>Mises à jour disponibles</h4>
+                      <span>rien ne change tant que vous n'avez pas migré
+                        <app-info-bulle [texte]="aide.versionEpinglee" /></span>
+                    </div>
+                    @for (a of adoptionsAvecMaj(); track a.id) {
+                      <div class="oa-update">
+                        <div class="oa-update__txt">
+                          <strong>{{ a.equipeNom }}</strong>
+                          <span class="num">v{{ a.version }}</span> →
+                          <span class="num">{{ a.versionDisponibleNom }}</span>
+                        </div>
+                        <button class="btn btn--secondary btn--sm" (click)="voirEcart(a)">Changements</button>
+                        <button class="btn btn--primary btn--sm" (click)="migrer(a)">Migrer</button>
+                      </div>
+                    }
                   </div>
                 }
 
-                <div class="dupli">
-                  <span>Les valeurs ne collent pas à votre réalité ?
-                    <app-info-bulle [texte]="aide.duplication" /></span>
-                  <select [(ngModel)]="sourceDuplication">
-                    <option [ngValue]="null">— à copier —</option>
-                    @for (r of adoptables(); track r.id) { <option [ngValue]="r.id">{{ r.nom }}</option> }
-                  </select>
-                  <button class="btn btn--sm" (click)="dupliquer()" [disabled]="!sourceDuplication">Dupliquer</button>
+                <div class="oa-dup">
+                  <div class="oa-dup__head">
+                    <h4>Dupliquer puis personnaliser</h4>
+                    <span>partez d'un référentiel publié — une grille vierge fait 140 cases
+                      <app-info-bulle [texte]="aide.duplication" /></span>
+                  </div>
+                  <div class="oa-dup__act">
+                    <select class="oa-select" [(ngModel)]="sourceDuplication">
+                      <option [ngValue]="null">Choisir le référentiel source…</option>
+                      @for (r of adoptables(); track r.id) { <option [ngValue]="r.id">{{ r.nom }}</option> }
+                    </select>
+                    <button class="btn btn--secondary" (click)="dupliquer()"
+                            [disabled]="!sourceDuplication">Dupliquer</button>
+                  </div>
                 </div>
               </div>
 
               <!-- Aperçu : sans lui, on choisit un référentiel sans savoir ce qu'il contient. -->
-              <aside class="apercu">
-                <div class="apercu__head">
-                  <h4>Aperçu <app-info-bulle [texte]="aide.contexteMatchSemaine" /></h4>
-                  <select [(ngModel)]="apercuId" (ngModelChange)="chargerApercu()">
-                    <option [ngValue]="null">— choisir —</option>
-                    @for (r of adoptables(); track r.id) { <option [ngValue]="r.id">{{ r.nom }}</option> }
-                  </select>
+              <aside class="oa-apercu">
+                <div class="oa-apercu__head">
+                  <h4>Aperçu</h4>
+                  <span>avant d'adopter, regardez les valeurs</span>
                 </div>
+                <select class="oa-select oa-select--full" [(ngModel)]="apercuId"
+                        (ngModelChange)="chargerApercu()">
+                  <option [ngValue]="null">— choisir un référentiel —</option>
+                  @for (r of adoptables(); track r.id) { <option [ngValue]="r.id">{{ r.nom }}</option> }
+                </select>
+
                 @if (apercu(); as a) {
-                  <div class="seg seg--sm">
-                    @for (c of ['SEMAINE', 'MATCH']; track c) {
-                      <button class="seg__item" [class.seg__item--on]="ctxApercu() === c"
-                              (click)="ctxApercu.set(c)">{{ c === 'MATCH' ? 'Match' : 'Semaine' }}</button>
-                    }
-                  </div>
-                  <table class="tbl tbl--mini">
-                    <thead>
-                      <tr><th>Métrique</th>
-                        @for (p of postesApercu(); track p.code) { <th class="num">{{ p.libelle }}</th> }
-                      </tr>
-                    </thead>
-                    <tbody>
-                      @for (m of metriquesApercu(); track m.code) {
-                        <tr>
-                          <td class="nom">{{ m.libelle }}</td>
-                          @for (p of postesApercu(); track p.code) {
-                            <td class="num">{{ celluleApercu(p.code, m) }}</td>
-                          }
-                        </tr>
+                  <div class="oa-apercu__barre">
+                    <div class="segmented">
+                      @for (c of ['SEMAINE', 'MATCH']; track c) {
+                        <button [class.is-active]="ctxApercu() === c" (click)="ctxApercu.set(c)">
+                          {{ c === 'MATCH' ? 'Match' : 'Semaine' }}
+                        </button>
                       }
-                    </tbody>
-                  </table>
-                  <label class="chk"><input type="checkbox" [(ngModel)]="apercuToutes"> Les 7 métriques</label>
-                  <p class="apercu__pied">
-                    {{ a.valeurs.length }} valeurs · {{ postesApercu().length }} postes
-                    @if (a.entete.statut !== 'PUBLIE') { · <em>{{ a.entete.statut === 'BROUILLON' ? 'brouillon' : 'archivé' }}</em> }
-                  </p>
+                    </div>
+                    <app-info-bulle [texte]="aide.contexteMatchSemaine" />
+                    <label class="oa-chk">
+                      <input type="checkbox" [(ngModel)]="apercuToutes"> Les 7 métriques
+                    </label>
+                  </div>
+
+                  <div class="oa-apercu__carte">
+                    <div class="oa-apercu__carteHead">
+                      <span class="oa-apercu__nom">{{ a.entete.nom }}</span>
+                      @if (a.entete.statut !== 'PUBLIE') {
+                        <span class="badge badge--neutral">
+                          {{ a.entete.statut === 'BROUILLON' ? 'brouillon' : 'archivé' }}
+                        </span>
+                      }
+                      <span class="oa-apercu__meta">valeurs Attendu par poste, contexte {{ ctxApercu() }}</span>
+                    </div>
+                    <div class="oa-apercu__scroll">
+                      <table class="oa-tbl oa-tbl--mini">
+                        <thead>
+                          <tr>
+                            <th>Métrique</th>
+                            @for (p of postesApercu(); track p.code) { <th class="r">{{ p.libelle }}</th> }
+                          </tr>
+                        </thead>
+                        <tbody>
+                          @for (m of metriquesApercu(); track m.code) {
+                            <tr>
+                              <td class="oa-tbl__nom">{{ m.libelle }}<small>{{ m.unite }}</small></td>
+                              @for (p of postesApercu(); track p.code) {
+                                <td class="r num">{{ celluleApercu(p.code, m) }}</td>
+                              }
+                            </tr>
+                          }
+                        </tbody>
+                      </table>
+                    </div>
+                    <p class="oa-apercu__pied num">
+                      {{ a.valeurs.length }} valeurs · {{ postesApercu().length }} postes
+                    </p>
+                  </div>
                 } @else {
-                  <p class="vide">Choisissez un référentiel pour voir ses valeurs avant de l'adopter.</p>
+                  <p class="oa-vide">Choisissez un référentiel pour voir ses valeurs avant de l'adopter.</p>
                 }
               </aside>
-            </div>
-
-            @if (ecart(); as e) {
-              <div class="diff">
-                <h4 class="sous-titre">{{ e.avantNom }} → {{ e.apresNom }}</h4>
-                @if (e.lignes.length === 0) { <p class="vide">Aucune valeur ne change.</p> } @else {
-                  <table class="tbl">
-                    <thead><tr><th>Poste</th><th>Contexte</th><th>Métrique</th><th class="num">Avant</th><th class="num">Après</th></tr></thead>
-                    <tbody>
-                      @for (l of e.lignes; track l.poste + l.contexte + l.metrique) {
-                        <tr>
-                          <td>{{ libPoste(l.poste) }}</td>
-                          <td>{{ l.contexte === 'MATCH' ? 'Match' : 'Semaine' }}</td>
-                          <td>{{ libMetrique(l.metrique) }}</td>
-                          <td class="num av">{{ borne(l.avantMin, l.avantMax) }}</td>
-                          <td class="num ap">{{ borne(l.apresMin, l.apresMax) }}</td>
-                        </tr>
-                      }
-                    </tbody>
-                  </table>
-                }
-                <button class="btn btn--sm" (click)="ecart.set(null)">Fermer</button>
-              </div>
-            }
+            </section>
           }
 
           <!-- ─────────── Étape 2 : modèles ─────────── -->
           @if (etape() === 2) {
-            <h3 class="etape__titre">
-              Préparer les modèles <app-info-bulle [texte]="aide.modele" />
-            </h3>
-            <p class="etape__aide">
-              Un modèle est la <strong>forme</strong> d'une période — ses phases et leur niveau —
-              sans ses kilomètres. Le référentiel fournit l'échelle, donc le même modèle sert à
-              toutes vos équipes quel que soit leur niveau. Ces modèles n'appartiennent qu'à votre club.
-            </p>
-            <app-modele-objectif-editeur [metriques]="metriques()" (change)="rechargerPeriodes()" />
+            <section class="oa-etape">
+              <div class="oa-intro">
+                <h3 class="oa-titre">
+                  Quelle forme doit prendre la montée en charge ? <app-info-bulle [texte]="aide.modele" />
+                </h3>
+                <p class="oa-aide">
+                  Un modèle décrit la forme d'une progression, le référentiel en donne l'échelle : le
+                  même « Prépa 6 semaines » sert un club national et un club régional. Il se compose
+                  de phases et jamais de semaines fixes — c'est ce qui protège la semaine de décharge
+                  quand la période s'allonge.
+                </p>
+              </div>
+              <app-modele-objectif-editeur [metriques]="metriques()" (change)="apresEcriture()" />
+            </section>
           }
 
           <!-- ─────────── Étape 3 : périodes ─────────── -->
           @if (etape() === 3) {
-            <h3 class="etape__titre">
-              Poser les objectifs sur les périodes
-              <app-info-bulle [texte]="aide.trajectoireVsPostes" />
-            </h3>
-            <p class="etape__aide">
-              Chaque période reçoit un modèle. Le passage d'une période à l'autre est automatique :
-              à la date prévue, l'application bascule sur les objectifs suivants.
-              <app-info-bulle [texte]="aide.bascPeriode" />
-            </p>
+            <section class="oa-etape">
+              <div class="oa-intro">
+                <h3 class="oa-titre">
+                  Que retient-on, semaine par semaine ?
+                  <app-info-bulle [texte]="aide.trajectoireVsPostes" />
+                </h3>
+                <p class="oa-aide">
+                  On applique un modèle à chaque période de la saison : la forme du modèle rencontre
+                  l'échelle du référentiel, et il en sort le <strong>Retenu</strong> de chaque
+                  semaine. Vous pouvez ensuite corriger n'importe quelle case à la main.
+                  <app-info-bulle [texte]="aide.bascPeriode" />
+                </p>
+              </div>
 
-            <div class="barre">
-              <label class="field"><span>Équipe</span>
-                <select [ngModel]="equipeChoisie()" (ngModelChange)="choisirEquipe($event)">
+              <div class="oa-barre">
+                <select class="oa-select" [ngModel]="equipeChoisie()" (ngModelChange)="choisirEquipe($event)">
                   <option [ngValue]="null">— choisir une équipe —</option>
                   @for (e of equipes(); track e.id) { <option [ngValue]="e.id">{{ e.nom }}</option> }
                 </select>
-              </label>
-              @if (saisonNom()) { <span class="chip">Saison {{ saisonNom() }}</span> }
-            </div>
-
-            @if (!saisonId()) {
-              <p class="vide">Aucune saison en cours. Créez-en une depuis Planning › Saison.</p>
-            } @else if (!equipeChoisie()) {
-              <p class="vide">Choisissez une équipe pour voir ses périodes.</p>
-            } @else if (periodes().length === 0) {
-              <p class="vide">
-                Aucune période définie pour cette équipe. Créez-les depuis Planning › Saison,
-                puis revenez ici.
-              </p>
-            } @else {
-              <div class="cartes">
-                @for (p of periodes(); track p.periodeId) {
-                  <button class="carte" [class.carte--on]="edition()?.periodeId === p.periodeId"
-                          [class.carte--faite]="p.objectifsDefinis"
-                          [class.carte--repos]="sansCharge(p)" (click)="editer(p)">
-                    <span class="carte__type">{{ libTypePeriode(p.typePeriode) }}</span>
-                    <strong class="carte__nom">{{ p.libelle }}</strong>
-                    <span class="carte__dates">
-                      {{ p.dateDebut | date : 'd MMM' }} – {{ p.dateFin | date : 'd MMM' }} · {{ p.nbSemaines }} sem.
-                    </span>
-                    <span class="carte__etat">
-                      @if (sansCharge(p)) {
-                        <mat-icon>bedtime</mat-icon> Hors charge
-                      } @else if (p.objectifsDefinis) {
-                        <mat-icon>check_circle</mat-icon> {{ p.modeleNom || 'Défini' }}
-                      } @else {
-                        <mat-icon>radio_button_unchecked</mat-icon> À définir
-                      }
-                    </span>
-                    <!-- Le bilan n'apparaît que si la période a commencé ET porte des objectifs :
-                         proposer un bilan vide sur une période à venir n'a aucun sens. -->
-                    @if (p.objectifsDefinis && !sansCharge(p) && aCommence(p)) {
-                      <span class="carte__bilan" (click)="ouvrirBilan(p, $event)">
-                        <mat-icon>insights</mat-icon> Bilan
-                      </span>
-                    }
-                  </button>
+                @if (saisonNom(); as s) {
+                  <span class="badge badge--ok"><span class="oa-dot oa-dot--ret"></span>{{ s }}</span>
                 }
+                <span class="oa-barre__hint">l'assistant charge lui-même les équipes autorisées</span>
               </div>
 
-              @if (edition(); as p) {
-                <div class="editeur-zone">
-                  <app-objectif-periode-editeur
-                    [periode]="p" [metriques]="metriques()" [postes]="postes()"
-                    (fermer)="edition.set(null)" (enregistre)="rechargerPeriodes()" />
+              @if (!saisonId()) {
+                <div class="oa-empty">
+                  <span class="oa-empty__ic"><mat-icon>warning</mat-icon></span>
+                  <h4>Aucune saison active</h4>
+                  <p>
+                    Les périodes viennent du calendrier de la saison. Activez une saison dans
+                    <strong>Planning › Saison</strong> puis revenez ici : les étapes 1 et 2 restent
+                    valables, rien n'est perdu.
+                  </p>
                 </div>
-              }
+              } @else if (!equipeChoisie()) {
+                <p class="oa-vide">Choisissez une équipe pour voir ses périodes.</p>
+              } @else if (periodes().length === 0) {
+                <div class="oa-empty">
+                  <span class="oa-empty__ic"><mat-icon>event_busy</mat-icon></span>
+                  <h4>Aucune période pour cette équipe</h4>
+                  <p>Créez-les depuis <strong>Planning › Saison</strong>, puis revenez ici.</p>
+                </div>
+              } @else {
+                <div class="oa-per__head">
+                  <h4>Périodes</h4>
+                  <span class="oa-per__compte num">
+                    {{ nbPeriodesFaites() }} / {{ nbPeriodesAConfigurer() }}
+                  </span>
+                  <span class="oa-per__hint">les périodes hors charge ne comptent pas dans ce total</span>
+                </div>
 
-              @if (bilanPeriodeId(); as pid) {
-                <app-bilan-periode [periodeId]="pid" (fermer)="bilanPeriodeId.set(null)" />
+                <div class="oa-cartes">
+                  @for (p of periodes(); track p.periodeId) {
+                    <div class="oa-carte"
+                         [class.oa-carte--on]="edition()?.periodeId === p.periodeId"
+                         [class.oa-carte--repos]="sansCharge(p)"
+                         (click)="editer(p)">
+                      <div class="oa-carte__haut">
+                        <div class="oa-carte__txt">
+                          <strong class="oa-carte__nom">{{ p.libelle }}</strong>
+                          <span class="oa-carte__dates">
+                            <span class="num">{{ p.dateDebut | date : 'd MMM' }} → {{ p.dateFin | date : 'd MMM' }}</span>
+                            · {{ p.nbSemaines }} sem.
+                          </span>
+                        </div>
+                        @if (sansCharge(p)) {
+                          <span class="badge badge--neutral">hors charge</span>
+                        } @else if (p.objectifsDefinis) {
+                          <span class="badge badge--ok">défini</span>
+                        } @else {
+                          <span class="badge badge--warn">à définir</span>
+                        }
+                      </div>
+                      <div class="oa-carte__note">{{ noteCarte(p) }}</div>
+                      <!-- Le bilan n'apparaît que si la période a commencé ET porte des objectifs :
+                           proposer un bilan vide sur une période à venir n'a aucun sens. -->
+                      @if (p.objectifsDefinis && !sansCharge(p) && aCommence(p)) {
+                        <button class="btn btn--secondary btn--sm oa-carte__bilan"
+                                (click)="ouvrirBilan(p, $event)">
+                          <mat-icon>insights</mat-icon> Bilan
+                        </button>
+                      }
+                    </div>
+                  }
+                </div>
+
+                @if (edition(); as p) {
+                  <div class="oa-editeur">
+                    <app-objectif-periode-editeur
+                      [periode]="p" [metriques]="metriques()" [postes]="postes()"
+                      (fermer)="edition.set(null)" (enregistre)="apresEcriture()" />
+                  </div>
+                }
+
+                @if (bilanPeriodeId(); as pid) {
+                  <app-bilan-periode [periodeId]="pid" (fermer)="bilanPeriodeId.set(null)" />
+                }
               }
-            }
+            </section>
           }
 
           <!-- ─────────── Étape 4 : résumé ─────────── -->
           @if (etape() === 4) {
-            <h3 class="etape__titre">Résumé</h3>
-            <p class="etape__aide">Tout est enregistré au fur et à mesure — il n'y a rien à valider ici.</p>
-            <ul class="bilan">
-              <li [class.ok]="adoptions().length > 0">
-                <mat-icon>{{ adoptions().length > 0 ? 'check_circle' : 'error_outline' }}</mat-icon>
-                <span><strong>Référentiel</strong> — {{ adoptions().length }} adoption(s)
-                  @if (adoptions().length === 0) { <em>: aucune colonne « Attendu » ne s'affichera</em> }
-                </span>
-              </li>
-              <li [class.ok]="nbModeles() > 0">
-                <mat-icon>{{ nbModeles() > 0 ? 'check_circle' : 'error_outline' }}</mat-icon>
-                <span><strong>Modèles</strong> — {{ nbModeles() }} disponible(s)</span>
-              </li>
-              <li [class.ok]="nbPeriodesFaites() > 0">
-                <mat-icon>{{ nbPeriodesFaites() > 0 ? 'check_circle' : 'error_outline' }}</mat-icon>
-                <span><strong>Périodes</strong> — {{ nbPeriodesFaites() }} / {{ nbPeriodesAConfigurer() }} avec objectifs
-                  @if (equipeChoisie()) { pour l'équipe sélectionnée }
-                  @if (periodes().length > nbPeriodesAConfigurer()) {
-                    <em>({{ periodes().length - nbPeriodesAConfigurer() }} hors charge, sans objectif attendu)</em>
-                  }
-                </span>
-              </li>
-            </ul>
-            <p class="etape__aide">
-              Le suivi hebdomadaire se lit ensuite dans <strong>Performance › Charge d'entraînement</strong>,
-              onglet « Objectif ».
-            </p>
+            <section class="oa-etape oa-etape--etroite">
+              <div class="oa-intro">
+                <h3 class="oa-titre">Où en est la configuration ?</h3>
+                <p class="oa-aide">
+                  Tout ce qui est ci-dessous est déjà enregistré. Vous pouvez fermer et revenir
+                  corriger une seule case dans six mois : la timeline mène directement à chaque étape.
+                </p>
+              </div>
+
+              <div class="oa-resume">
+                @for (s of resume(); track s.n) {
+                  <div class="oa-res" [class.oa-res--ok]="s.ok">
+                    <span class="oa-res__n num">{{ s.n }}</span>
+                    <div class="oa-res__txt">
+                      <div class="oa-res__ligne">
+                        <h4>{{ s.titre }}</h4>
+                        <span class="oa-res__compte num">{{ s.compte }}</span>
+                      </div>
+                      <p>{{ s.texte }}</p>
+                      @if (s.alerte) { <div class="oa-res__alerte">{{ s.alerte }}</div> }
+                    </div>
+                    <button class="btn btn--secondary btn--sm" (click)="aller(s.n)">Ouvrir</button>
+                  </div>
+                }
+              </div>
+            </section>
           }
         </div>
 
-        <footer class="modale__pied">
-          <button class="btn" (click)="aller(precedente())" [disabled]="etape() === 1">
+        <footer class="oa-pied">
+          <span class="oa-pied__hint">
+            Chaque modification part sur le serveur au moment où vous la faites. Il n'y a rien à
+            valider à la fin : fermez quand vous voulez.
+          </span>
+          <button class="btn btn--secondary" (click)="aller(precedente())" [disabled]="etape() === 1">
             <mat-icon>arrow_back</mat-icon> Précédent
           </button>
-          <span class="pied__pos">Étape {{ etape() }} sur 4</span>
           @if (etape() < 4) {
             <button class="btn btn--primary" (click)="aller(suivante())">
               Suivant <mat-icon>arrow_forward</mat-icon>
@@ -349,99 +456,304 @@ type Etape = 1 | 2 | 3 | 4;
           }
         </footer>
       </div>
+
+      <!-- Le diff de version est une décision à part entière : il mérite sa modale, pas un bloc
+           qui pousse le reste de l'étape 1 vers le bas. -->
+      @if (ecart(); as e) {
+        <div class="oa-diff" (click)="ecart.set(null)">
+          <div class="oa-diff__boite" (click)="$event.stopPropagation()">
+            <div class="oa-diff__head">
+              <span class="oa-diff__kicker">Changements</span>
+              <div class="oa-diff__titre">
+                <span>{{ e.avantNom }}</span>
+                <mat-icon>arrow_forward</mat-icon>
+                <span class="badge badge--ok">{{ e.apresNom }}</span>
+              </div>
+            </div>
+            <div class="oa-diff__corps">
+              @if (e.lignes.length === 0) {
+                <div class="oa-empty">
+                  <h4>Aucune valeur ne change</h4>
+                  <p>Cette version corrige des libellés et des infobulles. Migrer ne modifiera
+                     aucun Attendu.</p>
+                </div>
+              } @else {
+                <table class="oa-tbl">
+                  <thead>
+                    <tr><th>Poste</th><th>Contexte</th><th>Métrique</th>
+                        <th class="r">Avant</th><th class="r">Après</th></tr>
+                  </thead>
+                  <tbody>
+                    @for (l of e.lignes; track l.poste + l.contexte + l.metrique) {
+                      <tr>
+                        <td>{{ libPoste(l.poste) }}</td>
+                        <td class="oa-tbl__ctx">{{ l.contexte === 'MATCH' ? 'Match' : 'Semaine' }}</td>
+                        <td>{{ libMetrique(l.metrique) }}</td>
+                        <td class="r num oa-tbl__av">{{ borne(l.avantMin, l.avantMax) }}</td>
+                        <td class="r num oa-tbl__ap">{{ borne(l.apresMin, l.apresMax) }}</td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              }
+            </div>
+            <div class="oa-diff__pied">
+              <button class="btn btn--secondary" (click)="ecart.set(null)">Fermer</button>
+            </div>
+          </div>
+        </div>
+      }
     </div>
   `,
   styles: [`
-    .overlay { position: fixed; inset: 0; background: rgba(15, 23, 42, .55); z-index: 1000;
-               display: grid; place-items: center; padding: 1.2rem; }
-    .modale { background: var(--surface, #fff); border-radius: 14px; width: min(1180px, 100%);
-              max-height: 92vh; display: flex; flex-direction: column; overflow: hidden;
-              box-shadow: 0 18px 50px rgba(0,0,0,.28); }
-    .modale__head { display: flex; justify-content: space-between; align-items: flex-start;
-                    gap: 1rem; padding: 1rem 1.2rem .6rem; }
-    .modale__titre { margin: 0; font-size: 1.15rem; }
-    .modale__sub { margin: .15rem 0 0; color: var(--text-muted, #64748b); font-size: .85rem; }
-    .timeline { display: flex; align-items: center; gap: .35rem; padding: .4rem 1.2rem 1rem;
-                border-bottom: 1px solid var(--border, #e2e8f0); overflow-x: auto; }
-    .pas { display: flex; align-items: center; gap: .5rem; background: none; border: 0;
-           cursor: pointer; font: inherit; padding: .2rem .3rem; border-radius: 8px; white-space: nowrap; }
-    .pas:hover { background: var(--surface-2, #f1f5f9); }
-    .pas__rond { flex: 0 0 1.75rem; height: 1.75rem; border-radius: 50%; display: grid; place-items: center;
-                 background: var(--surface-2, #e2e8f0); color: #475569; font-weight: 700; font-size: .85rem; }
-    .pas--on .pas__rond { background: var(--primary, #2563eb); color: #fff; }
-    .pas--ok .pas__rond { background: #16a34a; color: #fff; }
-    .pas__rond mat-icon { font-size: 1rem; width: 1rem; height: 1rem; }
-    .pas__lib { display: flex; flex-direction: column; line-height: 1.15; text-align: left; }
-    .pas__lib strong { font-size: .86rem; }
-    .pas__lib small { font-size: .72rem; color: var(--text-muted, #94a3b8); }
-    .trait { flex: 1 1 1.2rem; min-width: .8rem; height: 2px; background: var(--border, #e2e8f0); }
-    .trait--ok { background: #16a34a; }
-    .modale__corps { padding: 1rem 1.2rem; overflow-y: auto; flex: 1; }
-    .etape__titre { margin: 0 0 .25rem; font-size: 1.02rem; }
-    .etape__aide { margin: 0 0 .9rem; color: var(--text-muted, #64748b); font-size: .86rem; max-width: 78ch; }
-    .deux-col { display: grid; grid-template-columns: 1fr minmax(280px, 400px); gap: 1.2rem; align-items: start; }
-    .apercu { border: 1px solid var(--border, #e2e8f0); border-radius: 10px; padding: .7rem .8rem;
-              background: var(--surface-2, #f8fafc); }
-    .apercu__head { display: flex; justify-content: space-between; align-items: center; gap: .5rem; }
-    .apercu__head h4 { margin: 0; font-size: .92rem; }
-    .apercu__pied { font-size: .76rem; color: var(--text-muted, #94a3b8); margin: .4rem 0 0; }
-    .seg { display: inline-flex; border: 1px solid var(--border, #e2e8f0); border-radius: 6px;
-           overflow: hidden; margin: .55rem 0; background: #fff; }
-    .seg__item { background: none; border: 0; padding: .25rem .6rem; cursor: pointer; font: inherit; font-size: .82rem; }
-    .seg__item--on { background: var(--primary, #2563eb); color: #fff; }
-    .tbl { width: 100%; border-collapse: collapse; font-size: .88rem; }
-    .tbl th, .tbl td { padding: .4rem .5rem; border-bottom: 1px solid var(--border, #eef2f7); text-align: left; }
-    .tbl .num { text-align: right; }
-    .tbl .nom { font-weight: 600; }
-    .tbl .nom small { font-weight: 400; color: var(--text-muted, #94a3b8); margin-left: .25rem; }
-    .tbl--mini { font-size: .78rem; }
-    .tbl--mini th, .tbl--mini td { padding: .22rem .3rem; }
-    .tr--defaut { background: var(--surface-2, #f8fafc); }
-    .up { color: #2563eb; font-size: 1rem; width: 1rem; height: 1rem; vertical-align: -2px; }
-    .maj { display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; margin-top: .55rem;
-           padding: .5rem .65rem; border-radius: 6px; background: #eff6ff; color: #1e40af; font-size: .84rem; }
-    .maj mat-icon { font-size: 1.1rem; width: 1.1rem; height: 1.1rem; }
-    .dupli { display: flex; align-items: center; gap: .45rem; flex-wrap: wrap; margin-top: .8rem;
-             padding-top: .65rem; border-top: 1px dashed var(--border, #e2e8f0);
-             font-size: .83rem; color: var(--text-muted, #64748b); }
-    .diff { margin-top: 1rem; }
-    .diff .av { color: var(--text-muted, #94a3b8); }
-    .diff .ap { font-weight: 600; }
-    .sous-titre { font-size: .92rem; margin: .4rem 0 .3rem; }
-    .barre { display: flex; align-items: flex-end; gap: .8rem; flex-wrap: wrap; margin-bottom: .8rem; }
-    .chip { font-size: .75rem; padding: .15rem .5rem; border-radius: 999px;
-            background: var(--surface-2, #f1f5f9); color: var(--text-muted, #64748b); }
-    .cartes { display: grid; grid-template-columns: repeat(auto-fill, minmax(205px, 1fr)); gap: .65rem; }
-    .carte { display: flex; flex-direction: column; gap: .12rem; text-align: left; cursor: pointer;
-             padding: .65rem .75rem; border: 1px solid var(--border, #e2e8f0); border-radius: 10px;
-             background: var(--surface, #fff); font: inherit; }
-    .carte--on { border-color: var(--primary, #2563eb); box-shadow: 0 0 0 2px rgba(37,99,235,.12); }
-    .carte--faite { border-left: 3px solid #16a34a; }
-    .carte--repos { border-left: 3px solid #cbd5e1; background: var(--surface-2, #f8fafc); }
-    .carte--repos .carte__etat { color: #94a3b8; }
-    .carte__type { font-size: .68rem; text-transform: uppercase; letter-spacing: .05em; color: var(--text-muted, #94a3b8); }
-    .carte__nom { font-size: .95rem; }
-    .carte__dates { font-size: .78rem; color: var(--text-muted, #64748b); }
-    .carte__etat { display: inline-flex; align-items: center; gap: .22rem; font-size: .78rem;
-                   margin-top: .25rem; color: var(--text-muted, #64748b); }
-    .carte--faite .carte__etat { color: #15803d; }
-    .carte__bilan { display: inline-flex; align-items: center; gap: .2rem; margin-top: .3rem;
-                    font-size: .75rem; color: #2563eb; }
-    .carte__bilan:hover { text-decoration: underline; }
-    .carte__bilan mat-icon { font-size: .9rem; width: .9rem; height: .9rem; }
-    .carte__etat mat-icon { font-size: .95rem; width: .95rem; height: .95rem; }
-    .editeur-zone { margin-top: 1rem; padding-top: .9rem; border-top: 1px solid var(--border, #e2e8f0); }
-    .bilan { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: .5rem; }
-    .bilan li { display: flex; align-items: center; gap: .5rem; font-size: .9rem; color: #b45309; }
-    .bilan li.ok { color: #15803d; }
-    .modale__pied { display: flex; align-items: center; justify-content: space-between; gap: 1rem;
-                    padding: .75rem 1.2rem; border-top: 1px solid var(--border, #e2e8f0);
-                    background: var(--surface-2, #f8fafc); }
-    .pied__pos { font-size: .82rem; color: var(--text-muted, #64748b); }
-    .vide { color: var(--text-muted, #94a3b8); font-size: .88rem; padding: .5rem 0; }
-    .chk { display: inline-flex; gap: .3rem; align-items: center; font-size: .8rem; }
-    .ic { background: none; border: 0; cursor: pointer; color: var(--text-muted, #64748b); }
-    @media (max-width: 960px) { .deux-col { grid-template-columns: 1fr; } }
+    @keyframes oaIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+
+    .oa-overlay { position: fixed; inset: 0; z-index: 1000; display: flex; padding: 20px;
+                  background: rgba(11, 18, 32, .45); font-size: 14px; line-height: 1.45; }
+    .oa-modale { flex: 1; min-width: 0; display: flex; flex-direction: column;
+                 background: var(--surface); border-radius: var(--r-2xl);
+                 box-shadow: var(--shadow-xl); overflow: hidden;
+                 animation: oaIn .28s var(--ease-out); }
+    .num { font-family: var(--font-num); font-variant-numeric: tabular-nums; }
+
+    /* ── En-tête ── */
+    .oa-head { display: flex; align-items: center; gap: 16px; padding: 14px 20px;
+               border-bottom: 1px solid var(--border); }
+    .oa-head__txt { flex: 1; min-width: 0; }
+    .oa-head__ligne { display: flex; align-items: baseline; gap: 9px; flex-wrap: wrap; }
+    .oa-head__titre { margin: 0; font-size: 18px; font-weight: 600; letter-spacing: -.01em; }
+    .oa-head__kicker { font-size: 12.5px; color: var(--text-3); }
+    .oa-head__sub { margin: 3px 0 0; font-size: 12.5px; color: var(--text-3); }
+    .oa-head__sub strong { color: var(--text-2); font-weight: 600; }
+
+    .oa-save { display: inline-flex; align-items: center; gap: 8px; padding: 5px 12px;
+               border: 1px solid var(--border); border-radius: var(--r-pill);
+               background: var(--surface-2); font-size: 12.5px; color: var(--text-2);
+               white-space: nowrap; }
+    .oa-save__dot { width: 7px; height: 7px; border-radius: var(--r-pill); background: var(--green-500); }
+    .oa-save--busy .oa-save__dot { background: var(--warn); }
+
+    .oa-ctx { display: inline-flex; align-items: center; gap: 7px; padding: 5px 12px;
+              border: 1px solid var(--border); border-radius: var(--r-pill);
+              font-size: 12.5px; color: var(--text-2); white-space: nowrap; }
+    .oa-ctx__sep { color: var(--text-4); }
+    .oa-ic { width: 32px; height: 32px; display: grid; place-items: center; flex: none;
+             border: 0; background: none; cursor: pointer; color: var(--text-3);
+             border-radius: var(--r-md); }
+    .oa-ic:hover { background: var(--surface-3); color: var(--text); }
+
+    /* ── Timeline ── */
+    .oa-timeline { display: flex; align-items: center; gap: 0; padding: 12px 20px;
+                   background: var(--surface-2); border-bottom: 1px solid var(--border);
+                   overflow-x: auto; }
+    .oa-pas { display: flex; align-items: center; gap: 10px; padding: 5px 12px 5px 5px;
+              border: 0; background: none; cursor: pointer; font: inherit; color: inherit;
+              border-radius: var(--r-pill); text-align: left; white-space: nowrap; }
+    .oa-pas:hover { background: var(--surface-3); }
+    .oa-pas__rond { width: 26px; height: 26px; flex: none; display: grid; place-items: center;
+                    border-radius: var(--r-pill); border: 1px solid var(--border-strong);
+                    background: var(--surface); color: var(--text-3);
+                    font-family: var(--font-num); font-size: 12px; font-weight: 600; }
+    .oa-pas--ok .oa-pas__rond { background: var(--ok-bg); border-color: var(--ok-bd); color: var(--ok); }
+    .oa-pas--on .oa-pas__rond { background: var(--green-600); border-color: var(--green-700); color: #fff; }
+    .oa-pas__rond mat-icon { font-size: 15px; width: 15px; height: 15px; }
+    .oa-pas__lib { display: flex; flex-direction: column; line-height: 1.2; }
+    .oa-pas__lib strong { font-size: 13px; font-weight: 500; color: var(--text-3); }
+    .oa-pas--on .oa-pas__lib strong { font-weight: 700; color: var(--text); }
+    .oa-pas--ok .oa-pas__lib strong { color: var(--text-2); }
+    .oa-pas__lib small { font-size: 11px; color: var(--text-4); font-family: var(--font-num); }
+    .oa-trait { flex: 1 1 24px; min-width: 18px; height: 1px; background: var(--border-strong); }
+    .oa-trait--ok { background: var(--ok-bd); }
+
+    /* ── Bande de vocabulaire ── */
+    .oa-lex { display: flex; align-items: center; gap: 18px; flex-wrap: wrap;
+              padding: 7px 20px; border-bottom: 1px solid var(--border);
+              background: var(--surface); font-size: 11.5px; color: var(--text-3); }
+    .oa-lex__t { font-size: 10px; font-weight: 700; letter-spacing: .09em;
+                 text-transform: uppercase; color: var(--text-4); }
+    .oa-lex__i { display: inline-flex; align-items: center; gap: 6px; }
+    .oa-lex__i b { font-weight: 600; color: var(--text-2); }
+    .oa-dot { width: 6px; height: 6px; border-radius: var(--r-pill); flex: none; }
+    .oa-dot--hab { background: var(--slate-400); }
+    .oa-dot--att { background: var(--info); }
+    .oa-dot--ret { background: var(--green-500); }
+
+    /* ── Corps ── */
+    .oa-corps { flex: 1; min-height: 0; overflow: auto; background: var(--surface); }
+    .oa-etape { padding: 22px 24px 36px; }
+    .oa-etape--etroite { max-width: 900px; }
+    .oa-intro { max-width: 74ch; margin-bottom: 18px; }
+    .oa-titre { margin: 0 0 7px; font-size: 20px; font-weight: 600; letter-spacing: -.015em;
+                display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+    .oa-aide { margin: 0; font-size: 13.5px; line-height: 1.6; color: var(--text-2); }
+    .oa-aide strong { font-weight: 600; color: var(--text); }
+    .oa-vide { color: var(--text-4); font-size: 13px; padding: 8px 0; }
+
+    .oa-select { padding: 7px 10px; border: 1px solid var(--border-strong);
+                 border-radius: var(--r-sm); background: var(--surface);
+                 font: inherit; font-size: 13px; color: var(--text); max-width: 100%; }
+    .oa-select--full { width: 100%; margin: 10px 0 12px; }
+    .oa-chk { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px;
+              color: var(--text-2); cursor: pointer; }
+    .oa-chk input { accent-color: var(--green-600); }
+
+    /* ── Étape 1 ── */
+    .oa-e1 { display: flex; flex-wrap: wrap; align-items: flex-start; min-height: 100%; }
+    .oa-e1__main { flex: 1; min-width: 520px; padding: 22px 24px 36px; }
+
+    .oa-bloc { border: 1px solid var(--border); border-radius: var(--r-lg); overflow: hidden;
+               margin-bottom: 18px; box-shadow: var(--shadow-xs); }
+    .oa-bloc__head { display: flex; align-items: center; gap: 10px; padding: 11px 15px;
+                     background: var(--surface-2); border-bottom: 1px solid var(--border); }
+    .oa-bloc__titre { margin: 0; font-size: 13.5px; font-weight: 600; }
+    .oa-bloc__hint { font-size: 12.5px; color: var(--text-3); }
+    .oa-bloc__compte { margin-left: auto; font-size: 11.5px; color: var(--text-3); }
+    .oa-ligne { display: flex; align-items: center; gap: 14px; padding: 10px 15px;
+                border-bottom: 1px solid var(--border); }
+    .oa-ligne:last-child { border-bottom: 0; }
+    .oa-ligne--defaut { background: var(--surface-2); }
+    .oa-ligne__nom { width: 190px; flex: none; display: flex; flex-direction: column; }
+    .oa-ligne__nom strong { font-size: 13.5px; font-weight: 600; }
+    .oa-ligne__nom small { font-size: 11.5px; color: var(--text-3); }
+    .oa-ligne__act { flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .oa-ligne__act .oa-select { flex: 1; min-width: 200px; max-width: 400px; }
+    .oa-ver { font-size: 12px; color: var(--text-3); white-space: nowrap; }
+    .oa-maj-btn { cursor: pointer; font-family: inherit; }
+
+    .oa-updates { border: 1px solid var(--info-bd); background: var(--info-bg);
+                  border-radius: var(--r-lg); padding: 13px 15px; margin-bottom: 18px; }
+    .oa-updates__head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap;
+                        margin-bottom: 4px; }
+    .oa-updates__head h4 { margin: 0; font-size: 13.5px; font-weight: 600; color: var(--info); }
+    .oa-updates__head span { font-size: 12.5px; color: var(--text-2); }
+    .oa-update { display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+                 padding: 9px 0; border-top: 1px solid var(--info-bd); }
+    .oa-update__txt { flex: 1; min-width: 0; font-size: 12.5px; color: var(--text-2); }
+    .oa-update__txt strong { display: block; font-size: 13.5px; color: var(--text); }
+
+    .oa-dup { border: 1px solid var(--border); border-radius: var(--r-lg);
+              padding: 13px 15px; background: var(--surface-2); }
+    .oa-dup__head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; margin-bottom: 9px; }
+    .oa-dup__head h4 { margin: 0; font-size: 13.5px; font-weight: 600; }
+    .oa-dup__head span { font-size: 12.5px; color: var(--text-3); }
+    .oa-dup__act { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .oa-dup__act .oa-select { flex: 1; min-width: 220px; max-width: 400px; }
+
+    .oa-apercu { width: 420px; flex: none; align-self: stretch; padding: 22px 20px 36px;
+                 border-left: 1px solid var(--border); background: var(--surface-2);
+                 position: sticky; top: 0; }
+    .oa-apercu__head { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+    .oa-apercu__head h4 { margin: 0; font-size: 13.5px; font-weight: 600; }
+    .oa-apercu__head span { font-size: 12px; color: var(--text-3); }
+    .oa-apercu__barre { display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+                        margin-bottom: 12px; }
+    .oa-apercu__barre .oa-chk { margin-left: auto; }
+    .oa-apercu__carte { border: 1px solid var(--border); border-radius: var(--r-md);
+                        background: var(--surface); overflow: hidden; }
+    .oa-apercu__carteHead { padding: 9px 11px; border-bottom: 1px solid var(--border);
+                            display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .oa-apercu__nom { font-size: 13.5px; font-weight: 600; }
+    .oa-apercu__meta { flex-basis: 100%; font-size: 11.5px; color: var(--text-3); }
+    .oa-apercu__scroll { overflow: auto; max-height: calc(100vh - 380px); }
+    .oa-apercu__pied { padding: 7px 11px 9px; font-size: 11px; color: var(--text-4); margin: 0; }
+
+    /* ── Tables ── */
+    .oa-tbl { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+    .oa-tbl th { position: sticky; top: 0; z-index: 1; text-align: left; padding: 7px 9px;
+                 background: var(--surface-2); border-bottom: 1px solid var(--border-strong);
+                 font-size: 10px; letter-spacing: .07em; text-transform: uppercase;
+                 color: var(--text-3); font-weight: 700; white-space: nowrap; }
+    .oa-tbl td { padding: 6px 9px; border-bottom: 1px solid var(--border); }
+    .oa-tbl .r { text-align: right; }
+    .oa-tbl--mini { font-size: 12px; }
+    .oa-tbl__nom { white-space: nowrap; }
+    .oa-tbl__nom small { display: block; font-size: 10.5px; color: var(--text-4); }
+    .oa-tbl__ctx { color: var(--text-3); font-size: 12px; }
+    .oa-tbl__av { color: var(--text-3); text-decoration: line-through; }
+    .oa-tbl__ap { font-weight: 600; color: var(--green-700); }
+
+    /* ── Étape 3 ── */
+    .oa-barre { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 18px; }
+    .oa-barre__hint { font-size: 12.5px; color: var(--text-3); }
+    .oa-per__head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 9px; }
+    .oa-per__head h4 { margin: 0; font-size: 13.5px; font-weight: 600; }
+    .oa-per__compte { font-size: 12px; padding: 2px 9px; border-radius: var(--r-pill);
+                      background: var(--surface-3); color: var(--text-2); }
+    .oa-per__hint { font-size: 12px; color: var(--text-3); }
+
+    .oa-cartes { display: grid; grid-template-columns: repeat(auto-fill, minmax(238px, 1fr));
+                 gap: 10px; margin-bottom: 24px; }
+    .oa-carte { border: 1px solid var(--border); border-radius: var(--r-lg);
+                background: var(--surface); padding: 11px 12px; cursor: pointer;
+                box-shadow: var(--shadow-xs); transition: box-shadow 160ms var(--ease-out),
+                border-color 160ms var(--ease-out); }
+    .oa-carte:hover { box-shadow: var(--shadow-md); }
+    .oa-carte--on { border-color: var(--green-500); box-shadow: 0 0 0 2px var(--green-100); }
+    .oa-carte--repos { background: var(--surface-2); }
+    .oa-carte__haut { display: flex; align-items: flex-start; gap: 8px; }
+    .oa-carte__txt { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+    .oa-carte__nom { font-size: 13.5px; font-weight: 600; }
+    .oa-carte__dates { font-size: 11.5px; color: var(--text-3); margin-top: 1px; }
+    .oa-carte__note { margin-top: 8px; font-size: 11.5px; color: var(--text-3); min-height: 16px; }
+    .oa-carte__bilan { margin-top: 8px; }
+    .oa-editeur { padding-top: 16px; border-top: 1px solid var(--border); }
+
+    .oa-empty { max-width: 620px; margin: 30px auto; text-align: center; padding: 26px;
+                border: 1px dashed var(--border-strong); border-radius: var(--r-xl);
+                background: var(--surface-2); }
+    .oa-empty__ic { width: 42px; height: 42px; margin: 0 auto 12px; display: grid;
+                    place-items: center; border-radius: var(--r-pill);
+                    background: var(--warn-bg); border: 1px solid var(--warn-bd); }
+    .oa-empty__ic mat-icon { color: var(--warn); }
+    .oa-empty h4 { margin: 0 0 5px; font-size: 15px; font-weight: 600; }
+    .oa-empty p { margin: 0; font-size: 13px; color: var(--text-2); }
+
+    /* ── Étape 4 ── */
+    .oa-resume { display: flex; flex-direction: column; gap: 10px; }
+    .oa-res { display: flex; gap: 13px; align-items: flex-start; padding: 14px 15px;
+              border: 1px solid var(--warn-bd); background: var(--warn-bg);
+              border-radius: var(--r-lg); }
+    .oa-res--ok { border-color: var(--border); background: var(--surface-2); }
+    .oa-res__n { width: 26px; height: 26px; flex: none; display: grid; place-items: center;
+                 border-radius: var(--r-pill); background: var(--warn-bg);
+                 border: 1px solid var(--warn-bd); color: var(--warn);
+                 font-size: 12px; font-weight: 600; }
+    .oa-res--ok .oa-res__n { background: var(--ok-bg); border-color: var(--ok-bd); color: var(--ok); }
+    .oa-res__txt { flex: 1; min-width: 0; }
+    .oa-res__ligne { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+    .oa-res__ligne h4 { margin: 0; font-size: 14px; font-weight: 600; }
+    .oa-res__compte { font-size: 11.5px; color: var(--text-3); }
+    .oa-res__txt p { margin: 4px 0 0; font-size: 13px; color: var(--text-2); }
+    .oa-res__alerte { margin-top: 8px; padding: 8px 11px; border-radius: var(--r-md);
+                      background: var(--surface); border: 1px solid var(--warn-bd);
+                      font-size: 12.5px; color: var(--text-2); }
+
+    /* ── Pied ── */
+    .oa-pied { display: flex; align-items: center; gap: 12px; padding: 11px 20px;
+               border-top: 1px solid var(--border); background: var(--surface-2); }
+    .oa-pied__hint { flex: 1; font-size: 12.5px; color: var(--text-3); }
+
+    /* ── Modale de diff ── */
+    .oa-diff { position: fixed; inset: 0; z-index: 1010; display: grid; place-items: center;
+               padding: 36px; background: rgba(11, 18, 32, .5); }
+    .oa-diff__boite { width: min(760px, 100%); max-height: 80vh; display: flex;
+                      flex-direction: column; background: var(--surface);
+                      border-radius: var(--r-xl); box-shadow: var(--shadow-xl);
+                      overflow: hidden; animation: oaIn .2s var(--ease-out); }
+    .oa-diff__head { padding: 15px 18px; border-bottom: 1px solid var(--border); }
+    .oa-diff__kicker { font-size: 10.5px; font-weight: 700; letter-spacing: .09em;
+                       text-transform: uppercase; color: var(--text-3); }
+    .oa-diff__titre { margin-top: 4px; display: flex; align-items: center; gap: 10px;
+                      flex-wrap: wrap; font-size: 15px; font-weight: 600; }
+    .oa-diff__titre mat-icon { font-size: 16px; width: 16px; height: 16px; color: var(--text-3); }
+    .oa-diff__corps { flex: 1; overflow: auto; padding: 14px 18px; }
+    .oa-diff__pied { display: flex; justify-content: flex-end; padding: 11px 18px;
+                     border-top: 1px solid var(--border); background: var(--surface-2); }
+
+    @media (max-width: 1120px) {
+      .oa-e1__main { min-width: 100%; }
+      .oa-apercu { width: 100%; border-left: 0; border-top: 1px solid var(--border); position: static; }
+    }
   `],
 })
 export class ObjectifsAssistantComponent implements OnInit {
@@ -475,6 +787,9 @@ export class ObjectifsAssistantComponent implements OnInit {
   edition = signal<EtatPeriode | null>(null);
   ecart = signal<EcartResponse | null>(null);
   nbModeles = signal(0);
+  /** Pastille d'écriture : le seul retour visible d'un enregistrement immédiat. */
+  enregistrement = signal(false);
+  private minuteur: ReturnType<typeof setTimeout> | null = null;
 
   apercu = signal<ReferentielDetail | null>(null);
   apercuId: string | null = null;
@@ -486,6 +801,11 @@ export class ObjectifsAssistantComponent implements OnInit {
   postes = computed<PosteRef[]>(() => this.catalogue()?.postes ?? []);
   saisonId = computed<string | null>(() => this.saisonCtx.enCours()?.id ?? null);
   saisonNom = computed<string | null>(() => this.saisonCtx.enCours()?.libelle ?? null);
+
+  equipeNomCourant = computed<string | null>(() => {
+    const id = this.equipeChoisie();
+    return id ? (this.equipes().find(e => e.id === id)?.nom ?? null) : null;
+  });
 
   adoptables = computed<ReferentielResume[]>(() =>
     (this.catalogue()?.referentiels ?? []).filter(r => r.statut !== 'ARCHIVE'));
@@ -502,6 +822,34 @@ export class ObjectifsAssistantComponent implements OnInit {
    */
   nbPeriodesAConfigurer = computed(() =>
     this.periodes().filter(p => !this.sansCharge(p)).length);
+
+  /** Les trois lignes du résumé, avec la phrase qui dit ce qui manque plutôt qu'un simple compte. */
+  resume = computed(() => [
+    {
+      n: 1 as Etape, titre: 'Référentiel', ok: this.adoptions().length > 0,
+      compte: `${this.adoptions().length} adoption(s)`,
+      texte: 'L\'échelle des valeurs : ce qu\'un joueur de tel poste fait normalement à votre niveau.',
+      alerte: this.adoptions().length === 0
+        ? 'Sans adoption, aucune colonne « Attendu » ne s\'affichera nulle part dans l\'application.' : null,
+    },
+    {
+      n: 2 as Etape, titre: 'Modèles d\'objectif', ok: this.nbModeles() > 0,
+      compte: `${this.nbModeles()} modèle(s)`,
+      texte: 'La forme des progressions : des phases et des poids, jamais des semaines fixes.',
+      alerte: this.nbModeles() === 0
+        ? 'Sans modèle, l\'étape 3 n\'a rien à appliquer sur les périodes.' : null,
+    },
+    {
+      n: 3 as Etape, titre: 'Périodes de la saison', ok: this.nbPeriodesFaites() > 0,
+      compte: `${this.nbPeriodesFaites()} / ${this.nbPeriodesAConfigurer()}`,
+      texte: this.equipeNomCourant()
+        ? `Pour ${this.equipeNomCourant()}. C'est ici que le « Retenu » de chaque semaine est calculé.`
+        : 'C\'est ici que le « Retenu » de chaque semaine est calculé.',
+      alerte: this.periodes().length > this.nbPeriodesAConfigurer()
+        ? `${this.periodes().length - this.nbPeriodesAConfigurer()} période(s) hors charge (trêve, intersaison) sont exclues du décompte.`
+        : null,
+    },
+  ]);
 
   ngOnInit(): void {
     this.etape.set(this.etapeInitiale);
@@ -563,7 +911,21 @@ export class ObjectifsAssistantComponent implements OnInit {
   }
 
   fermerSiFond(ev: MouseEvent): void {
-    if ((ev.target as HTMLElement).classList.contains('overlay')) this.fermer.emit();
+    if ((ev.target as HTMLElement).classList.contains('oa-overlay')) this.fermer.emit();
+  }
+
+  /** Fait clignoter la pastille d'écriture : l'utilisateur voit que c'est parti sur le serveur. */
+  private touche(): void {
+    if (this.minuteur) clearTimeout(this.minuteur);
+    this.enregistrement.set(true);
+    this.minuteur = setTimeout(() => this.enregistrement.set(false), 700);
+  }
+
+  /** Un enfant (modèles, période) vient d'écrire : on rafraîchit les compteurs de la timeline. */
+  apresEcriture(): void {
+    this.touche();
+    this.api.modeles().subscribe({ next: m => this.nbModeles.set(m.length), error: () => {} });
+    this.rechargerPeriodes();
   }
 
   // ── Étape 1 ──
@@ -592,12 +954,14 @@ export class ObjectifsAssistantComponent implements OnInit {
     if (!referentielId) {
       const a = this.adoptionDe(equipeId);
       if (!a) return;
+      this.touche();
       this.api.retirerAdoption(a.id).subscribe({
         next: () => { this.rechargerAdoptions(); this.snack.open('Adoption retirée.', 'OK', { duration: 2500 }); },
         error: e => this.erreur(e),
       });
       return;
     }
+    this.touche();
     this.api.adopter(referentielId, equipeId).subscribe({
       next: () => {
         this.rechargerAdoptions();
@@ -649,6 +1013,7 @@ export class ObjectifsAssistantComponent implements OnInit {
   migrer(a: Adoption): void {
     if (!a.versionDisponibleId) return;
     if (!confirm(`Migrer « ${a.equipeNom} » vers ${a.versionDisponibleNom} ?\n\nLa colonne « Attendu » de vos joueurs sera recalculée.`)) return;
+    this.touche();
     this.api.adopter(a.versionDisponibleId, a.equipeId).subscribe({
       next: () => { this.ecart.set(null); this.rechargerAdoptions(); this.snack.open('Migration effectuée.', 'OK', { duration: 3000 }); },
       error: e => this.erreur(e),
@@ -657,6 +1022,7 @@ export class ObjectifsAssistantComponent implements OnInit {
 
   dupliquer(): void {
     if (!this.sourceDuplication) return;
+    this.touche();
     this.api.dupliquer(this.sourceDuplication).subscribe({
       next: d => {
         this.sourceDuplication = null;
@@ -700,6 +1066,13 @@ export class ObjectifsAssistantComponent implements OnInit {
   /** Trêve et intersaison : hors charge, donc sans objectif — et l'app se tait déjà dessus. */
   sansCharge(p: EtatPeriode): boolean {
     return ['TREVE', 'INTERSAISON'].includes((p.typePeriode || '').toUpperCase());
+  }
+
+  /** Ligne du bas d'une carte de période : elle dit ce qu'il reste à faire, pas ce qu'elle est. */
+  noteCarte(p: EtatPeriode): string {
+    if (this.sansCharge(p)) return 'Aucune charge à planifier — exclue du décompte.';
+    if (p.objectifsDefinis) return p.modeleNom ? `Modèle : ${p.modeleNom}` : 'Objectifs posés.';
+    return `${this.libTypePeriode(p.typePeriode)} — aucun modèle appliqué.`;
   }
 
   // ── Bilan de période ──

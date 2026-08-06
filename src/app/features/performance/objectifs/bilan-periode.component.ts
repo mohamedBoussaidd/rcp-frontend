@@ -18,159 +18,203 @@ import { BilanPeriode, PredictionService } from '@core/services/prediction.servi
   standalone: true,
   imports: [MatIconModule, DatePipe, DecimalPipe],
   template: `
-    <div class="overlay" (click)="fermerSiFond($event)">
-      <div class="modale" role="dialog" aria-modal="true">
+    <div class="bp-overlay" (click)="fermerSiFond($event)">
+      <div class="bp" role="dialog" aria-modal="true">
 
-        <header class="mh">
-          <div>
-            <h2 class="mh__t">Bilan — {{ data()?.periode?.libelle || 'période' }}</h2>
+        <header class="bp-head">
+          <div class="bp-head__txt">
+            <div class="bp-head__ligne">
+              <h2 class="bp-head__t">Bilan — {{ data()?.periode?.libelle || 'période' }}</h2>
+              @if (data()?.terminee === false) {
+                <span class="badge badge--info">période encore en cours</span>
+              }
+            </div>
             @if (data()?.periode) {
-              <p class="mh__s">
+              <p class="bp-head__s num">
                 {{ data()!.periode!.date_debut | date:'d MMM' }} –
                 {{ data()!.periode!.date_fin | date:'d MMM y' }}
-                @if (data()!.terminee === false) { · <em>période encore en cours</em> }
               </p>
             }
           </div>
-          <button class="ic" title="Fermer" (click)="fermer.emit()"><mat-icon>close</mat-icon></button>
+          @if (data()?.disponible && data()?.objectif_defini) {
+            <div class="bp-score">
+              <span class="bp-score__v" [class.bp-score__v--low]="taux() < 50">
+                {{ data()!.nb_semaines_tenues }}/{{ data()!.nb_semaines_evaluees }}
+              </span>
+              <span class="bp-score__l">semaines tenues · {{ taux() }} %</span>
+            </div>
+          }
+          <button class="bp-ic" title="Fermer" (click)="fermer.emit()"><mat-icon>close</mat-icon></button>
         </header>
 
         @if (chargement()) {
-          <div class="vide">Calcul du bilan…</div>
+          <div class="bp-vide">Calcul du bilan…</div>
         } @else if (!data()?.disponible) {
-          <div class="vide">{{ data()?.erreur || 'Bilan indisponible.' }}</div>
+          <div class="bp-vide">{{ data()?.erreur || 'Bilan indisponible.' }}</div>
         } @else if (!data()!.objectif_defini) {
-          <div class="vide">
+          <div class="bp-vide">
             Aucun objectif n'a été posé sur cette période : il n'y a rien à comparer au réalisé.
           </div>
         } @else {
+          <div class="bp-corps">
 
-          <!-- Le verdict d'abord : combien de semaines ont tenu. Le détail vient après. -->
-          <div class="verdict" [class.verdict--low]="taux() < 50">
-            <strong>{{ data()!.nb_semaines_tenues }}/{{ data()!.nb_semaines_evaluees }}</strong>
-            semaines tenues à ±5 % de la cible
-            <span class="verdict__pct">{{ taux() }} %</span>
-          </div>
-
-          <section class="bloc">
-            <h3>Par métrique, sur toute la période</h3>
-            <table class="tbl">
-              <thead>
-                <tr><th>Métrique</th><th class="r">Prescrit</th><th class="r">Réalisé</th><th class="r">Écart</th></tr>
-              </thead>
-              <tbody>
-                @for (m of data()!.metriques; track m.metrique) {
-                  <tr>
-                    <td>{{ libelle(m.metrique) }}</td>
-                    <td class="r">{{ valeur(m.metrique, m.prescrit) }}</td>
-                    <td class="r">{{ valeur(m.metrique, m.realise) }}</td>
-                    <td class="r" [class]="'ton-' + ton(m.ecart_pct)">
-                      {{ m.ecart_pct == null ? '—' : (m.ecart_pct > 0 ? '+' : '') + (m.ecart_pct | number:'1.0-0') + ' %' }}
-                    </td>
-                  </tr>
-                }
-              </tbody>
-            </table>
-            <p class="note">
-              Le réalisé est une <strong>moyenne par joueur</strong> : c'est ce qui se compare à une
-              cible individuelle. Une somme d'équipe varierait avec l'effectif présent.
-            </p>
-          </section>
-
-          <section class="bloc">
-            <h3>Semaine par semaine</h3>
-            <table class="tbl">
-              <thead>
-                <tr>
-                  <th>Sem.</th><th>Phase</th><th class="r">Prescrit</th>
-                  <th class="r">Réalisé moyen</th><th class="r">Écart</th><th class="r">Atteint</th>
-                </tr>
-              </thead>
-              <tbody>
-                @for (s of data()!.semaines; track s.date_lundi) {
-                  <tr>
-                    <td>S{{ s.no_semaine }}
-                      @if (s.nb_matchs > 1) { <span class="dm">{{ s.nb_matchs }} matchs</span> }
-                    </td>
-                    <td class="muted">{{ s.phase || '—' }}</td>
-                    <td class="r">{{ km(s.prescrit_m) }}</td>
-                    <td class="r">{{ km(s.realise_moyen_m) }}</td>
-                    <td class="r" [class]="'ton-' + ton(s.ecart_pct)">
-                      {{ s.ecart_pct == null ? '—' : (s.ecart_pct > 0 ? '+' : '') + (s.ecart_pct | number:'1.0-0') + ' %' }}
-                    </td>
-                    <td class="r muted">{{ s.nb_atteint }}/{{ s.nb_joueurs }}</td>
-                  </tr>
-                }
-              </tbody>
-            </table>
-          </section>
-
-          <!-- Les extrêmes, jamais la moyenne seule : c'est là que se prennent les décisions. -->
-          @if (data()!.joueurs?.length) {
-            <section class="bloc">
-              <h3>Joueurs les plus en écart</h3>
-              <table class="tbl">
-                <thead>
-                  <tr><th>Joueur</th><th>Poste</th><th class="r">Réalisé</th><th class="r">Écart</th><th class="r">Sem.</th></tr>
-                </thead>
-                <tbody>
-                  @for (j of joueursAffiches(); track j.joueur_id) {
-                    <tr>
-                      <td>{{ j.prenom }} {{ j.nom }}</td>
-                      <td class="muted">{{ j.poste }}</td>
-                      <td class="r">{{ km(j.realise_m) }}</td>
-                      <td class="r" [class]="'ton-' + ton(j.ecart_pct)">
-                        {{ j.ecart_pct == null ? '—' : (j.ecart_pct > 0 ? '+' : '') + (j.ecart_pct | number:'1.0-0') + ' %' }}
-                      </td>
-                      <td class="r muted">{{ j.nb_semaines }}</td>
-                    </tr>
-                  }
-                </tbody>
-              </table>
-              @if ((data()!.joueurs?.length || 0) > 8) {
-                <button class="lien" (click)="tousJoueurs.set(!tousJoueurs())">
-                  {{ tousJoueurs() ? 'Réduire' : 'Voir les ' + data()!.joueurs!.length + ' joueurs' }}
-                </button>
-              }
+            <section class="bp-bloc">
+              <span class="bp-kicker">Par métrique, sur toute la période</span>
+              <div class="bp-wrap">
+                <table class="bp-tbl">
+                  <thead>
+                    <tr><th>Métrique</th><th class="r">Prescrit</th><th class="r">Réalisé</th><th class="r">Écart</th></tr>
+                  </thead>
+                  <tbody>
+                    @for (m of data()!.metriques; track m.metrique) {
+                      <tr>
+                        <td>{{ libelle(m.metrique) }}</td>
+                        <td class="r num bp-muted">{{ valeur(m.metrique, m.prescrit) }}</td>
+                        <td class="r num bp-fort">{{ valeur(m.metrique, m.realise) }}</td>
+                        <td class="r num" [class]="'r num bp-ton-' + ton(m.ecart_pct)">
+                          {{ m.ecart_pct == null ? '—' : (m.ecart_pct > 0 ? '+' : '') + (m.ecart_pct | number:'1.0-0') + ' %' }}
+                        </td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
             </section>
-          }
+
+            <section class="bp-bloc">
+              <span class="bp-kicker">Semaine par semaine</span>
+              <div class="bp-wrap">
+                <table class="bp-tbl">
+                  <thead>
+                    <tr>
+                      <th>Sem.</th><th>Phase</th><th class="r">Prescrit</th>
+                      <th class="r">Réalisé moyen</th><th class="r">Écart</th><th class="r">Atteint</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @for (s of data()!.semaines; track s.date_lundi) {
+                      <tr>
+                        <td class="num">S{{ s.no_semaine }}
+                          @if (s.nb_matchs > 1) {
+                            <span class="bp-dm" [title]="s.nb_matchs + ' matchs cette semaine'"></span>
+                          }
+                        </td>
+                        <td class="bp-muted">{{ s.phase || '—' }}</td>
+                        <td class="r num bp-muted">{{ km(s.prescrit_m) }}</td>
+                        <td class="r num bp-fort">{{ km(s.realise_moyen_m) }}</td>
+                        <td class="r num" [class]="'r num bp-ton-' + ton(s.ecart_pct)">
+                          {{ s.ecart_pct == null ? '—' : (s.ecart_pct > 0 ? '+' : '') + (s.ecart_pct | number:'1.0-0') + ' %' }}
+                        </td>
+                        <td class="r num bp-muted">{{ s.nb_atteint }}/{{ s.nb_joueurs }}</td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+            </section>
+
+            <!-- Les extrêmes, jamais la moyenne seule : c'est là que se prennent les décisions. -->
+            @if (data()!.joueurs?.length) {
+              <section class="bp-bloc">
+                <div class="bp-bloc__head">
+                  <span class="bp-kicker">Joueurs les plus en écart</span>
+                  @if ((data()!.joueurs?.length || 0) > 8) {
+                    <button class="bp-lien" (click)="tousJoueurs.set(!tousJoueurs())">
+                      {{ tousJoueurs() ? 'Réduire' : 'Voir les ' + data()!.joueurs!.length + ' joueurs' }}
+                    </button>
+                  }
+                </div>
+                <div class="bp-wrap">
+                  <table class="bp-tbl">
+                    <thead>
+                      <tr><th>Joueur</th><th>Poste</th><th class="r">Réalisé</th><th class="r">Écart</th><th class="r">Sem.</th></tr>
+                    </thead>
+                    <tbody>
+                      @for (j of joueursAffiches(); track j.joueur_id) {
+                        <tr>
+                          <td class="bp-fort">{{ j.prenom }} {{ j.nom }}</td>
+                          <td class="bp-muted">{{ j.poste }}</td>
+                          <td class="r num">{{ km(j.realise_m) }}</td>
+                          <td class="r num" [class]="'r num bp-ton-' + ton(j.ecart_pct)">
+                            {{ j.ecart_pct == null ? '—' : (j.ecart_pct > 0 ? '+' : '') + (j.ecart_pct | number:'1.0-0') + ' %' }}
+                          </td>
+                          <td class="r num bp-muted">{{ j.nb_semaines }}</td>
+                        </tr>
+                      }
+                    </tbody>
+                  </table>
+                </div>
+              </section>
+            }
+
+            <p class="bp-note">
+              Le réalisé est une <strong>moyenne par joueur</strong>, jamais une somme d'équipe — une
+              somme varierait avec l'effectif présent. Le taux d'atteinte ne compte que les joueurs
+              <strong>ayant des données</strong> cette semaine-là : un blessé ne compte pas comme
+              objectif manqué.
+            </p>
+          </div>
         }
       </div>
     </div>
   `,
   styles: [`
-    .overlay { position: fixed; inset: 0; background: rgba(0,0,0,.45); display: flex;
-               align-items: center; justify-content: center; z-index: 1000; padding: 16px; }
-    .modale { background: var(--surface, #fff); border-radius: 14px; width: min(860px, 100%);
-              max-height: 92vh; overflow: auto; padding: 20px; }
-    .mh { display: flex; align-items: flex-start; gap: 12px; }
-    .mh__t { margin: 0; font-size: 1.15rem; }
-    .mh__s { margin: 4px 0 0; color: #64748b; font-size: .85rem; }
-    .mh__s em { font-style: normal; color: #b45309; }
-    .ic { margin-left: auto; background: none; border: 0; cursor: pointer; color: inherit; }
-    .vide { padding: 32px; text-align: center; color: #64748b; font-size: .9rem; }
-    .verdict { margin: 16px 0; padding: 12px 14px; border-radius: 10px; font-size: .95rem;
-               background: #dcfce7; color: #14532d; }
-    .verdict--low { background: #fef3c7; color: #92400e; }
-    .verdict strong { font-size: 1.3rem; }
-    .verdict__pct { float: right; font-weight: 700; }
-    .bloc { margin-top: 18px; }
-    .bloc h3 { margin: 0 0 8px; font-size: .82rem; text-transform: uppercase;
-               letter-spacing: .04em; color: #94a3b8; }
-    .tbl { width: 100%; border-collapse: collapse; font-size: .82rem; }
-    .tbl th, .tbl td { padding: 5px 8px; border-bottom: 1px solid #f1f5f9; text-align: left; }
-    .tbl th { font-size: .72rem; text-transform: uppercase; color: #94a3b8; }
-    .r { text-align: right; font-variant-numeric: tabular-nums; }
-    .muted { color: #94a3b8; }
-    .dm { margin-left: 5px; font-size: .62rem; padding: 1px 5px; border-radius: 4px;
-          background: #fef3c7; color: #92400e; font-weight: 700; }
-    .note { margin-top: 6px; font-size: .76rem; color: #94a3b8; font-style: italic; }
-    .lien { margin-top: 8px; background: none; border: 0; color: #2563eb; cursor: pointer;
-            font-size: .8rem; padding: 0; }
-    .ton-ok   { color: #15803d; font-weight: 700; }
-    .ton-warn { color: #b45309; font-weight: 700; }
-    .ton-bad  { color: #dc2626; font-weight: 700; }
-    .ton-neutral { color: #64748b; }
+    .bp-overlay { position: fixed; inset: 0; z-index: 1000; display: grid; place-items: center;
+                  padding: 24px; background: rgba(11, 18, 32, .5); }
+    .bp { width: min(980px, 100%); max-height: 90vh; display: flex; flex-direction: column;
+          background: var(--surface); border: 1px solid var(--border-strong);
+          border-radius: var(--r-xl); box-shadow: var(--shadow-xl); overflow: hidden; }
+    .num { font-family: var(--font-num); font-variant-numeric: tabular-nums; }
+    .r { text-align: right; }
+    .bp-kicker { display: block; font-size: 10.5px; font-weight: 700; letter-spacing: .08em;
+                 text-transform: uppercase; color: var(--text-4); }
+
+    .bp-head { display: flex; align-items: flex-start; gap: 16px; padding: 15px 18px;
+               border-bottom: 1px solid var(--border); }
+    .bp-head__txt { flex: 1; min-width: 0; }
+    .bp-head__ligne { display: flex; align-items: center; gap: 9px; flex-wrap: wrap; }
+    .bp-head__t { margin: 0; font-size: 16px; font-weight: 700; }
+    .bp-head__s { margin: 3px 0 0; font-size: 12.5px; color: var(--text-3); }
+    .bp-score { text-align: right; }
+    .bp-score__v { display: block; font-family: var(--font-num); font-size: 20px;
+                   font-weight: 600; color: var(--ok); }
+    .bp-score__v--low { color: var(--warn); }
+    .bp-score__l { display: block; font-size: 11.5px; color: var(--text-4); }
+    .bp-ic { width: 30px; height: 30px; display: grid; place-items: center; flex: none;
+             border: 1px solid var(--border-strong); border-radius: var(--r-md);
+             background: var(--surface); cursor: pointer; color: var(--text-2); }
+    .bp-ic:hover { background: var(--surface-3); }
+
+    .bp-vide { padding: 34px; text-align: center; color: var(--text-3); font-size: 13px; }
+    .bp-corps { flex: 1; overflow: auto; padding: 15px 18px;
+                display: flex; flex-direction: column; gap: 16px; }
+
+    .bp-bloc__head { display: flex; align-items: baseline; justify-content: space-between;
+                     gap: 10px; }
+    .bp-bloc > .bp-kicker, .bp-bloc__head { margin-bottom: 7px; }
+    .bp-wrap { border: 1px solid var(--border); border-radius: var(--r-md); overflow: auto; }
+    .bp-tbl { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+    .bp-tbl th { text-align: left; padding: 8px 11px; background: var(--surface-2);
+                 border-bottom: 1px solid var(--border); font-size: 11.5px;
+                 font-weight: 600; color: var(--text-2); white-space: nowrap; }
+    .bp-tbl td { padding: 8px 11px; border-bottom: 1px solid var(--border); }
+    .bp-tbl tbody tr:last-child td { border-bottom: 0; }
+    .bp-muted { color: var(--text-3); }
+    .bp-fort { font-weight: 600; }
+    /* Semaine à plusieurs matchs : une pastille cuivre, la même couleur que « Retenu » ailleurs. */
+    .bp-dm { display: inline-block; width: 8px; height: 8px; margin-left: 6px;
+             border-radius: var(--r-pill); background: var(--cuivre); cursor: help;
+             vertical-align: 1px; }
+    .bp-note { margin: 0; padding: 11px 13px; border-radius: var(--r-md);
+               background: var(--surface-2); border: 1px solid var(--border);
+               font-size: 12.5px; line-height: 1.6; color: var(--text-2); }
+    .bp-lien { background: none; border: 0; padding: 0; cursor: pointer;
+               font: inherit; font-size: 12.5px; font-weight: 600; color: var(--green-700); }
+    .bp-lien:hover { text-decoration: underline; }
+    .bp-ton-ok      { color: var(--ok); font-weight: 600; }
+    .bp-ton-warn    { color: var(--warn); font-weight: 600; }
+    .bp-ton-bad     { color: var(--bad); font-weight: 600; }
+    .bp-ton-neutral { color: var(--text-3); }
   `],
 })
 export class BilanPeriodeComponent implements OnInit {

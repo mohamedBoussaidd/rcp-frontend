@@ -15,37 +15,134 @@
 .oh-toolbar { margin-top:12px; }
 
 /* ── Objectif de la semaine ─────────────────────────────────────── */
-.oh-top { display:flex; flex-wrap:wrap; justify-content:space-between; gap:12px 24px; align-items:flex-start; }
-.oh-title { font-weight:800; font-size:15px; color:#0f172a; display:flex; align-items:center; gap:6px; }
-.oh-objs { display:flex; flex-wrap:wrap; gap:22px; }
-.oh-obj { display:flex; flex-direction:column; gap:3px; }
-.oh-obj__label { font-size:12px; color:#64748b; font-weight:600; }
-.oh-obj__val { font-size:18px; font-weight:800; color:#0f172a; display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
-.oh-input { width:88px; padding:5px 9px; border:1px solid #cbd5e1; border-radius:8px; font:inherit; }
-.oh-unit { color:#64748b; margin-left:-2px; }
-.oh-btn { padding:5px 11px; border:1px solid #d7dee7; border-radius:9px; background:#fff; font:inherit; font-size:12px; font-weight:700; color:#334155; cursor:pointer; }
-.oh-btn:hover { background:#f6f8fb; }
-.oh-btn--primary { background:#6366f1; color:#fff; border-color:#6366f1; }
-.oh-btn--primary:hover { background:#5457e0; }
-.oh-btn--ghost { color:#94a3b8; }
-.oh-btn:disabled { opacity:.5; cursor:default; }
-.oh-note { margin-top:8px; font-size:12px; color:#64748b; font-style:italic; }
-.oh-note--warn { color:#b45309; font-style:normal; background:#fffbeb; border:1px solid #fde68a; border-radius:8px; padding:6px 10px; }
-.oh-cardline { margin-top:14px; display:flex; flex-wrap:wrap; align-items:baseline; gap:7px; }
-.oh-count { font-size:20px; font-weight:800; color:#16a34a; }
-.oh-count--low { color:#ef4444; }
-.oh-count__label { font-size:13px; color:#475569; }
-.oh-best { font-size:13px; color:#64748b; }
+/* Le bandeau empilé (.oh-bar / .oh-dm / .oh-stat…) a été remplacé par le rail `.oh2-*` plus bas :
+   ses règles ont été retirées avec lui plutôt que laissées en place « au cas où ». */
 .oh-tablewrap { margin-top:12px; overflow-x:auto; }
 .oh-table { width:100%; border-collapse:collapse; font-size:13px; }
-.oh-table th { text-align:left; font-size:11px; text-transform:uppercase; letter-spacing:.03em; color:#94a3b8; padding:6px 10px; border-bottom:1px solid #e7ecf2; }
-.oh-table td { padding:7px 10px; border-bottom:1px solid #f1f4f8; white-space:nowrap; color:#0f172a; }
+.oh-table th { text-align:left; font-size:11px; text-transform:uppercase; letter-spacing:.03em; color:var(--text-4); padding:6px 10px; border-bottom:1px solid var(--border); }
+.oh-table td { padding:7px 10px; border-bottom:1px solid var(--border); white-space:nowrap; color:var(--text); }
 .oh-name { font-weight:700; }
-.oh-muted { color:#94a3b8; }
-.oh-badge { display:inline-block; padding:2px 9px; border-radius:999px; font-size:11px; font-weight:700; }
-.oh-badge--ok { background:rgba(34,197,94,.15); color:#16a34a; }
-.oh-badge--warn { background:rgba(234,179,8,.18); color:#b45309; }
-.oh-badge--neutral { background:#eef2f7; color:#94a3b8; }
+.oh-muted { color:var(--text-4); }
+.oh-badge { display:inline-block; padding:2px 9px; border-radius:var(--r-pill); font-size:11px; font-weight:700; border:1px solid; }
+.oh-badge--ok { background:var(--ok-bg); color:var(--ok); border-color:var(--ok-bd); }
+.oh-badge--warn { background:var(--warn-bg); color:var(--warn); border-color:var(--warn-bd); }
+.oh-badge--neutral { background:var(--surface-3); color:var(--text-3); border-color:var(--border); }
+
+/* ══ Onglet Objectif — rail de contexte + tableau plein cadre ══════════════
+   Le contexte (état de la semaine, décisions en attente, origine des deltas) restait
+   auparavant empilé au-dessus du tableau et le poussait hors de l'écran. Il tient
+   maintenant dans un rail qui reste à l'œil pendant qu'on lit l'effectif.            */
+.oh2 { display: flex; flex-direction: column; gap: 14px; }
+.oh2-spacer { flex: 1; }
+
+.oh2-top { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.oh2-top__sem { font-size: 13px; font-weight: 600; color: var(--text-2); }
+
+.oh2-grille { display: grid; grid-template-columns: 340px minmax(0, 1fr); gap: 16px; align-items: start; }
+
+/* ── Rail ── */
+.oh2-rail { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.oh2-carte { background: var(--surface); border: 1px solid var(--border);
+             border-radius: var(--r-xl); padding: 14px 15px; }
+.oh2-carte__head { display: flex; align-items: center; gap: 7px; margin-bottom: 10px; }
+.oh2-kicker { font-size: 10.5px; font-weight: 700; letter-spacing: .09em;
+              text-transform: uppercase; color: var(--text-4); }
+.oh2-kicker--warn { color: var(--warn); }
+
+.oh2-src { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+.oh2-src__lib { font-size: 12.5px; font-weight: 600; color: var(--green-700); }
+.oh2-src__lib--auto { color: var(--info); }
+
+.oh2-stats { display: flex; flex-direction: column; gap: 1px; background: var(--border);
+             border: 1px solid var(--border); border-radius: var(--r-lg); overflow: hidden; }
+.oh2-stat { background: var(--surface); padding: 10px 12px; display: flex;
+            align-items: center; gap: 11px; }
+.oh2-stat__v { font-family: var(--font-num); font-variant-numeric: tabular-nums;
+               font-size: 20px; font-weight: 600; min-width: 60px; color: var(--text); }
+.oh2-stat__v--warn { color: var(--warn); }
+.oh2-stat__txt { min-width: 0; }
+.oh2-stat__txt b { display: block; font-size: 12.5px; font-weight: 600; }
+.oh2-stat__txt small { display: block; font-size: 11px; color: var(--text-4); }
+.oh2-stat__flag { margin-left: auto; }
+
+.oh2-edit { margin-top: 11px; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.oh2-edit__cta { width: 100%; padding: 8px 12px; border: 1px dashed var(--border-strong);
+                 border-radius: var(--r-md); background: var(--surface-2); cursor: pointer;
+                 font: inherit; font-size: 12.5px; font-weight: 600; color: var(--text); }
+.oh2-edit__cta:hover { border-color: var(--green-400); background: var(--green-50); }
+.oh2-edit__champ { display: inline-flex; align-items: center; gap: 5px;
+                   border: 1px solid var(--border-strong); border-radius: var(--r-md);
+                   background: var(--surface); padding: 4px 9px; }
+.oh2-edit__champ input { width: 54px; border: 0; outline: 0; background: transparent;
+                         font-family: var(--font-num); font-size: 13px; color: var(--text); }
+.oh2-edit__champ small { font-size: 12px; color: var(--text-3); }
+.oh2-effacer { background: var(--surface); color: var(--bad); border-color: var(--bad-bd); }
+
+/* Registre des décisions : coloré et actionnable — une note d'information n'y entre pas. */
+.oh2-dec { background: var(--warn-bg); border: 1px solid var(--warn-bd);
+           border-radius: var(--r-xl); padding: 12px 13px; }
+.oh2-dec__head { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+.oh2-dec__n { font-family: var(--font-num); font-size: 11.5px; font-weight: 700;
+              background: var(--warn); color: var(--surface); padding: 1px 7px;
+              border-radius: var(--r-pill); }
+.oh2-dec__carte { background: var(--surface); border: 1px solid var(--warn-bd);
+                  border-radius: var(--r-lg); padding: 11px 12px;
+                  display: flex; flex-direction: column; gap: 7px; }
+.oh2-dec__t { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; font-size: 13px; }
+.oh2-dec__b { margin: 0; font-size: 12px; line-height: 1.5; color: var(--text-2); }
+.oh2-dec__alerte { font-size: 12px; font-weight: 600; color: var(--bad);
+                   background: var(--bad-bg); border: 1px solid var(--bad-bd);
+                   border-radius: var(--r-md); padding: 6px 9px; }
+
+.oh2-notes { display: flex; flex-direction: column; gap: 6px; }
+.oh2-note { display: flex; gap: 8px; margin: 0; padding: 9px 11px; font-size: 12px;
+            line-height: 1.5; color: var(--text-2); background: var(--surface);
+            border: 1px solid var(--border); border-radius: var(--r-lg); }
+.oh2-note span { color: var(--text-4); font-weight: 700; }
+.oh2-note--warn span { color: var(--warn); }
+
+.oh2-orig { display: flex; flex-direction: column; gap: 5px; }
+.oh2-orig__l { margin: 0; font-size: 12px; color: var(--text-2); }
+.oh2-orig__l b { font-family: var(--font-num); font-weight: 600; color: var(--info); }
+.oh2-orig__plus { color: var(--cuivre) !important; }
+
+/* ── Tableau ── */
+.oh2-tab { background: var(--surface); border: 1px solid var(--border);
+           border-radius: var(--r-xl); overflow: hidden; min-width: 0; }
+.oh2-tab .oh-toolbar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+                       margin: 0; padding: 11px 14px; border-bottom: 1px solid var(--border);
+                       background: var(--surface-2); }
+.oh2-compte { font-size: 12.5px; color: var(--text-3); }
+.oh2-tab .oh-tablewrap { margin: 0; max-height: 62vh; overflow: auto; }
+/* En-tête collant à deux niveaux : le groupe Habituel/Attendu/Retenu reste lisible
+   quand on descend dans un effectif de 25 joueurs. */
+.oh2-tab .oh-table thead th { position: sticky; z-index: 2; background: var(--surface-2); }
+.oh2-tab .oh-table thead tr:first-child th { top: 0; }
+.oh2-tab .oh-table thead tr.oh-groupes + tr th { top: 28px; }
+.oh2-tab .oh-table thead tr:only-child th { top: 0; }
+
+.oh2-chev { width: 24px; height: 24px; margin-left: 8px; vertical-align: middle;
+            display: inline-grid; place-items: center; border: 1px solid var(--border);
+            background: var(--surface); border-radius: var(--r-sm); color: var(--text-3);
+            cursor: pointer; padding: 0; }
+.oh2-chev:hover { border-color: var(--border-strong); color: var(--text); }
+.oh2-chev--on { background: var(--surface-3); color: var(--text); }
+.oh2-chev mat-icon { font-size: 15px; width: 15px; height: 15px; }
+
+.oh2-detail__t { display: flex; align-items: baseline; gap: 9px; margin-bottom: 7px;
+                 font-size: 11px; font-weight: 700; letter-spacing: .08em;
+                 text-transform: uppercase; color: var(--text-3); }
+.oh2-detail__t small { font-size: 11px; font-weight: 400; letter-spacing: 0;
+                       text-transform: none; color: var(--text-4); }
+
+.oh2-pied { display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+            padding: 10px 14px; border-top: 1px solid var(--border); background: var(--surface-2); }
+.oh2-pied .ce-pager { margin-top: 0; }
+
+@media (max-width: 1240px) {
+  .oh2-grille { grid-template-columns: 1fr; }
+  .oh2-tab .oh-tablewrap { max-height: none; }
+}
 
 .ce-page { padding: 24px; display: flex; flex-direction: column; gap: 16px; }
 .gps-empty { text-align: center; color: var(--muted); padding: 40px 0; line-height: 1.8; margin: 0; }
@@ -274,59 +371,36 @@
   &.tone-alert { background:var(--t-alert-bg); color:var(--t-alert-fg); border-color:var(--t-alert-bd); }
 }
 
-/* ═══ Onglet Objectif — Habituel / Attendu / Retenu (lot 3) ═══
-   Bandeau volontairement sur UNE ligne : le panneau doit tenir sans faire défiler l'écran, et
-   les trois chiffres qui comptent se lisent d'un coup d'œil. */
-.oh-bar { display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; gap:10px 20px; }
-.oh-bar__t { font-weight:800; font-size:15px; color:#0f172a; display:flex; align-items:center; gap:6px; }
-.oh-bar__stats { display:flex; flex-wrap:wrap; align-items:center; gap:8px 14px; font-size:12.5px; }
-.oh-phase { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.04em;
-            padding:2px 7px; border-radius:999px; background:#eef2ff; color:#4338ca; }
-.oh-stat { color:#334155; }
-.oh-stat b { font-size:16px; font-weight:800; color:#16a34a; }
-.oh-stat--low b { color:#ef4444; }
-.oh-stat--warn b { color:#b45309; }
-.oh-src { color:#64748b; font-style:italic; }
-
-/* Bandeau de groupes : trois blocs nommés, jamais mélangés. */
+/* ═══ Onglet Objectif — Habituel / Attendu / Retenu ═══
+   Les trois notions portent les mêmes couleurs que sur la fiche joueur : ardoise pour Habituel,
+   bleu pour Attendu, cuivre pour Retenu. Deux écrans qui parlent du même joueur ne peuvent pas
+   coder les mêmes mots différemment. */
 .oh-groupes th { padding-bottom:2px; border:0; }
 .oh-groupes .grp { font-size:10.5px; text-transform:uppercase; letter-spacing:.06em; font-weight:800;
                    text-align:center; border-radius:5px 5px 0 0; }
-.grp--hab { background:#f1f5f9; color:#475569; }
-.grp--att { background:#fef3c7; color:#92400e; }
-.grp--ret { background:#dcfce7; color:#166534; }
+.grp--hab { background:var(--surface-3); color:var(--slate-500); }
+.grp--att { background:var(--info-bg); color:var(--info); }
+.grp--ret { background:var(--cuivre-bg); color:var(--cuivre); }
 
 .oh-sort { cursor:pointer; user-select:none; white-space:nowrap; }
-.oh-sort:hover { color:#4338ca; }
+.oh-sort:hover { color:var(--green-700); }
 .oh-arrow { font-size:9px; margin-left:2px; }
 
-.oh-att { white-space:nowrap; }
-.oh-ecart { margin-left:5px; font-size:11px; font-weight:700; color:#b45309; }
+.oh-att { white-space:nowrap; color:var(--info); }
+.oh-ecart { margin-left:5px; font-size:11px; font-weight:700; color:var(--warn); }
 .oh-cumul { font-weight:700; font-variant-numeric:tabular-nums; }
-.oh-cumul.ton-ok   { color:#15803d; }
-.oh-cumul.ton-warn { color:#b45309; }
-.oh-cumul.ton-bad  { color:#dc2626; }
-.oh-bride { margin-left:5px; font-size:10px; padding:1px 5px; border-radius:4px;
-            background:#fef3c7; color:#92400e; font-weight:700; }
-.oh-expo { margin-left:6px; font-size:10.5px; padding:1px 5px; border-radius:4px;
-           background:#f1f5f9; color:#64748b; font-weight:700; }
-.oh-expo--ok { background:#dcfce7; color:#15803d; }
+.oh-cumul.ton-ok   { color:var(--ok); }
+.oh-cumul.ton-warn { color:var(--warn); }
+.oh-cumul.ton-bad  { color:var(--bad); }
+.oh-bride { margin-left:5px; font-size:10px; padding:1px 5px; border-radius:var(--r-xs);
+            background:var(--warn-bg); border:1px solid var(--warn-bd); color:var(--warn); font-weight:700; }
+.oh-expo { margin-left:6px; font-size:10.5px; padding:1px 5px; border-radius:var(--r-xs);
+           background:var(--surface-3); color:var(--text-3); font-weight:700; }
+.oh-expo--ok { background:var(--ok-bg); color:var(--ok); }
 
-.oh-detail td { background:#f8fafc; padding-top:4px; padding-bottom:6px; }
-.oh-chip { display:inline-block; margin-right:14px; font-size:11.5px; color:#475569; }
-.oh-chip i { color:#94a3b8; font-style:normal; }
-.oh-prio { margin-left:4px; font-size:10px; color:#15803d; font-style:normal; font-weight:700; }
-.oh-chk { display:inline-flex; align-items:center; gap:6px; margin-top:8px; font-size:12px; color:#64748b; }
-
-/* ── Semaine à deux matchs ──
-   Tant qu'aucune décision n'est prise, le bandeau est en attente (ambre) : il appelle une action.
-   Une fois arbitré il redevient neutre — il informe, il ne réclame plus. */
-.oh-dm { display:flex; align-items:center; gap:10px; margin-top:10px; padding:8px 12px;
-         border-radius:8px; background:#f1f5f9; border:1px solid #e2e8f0; font-size:12.5px; }
-.oh-dm--todo { background:#fffbeb; border-color:#fde68a; }
-.oh-dm mat-icon { font-size:18px; width:18px; height:18px; color:#64748b; }
-.oh-dm__txt { flex:1; line-height:1.45; color:#475569; }
-.oh-dm__txt em { font-style:normal; color:#64748b; }
-.oh-dm__warn { display:block; margin-top:2px; color:#b45309; font-weight:600; }
-.oh-orig { display:inline-block; margin-right:12px; font-style:normal; }
-.oh-entr { display:block; margin-top:1px; font-size:10.5px; color:#64748b; font-weight:600; }
+.oh-detail td { background:var(--surface-2); padding-top:4px; padding-bottom:10px; white-space:normal; }
+.oh-chip { display:inline-block; margin-right:14px; font-size:11.5px; color:var(--text-2); }
+.oh-chip i { color:var(--text-4); font-style:normal; }
+.oh-prio { margin-left:4px; font-size:10px; color:var(--ok); font-style:normal; font-weight:700; }
+.oh-chk { display:inline-flex; align-items:center; gap:6px; font-size:12px; color:var(--text-3); }
+.oh-entr { display:block; margin-top:1px; font-size:10.5px; color:var(--green-700); font-weight:600; }

@@ -30,124 +30,139 @@ interface Colonne { cle: string; titre: string; sousTitre: string; phase: string
   standalone: true,
   imports: [FormsModule, MatIconModule, DatePipe, InfoBulleComponent],
   template: `
-    <div class="editeur">
-      <header class="editeur__head">
-        <div>
-          <h3 class="editeur__titre">
-            {{ periode.libelle }}
-            <span class="chip">{{ libTypePeriode(periode.typePeriode) }}</span>
-          </h3>
-          <p class="editeur__sub">
-            {{ periode.dateDebut | date : 'd MMM' }} – {{ periode.dateFin | date : 'd MMM y' }}
+    <div class="ope">
+      <header class="ope-head">
+        <div class="ope-head__txt">
+          <h3 class="ope-head__titre">{{ periode.libelle }}</h3>
+          <p class="ope-head__sub">
+            <span class="num">{{ periode.dateDebut | date : 'd MMM' }} → {{ periode.dateFin | date : 'd MMM y' }}</span>
+            · type {{ libTypePeriode(periode.typePeriode) }}
             · {{ periode.nbSemaines }} semaine{{ periode.nbSemaines > 1 ? 's' : '' }}
           </p>
         </div>
-        <button class="ic" title="Fermer" (click)="fermer.emit()"><mat-icon>close</mat-icon></button>
+        @if (!sansCharge() && modeleId) {
+          <button class="btn btn--secondary" (click)="previsualiser()">Recalculer</button>
+          <button class="btn btn--primary" (click)="enregistrer()" [disabled]="lignes().length === 0">
+            Enregistrer
+          </button>
+        }
+        <button class="ope-ic" title="Fermer" (click)="fermer.emit()"><mat-icon>close</mat-icon></button>
       </header>
 
       @if (sansCharge()) {
         <!-- Trêve et intersaison : le joueur n'est pas censé être en charge. Le moteur d'analyse
              se tait déjà sur ces périodes (aucune alerte) — y fixer un objectif se contredirait. -->
-        <div class="repos">
-          <mat-icon>bedtime</mat-icon>
-          <div>
-            <strong>
-            Pas d'objectif sur une période de {{ libTypePeriode(periode.typePeriode).toLowerCase() }}.
-            <app-info-bulle [texte]="aide.horsCharge" />
-          </strong>
-            <p>
-              Le joueur n'est pas censé être en charge : l'application n'émet déjà aucune alerte
-              pendant ces périodes. Lui fixer une cible de charge la contredirait.
-            </p>
-          </div>
+        <div class="ope-repos">
+          <span class="badge badge--neutral">hors charge
+            <app-info-bulle [texte]="aide.horsCharge" /></span>
+          <p>
+            Une {{ libTypePeriode(periode.typePeriode).toLowerCase() }} ne reçoit pas d'objectifs :
+            il n'y a pas de charge à planifier. L'application n'émet déjà aucune alerte pendant ces
+            périodes — lui fixer une cible la contredirait. Cette période est exclue du décompte de
+            complétion, sinon l'étape ne serait jamais complète.
+          </p>
         </div>
       } @else {
-        <div class="barre">
-          <label class="field">
-            <span>Modèle</span>
-            <select [(ngModel)]="modeleId" (ngModelChange)="previsualiser()">
-              <option [ngValue]="null">— choisir —</option>
-              @for (m of modeles(); track m.id) {
-                <option [ngValue]="m.id">{{ m.nom }}@if (tousTypes) { — {{ libTypePeriode(m.typePeriode) }} }</option>
-              }
-            </select>
-          </label>
-          <label class="chk chk--filtre" [title]="'Par défaut, seuls les modèles du même type que la période sont proposés.'">
+        <div class="ope-barre">
+          <select class="ope-select" [(ngModel)]="modeleId" (ngModelChange)="previsualiser()">
+            <option [ngValue]="null">Choisir un modèle…</option>
+            @for (m of modeles(); track m.id) {
+              <option [ngValue]="m.id">{{ m.nom }}@if (tousTypes) { — {{ libTypePeriode(m.typePeriode) }} }</option>
+            }
+          </select>
+          <label class="ope-chk" title="Par défaut, seuls les modèles du même type que la période sont proposés.">
             <input type="checkbox" [(ngModel)]="tousTypes" (ngModelChange)="chargerModeles()">
             Tous les types
           </label>
-          <div class="barre__spacer"></div>
-          @if (modeleId) {
-            <button class="btn" (click)="previsualiser()">Recalculer</button>
-            <button class="btn btn--primary" (click)="enregistrer()" [disabled]="lignes().length === 0">
-              Enregistrer
-            </button>
+          @if (!tousTypes) {
+            <span class="ope-hint">
+              seuls les modèles de type « {{ libTypePeriode(periode.typePeriode) }} » —
+              c'est le type de la période qui commande
+            </span>
+          }
+          <span class="ope-barre__spacer"></span>
+          @if (referentielNom(); as r) {
+            <span class="ope-hint">échelle : <strong>{{ r }}</strong>
+              <app-info-bulle [texte]="aide.echelleReferentiel" /></span>
           }
         </div>
 
         @if (modeles().length === 0) {
-          <p class="note note--warn note--bloc">
+          <div class="ope-note ope-note--info">
             <mat-icon>info</mat-icon>
-            Aucun modèle de type « {{ libTypePeriode(periode.typePeriode) }} ». Créez-en un à
-            l'étape 2, ou cochez « Tous les types » pour en réutiliser un autre.
-          </p>
-        } @else if (!tousTypes) {
-          <p class="filtre-info">
-            Seuls les modèles de type « {{ libTypePeriode(periode.typePeriode) }} » sont proposés —
-            c'est le type de la période qui commande.
-          </p>
+            <span>Aucun modèle n'est prévu pour le type
+              <strong>{{ libTypePeriode(periode.typePeriode) }}</strong>. Cochez
+              <strong>Tous les types</strong> pour en emprunter un, ou créez-en un à l'étape 2.</span>
+          </div>
         }
       }
 
       @if (avertissement(); as a) {
-        <p class="note note--warn note--bloc">
-          <mat-icon>warning</mat-icon> {{ a }}
-        </p>
-      }
-
-      @if (nbModifiees() > 0) {
-        <p class="note note--info note--bloc">
-          <mat-icon>edit</mat-icon>
-          {{ nbModifiees() }} case(s) retouchée(s) à la main. Recalculer depuis le modèle les écrasera.
-        </p>
+        <div class="ope-note ope-note--warn">
+          <mat-icon>warning</mat-icon><span>{{ a }}</span>
+        </div>
       }
 
       @if (lignes().length > 0) {
-        <div class="grille-wrap">
-          <table class="tbl tbl--grille">
+        <div class="ope-legende">
+          <label class="ope-chk">
+            <input type="checkbox" [(ngModel)]="toutesMetriques"> Afficher les 7 métriques
+          </label>
+          <span class="ope-barre__spacer"></span>
+          <span class="ope-touche-lg">
+            <span class="ope-pastille"></span>
+            case retouchée à la main — <b class="num">{{ nbModifiees() }}</b>
+            <app-info-bulle [texte]="aide.caseRetouchee" />
+          </span>
+        </div>
+
+        @if (nbModifiees() > 0) {
+          <div class="ope-note ope-note--cuivre">
+            <mat-icon>edit</mat-icon>
+            <span>{{ nbModifiees() }} case(s) retouchée(s) à la main survivent à un enregistrement,
+              mais pas à un <strong>Recalculer</strong> : il réapplique le modèle sur toute la période.</span>
+          </div>
+        }
+
+        <div class="ope-grille">
+          <table class="ope-tbl">
             <thead>
               @if (bandeau().length > 0) {
-                <tr class="bandeau">
-                  <th><app-info-bulle [texte]="aide.bandeauPhases" /></th>
+                <tr>
+                  <th class="ope-tbl__vide"><app-info-bulle [texte]="aide.bandeauPhases" /></th>
                   @for (b of bandeau(); track b.nom + b.debut) {
-                    <th [attr.colspan]="b.nb" class="bandeau__cell"
+                    <th [attr.colspan]="b.nb" class="ope-bandeau"
                         [style.background]="couleurPhase(b.nom)">{{ b.nom }}</th>
                   }
                 </tr>
               }
               <tr>
-                <th class="col-metrique">Métrique</th>
+                <th class="ope-col">Métrique</th>
                 @for (c of colonnes(); track c.cle) {
-                  <th class="num"><span class="c-titre">{{ c.titre }}</span><small>{{ c.sousTitre }}</small></th>
+                  <th class="r ope-th-sem">
+                    <span class="num">{{ c.titre }}</span><small class="num">{{ c.sousTitre }}</small>
+                  </th>
                 }
               </tr>
             </thead>
             <tbody>
               @for (m of metriquesVisibles(); track m.code) {
                 <tr>
-                  <td class="col-metrique">
-                    <span class="m-nom">{{ m.libelle }}</span>
+                  <td class="ope-col">
+                    <span class="ope-m">{{ m.libelle }}</span>
+                    @if (m.nature === 'EXPOSITION') {
+                      <span class="ope-cible">cible directe</span>
+                      <app-info-bulle [texte]="aide.metriqueExposition" />
+                    }
                     <small>{{ m.unite }}</small>
-                    @if (m.nature === 'EXPOSITION') { <app-info-bulle [texte]="aide.metriqueExposition" /> }
-                    <span class="prio" [class]="'prio--' + prioriteDe(m.code).toLowerCase()"
+                    <span class="ope-prio" [class]="'ope-prio--' + prioriteDe(m.code).toLowerCase()"
                           [title]="explicationPriorite(prioriteDe(m.code))">
                       {{ libPriorite(prioriteDe(m.code)) }}
                     </span>
                   </td>
                   @for (c of colonnes(); track c.cle) {
-                    <td class="num">
-                      <input type="number" class="mini"
-                             [class.mini--touche]="estModifiee(c, m.code)"
+                    <td class="ope-cell" [class.ope-cell--touche]="estModifiee(c, m.code)">
+                      <input type="number" class="ope-input"
                              [ngModel]="lire(c, m.code)"
                              (ngModelChange)="ecrire(c, m.code, $event)">
                     </td>
@@ -157,73 +172,102 @@ interface Colonne { cle: string; titre: string; sousTitre: string; phase: string
             </tbody>
           </table>
         </div>
-
-        <div class="pied">
-          <label class="chk">
-            <input type="checkbox" [(ngModel)]="toutesMetriques"> Afficher les 7 métriques
-          </label>
-          <p class="legende">
-            <span class="pastille pastille--touche"></span> retouché à la main
-            <app-info-bulle [texte]="aide.caseRetouchee" />
-            @if (referentielNom()) {
-              · Échelle : <strong>{{ referentielNom() }}</strong>
-              <app-info-bulle [texte]="aide.echelleReferentiel" />
-            }
-          </p>
-        </div>
       } @else if (modeleId) {
-        <p class="vide">Aucune valeur générée. Vérifiez que le modèle contient des phases avec des pourcentages.</p>
+        <p class="ope-vide">Aucune valeur générée. Vérifiez que le modèle contient des phases avec des pourcentages.</p>
       }
     </div>
   `,
   styles: [`
-    .editeur { display: flex; flex-direction: column; gap: .7rem; }
-    .editeur__head { display: flex; justify-content: space-between; align-items: flex-start; }
-    .editeur__titre { margin: 0; font-size: 1.05rem; display: flex; align-items: center; gap: .5rem; }
-    .editeur__sub { margin: .15rem 0 0; color: var(--text-muted, #64748b); font-size: .85rem; }
-    .chip { font-size: .72rem; padding: .12rem .45rem; border-radius: 999px;
-            background: var(--surface-2, #f1f5f9); color: var(--text-muted, #64748b); font-weight: 500; }
-    .barre { display: flex; align-items: flex-end; gap: .7rem; flex-wrap: wrap; }
-    .barre__spacer { flex: 1; }
-    .grille-wrap { overflow-x: auto; }
-    .tbl { width: 100%; border-collapse: collapse; font-size: .88rem; }
-    .tbl th, .tbl td { padding: .4rem .5rem; border-bottom: 1px solid var(--border, #eef2f7); text-align: left; }
-    .tbl .num { text-align: right; }
-    .col-metrique { min-width: 13rem; }
-    .m-nom { font-weight: 600; }
-    .col-metrique small { color: var(--text-muted, #94a3b8); margin-left: .3rem; }
-    .c-titre { display: block; font-weight: 600; }
-    thead small { font-weight: 400; color: var(--text-muted, #94a3b8); font-size: .75rem; }
-    .bandeau__cell { text-align: center; font-size: .78rem; text-transform: uppercase;
-                     letter-spacing: .04em; border-radius: 5px 5px 0 0; font-weight: 700; }
-    .mini { width: 5.2rem; text-align: right; padding: .25rem .3rem;
-            border: 1px solid var(--border, #e2e8f0); border-radius: 4px; font-variant-numeric: tabular-nums; }
-    .mini--touche { border-color: #f59e0b; background: #fffbeb; }
-    .prio { display: inline-block; margin-left: .4rem; font-size: .68rem; padding: .05rem .35rem;
-            border-radius: 3px; font-weight: 600; text-transform: uppercase; letter-spacing: .03em; }
-    .prio--secondaire { background: #f1f5f9; color: #64748b; }
-    .prio--important { background: #dbeafe; color: #1d4ed8; }
-    .prio--intouchable { background: #dcfce7; color: #15803d; }
-    .note { display: flex; align-items: center; gap: .4rem; font-size: .85rem; margin: 0; }
-    .note--bloc { padding: .5rem .7rem; border-radius: 6px; }
-    .note--warn { color: #b45309; background: #fffbeb; }
-    .note--info { color: #1d4ed8; background: #eff6ff; }
-    .note mat-icon { font-size: 1.05rem; width: 1.05rem; height: 1.05rem; }
-    .pied { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: .5rem; }
-    .legende { font-size: .8rem; color: var(--text-muted, #64748b); margin: 0; }
-    .pastille { display: inline-block; width: .7rem; height: .7rem; border-radius: 3px; vertical-align: -1px; }
-    .pastille--touche { background: #fffbeb; border: 1px solid #f59e0b; }
-    .chk { display: inline-flex; gap: .35rem; align-items: center; font-size: .85rem; }
-    .chk--filtre { color: var(--text-muted, #64748b); white-space: nowrap; padding-bottom: .35rem; }
-    .filtre-info { font-size: .78rem; color: var(--text-muted, #94a3b8); margin: -.2rem 0 .2rem; }
-    .repos { display: flex; gap: .7rem; align-items: flex-start; padding: .9rem 1rem;
-             border-radius: 8px; background: var(--surface-2, #f8fafc);
-             border: 1px dashed var(--border, #e2e8f0); }
-    .repos mat-icon { color: #64748b; }
-    .repos strong { font-size: .95rem; }
-    .repos p { margin: .2rem 0 0; font-size: .85rem; color: var(--text-muted, #64748b); max-width: 62ch; }
-    .vide { color: var(--text-muted, #94a3b8); font-size: .9rem; }
-    .ic { background: none; border: 0; cursor: pointer; color: var(--text-muted, #64748b); }
+    .ope { border: 1px solid var(--border); border-radius: var(--r-xl);
+           background: var(--surface); box-shadow: var(--shadow-sm); overflow: hidden; }
+    .num { font-family: var(--font-num); font-variant-numeric: tabular-nums; }
+
+    .ope-head { display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+                padding: 13px 15px; border-bottom: 1px solid var(--border);
+                background: var(--surface-2); }
+    .ope-head__txt { flex: 1; min-width: 200px; }
+    .ope-head__titre { margin: 0; font-size: 15px; font-weight: 600; }
+    .ope-head__sub { margin: 2px 0 0; font-size: 12px; color: var(--text-3); }
+    .ope-ic { width: 30px; height: 30px; display: grid; place-items: center; flex: none;
+              border: 0; background: none; cursor: pointer; color: var(--text-3);
+              border-radius: var(--r-md); }
+    .ope-ic:hover { background: var(--surface-3); color: var(--text); }
+
+    .ope-repos { padding: 22px 24px; text-align: center; background: var(--slate-50); }
+    .ope-repos p { margin: 11px auto 0; max-width: 62ch; font-size: 13px;
+                   line-height: 1.6; color: var(--text-2); }
+
+    .ope-barre { display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+                 padding: 13px 15px; border-bottom: 1px solid var(--border); }
+    .ope-barre__spacer { flex: 1; }
+    .ope-select { min-width: 260px; padding: 7px 10px; border: 1px solid var(--border-strong);
+                  border-radius: var(--r-sm); background: var(--surface);
+                  font: inherit; font-size: 13px; color: var(--text); }
+    .ope-chk { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px;
+               color: var(--text-2); cursor: pointer; white-space: nowrap; }
+    .ope-chk input { accent-color: var(--green-600); }
+    .ope-hint { font-size: 12px; color: var(--text-3); }
+    .ope-hint strong { color: var(--text-2); font-weight: 600; }
+
+    .ope-note { display: flex; align-items: flex-start; gap: 10px; margin: 12px 15px;
+                padding: 10px 12px; border-radius: var(--r-md); font-size: 12.5px;
+                line-height: 1.55; }
+    .ope-note mat-icon { flex: none; font-size: 16px; width: 16px; height: 16px; margin-top: 1px; }
+    .ope-note--info { background: var(--info-bg); border: 1px solid var(--info-bd); color: var(--text-2); }
+    .ope-note--info mat-icon { color: var(--info); }
+    .ope-note--warn { background: var(--warn-bg); border: 1px solid var(--warn-bd); color: var(--text-2); }
+    .ope-note--warn mat-icon { color: var(--warn); }
+    .ope-note--cuivre { background: var(--cuivre-bg); border: 1px solid var(--cuivre-bd); color: var(--text-2); }
+    .ope-note--cuivre mat-icon { color: var(--cuivre); }
+
+    .ope-legende { display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+                   padding: 11px 15px 0; }
+    .ope-touche-lg { display: inline-flex; align-items: center; gap: 7px;
+                     font-size: 12px; color: var(--text-2); }
+    /* Le coin cuivre est la signature d'une valeur saisie à la main : elle survit à un
+       enregistrement, pas à un Recalculer. La légende porte le même dessin que les cases. */
+    .ope-pastille { width: 11px; height: 11px; border-radius: 2px; background: var(--surface);
+                    border: 1px solid var(--cuivre);
+                    box-shadow: inset -3px 3px 0 0 var(--cuivre); }
+
+    .ope-grille { margin: 11px 15px 15px; border: 1px solid var(--border);
+                  border-radius: var(--r-md); overflow: auto; }
+    .ope-tbl { width: 100%; border-collapse: collapse; min-width: 640px; }
+    .ope-tbl th { text-align: left; padding: 7px 10px; background: var(--surface-2);
+                  border-bottom: 1px solid var(--border-strong); font-size: 10px;
+                  letter-spacing: .07em; text-transform: uppercase; color: var(--text-3);
+                  font-weight: 700; white-space: nowrap; }
+    .ope-tbl td { border-bottom: 1px solid var(--border); }
+    .ope-tbl .r { text-align: right; }
+    .ope-tbl__vide { background: var(--surface-2); }
+    .ope-th-sem { border-left: 1px solid var(--border); text-align: center !important; }
+    .ope-th-sem small { display: block; font-size: 10px; font-weight: 400;
+                        text-transform: none; letter-spacing: 0; color: var(--text-4); }
+    .ope-bandeau { text-align: center !important; font-size: 10.5px !important;
+                   text-transform: none !important; letter-spacing: 0 !important;
+                   color: var(--text-2) !important; border-left: 1px solid var(--border); }
+    .ope-col { min-width: 14rem; padding: 6px 10px; }
+    .ope-m { font-weight: 600; font-size: 12.5px; }
+    .ope-col small { color: var(--text-4); font-size: 10.5px; margin-left: .3rem; }
+    .ope-cible { margin-left: 5px; font-size: 9.5px; padding: 1px 5px; border-radius: var(--r-pill);
+                 background: var(--cuivre); color: #fff; vertical-align: 1px; }
+    .ope-prio { display: inline-block; margin-left: 6px; font-size: 9.5px; padding: 1px 5px;
+                border-radius: var(--r-xs); font-weight: 700; text-transform: uppercase;
+                letter-spacing: .03em; border: 1px solid; }
+    .ope-prio--secondaire { background: var(--surface-3); color: var(--text-3); border-color: var(--border); }
+    .ope-prio--important { background: var(--info-bg); color: var(--info); border-color: var(--info-bd); }
+    .ope-prio--intouchable { background: var(--ok-bg); color: var(--ok); border-color: var(--ok-bd); }
+
+    .ope-cell { padding: 0; border-left: 1px solid var(--border); }
+    .ope-cell--touche { background: var(--cuivre-bg);
+                        box-shadow: inset -4px 4px 0 -1px var(--cuivre); }
+    .ope-input { width: 100%; padding: 7px 6px; border: 0; background: transparent;
+                 font-family: var(--font-num); font-variant-numeric: tabular-nums;
+                 font-size: 12px; text-align: center; color: var(--text); }
+    .ope-input:focus { outline: 2px solid var(--green-500); outline-offset: -2px;
+                       background: var(--surface); }
+
+    .ope-vide { color: var(--text-4); font-size: 13px; padding: 16px 15px; margin: 0; }
   `],
 })
 export class ObjectifPeriodeEditeurComponent implements OnInit {

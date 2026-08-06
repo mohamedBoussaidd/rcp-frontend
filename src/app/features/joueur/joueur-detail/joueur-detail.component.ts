@@ -593,6 +593,10 @@ export class JoueurDetailComponent implements OnInit {
         if (this.wellnessHisto.length) this.buildSuiviChart();
       } else if (tab === 'competition' && this.peutCompetition) {
         this.activeTab = this.indexOnglet('Compétition');
+      } else if (tab === 'objectif' && this.peutObjectifCharge) {
+        // Depuis Performance › Objectifs de performance : l'extrait du hub mène à la trajectoire
+        // complète du joueur qu'il montre, pas à sa fiche d'identité.
+        this.activeTab = this.indexOnglet('Objectif de charge');
       } else if (!tab) {
         this.activeTab = this.ongletParDefaut();
       }

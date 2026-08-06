@@ -22,113 +22,138 @@ import { ChoixArbitrage, ObjectifsService, SemaineArbitrage } from '@core/servic
   standalone: true,
   imports: [FormsModule, MatIconModule, DatePipe, DecimalPipe],
   template: `
-    <div class="overlay" (click)="fermerSiFond($event)">
-      <div class="modale" role="dialog" aria-modal="true">
+    <div class="arb-overlay" (click)="fermerSiFond($event)">
+      <div class="arb" role="dialog" aria-modal="true">
 
-        <header class="mh">
-          <div>
-            <h2 class="mh__t">Semaine à {{ etat()?.nbMatchs || 2 }} matchs</h2>
-            <p class="mh__s">
+        <header class="arb-head">
+          <div class="arb-head__txt">
+            <h2 class="arb-head__t">Semaine à {{ etat()?.nbMatchs || 2 }} matchs</h2>
+            <p class="arb-head__s">
               Semaine du {{ dateLundi | date:'dd MMMM' }}
-              @if (etat()?.datesMatchs?.length) {
-                · matchs le {{ datesLisibles() }}
-              }
+              @if (etat()?.datesMatchs?.length) { · matchs le {{ datesLisibles() }} }
             </p>
           </div>
-          <button class="ic" title="Fermer" (click)="fermer.emit()"><mat-icon>close</mat-icon></button>
+          @if (etat()?.matchDistanceM) {
+            <div class="arb-cout">
+              <span class="arb-cout__v">{{ (etat()!.matchDistanceM! * etat()!.nbMatchs) / 1000 | number:'1.1-1' }} km</span>
+              <span class="arb-cout__l">coût estimé des matchs sur la cible</span>
+            </div>
+          }
+          <button class="arb-ic" title="Fermer" (click)="fermer.emit()"><mat-icon>close</mat-icon></button>
         </header>
 
         @if (chargement()) {
-          <div class="vide">Chargement…</div>
+          <div class="arb-vide">Chargement…</div>
         } @else if (!etat()) {
-          <div class="vide">Impossible de lire cette semaine.</div>
+          <div class="arb-vide">Impossible de lire cette semaine.</div>
         } @else {
+          <div class="arb-corps">
 
-          @if (etat()!.avertissement) {
-            <div class="alerte">{{ etat()!.avertissement }}</div>
-          }
+            @if (etat()!.avertissement) {
+              <div class="arb-alerte">{{ etat()!.avertissement }}</div>
+            }
 
-          <!-- Le rappel qui justifie tout l'écran : la cible inclut les matchs. -->
-          <div class="rappel">
-            <mat-icon>info</mat-icon>
-            <p>
+            <!-- Le rappel qui justifie tout l'écran : la cible inclut les matchs. -->
+            <p class="arb-rappel">
               La cible hebdomadaire <strong>inclut les matchs</strong>.
               @if (etat()!.matchDistanceM) {
-                Ici, {{ etat()!.nbMatchs }} matchs représentent environ
-                <strong>{{ (etat()!.matchDistanceM! * etat()!.nbMatchs) / 1000 | number:'1.1-1' }} km</strong>
-                de la semaine — c'est autant de moins pour l'entraînement.
+                Tant qu'aucune option n'est enregistrée, l'écran ne distingue pas ce qui revient au
+                match de ce qui reste pour l'entraînement.
               } @else {
                 Aucun référentiel adopté : la charge d'un match est inconnue, seul l'allègement reste possible.
               }
             </p>
-          </div>
 
-          <div class="choix">
-            @for (o of OPTIONS; track o.code) {
-              <button class="opt" [class.opt--on]="choix() === o.code"
-                      [class.opt--off]="!estPossible(o.code)"
-                      [disabled]="!estPossible(o.code)"
-                      (click)="choix.set(o.code)">
-                <div class="opt__h">
-                  <span class="opt__r"></span>
-                  <strong>{{ o.titre }}</strong>
-                  @if (o.code === 'ALLEGER') { <em class="opt__def">proposé par défaut</em> }
+            <div class="arb-choix">
+              @for (o of OPTIONS; track o.code) {
+                <button class="arb-opt" [class.arb-opt--on]="choix() === o.code"
+                        [class.arb-opt--off]="!estPossible(o.code)"
+                        [disabled]="!estPossible(o.code)"
+                        (click)="choix.set(o.code)">
+                  <span class="arb-opt__r"></span>
+                  <span class="arb-opt__c">
+                    <span class="arb-opt__h">
+                      <strong>{{ o.titre }}</strong>
+                      @if (o.code === 'ALLEGER') { <span class="badge badge--ok">proposé par défaut</span> }
+                      @if (!estPossible(o.code)) { <span class="badge badge--neutral">indisponible</span> }
+                    </span>
+                    <span class="arb-opt__d">{{ o.description }}</span>
+                    <span class="arb-opt__e">{{ effet(o.code) }}</span>
+                    @if (!estPossible(o.code)) {
+                      <span class="arb-opt__why">{{ pourquoiIndisponible(o.code) }}</span>
+                    }
+
+                    @if (o.code === 'RELISSER' && choix() === 'RELISSER') {
+                      <span class="arb-cibles">
+                        <span class="arb-kicker">Semaines cibles du report</span>
+                        @if (etat()!.semainesCibles.length) {
+                          @for (s of etat()!.semainesCibles; track s) {
+                            <span class="arb-cible">semaine du {{ s | date:'dd/MM' }}</span>
+                          }
+                          @if (etat()!.periodeFin) {
+                            <small>Le report ne franchit jamais la fin de la période
+                              ({{ etat()!.periodeFin | date:'dd/MM' }}) : la suivante a ses propres phases.</small>
+                          }
+                        } @else {
+                          <span class="arb-alerte arb-alerte--mini">
+                            Aucune semaine cible disponible : la période se termine, il n'existe pas de
+                            semaine suivante où relisser.
+                          </span>
+                        }
+                      </span>
+                    }
+                  </span>
+                </button>
+              }
+            </div>
+
+            <label class="arb-note">
+              <span class="arb-kicker">Note</span>
+              <textarea [(ngModel)]="note" maxlength="300"
+                        placeholder="Pourquoi cette décision — utile à la relecture du bilan de période."></textarea>
+            </label>
+
+            <!-- Ce que la décision a déjà produit : un ajustement doit être vérifiable. -->
+            @if (etat()!.reports.length) {
+              <div class="arb-reports">
+                <div class="arb-reports__head">
+                  <span class="arb-kicker">Reports enregistrés</span>
+                  <span>un relissage déplace de la charge, il n'en crée ni n'en détruit</span>
                 </div>
-                <p class="opt__d">{{ o.description }}</p>
-                <p class="opt__e">{{ effet(o.code) }}</p>
-              </button>
+                <table class="arb-tbl">
+                  <thead>
+                    <tr><th>Semaine cible</th><th>Métrique</th><th class="r">Delta</th></tr>
+                  </thead>
+                  <tbody>
+                    @for (r of etat()!.reports; track r.dateLundiCible + r.metrique) {
+                      <tr>
+                        <td>{{ r.dateLundiCible | date:'dd/MM' }}</td>
+                        <td class="arb-tbl__m">{{ r.metrique }}</td>
+                        <td class="r num" [class.arb-neg]="r.delta < 0">
+                          {{ r.delta > 0 ? '+' : '' }}{{ r.delta / 1000 | number:'1.1-1' }} km
+                        </td>
+                      </tr>
+                    }
+                  </tbody>
+                  <tfoot>
+                    <tr>
+                      <td colspan="2">Somme des deltas</td>
+                      <td class="r num">{{ sommeReports() > 0 ? '+' : '' }}{{ sommeReports() / 1000 | number:'1.1-1' }} km</td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
             }
           </div>
 
-          @if (choix() === 'RELISSER' && etat()!.semainesCibles.length) {
-            <div class="cibles">
-              Le report ira sur :
-              @for (s of etat()!.semainesCibles; track s) {
-                <span class="chip">semaine du {{ s | date:'dd/MM' }}</span>
-              }
-              @if (etat()!.periodeFin) {
-                <small>Le report ne franchit jamais la fin de la période ({{ etat()!.periodeFin | date:'dd/MM' }}) :
-                  la suivante a ses propres phases.</small>
-              }
-            </div>
-          }
-          @if (choix() === 'RELISSER' && !etat()!.semainesCibles.length) {
-            <div class="alerte">La période se termine : aucune semaine ne peut recevoir le report.</div>
-          }
-
-          <label class="note">
-            <span>Note (facultative)</span>
-            <input type="text" [(ngModel)]="note" maxlength="300"
-                   placeholder="Ex. : match de coupe, rotation prévue sur 8 joueurs">
-          </label>
-
-          <!-- Ce que la décision a déjà produit : un ajustement doit être vérifiable. -->
-          @if (etat()!.reports.length) {
-            <details class="reports">
-              <summary>Ajustements en vigueur ({{ etat()!.reports.length }})</summary>
-              <table>
-                <tr><th>Semaine</th><th>Métrique</th><th class="r">Delta</th></tr>
-                @for (r of etat()!.reports; track r.dateLundiCible + r.metrique) {
-                  <tr>
-                    <td>{{ r.dateLundiCible | date:'dd/MM' }}</td>
-                    <td>{{ r.metrique }}</td>
-                    <td class="r" [class.neg]="r.delta < 0">
-                      {{ r.delta > 0 ? '+' : '' }}{{ r.delta / 1000 | number:'1.1-1' }} km
-                    </td>
-                  </tr>
-                }
-              </table>
-            </details>
-          }
-
-          <footer class="mf">
+          <footer class="arb-pied">
             @if (etat()!.choix) {
-              <button class="btn btn--ghost" (click)="annuler()" [disabled]="envoi()">
+              <button class="btn btn--sm arb-retirer" (click)="annuler()" [disabled]="envoi()">
                 Retirer l'arbitrage
               </button>
             }
-            <span class="sp"></span>
-            <button class="btn" (click)="fermer.emit()">Fermer</button>
+            <span class="arb-sp"></span>
+            <button class="btn btn--secondary" (click)="fermer.emit()">Fermer</button>
             <button class="btn btn--primary" (click)="enregistrer()"
                     [disabled]="envoi() || !choix() || !estPossible(choix()!)">
               {{ etat()!.choix ? 'Modifier la décision' : 'Enregistrer la décision' }}
@@ -139,52 +164,94 @@ import { ChoixArbitrage, ObjectifsService, SemaineArbitrage } from '@core/servic
     </div>
   `,
   styles: [`
-    .overlay { position: fixed; inset: 0; background: rgba(0,0,0,.45); display: flex;
-               align-items: center; justify-content: center; z-index: 1000; padding: 16px; }
-    .modale { background: var(--surface, #fff); border-radius: 14px; width: min(720px, 100%);
-              max-height: 92vh; overflow: auto; padding: 20px; }
-    .mh { display: flex; align-items: flex-start; gap: 12px; }
-    .mh__t { margin: 0; font-size: 1.15rem; }
-    .mh__s { margin: 4px 0 0; color: var(--text-muted, #667); font-size: .86rem; }
-    .ic { margin-left: auto; background: none; border: 0; cursor: pointer; color: inherit; }
-    .vide { padding: 32px; text-align: center; color: var(--text-muted, #667); }
-    .alerte { margin: 14px 0; padding: 10px 12px; border-radius: 8px; font-size: .86rem;
-              background: rgba(240,170,60,.14); border: 1px solid rgba(240,170,60,.35); }
-    .rappel { display: flex; gap: 10px; margin: 14px 0; padding: 10px 12px; border-radius: 8px;
-              background: rgba(90,140,255,.10); }
-    .rappel p { margin: 0; font-size: .86rem; line-height: 1.45; }
-    .rappel mat-icon { font-size: 20px; width: 20px; height: 20px; opacity: .7; }
-    .choix { display: grid; gap: 10px; }
-    .opt { text-align: left; padding: 12px 14px; border-radius: 10px; cursor: pointer;
-           border: 1px solid var(--border, #dde); background: var(--surface, #fff); }
-    .opt--on { border-color: var(--primary, #3b6ef5); box-shadow: 0 0 0 2px rgba(59,110,245,.16); }
-    .opt--off { opacity: .45; cursor: not-allowed; }
-    .opt__h { display: flex; align-items: center; gap: 8px; }
-    .opt__r { width: 12px; height: 12px; border-radius: 50%; border: 2px solid var(--border, #bbc); }
-    .opt--on .opt__r { border-color: var(--primary, #3b6ef5); background: var(--primary, #3b6ef5); }
-    .opt__def { font-size: .72rem; color: var(--text-muted, #778); font-style: normal; }
-    .opt__d { margin: 6px 0 0 20px; font-size: .84rem; color: var(--text-muted, #667); }
-    .opt__e { margin: 4px 0 0 20px; font-size: .84rem; font-weight: 600; }
-    .cibles { margin-top: 12px; font-size: .85rem; }
-    .cibles small { display: block; margin-top: 4px; color: var(--text-muted, #778); }
-    .chip { display: inline-block; margin: 0 4px; padding: 2px 8px; border-radius: 999px;
-            background: rgba(90,140,255,.14); font-size: .8rem; }
-    .note { display: block; margin-top: 14px; font-size: .85rem; }
-    .note span { display: block; margin-bottom: 4px; color: var(--text-muted, #667); }
-    .note input { width: 100%; padding: 8px 10px; border-radius: 8px;
-                  border: 1px solid var(--border, #dde); background: transparent; color: inherit; }
-    .reports { margin-top: 14px; font-size: .84rem; }
-    .reports table { width: 100%; border-collapse: collapse; margin-top: 8px; }
-    .reports th, .reports td { padding: 4px 6px; border-bottom: 1px solid var(--border, #eee); }
+    .arb-overlay { position: fixed; inset: 0; z-index: 1000; display: grid; place-items: center;
+                   padding: 24px; background: rgba(11, 18, 32, .5); }
+    .arb { width: min(880px, 100%); max-height: 90vh; display: flex; flex-direction: column;
+           background: var(--surface); border: 1px solid var(--border-strong);
+           border-radius: var(--r-xl); box-shadow: var(--shadow-xl); overflow: hidden; }
+    .num { font-family: var(--font-num); font-variant-numeric: tabular-nums; }
     .r { text-align: right; }
-    .neg { color: #c25; }
-    .mf { display: flex; align-items: center; gap: 8px; margin-top: 18px; }
-    .sp { flex: 1; }
-    .btn { padding: 8px 14px; border-radius: 8px; border: 1px solid var(--border, #dde);
-           background: transparent; cursor: pointer; color: inherit; font-size: .88rem; }
-    .btn--primary { background: var(--primary, #3b6ef5); color: #fff; border-color: transparent; }
-    .btn--ghost { color: #c25; }
-    .btn:disabled { opacity: .5; cursor: not-allowed; }
+    .arb-sp { flex: 1; }
+    .arb-kicker { display: block; font-size: 10.5px; font-weight: 700; letter-spacing: .08em;
+                  text-transform: uppercase; color: var(--text-4); }
+
+    .arb-head { display: flex; align-items: flex-start; gap: 16px; padding: 15px 18px;
+                border-bottom: 1px solid var(--border); }
+    .arb-head__txt { flex: 1; min-width: 0; }
+    .arb-head__t { margin: 0; font-size: 16px; font-weight: 700; }
+    .arb-head__s { margin: 3px 0 0; font-size: 12.5px; color: var(--text-3); }
+    .arb-cout { text-align: right; }
+    .arb-cout__v { display: block; font-family: var(--font-num); font-size: 18px;
+                   font-weight: 600; color: var(--cuivre); }
+    .arb-cout__l { display: block; font-size: 11.5px; color: var(--text-4); }
+    .arb-ic { width: 30px; height: 30px; display: grid; place-items: center; flex: none;
+              border: 1px solid var(--border-strong); border-radius: var(--r-md);
+              background: var(--surface); cursor: pointer; color: var(--text-2); }
+    .arb-ic:hover { background: var(--surface-3); }
+
+    .arb-vide { padding: 34px; text-align: center; color: var(--text-3); font-size: 13px; }
+    .arb-corps { flex: 1; overflow: auto; padding: 15px 18px;
+                 display: flex; flex-direction: column; gap: 12px; }
+
+    .arb-alerte { padding: 9px 12px; border-radius: var(--r-md); font-size: 12.5px;
+                  background: var(--warn-bg); border: 1px solid var(--warn-bd); color: var(--text-2); }
+    .arb-alerte--mini { display: block; margin-top: 6px; }
+    .arb-rappel { margin: 0; padding: 10px 12px; border-radius: var(--r-md);
+                  background: var(--surface-2); border: 1px solid var(--border);
+                  font-size: 12.5px; line-height: 1.55; color: var(--text-2); }
+
+    .arb-choix { display: flex; flex-direction: column; gap: 9px; }
+    .arb-opt { display: flex; align-items: flex-start; gap: 11px; text-align: left;
+               padding: 12px 14px; border: 1px solid var(--border); border-radius: var(--r-lg);
+               background: var(--surface); cursor: pointer; font: inherit; color: inherit; }
+    .arb-opt:hover { border-color: var(--border-strong); }
+    .arb-opt--on { border-color: var(--green-500); border-width: 2px; padding: 11px 13px;
+                   background: var(--green-50); }
+    .arb-opt--off { opacity: .55; cursor: not-allowed; }
+    .arb-opt__r { width: 17px; height: 17px; flex: none; margin-top: 2px;
+                  border-radius: var(--r-pill); border: 2px solid var(--border-strong);
+                  background: var(--surface); }
+    .arb-opt--on .arb-opt__r { border-color: var(--green-600); background: var(--green-600);
+                               box-shadow: inset 0 0 0 2px var(--surface); }
+    .arb-opt__c { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+    .arb-opt__h { display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+                  font-size: 13.5px; }
+    .arb-opt__d { font-size: 12.5px; line-height: 1.55; color: var(--text-2); }
+    .arb-opt__e { font-size: 12.5px; font-weight: 600; color: var(--text); }
+    .arb-opt__why { font-size: 12px; color: var(--warn); background: var(--warn-bg);
+                    border: 1px solid var(--warn-bd); border-radius: var(--r-md); padding: 6px 9px; }
+
+    .arb-cibles { margin-top: 7px; padding-top: 9px; border-top: 1px dashed var(--border-strong);
+                  display: block; font-size: 12.5px; }
+    .arb-cible { display: inline-block; margin: 6px 6px 0 0; padding: 3px 9px;
+                 border-radius: var(--r-pill); background: var(--surface);
+                 border: 1px solid var(--border); }
+    .arb-cibles small { display: block; margin-top: 7px; font-size: 11.5px; color: var(--text-3); }
+
+    .arb-note { display: block; }
+    .arb-note textarea { width: 100%; min-height: 62px; margin-top: 6px; resize: vertical;
+                         padding: 9px 11px; border: 1px solid var(--border-strong);
+                         border-radius: var(--r-md); background: var(--surface);
+                         font: inherit; font-size: 12.5px; color: var(--text); }
+    .arb-note textarea:focus { outline: none; border-color: var(--green-500); }
+
+    .arb-reports__head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap;
+                         margin-bottom: 6px; }
+    .arb-reports__head span:last-child { font-size: 12px; color: var(--text-3); }
+    .arb-tbl { width: 100%; border-collapse: collapse; border: 1px solid var(--border);
+               border-radius: var(--r-md); overflow: hidden; font-size: 12.5px; }
+    .arb-tbl th { text-align: left; padding: 8px 11px; background: var(--surface-2);
+                  border-bottom: 1px solid var(--border); font-size: 11.5px;
+                  font-weight: 600; color: var(--text-2); }
+    .arb-tbl td { padding: 8px 11px; border-bottom: 1px solid var(--border); }
+    .arb-tbl__m { color: var(--text-2); }
+    .arb-tbl tfoot td { background: var(--ok-bg); font-weight: 700; border-bottom: 0;
+                        color: var(--ok); }
+    .arb-neg { color: var(--bad); }
+
+    .arb-pied { display: flex; align-items: center; gap: 9px; padding: 12px 18px;
+                border-top: 1px solid var(--border); background: var(--surface-2); }
+    .arb-retirer { background: var(--surface); color: var(--bad); border-color: var(--bad-bd); }
   `],
 })
 export class ArbitrageSemaineComponent implements OnInit {
@@ -236,6 +303,23 @@ export class ArbitrageSemaineComponent implements OnInit {
     const e = this.etat();
     if (!e || !e.referentielAdopte) return false;
     return code !== 'RELISSER' || e.semainesCibles.length > 0;
+  }
+
+  /** Une option grisée sans raison se lit comme un bug : elle dit toujours pourquoi. */
+  pourquoiIndisponible(code: ChoixArbitrage): string {
+    const e = this.etat();
+    if (!e || !e.referentielAdopte) {
+      return 'Aucun référentiel adopté : la charge d\'un match est inconnue, on ne peut ni la rajouter ni la déplacer.';
+    }
+    if (code === 'RELISSER') {
+      return `La période se termine${e.periodeFin ? ' le ' + new Date(e.periodeFin).toLocaleDateString('fr-FR') : ''} : il n'existe pas de semaine suivante où relisser.`;
+    }
+    return '';
+  }
+
+  /** Un relissage déplace de la charge : la somme doit rester nulle, et se vérifie ici. */
+  sommeReports(): number {
+    return (this.etat()?.reports ?? []).reduce((s, r) => s + r.delta, 0);
   }
 
   /** Effet chiffré d'une branche, en clair — un choix sans conséquence visible n'en est pas un. */

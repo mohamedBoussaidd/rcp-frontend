@@ -7,11 +7,15 @@ import { PredictionService, ChargeEquipe, ChargeSeance, ChargeJoueur, ObjectifHe
   Simulation, SimulationJoueur, ZoneAcwr } from '@core/services/prediction.service';
 import { SeanceService, TypeSeance } from '@core/services/seance.service';
 import { AuthService } from '@core/services/auth.service';
+import { ContexteService } from '@core/services/contexte.service';
+import { SaisonContexteService } from '@core/services/saison-contexte.service';
+import { ObjectifsService, EtatPeriode } from '@core/services/objectifs.service';
 import { couleurTheme } from '@core/services/theme.service';
 import { InfoHintComponent } from '@shared/components/info-hint/info-hint.component';
 import { BriefingCardComponent } from '@shared/components/briefing-card/briefing-card.component';
 import { CouleursTypeService } from '@core/services/couleurs-type.service';
 import { ArbitrageSemaineComponent } from '../objectifs/arbitrage-semaine.component';
+import { BilanPeriodeComponent } from '../objectifs/bilan-periode.component';
 
 /**
  * Scénarios de simulation. Un seul aujourd'hui ; la liste est le point d'extension prévu
@@ -30,13 +34,16 @@ type TriCol = 'distance_totale_m' | 'distance_attendue_m' | 'delta_pct' | 'ratio
   templateUrl: './charge-equipe.component.html',
   styleUrl: './charge-equipe.component.scss',
   imports: [MatIcon, ChartComponent, DecimalPipe, DatePipe, FormsModule, InfoHintComponent,
-            BriefingCardComponent, ArbitrageSemaineComponent],
+            BriefingCardComponent, ArbitrageSemaineComponent, BilanPeriodeComponent],
 })
 export class ChargeEquipeComponent implements OnInit {
 
   private predictionService = inject(PredictionService);
   private seanceService = inject(SeanceService);
   private auth = inject(AuthService);
+  private objectifsService = inject(ObjectifsService);
+  private contexte = inject(ContexteService);
+  private saisonCtx = inject(SaisonContexteService);
   /** Couleurs de type resolues depuis type_seance.couleur (V93), repli historique inclus. */
   private couleursType = inject(CouleursTypeService);
 
@@ -107,6 +114,7 @@ export class ChargeEquipeComponent implements OnInit {
     this.appliquerJours(this.raccourciJours ?? 7);
     this.charger();
     this.chargerObjectif();
+    if (this.moduleObjectifs) this.chargerPeriodeCourante();
     if (this.peutSimuler) {
       this.seanceService.getTypeSeances().subscribe({
         next: t => this.typesSeance = t ?? [],
@@ -323,6 +331,62 @@ export class ChargeEquipeComponent implements OnInit {
     { code: 'distance_28',    libelle: '> 28 km/h',   unite: 'm' },
     { code: 'nb_sprints',     libelle: 'Sprints',     unite: '' },
   ];
+
+  /** Les trois de tête, qui complètent les secondaires quand on demande les 7. */
+  readonly METRIQUES_PRINCIPALES = [
+    { code: 'distance_totale', libelle: 'Distance totale', unite: 'm' },
+    { code: 'distance_19',     libelle: '> 19,8 km/h',     unite: 'm' },
+  ];
+
+  get metriquesDetail(): { code: string; libelle: string; unite: string }[] {
+    return this.objToutesMetriques
+      ? [...this.METRIQUES_PRINCIPALES, ...this.METRIQUES_SECONDAIRES]
+      : this.METRIQUES_SECONDAIRES;
+  }
+
+  /**
+   * Détail déplié, joueur par joueur. Une case globale ouvrait vingt-deux lignes de chips pour
+   * le seul cas qu'on voulait creuser : le chevron cible, la case choisit 4 ou 7 métriques.
+   */
+  private objOuverts = new Set<string>();
+
+  estOuvert(id: string): boolean { return this.objOuverts.has(id); }
+
+  basculerDetail(id: string): void {
+    if (this.objOuverts.has(id)) this.objOuverts.delete(id); else this.objOuverts.add(id);
+  }
+
+  // ── Bilan de période ──
+  // Le bilan vivait uniquement dans l'assistant de configuration : on ne consultait donc jamais
+  // un bilan sans passer par un écran de réglage. Il s'ouvre désormais là où on suit la période.
+  bilanOuvert = false;
+  periodeBilan: EtatPeriode | null = null;
+
+  /**
+   * Période de saison qui couvre aujourd'hui, pour l'équipe du contexte. Le bouton n'apparaît que
+   * si elle porte des objectifs : un bilan sans prescrit ne compare rien.
+   */
+  private chargerPeriodeCourante(): void {
+    this.saisonCtx.charger().subscribe({
+      next: () => {
+        const s = this.saisonCtx.enCours()?.id;
+        const e = this.contexte.equipesActives()[0] ?? this.contexte.equipesDispo()[0]?.id;
+        if (!s || !e) { this.periodeBilan = null; return; }
+        this.objectifsService.etatPeriodes(s, e).subscribe({
+          next: ps => {
+            const auj = new Date().setHours(0, 0, 0, 0);
+            this.periodeBilan = ps.find(p =>
+              p.objectifsDefinis &&
+              !!p.dateDebut && !!p.dateFin &&
+              new Date(p.dateDebut).setHours(0, 0, 0, 0) <= auj &&
+              new Date(p.dateFin).setHours(0, 0, 0, 0) >= auj) ?? null;
+          },
+          error: () => this.periodeBilan = null,
+        });
+      },
+      error: () => this.periodeBilan = null,
+    });
+  }
 
   /** Écart relatif au « Retenu », qui colore la ligne. */
   ecartRetenu(j: ObjectifHebdoJoueur): number | null {
