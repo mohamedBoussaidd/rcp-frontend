@@ -21,6 +21,7 @@ import {
 } from '@core/services/calendrier-contexte.service';
 import { EvenementDialogComponent } from './evenement-dialog/evenement-dialog.component';
 import { CouleursTypeService } from '@core/services/couleurs-type.service';
+import { SaisonContexteService } from '@core/services/saison-contexte.service';
 
 // Les couleurs de type ne vivent plus ici : elles sont résolues pour le CLUB actif par
 // `CouleursTypeService` (surcharge `type_seance_cible.couleur` V94, repli historique inclus).
@@ -120,6 +121,8 @@ export class CalendrierComponent implements OnInit {
   private contexteService = inject(CalendrierContexteService);
   /** Couleurs résolues pour le club actif (surcharge V94, repli historique inclus). */
   private couleursType = inject(CouleursTypeService);
+  /** Saison consultée : fixe la fenêtre dans laquelle le calendrier a des données à montrer. */
+  private saisonContexte = inject(SaisonContexteService);
 
   /** Joueur : calendrier en lecture seule, données scopées via /api/moi (endpoints staff bloqués). */
   get lectureSeule(): boolean { return this.auth.hasRole('JOUEUR'); }
@@ -151,6 +154,9 @@ export class CalendrierComponent implements OnInit {
     // Idempotent : garantit que les couleurs du club sont chargées même si la première
     // tentative (au démarrage de l'application, avant l'authentification) a échoué.
     this.couleursType.charger();
+    // Posé ici et non à la déclaration du champ : `saisonContexte` est injecté plus bas dans la
+    // classe, il vaut encore `undefined` au moment où les initialiseurs de champs s'exécutent.
+    this.ancre = this.ancreInitiale();
     if (!this.lectureSeule) {
       this.seanceService.getTypeSeances().subscribe(t => {
         this.typeSeances = t;
@@ -170,6 +176,28 @@ export class CalendrierComponent implements OnInit {
       const s = seances.find(x => x.id === id);
       if (s) this.editerSeance(s, new MouseEvent('click'));
     });
+  }
+
+  // ══════════ Fenêtre de la saison consultée ══════════
+
+  /**
+   * Où ouvrir le calendrier : sur aujourd'hui en saison courante, sur le DÉBUT de la saison
+   * consultée quand on lit une archive.
+   *
+   * <p>Les listes étant bornées à la fenêtre de la saison, s'ouvrir sur le mois courant en archive
+   * affichait une grille vide — on croyait la saison sans données alors qu'il fallait simplement
+   * remonter un an en arrière.</p>
+   */
+  private ancreInitiale(): Date {
+    const s = this.saisonContexte.saisonActive();
+    if (!s || s.statut === 'EN_COURS') return new Date();
+    return new Date(s.dateDebut + 'T00:00:00');
+  }
+
+  /** Libellé du bouton de retour : « Aujourd'hui » n'a pas de sens dans une saison révolue. */
+  get libelleRetour(): string {
+    const s = this.saisonContexte.saisonActive();
+    return !s || s.statut === 'EN_COURS' ? "Aujourd'hui" : 'Début de saison';
   }
 
   // ══════════ Chargement / période ══════════
@@ -256,7 +284,8 @@ export class CalendrierComponent implements OnInit {
 
   precedent(): void { this.decaler(-1); }
   suivant(): void { this.decaler(1); }
-  aujourdhui(): void { this.ancre = new Date(); this.charger(); }
+  /** « Aujourd'hui » n'existe pas dans une archive : on retombe alors sur le début de la saison. */
+  aujourdhui(): void { this.ancre = this.ancreInitiale(); this.charger(); }
 
   private decaler(sens: number): void {
     const d = new Date(this.ancre);

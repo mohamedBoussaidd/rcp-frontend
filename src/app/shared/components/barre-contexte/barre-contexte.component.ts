@@ -70,6 +70,20 @@ export class BarreContexteComponent implements OnInit {
     this.router.navigate(['/choix-saison']);
   }
 
+  /**
+   * Retour direct à la saison en cours depuis une archive.
+   *
+   * <p>Consulter une saison passée borne TOUTES les listes de l'application sur sa fenêtre de
+   * dates : sans sortie visible, on croit l'app vide alors qu'on lit simplement une année révolue.
+   * Le choix mémorisé n'est pas touché — revenir n'est pas re-répondre au sélecteur.</p>
+   */
+  revenirSaisonEnCours(): void {
+    const enCours = this.saison.enCours();
+    if (!enCours) { this.changerSaison(); return; }
+    this.saison.marquerActive(enCours);
+    this.rechargerVueCourante();
+  }
+
   get estSuperAdmin(): boolean {
     return this.auth.hasRole('SUPER_ADMIN');
   }

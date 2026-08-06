@@ -1,12 +1,26 @@
 @if (saisonVisible) {
-  <button class="context-pill context-pill--saison" (click)="changerSaison()" title="Changer de saison">
-    <mat-icon class="context-pill__chev">event</mat-icon>
+  <!-- En archive, la pill vire à l'ambre : toutes les listes sont bornées sur une saison passée,
+       ça doit se voir en permanence et pas seulement au moment où on la choisit. -->
+  <button class="context-pill context-pill--saison"
+          [class.context-pill--archive]="saison.estArchive()"
+          (click)="changerSaison()"
+          [title]="saison.estArchive() ? 'Saison passée consultée — cliquer pour changer de saison' : 'Changer de saison'">
+    <mat-icon class="context-pill__chev">{{ saison.estArchive() ? 'history' : 'event' }}</mat-icon>
     <span class="context-pill__content">
-      <span class="context-pill__label">Saison</span>
+      <span class="context-pill__label">{{ saison.estArchive() ? 'Saison passée' : 'Saison' }}</span>
       <span class="context-pill__value">{{ saison.saisonActive()!.libelle }}</span>
     </span>
     <mat-icon class="context-pill__chev">expand_more</mat-icon>
   </button>
+
+  @if (saison.estArchive()) {
+    <button class="context-pill context-pill--retour"
+            (click)="revenirSaisonEnCours()"
+            title="Revenir à la saison en cours">
+      <mat-icon class="context-pill__chev">undo</mat-icon>
+      <span class="context-pill__value">Saison en cours</span>
+    </button>
+  }
 }
 
 @if (visible) {

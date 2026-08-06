@@ -13,6 +13,7 @@
         <div class="saison-card__top">
           <span class="badge badge--encours">En cours</span>
           <span class="saison-card__name">{{ s.libelle }}</span>
+          @if (estEntree(s)) { <span class="saison-tag">Vous y êtes</span> }
         </div>
         <div class="saison-card__dates">
           {{ s.dateDebut | date:'dd/MM/yyyy' }} → {{ s.dateFin | date:'dd/MM/yyyy' }}
@@ -34,16 +35,20 @@
     }
 
     @if (cloturees.length) {
-      <div class="choix__section">Saisons précédentes (lecture seule)</div>
+      <div class="choix__section">Saisons précédentes — entrer pour consulter</div>
       <div class="saison-list">
         @for (s of cloturees; track s.id) {
-          <button class="saison-row" (click)="consulter()">
+          <button class="saison-row" [class.saison-row--entree]="estEntree(s)" (click)="consulter(s)">
             <span class="saison-row__name">{{ s.libelle }}</span>
+            @if (estEntree(s)) { <span class="saison-tag">Vous consultez</span> }
             <span class="saison-row__dates">{{ s.dateDebut | date:'yyyy' }}–{{ s.dateFin | date:'yyyy' }}</span>
             <mat-icon>chevron_right</mat-icon>
           </button>
         }
       </div>
+      <button class="link choix__comparer" (click)="comparer()">
+        <mat-icon>compare_arrows</mat-icon> Comparer les saisons entre elles
+      </button>
     }
   }
 </div>

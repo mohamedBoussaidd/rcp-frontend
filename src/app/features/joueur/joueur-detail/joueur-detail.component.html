@@ -664,6 +664,17 @@
         </ng-template>
       </mat-tab>
 
+      <!-- ══ Onglet Objectif de charge (add-on objectifs_performance) ══
+           Rendu paresseux comme les autres onglets à graphe : le composant n'est construit
+           qu'à l'ouverture, et démonté avec l'onglet. -->
+      @if (peutObjectifCharge && joueur) {
+        <mat-tab label="Objectif de charge">
+          <ng-template matTabContent>
+            <app-objectif-charge-joueur [joueurId]="joueur.id" />
+          </ng-template>
+        </mat-tab>
+      }
+
       <!-- ══ Onglet Suivi subjectif (wellness + sRPE) ══ -->
       <mat-tab label="Suivi subjectif">
         <ng-template matTabContent>

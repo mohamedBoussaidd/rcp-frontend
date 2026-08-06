@@ -20,6 +20,7 @@ import { MatTabGroup, MatTab, MatTabContent } from '@angular/material/tabs';
 import { ChartComponent, ApexChart, ApexAxisChartSeries, ApexXAxis, ApexPlotOptions, ApexDataLabels, ApexTooltip, ApexYAxis, ApexFill, ApexStroke, ApexMarkers, ApexAnnotations, ApexLegend } from 'ng-apexcharts';
 import { DecimalPipe, DatePipe } from '@angular/common';
 import { ChargeVueComponent } from '@shared/components/charge-vue/charge-vue.component';
+import { ObjectifChargeJoueurComponent } from '../../performance/objectifs/objectif-charge-joueur.component';
 import { BadgeListeComponent } from '@shared/components/badge/badge-liste.component';
 import { BadgeAssignComponent } from '@shared/components/badge/badge-assign.component';
 
@@ -45,7 +46,8 @@ interface GeneRecente {
     MatTabGroup, MatTab, MatTabContent,
     ChartComponent, DecimalPipe, DatePipe,
     ChargeVueComponent, RouterLink, SuiviIndividuelComponent,
-    BadgeListeComponent, BadgeAssignComponent, InfoHintComponent
+    BadgeListeComponent, BadgeAssignComponent, InfoHintComponent,
+    ObjectifChargeJoueurComponent
   ]
 })
 export class JoueurDetailComponent implements OnInit {
@@ -154,6 +156,14 @@ export class JoueurDetailComponent implements OnInit {
   get peutSuivi(): boolean { return this.auth.has('entretien:read'); }
   /** L'onglet « Compétition » suit le module add-on `stats_competition`. */
   get peutCompetition(): boolean { return this.auth.has('stats:read'); }
+  /**
+   * L'onglet « Objectif de charge » suit l'add-on `objectifs_performance` — pas une permission
+   * de plus : sans le module, la trajectoire n'existe pas, l'onglet n'a rien à montrer.
+   * `predictions:read` reste exigé parce que c'est de la charge d'entraînement.
+   */
+  get peutObjectifCharge(): boolean {
+    return this.auth.hasModule('objectifs_performance') && this.auth.has('predictions:read');
+  }
   /** Fil de vie, objectifs et notes : rattachés au module `suivi_individuel`. */
   get peutSuiviCoach(): boolean { return this.auth.has('suivi_coach:read'); }
   get peutSuiviCoachEcrire(): boolean { return this.auth.has('suivi_coach:write'); }
@@ -166,7 +176,11 @@ export class JoueurDetailComponent implements OnInit {
   get tabLabels(): string[] {
     const labels = ['Profil'];
     if (this.peutCompetition) labels.push('Compétition');
-    labels.push('GPS & Charge', 'Suivi subjectif');
+    labels.push('GPS & Charge');
+    // Juste après GPS & Charge : même sujet, mais une autre échelle de temps — la période de
+    // saison et ses phases, là où GPS & Charge suit une fenêtre de dates libre.
+    if (this.peutObjectifCharge) labels.push('Objectif de charge');
+    labels.push('Suivi subjectif');
     if (this.peutSuiviCoach) labels.push('Fil de vie');
     if (this.peutSuivi) labels.push('Suivi individuel');
     return labels;

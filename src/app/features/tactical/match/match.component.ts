@@ -5,6 +5,7 @@ import { MatIcon } from '@angular/material/icon';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { CdkDrag, CdkDragEnd } from '@angular/cdk/drag-drop';
+import { ActivatedRoute } from '@angular/router';
 import { forkJoin } from 'rxjs';
 import {
   ChargeJoueur, CompoItem, CompoStatut, EtatSanction, FeuilleLigne, JoueurCompoStats, MatchDetail,
@@ -33,6 +34,7 @@ import { FORMATIONS, Formation } from '../schema-editor/schema-formations.data';
 export class MatchComponent implements OnInit {
 
   private service = inject(TechniqueService);
+  private routeCourante = inject(ActivatedRoute);
   private joueurService = inject(JoueurService);
   private dialog = inject(MatDialog);
   private snack = inject(MatSnackBar);
@@ -223,7 +225,13 @@ export class MatchComponent implements OnInit {
     this.panneaux.update(p => ({ ...p, [cle]: !(p[cle] ?? true) }));
   }
 
-  ngOnInit(): void { this.chargerListe(); }
+  ngOnInit(): void {
+    // `?match=<id>` ouvre directement le dossier : c'est ce que suit le lien « Dossier de match »
+    // de la fiche séance, les deux écrans décrivant le même événement depuis V104.
+    const cible = this.routeCourante.snapshot.queryParamMap.get('match');
+    if (cible) { this.ouvrir(cible); return; }
+    this.chargerListe();
+  }
 
   // ════════════════ LISTE ════════════════
 

@@ -22,6 +22,26 @@
   &:hover { border-color: var(--border-strong); background: var(--surface-2); }
 }
 
+/* Consultation d'une saison passée : signal permanent, sinon on prend une archive pour
+   une base vide. L'ambre est la teinte d'avertissement du socle, pas une couleur ad hoc. */
+.context-pill--archive {
+  border-color: var(--warn-bd);
+  background: var(--warn-bg);
+
+  .context-pill__label,
+  .context-pill__value,
+  .context-pill__chev { color: var(--warn); }
+
+  &:hover { border-color: var(--warn); background: var(--warn-bg); }
+}
+
+.context-pill--retour {
+  gap: 5px;
+  padding: 6px 10px;
+
+  .context-pill__value { color: var(--text-2); font-weight: 600; }
+}
+
 .context-pill__crest {
   width: 22px;
   height: 22px;

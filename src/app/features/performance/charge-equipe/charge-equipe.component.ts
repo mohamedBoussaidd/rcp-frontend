@@ -11,6 +11,7 @@ import { couleurTheme } from '@core/services/theme.service';
 import { InfoHintComponent } from '@shared/components/info-hint/info-hint.component';
 import { BriefingCardComponent } from '@shared/components/briefing-card/briefing-card.component';
 import { CouleursTypeService } from '@core/services/couleurs-type.service';
+import { ArbitrageSemaineComponent } from '../objectifs/arbitrage-semaine.component';
 
 /**
  * Scénarios de simulation. Un seul aujourd'hui ; la liste est le point d'extension prévu
@@ -28,7 +29,8 @@ type TriCol = 'distance_totale_m' | 'distance_attendue_m' | 'delta_pct' | 'ratio
   standalone: true,
   templateUrl: './charge-equipe.component.html',
   styleUrl: './charge-equipe.component.scss',
-  imports: [MatIcon, ChartComponent, DecimalPipe, DatePipe, FormsModule, InfoHintComponent, BriefingCardComponent],
+  imports: [MatIcon, ChartComponent, DecimalPipe, DatePipe, FormsModule, InfoHintComponent,
+            BriefingCardComponent, ArbitrageSemaineComponent],
 })
 export class ChargeEquipeComponent implements OnInit {
 
@@ -240,8 +242,109 @@ export class ChargeEquipeComponent implements OnInit {
   }
 
   /** Joueurs triés : ceux qui ont encore de la marge d'abord (reste décroissant), atteints ensuite. */
+  /**
+   * Tri du tableau d'objectif. Par défaut le CUMUL décroissant : la question qu'on se pose le
+   * lundi est « qui a le plus encaissé », pas « qui a le plus grand reste ». Un clic sur l'en-tête
+   * inverse le sens, un clic sur l'autre colonne change de critère en repartant du décroissant.
+   */
+  objTri: 'cumul' | 'reste' = 'cumul';
+  objTriDesc = true;
+
+  trierObj(col: 'cumul' | 'reste'): void {
+    if (this.objTri === col) this.objTriDesc = !this.objTriDesc;
+    else { this.objTri = col; this.objTriDesc = true; }
+    this.objPage = 0;   // changer de tri sans revenir en page 1 donnerait une liste incohérente
+  }
+
   get objJoueursTries(): ObjectifHebdoJoueur[] {
-    return [...(this.objectif?.joueurs ?? [])].sort((a, b) => (b.reste_m ?? -1) - (a.reste_m ?? -1));
+    const sens = this.objTriDesc ? 1 : -1;
+    const val = (j: ObjectifHebdoJoueur) =>
+      this.objTri === 'cumul' ? (j.cumul_m ?? 0) : (j.reste_m ?? -1);
+    return [...(this.objectif?.joueurs ?? [])].sort((a, b) => (val(b) - val(a)) * sens);
+  }
+
+  /**
+   * Add-on « Objectifs de performance ». Le panneau Objectif de la semaine, lui, appartient au
+   * socle prépa physique : il reste ouvert sans le module, mais dépouillé de tout ce que l'add-on
+   * apporte (niveau attendu du poste, vocabulaire Habituel/Attendu/Retenu, prescrit de période,
+   * rattrapage, détail des 7 métriques). Le back coupe la même chose à la source.
+   */
+  get moduleObjectifs(): boolean { return this.auth.hasModule('objectifs_performance'); }
+
+  // ── Semaine à deux matchs ──
+  // Le bandeau ne s'affiche que si la semaine EN PORTE deux : c'est un cas réel du calendrier,
+  // pas une option qu'on va chercher dans un menu.
+  arbitrageOuvert = false;
+
+  get doubleMatch(): boolean {
+    return this.moduleObjectifs && (this.objectif?.semaine?.nb_matchs ?? 0) >= 2;
+  }
+
+  /** Cible d'équipe de la semaine, en mètres : sert à chiffrer les branches dans la modale. */
+  get cibleSemaineM(): number | null {
+    const avecCible = (this.objectif?.joueurs ?? []).filter(j => j.retenu_m);
+    if (!avecCible.length) return null;
+    return Math.round(avecCible.reduce((s, j) => s + (j.retenu_m ?? 0), 0) / avecCible.length);
+  }
+
+  /**
+   * L'information « 2 matchs cette semaine » intéresse tout le staff, mais la décision se prend
+   * sous `objectifs:write` : sans ce droit le bandeau informe, il ne propose pas un bouton qui
+   * finirait en 403.
+   */
+  get peutArbitrer(): boolean { return this.auth.has('objectifs:write'); }
+
+  ouvrirArbitrage(): void { if (this.doubleMatch && this.peutArbitrer) this.arbitrageOuvert = true; }
+
+  /** Après un arbitrage, le panneau doit repartir du serveur : les Retenus ont bougé. */
+  arbitrageEnregistre(): void {
+    this.arbitrageOuvert = false;
+    this.chargerObjectif();
+  }
+
+  /** Libellé de la décision prise, ou null tant qu'aucune ne l'a été. */
+  get libelleArbitrage(): string | null {
+    switch (this.objectif?.semaine?.choix) {
+      case 'ALLEGER':  return 'entraînement allégé';
+      case 'ASSUMER':  return 'charge assumée';
+      case 'RELISSER': return 'relissé sur les semaines suivantes';
+      default: return null;
+    }
+  }
+
+  // ── Affichage des métriques (3 principales + dépliant) ──
+  // Sept jauges d'un coup, personne ne les lit : on montre volume, intensité et exposition, et
+  // le détail reste à un clic pour les cas qu'on creuse.
+  objToutesMetriques = false;
+
+  readonly METRIQUES_SECONDAIRES = [
+    { code: 'distance_15',    libelle: '> 15 km/h',   unite: 'm' },
+    { code: 'distance_24_28', libelle: '24–28 km/h',  unite: 'm' },
+    { code: 'distance_28',    libelle: '> 28 km/h',   unite: 'm' },
+    { code: 'nb_sprints',     libelle: 'Sprints',     unite: '' },
+  ];
+
+  /** Écart relatif au « Retenu », qui colore la ligne. */
+  ecartRetenu(j: ObjectifHebdoJoueur): number | null {
+    if (!j.retenu_m || j.retenu_m <= 0) return null;
+    return Math.round((j.cumul_m - j.retenu_m) / j.retenu_m * 100);
+  }
+
+  tonEcart(pct: number | null): string {
+    if (pct == null) return 'neutral';
+    if (pct >= -5) return 'ok';
+    if (pct >= -20) return 'warn';
+    return 'bad';
+  }
+
+  /** Phrase de rattrapage — la même formulation que dans la fiche joueur. */
+  phraseRattrapage(j: ObjectifHebdoJoueur): string {
+    const n = j.rattrapage_semaines ?? 0;
+    if (!n || !j.attendu_m || j.habituel_m == null) return '';
+    const ecart = Math.round((j.attendu_m - j.habituel_m) / 1000 * 10) / 10;
+    const chemin = (j.rattrapage ?? []).map(v => (v / 1000).toFixed(1)).join(' → ');
+    return `Écart de ${ecart} km au niveau attendu. Non rattrapable en une semaine sans risque — `
+         + `trajectoire proposée : ${chemin} km sur ${n} semaine${n > 1 ? 's' : ''}.`;
   }
 
   // ── Pagination + recherche par nom ──
@@ -260,8 +363,17 @@ export class ChargeEquipeComponent implements OnInit {
     const q = this.objSearch.trim();
     return q ? this.objJoueursTries.filter(j => this.matchNom(j.prenom, j.nom, q)) : this.objJoueursTries;
   }
-  get objNbPages(): number { return this.nbPages(this.objJoueursFiltres.length); }
-  get objJoueursPage(): ObjectifHebdoJoueur[] { return this.page(this.objJoueursFiltres, this.objPage); }
+  // Page plus courte que les autres panneaux : chaque ligne peut se doubler d'une ligne de détail
+  // métriques, et le panneau doit rester lisible sans faire défiler l'écran.
+  readonly TAILLE_PAGE_OBJ = 8;
+  get objNbPages(): number {
+    return Math.max(1, Math.ceil(this.objJoueursFiltres.length / this.TAILLE_PAGE_OBJ));
+  }
+  get objJoueursPage(): ObjectifHebdoJoueur[] {
+    const max = this.objNbPages - 1;
+    const cur = Math.min(Math.max(0, this.objPage), max);
+    return this.objJoueursFiltres.slice(cur * this.TAILLE_PAGE_OBJ, (cur + 1) * this.TAILLE_PAGE_OBJ);
+  }
   objPagePrec(): void { if (this.objPage > 0) this.objPage--; }
   objPageSuiv(): void { if (this.objPage < this.objNbPages - 1) this.objPage++; }
   onObjSearch(): void { this.objPage = 0; }

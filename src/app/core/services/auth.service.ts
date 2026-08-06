@@ -1,8 +1,9 @@
-import { Injectable, inject, signal, effect } from '@angular/core';
+import { Injectable, Injector, inject, signal, effect } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
 import { Observable, tap } from 'rxjs';
 import { ContexteService } from './contexte.service';
+import { SaisonContexteService } from './saison-contexte.service';
 
 export type Role =
   | 'SUPER_ADMIN' | 'PRESIDENT' | 'ENTRAINEUR'
@@ -31,6 +32,9 @@ export class AuthService {
   private http = inject(HttpClient);
   private router = inject(Router);
   private contexte = inject(ContexteService);
+  /** `SaisonContexteService` dépend de ce service : on le résout à l'appel, pas à la construction,
+   *  sinon les deux se réclament mutuellement au démarrage. */
+  private injector = inject(Injector);
 
   private readonly base = '/api/auth';
   private static readonly TOKEN_KEY = 'rcp_token';
@@ -82,6 +86,8 @@ export class AuthService {
     // Purge le contexte de navigation (club/équipes) : sinon le contexte d'un compte précédent
     // (ex. super-admin entré dans un club démo) « fuite » sur la session suivante.
     this.contexte.reinitialiser();
+    // Idem pour la saison : une archive consultée ne doit pas devenir le cadre de la session suivante.
+    this.injector.get(SaisonContexteService).auLogout();
     this.router.navigate(['/login']);
   }
 

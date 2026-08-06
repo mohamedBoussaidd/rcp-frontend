@@ -225,20 +225,54 @@ export interface ChargeEquipe {
   joueurs: ChargeJoueur[];
 }
 
+/** Cumul, norme et priorité d'une métrique secondaire (>15, 24-28, >28, sprints…). */
+export interface MetriqueSuivi {
+  cumul: number;
+  attendu_min: number | null;
+  attendu_max: number | null;
+  retenu: number | null;
+  priorite: 'SECONDAIRE' | 'IMPORTANT' | 'INTOUCHABLE' | null;
+}
+
 export interface ObjectifHebdoJoueur {
   joueur_id: string;
   nom: string;
   prenom: string;
   poste: string;
+  poste_reference?: string | null;
   cumul_m: number;
   cible_ideal_m: number | null;   // suggestion intelligente (A.5)
   cible_min_m: number | null;
   cible_haute_m: number | null;
   plafond_m: number | null;
-  objectif_m: number | null;      // objectif retenu (manuel si défini, sinon la suggestion)
-  source: 'MANUEL' | 'INTELLIGENT' | null;
+  objectif_m: number | null;      // objectif retenu, après plafonnement ACWR
+  source: 'PRESCRIT' | 'MANUEL' | 'INTELLIGENT' | null;
   atteint: boolean | null;
   reste_m: number | null;
+
+  // ── Habituel / Attendu / Retenu ──
+  // Habituel = sa charge chronique (son propre passé) ; Attendu = la norme de son poste au
+  // niveau de l'équipe ; Retenu = ce qu'on lui demande CETTE semaine, entre les deux.
+  habituel_m?: number | null;
+  attendu_m?: number | null;
+  attendu_min_m?: number | null;
+  attendu_max_m?: number | null;
+  retenu_m?: number | null;
+  /** Part d'entraînement = cible moins les matchs de la semaine. Null hors semaine de match. */
+  entrainement_m?: number | null;
+  /** Vrai si l'objectif a dû être ramené sous le plafond d'ACWR : d'où la trajectoire. */
+  bride_acwr?: boolean;
+  ecart_attendu_pct?: number | null;
+  rattrapage_semaines?: number;
+  rattrapage?: number[];
+  phase?: string | null;
+
+  metriques?: Record<string, MetriqueSuivi>;
+  /** Pic de vitesse de la semaine, en % du record personnel (jamais un cumul). */
+  expo_vmax_pct?: number | null;
+  expo_vmax_cible?: number | null;
+  vitesse_max_semaine?: number | null;
+  vitesse_max_record?: number | null;
 }
 
 /** Corps d'une simulation « une séance ». D'autres scénarios auront leur propre requête. */
@@ -317,7 +351,100 @@ export interface ObjectifHebdo {
   nb_atteint: number;
   nb_concernes: number;
   meilleur: { joueur_id: string; nom: string; prenom: string; cumul_m: number } | null;
+  /** Un référentiel est adopté → la colonne « Attendu » a du sens. Sinon elle reste masquée. */
+  referentiel_actif?: boolean;
+  /** Un objectif de période s'applique cette semaine (trajectoire ou cibles par poste). */
+  prescrit_actif?: boolean;
+  phase?: string | null;
+  nb_sous_attendu?: number;
+  nb_rattrapage?: number;
+  /** État « double match » de la semaine lue (add-on). */
+  semaine?: SemaineDoubleMatch;
   joueurs: ObjectifHebdoJoueur[];
+}
+
+/** D'où vient un delta porté par la semaine — un ajustement inexpliqué n'est pas exploitable. */
+export interface OrigineReport {
+  semaine_source: string;
+  choix: 'ALLEGER' | 'ASSUMER' | 'RELISSER';
+  delta: number;
+}
+
+/**
+ * Semaine à plusieurs matchs. `arbitre` distingue « pas encore décidé » de « décidé d'alléger » :
+ * la première situation appelle une action du préparateur, la seconde non.
+ */
+export interface SemaineDoubleMatch {
+  date_lundi: string;
+  nb_matchs: number;
+  dates_matchs: string[];
+  /** Charge d'un match selon le référentiel — null si aucun référentiel adopté. */
+  cout_match_m: number | null;
+  arbitre: boolean;
+  choix: 'ALLEGER' | 'ASSUMER' | 'RELISSER' | null;
+  note: string | null;
+  /** Le calendrier a bougé depuis la décision : le report ne correspond plus. */
+  calendrier_change: boolean;
+  deltas: Record<string, number>;
+  origines: OrigineReport[];
+}
+
+/** Une semaine de la trajectoire d'un joueur (onglet « Objectif de charge » de sa fiche). */
+export interface SemaineTrajectoire {
+  date_lundi: string;
+  no_semaine: number;
+  phase: string | null;
+  habituel_m: number | null;
+  attendu_m: number | null;
+  attendu_min_m: number | null;
+  attendu_max_m: number | null;
+  retenu_m: number | null;
+  realise_m: number;
+  nb_matchs: number;
+  /** Semaine révolue : au-delà, la courbe du réalisé doit s'arrêter, pas retomber à zéro. */
+  passee: boolean;
+  metriques: Record<string, { realise: number; attendu: number | null; retenu: number | null }>;
+}
+
+export interface TrajectoireJoueur {
+  disponible: boolean;
+  erreur?: string;
+  joueur?: { id: string; nom: string; prenom: string; poste: string; poste_reference: string | null };
+  periode?: { id: string; libelle: string; type: string; date_debut: string; date_fin: string };
+  referentiel_actif?: boolean;
+  nb_semaines?: number;
+  nb_semaines_tenues?: number;
+  nb_semaines_evaluees?: number;
+  semaines: SemaineTrajectoire[];
+}
+
+export interface BilanSemaine {
+  date_lundi: string;
+  no_semaine: number;
+  phase: string | null;
+  prescrit_m: number | null;
+  realise_moyen_m: number;
+  ecart_pct: number | null;
+  nb_joueurs: number;
+  nb_atteint: number;
+  nb_matchs: number;
+}
+
+export interface BilanPeriode {
+  disponible: boolean;
+  erreur?: string;
+  periode?: { id: string; libelle: string; type: string; date_debut: string; date_fin: string };
+  terminee?: boolean;
+  referentiel_actif?: boolean;
+  objectif_defini?: boolean;
+  nb_semaines?: number;
+  nb_semaines_evaluees?: number;
+  nb_semaines_tenues?: number;
+  semaines: BilanSemaine[];
+  metriques: { metrique: string; prescrit: number | null; realise: number; ecart_pct: number | null }[];
+  joueurs?: { joueur_id: string; nom: string; prenom: string; poste: string;
+              realise_m: number; prescrit_m: number | null; ecart_pct: number | null;
+              nb_semaines: number }[];
 }
 
 /** Carte briefing IA du préparateur : texte rendu + origine (LLM ou gabarit de repli). */
@@ -410,6 +537,23 @@ export class PredictionService {
   /** Panneau « Objectif de la semaine » (semaine en cours, indépendant du filtre de dates). */
   getObjectifHebdo(): Observable<ObjectifHebdo> {
     return this.http.get<ObjectifHebdo>(`${this.base}/equipe/objectif-hebdo`);
+  }
+
+  /**
+   * Trajectoire d'un joueur sur une période (onglet « Objectif de charge » de sa fiche).
+   * `periodeId` omis → la période qui couvre aujourd'hui.
+   */
+  getTrajectoireJoueur(joueurId: string, periodeId?: string | null): Observable<TrajectoireJoueur> {
+    let params = new HttpParams();
+    if (periodeId) params = params.set('periodeId', periodeId);
+    return this.http.get<TrajectoireJoueur>(
+      `${this.base}/joueur/${joueurId}/objectif-trajectoire`, { params });
+  }
+
+  /** Bilan d'une période : prescrit contre réalisé. Recalculé à chaque appel. */
+  getBilanPeriode(periodeId: string): Observable<BilanPeriode> {
+    return this.http.get<BilanPeriode>(`${this.base}/equipe/bilan-periode`,
+      { params: new HttpParams().set('periodeId', periodeId) });
   }
 
   /** Définit (ou efface si null) l'objectif hebdo de l'équipe active. Distance en mètres. */

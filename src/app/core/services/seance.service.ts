@@ -299,6 +299,8 @@ export interface ResumeSeance {
   groupes: GroupeSeanceDto[];
   groupesAuto: GroupesAuto;
   absents: JoueurRefSeance[];
+  /** Dossier de match lié (V104). Absent si la séance n'est pas un match ou si le module est coupé. */
+  matchId?: string;
 }
 
 // ── Fiche séance version joueur (filtrée serveur, /api/moi) ──

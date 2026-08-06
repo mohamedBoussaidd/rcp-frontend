@@ -78,7 +78,7 @@
   </div>
 
   <div class="nav-droite">
-    <button class="btn-aujourdhui" (click)="aujourdhui()">Aujourd'hui</button>
+    <button class="btn-aujourdhui" (click)="aujourdhui()">{{ libelleRetour }}</button>
     @if (vue === 'calendrier') {
       <div class="seg seg--sousvue">
         <button [class.actif]="sousVue === 'jour'" (click)="choisirSousVue('jour')">Jour</button>

@@ -85,14 +85,18 @@ const ALL_MODULES: NavModule[] = [
   // ── 03 · Performance : préparation physique (+ overview préparateur) ──
   {
     key: 'performance', label: 'Performance', icon: 'fitness_center',
-    link: '/performance', matches: ['/performance', '/vue-seance', '/etat-effectif', '/charge-equipe', '/wellness', '/rpe', '/suivi-subjectif', '/pesees', '/import', '/import-rpe', '/import-hooper', '/methodologie', '/parametres'],
+    link: '/performance', matches: ['/performance', '/vue-seance', '/etat-effectif', '/charge-equipe', '/objectifs', '/wellness', '/rpe', '/suivi-subjectif', '/pesees', '/import', '/import-rpe', '/import-hooper', '/methodologie', '/parametres'],
     roles: ['SUPER_ADMIN', 'PRESIDENT', 'PREPARATEUR', 'MEDICAL'],
     perms: ['pesees:write', 'gps:import'],
-    modulesAny: ['gps', 'prepa_physique', 'wellness', 'pesees'],
+    modulesAny: ['gps', 'prepa_physique', 'wellness', 'pesees', 'objectifs_performance'],
     subnav: [
       { label: 'Vue d\'ensemble',   link: '/performance', roles: ['SUPER_ADMIN', 'PRESIDENT', 'PREPARATEUR', 'MEDICAL'] },
       { label: 'État de l\'effectif', link: '/etat-effectif', module: 'prepa_physique' },
       { label: 'Charge d\'entrainement', link: '/charge-equipe', module: 'gps' },
+      // Configuration des objectifs (référentiel, modèles, périodes). Le SUIVI hebdomadaire reste
+      // dans l'onglet « Objectif » de la charge d'équipe : deux écrans sur la charge de la semaine
+      // finiraient par se contredire.
+      { label: 'Objectifs de performance', link: '/objectifs', perms: ['objectifs:read'], module: 'objectifs_performance' },
       { label: 'Vue séance',        link: '/vue-seance', module: 'gps' },
       // Deux entrées depuis le lot B : le ressenti QUOTIDIEN et la charge PERÇUE par séance
       // ne se lisent pas au même moment ni pour la même question.
@@ -168,6 +172,7 @@ const ALL_MODULES: NavModule[] = [
       { label: 'Maintenance',    link: '/admin/maintenance', roles: ['SUPER_ADMIN'] },
       { label: 'Exercices globaux', link: '/admin/exercices-globaux', roles: ['SUPER_ADMIN'] },
       { label: 'Schémas globaux', link: '/admin/schemas-globaux', roles: ['SUPER_ADMIN'] },
+      { label: 'Référentiels', link: '/admin/referentiels', roles: ['SUPER_ADMIN'] },
       { label: 'Badges', link: '/admin/badges', roles: ['SUPER_ADMIN'] },
       { label: 'Mon club',       link: '/mon-club',    roles: ['PRESIDENT', 'ENTRAINEUR', 'ADMINISTRATIF'], perms: ['club:manage', 'membres:manage'] },
     ],

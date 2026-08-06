@@ -171,78 +171,216 @@
     <app-briefing-card />
     @if (objectif) {
       <section class="pf-card oh-panel">
-        <div class="oh-top">
-          <div class="oh-title">Objectif de la semaine
-            <app-info-hint titre="Objectif de la semaine"
-              texte="La suggestion intelligente est la charge cible personnalisée de chaque joueur : la moyenne de ses dernières semaines complètes (lundi→dimanche) × ~1.05, dans les bornes de sécurité. Elle est figée toute la semaine et se recalcule chaque lundi. Ton objectif d'équipe est le seuil que tu fixes pour tous ; laisse-le vide pour t'appuyer sur la suggestion. Ce panneau montre toujours la semaine en cours, quel que soit le filtre de dates. La suggestion se fiabilise à partir de 4 semaines de données."></app-info-hint>
+        <!-- Bandeau compact : trois chiffres sur une ligne, jamais un pavé.
+             Habituel = son propre passé · Attendu = la norme de son poste · Retenu = ce qu'on
+             lui demande cette semaine, entre les deux. -->
+        <div class="oh-bar">
+          <div class="oh-bar__t">
+            Objectif de la semaine
+            @if (objectif.phase) { <span class="oh-phase">{{ objectif.phase }}</span> }
+            @if (moduleObjectifs) {
+              <app-info-hint titre="Habituel / Attendu / Retenu"
+                texte="Habituel : la charge chronique du joueur, sa propre moyenne des 4 dernières semaines. Attendu : ce qu'un joueur de son poste fait normalement au niveau du référentiel adopté par l'équipe — c'est la seule référence extérieure au joueur. Retenu : ce qu'on lui demande cette semaine, c'est-à-dire l'objectif prescrit de la période s'il existe, sinon votre objectif d'équipe, sinon la suggestion intelligente — toujours ramené sous le plafond de sécurité de l'ACWR. Ce panneau montre la semaine en cours, quel que soit le filtre de dates."></app-info-hint>
+            } @else {
+              <app-info-hint titre="Objectif de la semaine"
+                texte="La suggestion intelligente est la charge cible personnalisée de chaque joueur : la moyenne de ses dernières semaines complètes (lundi→dimanche) × ~1.05, dans les bornes de sécurité. Elle est figée toute la semaine et se recalcule chaque lundi. Ton objectif d'équipe est le seuil que tu fixes pour tous ; laisse-le vide pour t'appuyer sur la suggestion. Ce panneau montre toujours la semaine en cours, quel que soit le filtre de dates. La suggestion se fiabilise à partir de 4 semaines de données."></app-info-hint>
+            }
           </div>
-          <div class="oh-objs">
-            <div class="oh-obj">
-              <span class="oh-obj__label">🧠 Suggestion intelligente</span>
-              <span class="oh-obj__val">{{ objectif.suggestion_moyenne_m != null ? (objectif.suggestion_moyenne_m / 1000 | number:'1.1-1') + ' km' : '—' }}</span>
-            </div>
-            <div class="oh-obj">
-              <span class="oh-obj__label">🎯 Ton objectif</span>
+
+          <div class="oh-bar__stats">
+            <span class="oh-stat" [class.oh-stat--low]="objectif.nb_concernes > 0 && objectif.nb_atteint / objectif.nb_concernes < 0.5">
+              <b>{{ objectif.nb_atteint }}/{{ objectif.nb_concernes }}</b> dans l'objectif
+            </span>
+            @if (objectif.referentiel_actif && objectif.nb_sous_attendu) {
+              <span class="oh-stat oh-stat--warn"><b>{{ objectif.nb_sous_attendu }}</b> sous le niveau attendu</span>
+            }
+            @if (objectif.nb_rattrapage) {
+              <span class="oh-stat oh-stat--warn"><b>{{ objectif.nb_rattrapage }}</b> en rattrapage</span>
+            }
+            <span class="oh-src">
+              @switch (objectif.prescrit_actif ? 'PRESCRIT' : (objectif.objectif_distance_m != null ? 'MANUEL' : 'AUTO')) {
+                @case ('PRESCRIT') { objectif prescrit par la période }
+                @case ('MANUEL') { objectif d'équipe : {{ objectif.objectif_distance_m! / 1000 | number:'1.1-1' }} km }
+                @default { suggestion intelligente }
+              }
+            </span>
+            @if (!objectif.multi_equipes && !objectif.prescrit_actif) {
               @if (!editObjectif) {
-                <span class="oh-obj__val">{{ objectif.objectif_distance_m != null ? (objectif.objectif_distance_m / 1000 | number:'1.1-1') + ' km' : 'non défini' }}</span>
-                @if (!objectif.multi_equipes) {
-                  <button class="oh-btn" (click)="ouvrirEditObjectif()">{{ objectif.objectif_distance_m != null ? 'Modifier' : "Définir l'objectif" }}</button>
-                }
+                <button class="oh-btn" (click)="ouvrirEditObjectif()">{{ objectif.objectif_distance_m != null ? 'Modifier' : 'Définir' }}</button>
               } @else {
-                <input type="number" class="oh-input" [(ngModel)]="objectifInputKm" min="0" step="0.5" placeholder="km"><span class="oh-unit">km</span>
-                <button class="oh-btn oh-btn--primary" (click)="enregistrerObjectif()" [disabled]="majObjLoading">Enregistrer</button>
+                <input type="number" class="oh-input" [(ngModel)]="objectifInputKm" min="0" step="0.5" placeholder="km">
+                <button class="oh-btn oh-btn--primary" (click)="enregistrerObjectif()" [disabled]="majObjLoading">OK</button>
                 <button class="oh-btn" (click)="annulerEditObjectif()">Annuler</button>
                 @if (objectif.objectif_distance_m != null) {
                   <button class="oh-btn oh-btn--ghost" (click)="effacerObjectif()" [disabled]="majObjLoading">Effacer</button>
                 }
               }
-            </div>
+            }
           </div>
         </div>
 
+        <!-- Les renvois vers le référentiel n'ont de sens que si le club a l'add-on : sans lui,
+             on ne montre ni une colonne absente ni un écran qu'il n'a pas. -->
         @if (objectif.multi_equipes) {
-          <div class="oh-note">Sélectionne une seule équipe (contexte) pour définir un objectif d'équipe.</div>
+          <div class="oh-note">Sélectionne une seule équipe pour définir un objectif d'équipe{{ moduleObjectifs ? ' et lire la colonne « Attendu »' : '' }}.</div>
+        } @else if (moduleObjectifs && !objectif.referentiel_actif) {
+          <div class="oh-note">Aucun référentiel adopté : la colonne « Attendu » reste masquée. Il se choisit dans Performance › Objectifs de performance.</div>
+        }
+
+        <!-- Semaine à deux matchs : la cible hebdo INCLUT les matchs, donc l'entraînement
+             disponible n'est pas la cible. Le bandeau appelle une décision tant qu'elle n'est
+             pas prise, puis rappelle laquelle. -->
+        @if (doubleMatch) {
+          <div class="oh-dm" [class.oh-dm--todo]="!objectif.semaine!.arbitre">
+            <mat-icon>sports_soccer</mat-icon>
+            <div class="oh-dm__txt">
+              <strong>{{ objectif.semaine!.nb_matchs }} matchs cette semaine.</strong>
+              @if (objectif.semaine!.cout_match_m) {
+                Ils représentent ~{{ (objectif.semaine!.cout_match_m! * objectif.semaine!.nb_matchs) / 1000 | number:'1.1-1' }} km
+                de la cible hebdomadaire.
+              }
+              @if (libelleArbitrage) { <em>Décision : {{ libelleArbitrage }}.</em> }
+              @else { <em>Aucune décision prise — la cible affichée ne distingue pas match et entraînement.</em> }
+              @if (objectif.semaine!.calendrier_change) {
+                <span class="oh-dm__warn">Le calendrier a changé depuis la décision : à revoir.</span>
+              }
+            </div>
+            @if (peutArbitrer) {
+              <button class="oh-btn" (click)="ouvrirArbitrage()">
+                {{ objectif.semaine!.arbitre ? 'Revoir' : 'Arbitrer' }}
+              </button>
+            }
+          </div>
+        }
+
+        <!-- Origine des ajustements portés par cette semaine : un delta sans origine n'est pas
+             exploitable (« +2 km » venus d'où ?). -->
+        @if (moduleObjectifs && objectif.semaine?.origines?.length) {
+          <div class="oh-note">
+            @for (o of objectif.semaine!.origines; track o.semaine_source) {
+              <span class="oh-orig">
+                {{ o.delta > 0 ? '+' : '' }}{{ o.delta / 1000 | number:'1.1-1' }} km
+                {{ o.delta > 0 ? 'reportés de' : 'relissés depuis' }} la semaine du
+                {{ o.semaine_source | date:'dd/MM' }}
+              </span>
+            }
+          </div>
         }
 
         @if (objectif.suggestion_provisoire) {
           <div class="oh-note oh-note--warn">⏳ Suggestion provisoire — basée sur {{ objectif.suggestion_semaines }} semaine{{ objectif.suggestion_semaines === 1 ? '' : 's' }} de données. Elle se fiabilise à partir de 4 semaines de GPS.</div>
         }
 
-        <div class="oh-cardline">
-          <span class="oh-count" [class.oh-count--low]="objectif.nb_concernes > 0 && objectif.nb_atteint / objectif.nb_concernes < 0.5">{{ objectif.nb_atteint }} / {{ objectif.nb_concernes }}</span>
-          <span class="oh-count__label">joueurs ont atteint l'objectif cette semaine</span>
-          @if (objectif.meilleur) {
-            <span class="oh-best">· meilleur : {{ objectif.meilleur.prenom }} {{ objectif.meilleur.nom }} ({{ objectif.meilleur.cumul_m / 1000 | number:'1.1-1' }} km)</span>
-          }
-        </div>
-
         @if (objJoueursTries.length) {
           <div class="oh-toolbar">
             <input type="search" class="ce-search" [(ngModel)]="objSearch" (ngModelChange)="onObjSearch()" placeholder="Rechercher un joueur…">
           </div>
           <div class="oh-tablewrap">
-            <table class="oh-table">
+            <table class="oh-table oh-table--hart">
               <thead>
-                <tr><th>Joueur</th><th>Cumul</th><th>🧠 Intelligent</th><th>🎯 Objectif</th><th>Reste</th><th></th></tr>
+                <!-- Le vocabulaire Habituel / Attendu / Retenu appartient à l'add-on : sans lui,
+                     le tableau reprend ses colonnes nues. -->
+                @if (moduleObjectifs) {
+                  <tr class="oh-groupes">
+                    <th></th>
+                    <th class="grp grp--hab">Habituel</th>
+                    @if (objectif.referentiel_actif) { <th class="grp grp--att">Attendu</th> }
+                    <th class="grp grp--ret" colspan="2">Retenu</th>
+                    <th colspan="2"></th>
+                  </tr>
+                }
+                <tr>
+                  <th>Joueur</th>
+                  <th class="oh-muted">4 dern. sem.</th>
+                  @if (objectif.referentiel_actif) { <th class="oh-muted">niveau du poste</th> }
+                  <th class="oh-sort" (click)="trierObj('cumul')">
+                    Cumul @if (objTri === 'cumul') { <span class="oh-arrow">{{ objTriDesc ? '▼' : '▲' }}</span> }
+                  </th>
+                  <th>Cible</th>
+                  <th class="oh-sort" (click)="trierObj('reste')">
+                    Reste @if (objTri === 'reste') { <span class="oh-arrow">{{ objTriDesc ? '▼' : '▲' }}</span> }
+                  </th>
+                  <th>État</th>
+                </tr>
               </thead>
               <tbody>
                 @for (j of objJoueursPage; track j.joueur_id) {
                   <tr>
-                    <td class="oh-name">{{ j.prenom }} {{ j.nom }}</td>
-                    <td>{{ j.cumul_m / 1000 | number:'1.1-1' }} km</td>
-                    <td class="oh-muted">{{ j.cible_ideal_m != null ? (j.cible_ideal_m / 1000 | number:'1.1-1') + ' km' : '—' }}</td>
-                    <td>{{ j.objectif_m != null ? (j.objectif_m / 1000 | number:'1.1-1') + ' km' : '—' }}</td>
+                    <td class="oh-name">
+                      {{ j.prenom }} {{ j.nom }}
+                      <!-- Exposition à la vitesse max = 7e métrique du référentiel : add-on. -->
+                      @if (moduleObjectifs && j.expo_vmax_pct != null) {
+                        <span class="oh-expo"
+                              [class.oh-expo--ok]="j.expo_vmax_pct >= (j.expo_vmax_cible ?? 90)"
+                              [title]="'Pic de la semaine : ' + j.vitesse_max_semaine + ' km/h — record : ' + j.vitesse_max_record + ' km/h'">
+                          V {{ j.expo_vmax_pct }}%
+                        </span>
+                      }
+                    </td>
+                    <td class="oh-muted">{{ j.habituel_m != null ? (j.habituel_m / 1000 | number:'1.1-1') + ' km' : '—' }}</td>
+                    @if (objectif.referentiel_actif) {
+                      <td class="oh-att">
+                        @if (j.attendu_min_m != null) {
+                          {{ j.attendu_min_m / 1000 | number:'1.0-0' }}–{{ (j.attendu_max_m ?? j.attendu_min_m) / 1000 | number:'1.0-0' }} km
+                          @if (j.ecart_attendu_pct != null && j.ecart_attendu_pct < -5) {
+                            <span class="oh-ecart">{{ j.ecart_attendu_pct }} %</span>
+                          }
+                        } @else { <span class="oh-muted">—</span> }
+                      </td>
+                    }
+                    <td class="oh-cumul" [class]="'ton-' + tonEcart(ecartRetenu(j))">
+                      {{ j.cumul_m / 1000 | number:'1.1-1' }} km
+                    </td>
+                    <td>
+                      {{ j.retenu_m != null ? (j.retenu_m / 1000 | number:'1.1-1') + ' km' : '—' }}
+                      @if (j.bride_acwr) { <span class="oh-bride" title="Ramené sous le plafond de sécurité de l'ACWR">plafonné</span> }
+                      <!-- Ce que la semaine laisse VRAIMENT pour l'entraînement, une fois les
+                           matchs retirés de la cible. C'est le chiffre qu'on planifie. -->
+                      @if (moduleObjectifs && j.entrainement_m != null) {
+                        <small class="oh-entr" title="Cible de la semaine moins les matchs : ce qu'il reste à programmer en entraînement">
+                          dont entr. {{ j.entrainement_m / 1000 | number:'1.1-1' }} km
+                        </small>
+                      }
+                    </td>
                     <td>{{ j.reste_m != null && j.reste_m > 0 ? (j.reste_m / 1000 | number:'1.1-1') + ' km' : (j.atteint ? '✓' : '—') }}</td>
                     <td>
-                      @if (j.atteint === true) { <span class="oh-badge oh-badge--ok">atteint</span> }
+                      @if (j.rattrapage_semaines) {
+                        <span class="oh-badge oh-badge--warn" [title]="phraseRattrapage(j)">
+                          rattrapage {{ j.rattrapage_semaines }} sem.
+                        </span>
+                      } @else if (j.atteint === true) { <span class="oh-badge oh-badge--ok">atteint</span> }
                       @else if (j.atteint === false) { <span class="oh-badge oh-badge--warn">en cours</span> }
                       @else { <span class="oh-badge oh-badge--neutral">pas de cible</span> }
                     </td>
                   </tr>
+
+                  <!-- Détail replié : les 4 métriques secondaires ne sont que des sous-ensembles
+                       des trois de tête, on les ouvre quand on creuse un cas. -->
+                  @if (moduleObjectifs && objToutesMetriques && j.metriques) {
+                    <tr class="oh-detail">
+                      <td [attr.colspan]="objectif.referentiel_actif ? 7 : 6">
+                        @for (m of METRIQUES_SECONDAIRES; track m.code) {
+                          <span class="oh-chip">
+                            {{ m.libelle }} :
+                            <b>{{ j.metriques[m.code].cumul | number:'1.0-0' }}{{ m.unite }}</b>
+                            @if (j.metriques[m.code].attendu_min != null) {
+                              <i>/ {{ j.metriques[m.code].attendu_min | number:'1.0-0' }}–{{ j.metriques[m.code].attendu_max | number:'1.0-0' }}</i>
+                            }
+                            @if (j.metriques[m.code].priorite === 'INTOUCHABLE') { <em class="oh-prio">intouchable</em> }
+                          </span>
+                        }
+                      </td>
+                    </tr>
+                  }
                 }
               </tbody>
             </table>
           </div>
+          @if (moduleObjectifs) {
+            <label class="oh-chk">
+              <input type="checkbox" [(ngModel)]="objToutesMetriques"> Afficher le détail des 7 métriques
+            </label>
+          }
           @if (objNbPages > 1) {
             <div class="ce-pager">
               <button (click)="objPagePrec()" [disabled]="objPage === 0">‹</button>
@@ -252,6 +390,14 @@
           }
         }
       </section>
+
+      @if (arbitrageOuvert && objectif.semaine) {
+        <app-arbitrage-semaine
+          [dateLundi]="objectif.semaine.date_lundi"
+          [cibleSemaineM]="cibleSemaineM"
+          (fermer)="arbitrageOuvert = false"
+          (arbitre)="arbitrageEnregistre()" />
+      }
     } @else {
       <p class="gps-empty">Chargement…</p>
     }

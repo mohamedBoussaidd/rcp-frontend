@@ -273,3 +273,60 @@
   &.tone-warn { background:var(--t-warn-bg); color:var(--t-warn-fg); border-color:var(--t-warn-bd); }
   &.tone-alert { background:var(--t-alert-bg); color:var(--t-alert-fg); border-color:var(--t-alert-bd); }
 }
+
+/* ═══ Onglet Objectif — Habituel / Attendu / Retenu (lot 3) ═══
+   Bandeau volontairement sur UNE ligne : le panneau doit tenir sans faire défiler l'écran, et
+   les trois chiffres qui comptent se lisent d'un coup d'œil. */
+.oh-bar { display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; gap:10px 20px; }
+.oh-bar__t { font-weight:800; font-size:15px; color:#0f172a; display:flex; align-items:center; gap:6px; }
+.oh-bar__stats { display:flex; flex-wrap:wrap; align-items:center; gap:8px 14px; font-size:12.5px; }
+.oh-phase { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.04em;
+            padding:2px 7px; border-radius:999px; background:#eef2ff; color:#4338ca; }
+.oh-stat { color:#334155; }
+.oh-stat b { font-size:16px; font-weight:800; color:#16a34a; }
+.oh-stat--low b { color:#ef4444; }
+.oh-stat--warn b { color:#b45309; }
+.oh-src { color:#64748b; font-style:italic; }
+
+/* Bandeau de groupes : trois blocs nommés, jamais mélangés. */
+.oh-groupes th { padding-bottom:2px; border:0; }
+.oh-groupes .grp { font-size:10.5px; text-transform:uppercase; letter-spacing:.06em; font-weight:800;
+                   text-align:center; border-radius:5px 5px 0 0; }
+.grp--hab { background:#f1f5f9; color:#475569; }
+.grp--att { background:#fef3c7; color:#92400e; }
+.grp--ret { background:#dcfce7; color:#166534; }
+
+.oh-sort { cursor:pointer; user-select:none; white-space:nowrap; }
+.oh-sort:hover { color:#4338ca; }
+.oh-arrow { font-size:9px; margin-left:2px; }
+
+.oh-att { white-space:nowrap; }
+.oh-ecart { margin-left:5px; font-size:11px; font-weight:700; color:#b45309; }
+.oh-cumul { font-weight:700; font-variant-numeric:tabular-nums; }
+.oh-cumul.ton-ok   { color:#15803d; }
+.oh-cumul.ton-warn { color:#b45309; }
+.oh-cumul.ton-bad  { color:#dc2626; }
+.oh-bride { margin-left:5px; font-size:10px; padding:1px 5px; border-radius:4px;
+            background:#fef3c7; color:#92400e; font-weight:700; }
+.oh-expo { margin-left:6px; font-size:10.5px; padding:1px 5px; border-radius:4px;
+           background:#f1f5f9; color:#64748b; font-weight:700; }
+.oh-expo--ok { background:#dcfce7; color:#15803d; }
+
+.oh-detail td { background:#f8fafc; padding-top:4px; padding-bottom:6px; }
+.oh-chip { display:inline-block; margin-right:14px; font-size:11.5px; color:#475569; }
+.oh-chip i { color:#94a3b8; font-style:normal; }
+.oh-prio { margin-left:4px; font-size:10px; color:#15803d; font-style:normal; font-weight:700; }
+.oh-chk { display:inline-flex; align-items:center; gap:6px; margin-top:8px; font-size:12px; color:#64748b; }
+
+/* ── Semaine à deux matchs ──
+   Tant qu'aucune décision n'est prise, le bandeau est en attente (ambre) : il appelle une action.
+   Une fois arbitré il redevient neutre — il informe, il ne réclame plus. */
+.oh-dm { display:flex; align-items:center; gap:10px; margin-top:10px; padding:8px 12px;
+         border-radius:8px; background:#f1f5f9; border:1px solid #e2e8f0; font-size:12.5px; }
+.oh-dm--todo { background:#fffbeb; border-color:#fde68a; }
+.oh-dm mat-icon { font-size:18px; width:18px; height:18px; color:#64748b; }
+.oh-dm__txt { flex:1; line-height:1.45; color:#475569; }
+.oh-dm__txt em { font-style:normal; color:#64748b; }
+.oh-dm__warn { display:block; margin-top:2px; color:#b45309; font-weight:600; }
+.oh-orig { display:inline-block; margin-right:12px; font-style:normal; }
+.oh-entr { display:block; margin-top:1px; font-size:10.5px; color:#64748b; font-weight:600; }

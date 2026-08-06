@@ -65,6 +65,13 @@ export const routes: Routes = [
     path: 'admin/schemas-globaux', canActivate: [authGuard, roleGuard], data: { roles: ['SUPER_ADMIN'] },
     loadComponent: () => import('./features/admin/schemas-globaux/schemas-globaux.component').then(m => m.SchemasGlobauxComponent)
   },
+  // Catalogue des référentiels de charge (norme par niveau et par poste) : le super-admin publie,
+  // les clubs adoptent ou dupliquent. Un référentiel publié est immuable — les corrections passent
+  // par une nouvelle version, et les clubs restent épinglés sur la leur.
+  {
+    path: 'admin/referentiels', canActivate: [authGuard, roleGuard], data: { roles: ['SUPER_ADMIN'] },
+    loadComponent: () => import('./features/admin/referentiels/referentiels-admin.component').then(m => m.ReferentielsAdminComponent)
+  },
   // Fiche d'exercice GLOBAL (super-admin) : même formulaire que les clubs, en mode `global`
   // (création via /api/exercices/globaux, retour vers l'écran des exercices globaux).
   {
@@ -205,6 +212,14 @@ export const routes: Routes = [
   {
     path: 'charge-equipe', canActivate: [authGuard, roleGuard, contexteGuard, saisonGuard, moduleGuard], data: { roles: STAFF_PHYSIQUE, perms: PERMS_GPS, module: 'gps' },
     loadComponent: () => import('./features/performance/charge-equipe/charge-equipe.component').then(m => m.ChargeEquipeComponent)
+  },
+  // Configuration des objectifs de performance : référentiel adopté, modèles réutilisables et
+  // objectifs posés sur les périodes. Le SUIVI hebdomadaire, lui, reste dans l'onglet « Objectif »
+  // de charge-equipe — qui traitait déjà le sujet et qu'on enrichit plutôt que de le doubler.
+  {
+    path: 'objectifs', canActivate: [authGuard, roleGuard, contexteGuard, saisonGuard, moduleGuard],
+    data: { roles: STAFF_PHYSIQUE, perms: ['objectifs:read'], module: 'objectifs_performance' },
+    loadComponent: () => import('./features/performance/objectifs/objectifs-hub.component').then(m => m.ObjectifsHubComponent)
   },
   {
     path: 'presence', canActivate: [authGuard, roleGuard, contexteGuard, saisonGuard, moduleGuard],

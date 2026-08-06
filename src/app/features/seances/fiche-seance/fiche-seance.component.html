@@ -83,9 +83,18 @@
             </div>
           </div>
         </div>
-        @if (r.perimatch.libelle) {
-          <span class="jbadge">{{ r.perimatch.libelle }}</span>
-        }
+        <div class="sheet__head-actions">
+          @if (r.perimatch.libelle) {
+            <span class="jbadge">{{ r.perimatch.libelle }}</span>
+          }
+          <!-- Saut vers le volet tactique du même événement : convocation, compo, feuille de match.
+               N'apparaît que si la séance porte un dossier ET que le club a le module Match. -->
+          @if (r.matchId) {
+            <button class="btn-ghost" (click)="ouvrirDossierMatch(r.matchId!)">
+              ⚽ Dossier de match
+            </button>
+          }
+        </div>
       </div>
 
       <!-- Bandeau durées / effectif -->

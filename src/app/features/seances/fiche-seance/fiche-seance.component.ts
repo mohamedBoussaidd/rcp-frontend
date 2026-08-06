@@ -127,6 +127,20 @@ export class FicheSeanceComponent implements OnInit {
     });
   }
 
+  /**
+   * Ouvre le volet tactique du même événement (convocation, compo, feuille de match).
+   *
+   * <p>Le module Match vit dans un onglet de `/planning-technique` et n'a pas de route par match :
+   * on passe donc par `?section=match&match=<id>`, que le composant lit à l'initialisation. Le
+   * bouton n'apparaît que si le serveur a renvoyé un `matchId`, donc jamais quand le club n'a pas
+   * le module.</p>
+   */
+  ouvrirDossierMatch(matchId: string): void {
+    this.router.navigate(['/planning-technique'], {
+      queryParams: { section: 'match', match: matchId },
+    });
+  }
+
   imprimer(): void { window.print(); }
 
   retour(): void { this.router.navigate(['/calendrier']); }

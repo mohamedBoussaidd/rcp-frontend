@@ -8,6 +8,9 @@ import {
   EffectifMembre, ReconductionProposition,
 } from '@core/services/saison.service';
 import { JoueurService, Joueur } from '@core/services/joueur.service';
+import { AuthService } from '@core/services/auth.service';
+import { SaisonContexteService } from '@core/services/saison-contexte.service';
+import { ObjectifsAssistantComponent } from '../performance/objectifs/objectifs-assistant.component';
 
 /**
  * Gestion des saisons d'une équipe : ouverture (clôture auto de la précédente),
@@ -19,12 +22,34 @@ import { JoueurService, Joueur } from '@core/services/joueur.service';
   standalone: true,
   templateUrl: './saisons.component.html',
   styleUrl: './saisons.component.scss',
-  imports: [DatePipe, FormsModule, MatIcon],
+  imports: [DatePipe, FormsModule, MatIcon, ObjectifsAssistantComponent],
 })
 export class SaisonsComponent implements OnInit {
 
   private saisonService = inject(SaisonService);
   private joueurService = inject(JoueurService);
+  private auth = inject(AuthService);
+  private saisonContexte = inject(SaisonContexteService);
+
+  // ── Objectifs de performance (module add-on) ──
+  // La configuration vit dans une modale partagée avec l'écran Performance : une seule pièce,
+  // deux portes. Ici on entre directement à l'étape des périodes, sur celle qu'on regarde.
+  assistantObjectifs = false;
+  periodeCibleObjectifs: string | null = null;
+
+  /** Le bouton n'a de sens que si le staff a le droit de fixer des objectifs. */
+  get peutGererObjectifs(): boolean { return this.auth.has('objectifs:read'); }
+
+  ouvrirObjectifs(p: Periode): void {
+    if (!p.id) return;   // une période non encore enregistrée n'a pas d'identité côté serveur
+    this.periodeCibleObjectifs = p.id;
+    this.assistantObjectifs = true;
+  }
+
+  fermerObjectifs(): void {
+    this.assistantObjectifs = false;
+    this.periodeCibleObjectifs = null;
+  }
 
   saisons: Saison[] = [];
   joueurs: Joueur[] = [];
@@ -87,6 +112,22 @@ export class SaisonsComponent implements OnInit {
     });
   }
 
+  /**
+   * Répercute une ouverture / clôture / réouverture / suppression sur le contexte de saison partagé.
+   *
+   * <p>Cet écran ne rechargeait que sa propre liste : le reste de l'application (sélecteur, bandeau,
+   * en-tête `X-Contexte-Saison`) restait sur l'état d'avant, jusqu'à continuer de borner les données
+   * sur une saison qu'on venait de clôturer. On invalide donc le cache, on relit le serveur, puis on
+   * recale la saison entrée sur la nouvelle EN_COURS — rouvrir une saison, c'est vouloir y travailler.</p>
+   */
+  private propagerAuContexte(): void {
+    this.saisonContexte.invalider();
+    this.saisonContexte.charger(true).subscribe({
+      next: () => this.saisonContexte.resynchroniserSurEnCours(),
+      error: () => {},
+    });
+  }
+
   // ── Sélection ──
   selectionner(s: Saison): void {
     this.selected = s;
@@ -109,6 +150,7 @@ export class SaisonsComponent implements OnInit {
         this.showForm = false;
         this.form = this.formVide();
         this.load();
+        this.propagerAuContexte();
         this.selectionner(s);
       },
       error: e => (this.erreur = e?.error?.message ?? 'Ouverture impossible.'),
@@ -117,14 +159,43 @@ export class SaisonsComponent implements OnInit {
 
   cloturer(s: Saison): void {
     this.saisonService.cloturer(s.id).subscribe({
-      next: () => { this.message = `Saison « ${s.libelle} » clôturée.`; this.load(); },
+      next: () => {
+        this.message = `Saison « ${s.libelle} » clôturée.`;
+        this.load();
+        this.propagerAuContexte();
+      },
       error: () => (this.erreur = 'Clôture impossible.'),
+    });
+  }
+
+  /**
+   * Repasse une saison clôturée en EN_COURS — une clôture est un geste réversible.
+   *
+   * <p>Le backend s'en chargeait déjà (il clôture au passage l'autre saison EN_COURS du club, une
+   * seule à la fois), mais rien ne l'exposait : une clôture par erreur était définitive côté
+   * interface. Les dates ne bougent pas, donc aucun risque de rouvrir un chevauchement.</p>
+   */
+  rouvrir(s: Saison): void {
+    this.saisonService.update(s.id, {
+      libelle: s.libelle, dateDebut: s.dateDebut, dateFin: s.dateFin,
+      statut: 'EN_COURS', genererPeriodes: false,   // les périodes existent déjà
+    }).subscribe({
+      next: () => {
+        this.message = `Saison « ${s.libelle} » rouverte.`;
+        this.load();
+        this.propagerAuContexte();
+      },
+      error: e => (this.erreur = e?.error?.message ?? 'Réouverture impossible.'),
     });
   }
 
   supprimer(s: Saison): void {
     this.saisonService.delete(s.id).subscribe({
-      next: () => { if (this.selected?.id === s.id) this.selected = null; this.load(); },
+      next: () => {
+        if (this.selected?.id === s.id) this.selected = null;
+        this.load();
+        this.propagerAuContexte();   // purge l'id fantôme si c'était la saison entrée
+      },
       error: () => (this.erreur = 'Suppression impossible.'),
     });
   }
